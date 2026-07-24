@@ -338,6 +338,29 @@ On Windows:
 go build -o build/flashgate-mcp.exe ./cmd/server
 ```
 
+Relevant platform, build, test, lint, workflow, filesystem, and security-boundary
+changes require the controlled native Linux validation described in
+[docs/testing.md](docs/testing.md#controlled-native-linux-validation). Windows
+remains the leading development environment; WSL2 receives a one-way test copy
+and never returns source changes.
+
+Invoke the canonical Windows entry point with PowerShell 7.6.3:
+
+```powershell
+& {
+    $result = & "C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1" `
+        -RunId "manual-validation-20260724-130500" `
+        -ValidationClass "standard" `
+        -ReportContext "Manual validation after filesystem changes"
+
+    $result | Format-List
+}
+```
+
+When the optional Codex smoke is required, it uses the native WSL installation
+below `/home`, requires the same Codex CLI version as Windows, and keeps the
+Linux configuration and authentication profile separate from Windows.
+
 ### Code Coverage
 
 FlashGate enforces separate repository-wide Go statement-coverage gates for Windows and Linux. The current minimum values are:

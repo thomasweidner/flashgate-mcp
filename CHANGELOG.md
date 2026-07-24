@@ -179,6 +179,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Fixed
 
+- Removed the five tracked `MIXED` and seven `NO_FINAL_NEWLINE` line-ending cases through byte-preserving mechanical corrections; encoding, BOM state, text, and whitespace remain unchanged.
 - Fixed benchmark runner result construction so soft budget messages remain exclusively in `budget_evaluation` instead of being duplicated into general `warnings`.
 - Fixed coverage summaries so a failed minimum-coverage gate produces `status: FAIL` instead of a misleading successful artifact.
 - Fixed successful FlashGate tool responses that strict MCP clients such as Codex rejected as `Unexpected response type` because domain objects were returned directly instead of inside `CallToolResult.content[]`.
