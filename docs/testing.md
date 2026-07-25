@@ -63,6 +63,174 @@ On Windows, the build command is usually:
 go build -o build/flashgate-mcp.exe ./cmd/server
 ```
 
+## Controlled native Linux validation
+
+Windows remains the leading FlashGate development environment. WSL2/Linux is
+only a native build, test, and validation environment. The canonical runner
+copies the Windows source one way into a new ext4 test copy below `/home`; no
+source is synchronized back, no native gate runs below `/mnt/c`, and no other
+MCP project is activated by this workflow.
+
+### Canonical entry points
+
+Run PowerShell 7.6.3 through the Windows orchestrator:
+
+```text
+C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1
+```
+
+The orchestrator uses:
+
+```text
+Runner  /home/weidnerthomas/voxtronic/tools/mcp-linux-validation/mcp-linux-validate
+Profile /home/weidnerthomas/voxtronic/tools/mcp-linux-validation/profiles/flashgate-mcp.json
+```
+
+`quick`, `security`, and `release` use class-specific companion profiles in the
+same managed profile directory. All runner and profile paths are absolute; PATH
+fallback is forbidden for the runner, managed Go toolchain, and managed
+`golangci-lint`.
+
+Example:
+
+```powershell
+& {
+    $result = & "C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1" `
+        -RunId "manual-validation-20260724-130500" `
+        -ValidationClass "standard" `
+        -ReportContext "Manual validation after filesystem changes"
+
+    $result | Format-List
+}
+```
+
+Run IDs must match `<context>-<YYYYMMDD-HHMMSS>` and contain only lowercase
+ASCII letters, digits, and hyphens. Spaces, separators, `..`, shell
+metacharacters, control characters, and existing validation, log, or snapshot
+paths are rejected.
+
+### Mandatory triggers
+
+Native Linux validation is mandatory when a change affects:
+
+- `cmd/**`, `internal/**`, any `*.go` or `*.sh` file, `go.mod`, or `go.sum`;
+- `.golangci.yml`, `.gitattributes`, `.editorconfig`, or
+  `.github/workflows/**`;
+- the Linux validation runner, a FlashGate validation profile, or
+  build/test/lint/smoke scripts;
+- filesystem, path, permission, symlink, junction, or reparse-point behavior;
+- build tags, `runtime.GOOS`, `runtime.GOARCH`, platform-specific processes,
+  signals, or cleanup;
+- Go, linter, or build-tool versions;
+- central security or platform boundaries, CI, release behavior, or completion
+  of a platform-relevant sprint or PR diff.
+
+It is not automatic for spelling, non-technical planning, or purely editorial
+changes without a technical instruction or runtime effect. The gate remains
+available for such changes.
+
+### Validation classes
+
+| Class | Scope | Closure use |
+|---|---|---|
+| `quick` | `go test ./...` and `go vet ./...` using the managed toolchain | Local intermediate check only; never replaces a commit, sprint, PR, or release gate |
+| `standard` | Environment and package discovery, module download, formatting, vet, tests, managed lint, and native build | Normal technical sprint and PR validation |
+| `security` | `standard` plus existing JSON-RPC, read-only, negative, startup-negative, and native validation-safety smokes | Security-, filesystem-, path-, or platform-boundary changes |
+| `release` | `standard` plus existing build-input, repository-build, protocol, negative, and startup smokes | Release preparation; it does not publish a release |
+
+The runner validates copy integrity, permissions, line endings, the managed
+linter identity, expected artifacts, unexpected changes, and an unchanged
+Windows source before returning a result.
+
+The tracked FlashGate source baseline expects zero `MIXED` and zero
+`NO_FINAL_NEWLINE` classifications. Intentional LF or CRLF files retain their
+established style; corrections are limited to terminator normalization or one
+matching final newline and must preserve encoding, BOM state, text, and
+whitespace.
+
+### Coverage-aware rules
+
+Changes to executable Go production logic must add or update tests for relevant
+success, failure, boundary, security-rejection, platform, resource, and cleanup
+paths in the same implementation or correction run. Run targeted coverage for
+the directly affected packages first.
+
+Run the complete project coverage matrix only after a coherent implementation
+or finding-correction package, for central/shared production logic, when a
+minimum-threshold regression is possible, before the final committed PR review,
+or when targeted coverage exposes additional risk. The current Windows and
+Linux minimums remain authoritative in `.github/workflows/ci.yml`.
+
+PowerShell, Python, and Bash components without percentage coverage use a
+documented branch matrix covering success, input validation, failures, timeout,
+protection, cleanup/finally, negative security, and platform/context paths.
+
+### Results and blocking
+
+- `PASS` requires successful copy, permission, line-ending, command, artifact,
+  unexpected-change, and Windows-source protection gates.
+- `PASS_WITH_WARNINGS` is allowed only for individually documented,
+  non-blocking warnings such as one controlled `0x800705b4` retry, an optional
+  Codex gate failure, or a non-functional runtime deviation. Sprint closure
+  requires an explicit justification.
+- `FAIL` blocks sprint, integration, commit, PR, and release closure. Build,
+  test, vet, lint, coverage, integrity, source-protection, `/mnt`, result-schema,
+  or infrastructure-control failures are blocking. A technical test failure is
+  not retried automatically.
+
+The orchestrator reads and validates the native `result.json`, binds status to
+the runner exit code, and stops Ubuntu only when it started the distribution.
+It never deletes validation copies.
+
+### Codex, retention, reporting, and review
+
+A WSL Codex read-only smoke is an additional gate for changes to `AGENTS.md`,
+the validation runner or profiles, sandbox/path/context rules, unclear
+Linux-specific errors, or an explicit request. It is not required for every
+ordinary run. A token, capacity, or external-service failure is non-blocking
+only when Codex was optional and all local technical gates passed.
+
+Before that smoke, resolve the native binary below `/home` and require its
+`codex-cli` version to match the active Windows version. Linux uses its own
+configuration and authentication storage; a Windows binary or profile below
+`/mnt/c` is never a substitute.
+
+Validation copies are classified as `REFERENCE_BASELINE`,
+`ACTIVE_VALIDATION`, `FAILED_VALIDATION`, or `DISPOSABLE_VALIDATION`.
+References and failed runs are retained; successful normal runs may be marked
+as later cleanup candidates. No copy is deleted automatically. Any later
+cleanup requires an exact allowlist path, ignore/tracked/untracked and reparse
+checks, preserved evidence, and a bounded dry run.
+
+When Linux validation is required, the completion report records:
+
+```text
+LinuxValidationRequired
+LinuxValidationClass
+LinuxValidationRunId
+LinuxValidationResult
+LinuxValidationPath
+LinuxValidationDuration
+LinuxWarningCount
+LinuxFailureCount
+WindowsSourceChanged
+UnexpectedChanges
+CoverageRequired
+TargetedCoverageResult
+FullCoverageMatrixRequired
+FullCoverageMatrixResult
+ReviewType
+ReportOrResultPath
+SprintClosureAllowed
+```
+
+Use exactly one full independent review for a larger implementation or
+integration state. Bundle Blocker and Major corrections, then review only the
+changed delta, regression tests, coverage impact, and directly affected
+interfaces. Do not repeat unchanged INF-095 or project-wide matrices without a
+concrete technical reason. The next full review is performed on the final
+committed PR state after successful hosted CI.
+
 ## Test Strategy
 
 ### Unit Tests
