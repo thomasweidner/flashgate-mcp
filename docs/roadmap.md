@@ -10,18 +10,18 @@ FlashGate MCP is the binding project name. The current implementation is a nativ
 
 ## Version 1.0 sequence
 
-| Phase | Sprints | Direction |
+| Phase | Sprint IDs | Direction |
 |---|---|---|
-| Architecture and identity | 3.41 | FlashGate identity, ADR baseline, authoritative backlog consolidation |
-| Technical transition | 3.42-3.44 | Technical rename, pre-1.0 filesystem contract cleanup, read-only client preparation |
-| Efficiency and shared runtime | 3.45-3.46 | Payload/result architecture, tool/token budgets, native adapter policy, Operations/Job Manager, quotas, identity-bound state |
-| Filesystem and search | 3.47-3.49 | Efficient inspection, MIME/binary/large-result handling, safe edits/plans, bounded search |
-| Policy model | 3.50 | Named roots, read-only safe default, capabilities, profiles, dynamic tool registration, negative authorization tests |
-| Process and execution | 3.51-3.54 | Threat models, observation, managed processes, typed allowlisted commands, OS isolation, cursor output |
-| System information | 3.55 | Scoped and redacted host information |
-| Service architecture | 3.56 | Multi-mode/IPC contracts, hybrid execution identity, Variant A design, Variant B interfaces, audit lifecycle |
-| Native system services | 3.57 | Named Pipe/Unix socket, proxy/auto, Windows SCM, Linux systemd, service-account root backend |
-| Version 1.0 release gate | 3.58 | Multi-client/security validation, CI, cross-project benchmarks, supply-chain evidence, governance, documentation, packaging, rollback |
+| Architecture and identity | `SPR-41` | FlashGate identity, ADR baseline, authoritative backlog consolidation |
+| Technical transition | `SPR-42`–`SPR-44` | Technical rename, pre-1.0 filesystem contract cleanup, read-only client preparation |
+| Efficiency and shared runtime | `SPR-45`–`SPR-49` | Payload/result architecture, tool/token budgets, native adapter policy, Operations/Job Manager, quotas, identity-bound state |
+| Filesystem and search | `SPR-50`–`SPR-52` | Efficient inspection, MIME/binary/large-result handling, safe edits/plans, bounded search |
+| Policy model | `SPR-53` | Named roots, read-only safe default, capabilities, profiles, dynamic tool registration, negative authorization tests |
+| Process and execution | `SPR-54`–`SPR-57` | Threat models, observation, managed processes, typed allowlisted commands, OS isolation, cursor output |
+| System information | `SPR-58` | Scoped and redacted host information |
+| Service architecture | `SPR-59` | Multi-mode/IPC contracts, hybrid execution identity, Variant A design, Variant B interfaces, audit lifecycle |
+| Native system services | `SPR-60` | Named Pipe/Unix socket, proxy/auto, Windows SCM, Linux systemd, service-account root backend |
+| Version 1.0 release gate | `SPR-61` | Multi-client/security validation, CI, cross-project benchmarks, supply-chain evidence, governance, documentation, packaging, rollback |
 
 Version 1.0 implements service execution Variant A. Variant B's backend boundary and threat model are included so later user workers do not require public tool or domain redesign. Shared-process impersonation is excluded.
 

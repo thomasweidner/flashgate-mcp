@@ -157,7 +157,7 @@ Resource support is an adapter feature. Core domains return local result referen
 
 Profiles minimize both privilege and model context.
 
-Initial planning budgets are deliberately conservative and must be confirmed by Sprint 3.45 benchmarks:
+Initial planning budgets are deliberately conservative and must be confirmed by `SPR-47` benchmarks:
 
 | Profile | Planning target |
 |---|---:|

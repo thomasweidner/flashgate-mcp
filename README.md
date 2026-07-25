@@ -4,10 +4,9 @@
 
 FlashGate MCP is a resource-efficient cross-platform Model Context Protocol server for controlled filesystem, process, and operating-system operations. Deterministic work runs locally to minimize CPU, memory, latency, response size, model round trips, and token use.
 
-> Sprint 3.42 completed the technical rename. FlashGate MCP uses repository
-> `thomasweidner/flashgate-mcp`, module
-> `github.com/thomasweidner/flashgate-mcp`, binary `flashgate-mcp`, and MCP
-> server implementation name (`serverInfo.name`) `flashgate`.
+FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, Go module
+`github.com/thomasweidner/flashgate-mcp`, binary `flashgate-mcp`, and MCP server
+implementation name (`serverInfo.name`) `flashgate`.
 
 It exposes secure filesystem operations to MCP-compatible clients through JSON-RPC over STDIO. The server is designed for predictable behavior, low operational overhead, clear security boundaries, and maintainable enterprise-style code.
 
@@ -125,7 +124,7 @@ Path validation uses two stages:
 
 Individual tools do not bypass the filesystem abstraction and do not call host filesystem APIs directly. This keeps path validation centralized and testable.
 
-Sprint 3.37 adds deny-by-default policy enforcement for hidden paths, UNC paths, symlinks, and Windows reparse points:
+`SPR-37` adds deny-by-default policy enforcement for hidden paths, UNC paths, symlinks, and Windows reparse points:
 
 ```text
 MCP_ALLOW_HIDDEN_FILES=false
@@ -141,7 +140,7 @@ Security and path denials are mapped to generic invalid-path tool errors without
 
 ### Limits and diagnostics
 
-Sprint 3.39 adds conservative hard limits:
+`SPR-39` adds conservative hard limits:
 
 | Environment variable | Default | Purpose |
 |---|---:|---|
@@ -160,7 +159,7 @@ All limit values must be positive integers.
 
 ### Read-only mode
 
-Sprint 3.35 adds read-only enforcement for MCP tool discovery and direct tool calls.
+`SPR-35` adds read-only enforcement for MCP tool discovery and direct tool calls.
 
 Enable read-only mode with:
 
@@ -198,7 +197,7 @@ A machine-readable MCP tool catalog is available at:
 docs/mcp-tool-catalog.json
 ```
 
-Preparation for a later, separately approved Codex read-only activation is documented in [docs/codex-read-only-activation.md](docs/codex-read-only-activation.md). Sprint 3.44 does not modify Codex configuration or register FlashGate as an MCP server.
+Preparation for a later, separately approved Codex read-only activation is documented in [docs/codex-read-only-activation.md](docs/codex-read-only-activation.md). `SPR-44` does not modify Codex configuration or register FlashGate as an MCP server.
 
 The catalog contains tool names, descriptions, input schemas, domain `resultSchema` values, the central `CallToolResult` envelope description, and common error behavior. Runtime output schemas are exposed for the current tools. Version 1.0 also adds profile-specific catalog/instruction budgets, deterministic ordering, and catalog fingerprints.
 
@@ -446,7 +445,7 @@ The smoke scripts create per-run JSONL request and response files under `build/`
 
 ## Resource, Latency, and Payload Benchmarks
 
-Sprint 3.45d adds a versioned local benchmark system for process startup, end-to-end workflow latency, idle and peak working set, process CPU time, Go allocations, request/result/response sizes, filesystem counters, `tools/list` size, MCP call counts, and a coarse byte-based token orientation.
+`SPR-47` adds a versioned local benchmark system for process startup, end-to-end workflow latency, idle and peak working set, process CPU time, Go allocations, request/result/response sizes, filesystem counters, `tools/list` size, MCP call counts, and a coarse byte-based token orientation.
 
 Run the standard Windows benchmark after normal validation:
 

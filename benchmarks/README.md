@@ -1,6 +1,6 @@
 # FlashGate MCP benchmarks
 
-Sprint 3.45d provides one reproducible benchmark system with three layers. It extends the existing `tools/call` serialization fixtures instead of creating a competing serialization suite.
+`SPR-47` provides one reproducible benchmark system with three layers. It extends the existing `tools/call` serialization fixtures instead of creating a competing serialization suite.
 
 ## Layers
 
@@ -85,12 +85,12 @@ Idle working set is sampled immediately after `initialize`. Peak working set and
 - `response_bytes`: complete UTF-8 JSON-RPC response including its JSONL newline.
 - `result_bytes`: only the serialized JSON value in the JSON-RPC `result` member.
 - `read_bytes`: content bytes successfully returned by `read_file`.
-- `written_bytes`: content bytes successfully written or copied; all Sprint 3.45d read-only reference workflows correctly report zero.
-- `scanned_bytes`: bytes actually inspected for search, hashing, classification, or comparable content analysis. All Sprint 3.45d read-only workflows report zero; ordinary `read_file` return bytes are not scans.
+- `written_bytes`: content bytes successfully written or copied; all `SPR-47` read-only reference workflows correctly report zero.
+- `scanned_bytes`: bytes actually inspected for search, hashing, classification, or comparable content analysis. All `SPR-47` read-only workflows report zero; ordinary `read_file` return bytes are not scans.
 - `entries`: directory entries actually returned by successful reference calls.
 - `calls`: `tools/call` requests actually executed successfully. `initialize` and `tools/list` are not counted.
 
-These benchmark counters are runner-side measurements only. Sprint 3.45d does not add them to public MCP tool results.
+These benchmark counters are runner-side measurements only. `SPR-47` does not add them to public MCP tool results.
 
 Workflow request byte counts include the initialization request and the 55-byte `notifications/initialized` JSONL notification. The notification has no response and never increments `calls`. The separate `tools_list_measurements` entries contain only the `tools/list` request and response.
 
@@ -172,11 +172,11 @@ a supported race platform; for the current Windows host, missing CGO/GCC is an
 infrastructure limitation and does not justify relaxing allocation budgets. Native
 Linux `go test -race ./...` remains required.
 
-A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. Sprint 3.45d does not add the full process benchmark to CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
+A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. `SPR-47` does not add the full process benchmark to CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
 
 ## Version 1.0 benchmark expansion
 
-Sprint 3.45d baselines are created only after the corrected implementation commit is clean. They are not retroactively rewritten when Version 1.0 contracts change.
+`SPR-47` baselines are created only after the corrected implementation commit is clean. They are not retroactively rewritten when Version 1.0 contracts change.
 
 Version 1.0 extends the benchmark system with the following measurements:
 
