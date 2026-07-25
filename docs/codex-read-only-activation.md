@@ -1,6 +1,6 @@
 # Codex read-only activation preparation
 
-Diese Anleitung bereitet eine spätere Aktivierung vor. Sprint 3.44 aktiviert FlashGate nicht automatisch in Codex.
+Diese Anleitung bereitet eine spätere Aktivierung vor. `SPR-44` aktiviert FlashGate nicht automatisch in Codex.
 
 Die reale Aktivierung darf erst nach Review, Commit, Pull Request, Merge und Post-Merge-Prüfung erfolgen und benötigt eine separate Bestätigung. Die Beispiele auf dieser Seite wurden nicht auf eine reale Codex-, Claude-Desktop- oder andere Clientkonfiguration angewendet.
 
@@ -30,7 +30,7 @@ Get-FileHash -Algorithm SHA256 .\build\flashgate-mcp.exe
 Das geprüfte Binary wird danach unter separater Freigabe in einen versionierten Pfad außerhalb des Repositories kopiert, zum Beispiel:
 
 ```text
-C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\sprint-3.44\flashgate-mcp.exe
+C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\spr-44\flashgate-mcp.exe
 ```
 
 Der Binary-Pfad darf nicht innerhalb des freigegebenen Datenroots liegen. Temporäre Builddateien sind nach der Abnahme zu entfernen. Ein geprüftes Release-Binary bleibt die spätere bevorzugte Produktionsform.
@@ -84,17 +84,17 @@ Das Read-only-Profil exponiert exakt in dieser Reihenfolge:
 
 ## 5. Windows-Codex-Beispiel – nicht automatisch anwenden
 
-Lokal bestätigt sind `command`, `args`, Environment, `startup_timeout_sec` und `codex mcp add`. Die manuelle `cwd`-Syntax und `tool_timeout_sec` waren während Sprint 3.44 nicht abschließend lokal bestätigt und müssen unmittelbar vor einer realen Aktivierung gegen die dann installierte Codex-Version geprüft werden.
+Lokal bestätigt sind `command`, `args`, Environment, `startup_timeout_sec` und `codex mcp add`. Die manuelle `cwd`-Syntax und `tool_timeout_sec` waren während `SPR-44` nicht abschließend lokal bestätigt und müssen unmittelbar vor einer realen Aktivierung gegen die dann installierte Codex-Version geprüft werden.
 
 ```toml
-# EXAMPLE ONLY — NOT APPLIED BY SPRINT 3.44
+# EXAMPLE ONLY — NOT APPLIED BY SPR-44
 [mcp_servers.flashgate_readonly]
-command = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\sprint-3.44\flashgate-mcp.exe'
+command = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\spr-44\flashgate-mcp.exe'
 args = []
 startup_timeout_sec = 10
 
 # Verify before use with the installed Codex version:
-# cwd = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\sprint-3.44'
+# cwd = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\spr-44'
 # tool_timeout_sec = 30
 
 [mcp_servers.flashgate_readonly.env]
@@ -107,18 +107,18 @@ MCP_FOLLOW_SYMLINKS = 'false'
 MCP_DEBUG = 'false'
 ```
 
-`codex mcp add` ist lokal als Mechanismus bestätigt. Es wird in Sprint 3.44 ausdrücklich nicht ausgeführt. Vor einer späteren Nutzung sind Backup, exakter Name, Umgebungswerte, Timeouts und resultierender Konfigurationsdiff zu prüfen.
+`codex mcp add` ist lokal als Mechanismus bestätigt. Es wird in `SPR-44` ausdrücklich nicht ausgeführt. Vor einer späteren Nutzung sind Backup, exakter Name, Umgebungswerte, Timeouts und resultierender Konfigurationsdiff zu prüfen.
 
 ## 6. Linux- und spätere WSL-Perspektive
 
 Ein Linux-Binary benötigt Execute-Berechtigung und einen absoluten Linux-Root:
 
 ```text
-/opt/flashgate/sprint-3.44/flashgate-mcp
+/opt/flashgate/spr-44/flashgate-mcp
 /home/example/flashgate-readonly-root
 ```
 
-Pfade mit Leerzeichen müssen als einzelne Konfigurationswerte übergeben werden. Symlinks bleiben standardmäßig deaktiviert. WSL2 wird in Sprint 3.44 nicht installiert und ist keine Voraussetzung. Eine spätere WSL-Aktivierung benötigt eigene Pfad-, Berechtigungs-, Binary- und Rollbackprüfung; Windows- und WSL-Pfade dürfen nicht stillschweigend gemischt werden.
+Pfade mit Leerzeichen müssen als einzelne Konfigurationswerte übergeben werden. Symlinks bleiben standardmäßig deaktiviert. WSL2 wird in `SPR-44` nicht installiert und ist keine Voraussetzung. Eine spätere WSL-Aktivierung benötigt eigene Pfad-, Berechtigungs-, Binary- und Rollbackprüfung; Windows- und WSL-Pfade dürfen nicht stillschweigend gemischt werden.
 
 ## 7. Claude Desktop und allgemeines STDIO-Beispiel
 
@@ -151,7 +151,7 @@ Claude-Desktop-orientiertes Linux-Beispiel:
 {
   "mcpServers": {
     "flashgate_readonly": {
-      "command": "/opt/flashgate/sprint-3.44/flashgate-mcp",
+      "command": "/opt/flashgate/spr-44/flashgate-mcp",
       "args": [],
       "env": {
         "MCP_ROOT": "/home/example/flashgate-readonly-root",
@@ -264,10 +264,10 @@ Rollback:
 6. Root und Repository auf Artefakte prüfen.
 7. Binary nur nach separater Freigabe entfernen.
 
-Sprint 3.44 führt weder `codex mcp add` noch `codex mcp remove` aus und verändert keine reale `config.toml` oder Auth-Datei.
+`SPR-44` führt weder `codex mcp add` noch `codex mcp remove` aus und verändert keine reale `config.toml` oder Auth-Datei.
 
 ## 12. CallToolResult- und Canary-Gate
 
-Der erste Codex-Canary wurde nach gültigem JSON-RPC-Preflight aktiviert, scheiterte aber im echten Client mit `Unexpected response type`, weil erfolgreiche Fachobjekte ungewrappt waren. Sprint 3.45a korrigiert den Serververtrag, reaktiviert den Canary jedoch nicht.
+Der erste Codex-Canary wurde nach gültigem JSON-RPC-Preflight aktiviert, scheiterte aber im echten Client mit `Unexpected response type`, weil erfolgreiche Fachobjekte ungewrappt waren. `SPR-45` korrigiert den Serververtrag, reaktiviert den Canary jedoch nicht.
 
 Eine Reaktivierung ist erst nach Review, Commit, PR, vollständig grüner Windows-/Ubuntu-CI, Merge, Post-Merge-Gates, neuem versioniertem Binary, strengem direkten Preflight, separater Benutzerfreigabe, vollständigem Codex-Neustart und erfolgreicher Wiederholung des modellgestützten End-to-End-Tests zulässig. Der bestehende Canary bleibt bis dahin deaktiviert.

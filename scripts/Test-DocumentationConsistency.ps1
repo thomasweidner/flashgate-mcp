@@ -274,7 +274,11 @@ try {
             $taskStatus[$definition.Id] = $definition.Status
         }
 
-        $sprintMatches = [regex]::Matches($backlogText, '(?m)^\|\s*Sprint\s+(?<sprint>[^|]+?)\s*\|\s*(?<status>Done|Planned|In progress)\s*\|\s*(?<ids>[^|]+?)\s*\|')
+        $sprintRowCandidates = [regex]::Matches($backlogText, '(?m)^\|\s*(?<sprint>SPR-[^|]+?)\s*\|\s*(?<status>Done|Planned|In progress)\s*\|\s*(?<ids>[^|]+?)\s*\|')
+        $sprintMatches = [regex]::Matches($backlogText, '(?m)^\|\s*(?<sprint>SPR-(?<number>[1-9]\d*))\s*\|\s*(?<status>Done|Planned|In progress)\s*\|\s*(?<ids>[^|]+?)\s*\|')
+        $invalidSprintIds = @($sprintRowCandidates | Where-Object { $_.Groups['sprint'].Value.Trim() -notmatch '^SPR-[1-9]\d*$' } | ForEach-Object { $_.Groups['sprint'].Value.Trim() })
+        $duplicateSprintIds = @($sprintMatches | Group-Object { $_.Groups['sprint'].Value.Trim() } | Where-Object Count -gt 1 | ForEach-Object Name)
+        $legacySprintRows = @([regex]::Matches($backlogText, '(?m)^\|\s*Sprint\s+3\.[^|]+\|') | ForEach-Object { $_.Value.Trim() })
         $assignments = [System.Collections.Generic.List[object]]::new()
 
         foreach ($sprintMatch in $sprintMatches) {
@@ -295,8 +299,8 @@ try {
         $assignedIds = @($assignments.Id | Sort-Object -Unique)
         $unassignedPlanned = @($taskDefinitions | Where-Object { $_.Status -eq 'Planned' -and $_.Id -notin $assignedIds } | Select-Object -ExpandProperty Id | Sort-Object)
         $assignedLater = @($taskDefinitions | Where-Object { $_.Status -eq 'Later' -and $_.Id -in $assignedIds } | Select-Object -ExpandProperty Id | Sort-Object)
-        $doneInPlannedSprints = @($assignments | Where-Object { $_.SprintStatus -eq 'Planned' -and $taskStatus.ContainsKey($_.Id) -and $taskStatus[$_.Id] -eq 'Done' } | ForEach-Object { "$($_.Id) in Sprint $($_.Sprint)" })
-        $nonDoneInDoneSprints = @($assignments | Where-Object { $_.SprintStatus -eq 'Done' -and $taskStatus.ContainsKey($_.Id) -and $taskStatus[$_.Id] -ne 'Done' } | ForEach-Object { "$($_.Id) in Sprint $($_.Sprint)" })
+        $doneInPlannedSprints = @($assignments | Where-Object { $_.SprintStatus -eq 'Planned' -and $taskStatus.ContainsKey($_.Id) -and $taskStatus[$_.Id] -eq 'Done' } | ForEach-Object { "$($_.Id) in $($_.Sprint)" })
+        $nonDoneInDoneSprints = @($assignments | Where-Object { $_.SprintStatus -eq 'Done' -and $taskStatus.ContainsKey($_.Id) -and $taskStatus[$_.Id] -ne 'Done' } | ForEach-Object { "$($_.Id) in $($_.Sprint)" })
 
         Add-DocumentationCheck -Id 'BL-005' -Category 'SprintAssignments' -Passed ($sprintMatches.Count -gt 0) -Severity Error -Message 'The sprint sequence contains status-bearing sprint rows.' -Evidence $sprintMatches.Count
         Add-DocumentationCheck -Id 'BL-006' -Category 'SprintAssignments' -Passed ($duplicateAssignments.Count -eq 0) -Severity Error -Message 'Every sprint-assigned backlog task appears in exactly one sprint row.' -Evidence ($duplicateAssignments -join '; ')
@@ -306,6 +310,9 @@ try {
         Add-DocumentationCheck -Id 'BL-010' -Category 'SprintStatus' -Passed $true -Severity Warning -Message 'Done tasks in Planned sprint rows are reported for semantic review because cross-cutting tasks may complete before the containing sprint.' -Evidence ($doneInPlannedSprints -join '; ')
         Add-DocumentationCheck -Id 'BL-011' -Category 'SprintStatus' -Passed ($nonDoneInDoneSprints.Count -eq 0) -Severity Error -Message 'Done sprint rows contain only Done tasks.' -Evidence ($nonDoneInDoneSprints -join '; ')
         Add-DocumentationCheck -Id 'BL-012' -Category 'BacklogCatalog' -Passed ($maximumTaskNumber -eq $taskDefinitions.Count) -Severity Error -Message 'The maximum backlog number equals the number of unique canonical tasks.' -Evidence "Maximum=$maximumTaskNumber; Definitions=$($taskDefinitions.Count)"
+        Add-DocumentationCheck -Id 'SPR-001' -Category 'SprintIdentifiers' -Passed ($invalidSprintIds.Count -eq 0) -Severity Error -Message 'Every current sprint row uses SPR-<positive integer> without suffixes or decimals.' -Evidence ($invalidSprintIds -join ', ')
+        Add-DocumentationCheck -Id 'SPR-002' -Category 'SprintIdentifiers' -Passed ($duplicateSprintIds.Count -eq 0) -Severity Error -Message 'Every canonical sprint identifier appears in exactly one status row.' -Evidence ($duplicateSprintIds -join ', ')
+        Add-DocumentationCheck -Id 'SPR-003' -Category 'SprintIdentifiers' -Passed ($legacySprintRows.Count -eq 0) -Severity Error -Message 'The current backlog contains no legacy Sprint 3.x status rows.' -Evidence ($legacySprintRows -join '; ')
     }
 
     $expectedRepository = 'thomasweidner/flashgate-mcp'

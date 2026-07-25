@@ -1,6 +1,6 @@
 # FlashGate MCP Security Model
 
-FlashGate MCP is designed as a secure-by-default local host-operations MCP server. Sprint 3.42 completed its technical rename; it currently exposes only the filesystem functionality described below.
+FlashGate MCP is designed as a secure-by-default local host-operations MCP server. It currently exposes only the filesystem functionality described below.
 
 Filesystem access is security-sensitive because MCP clients may request operations on local files. For this reason, all filesystem operations are restricted to a configured sandbox root.
 
@@ -136,9 +136,9 @@ Directory copy is currently unsupported by design.
 
 ## Symlinks
 
-Sprint 3.36 rejects symlink-based escapes where an existing path, or the nearest existing parent for a create target, resolves outside the configured root.
+`SPR-36` rejects symlink-based escapes where an existing path, or the nearest existing parent for a create target, resolves outside the configured root.
 
-Sprint 3.37 adds explicit symlink policy enforcement.
+`SPR-37` adds explicit symlink policy enforcement.
 
 Configuration:
 
@@ -184,7 +184,7 @@ When `MCP_ALLOW_HIDDEN_FILES=true`, hidden and dotfile paths are allowed if all 
 
 ## JSON-RPC Boundary
 
-Sprint 3.38 adds JSON-RPC request validation before MCP dispatch.
+`SPR-38` adds JSON-RPC request validation before MCP dispatch.
 
 Requests must be object-shaped JSON-RPC 2.0 messages. Invalid JSON, invalid request envelopes, unsupported batch requests, invalid IDs, missing methods, and malformed method params are rejected with generic JSON-RPC errors.
 
@@ -198,11 +198,11 @@ Notifications do not receive JSON-RPC responses. `notifications/initialized` is 
 
 Unexpected handler panics are contained at the request boundary and returned as generic Internal error responses when the request requires a response.
 
-Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification is intentionally unchanged in Sprint 3.45a; BL-203 owns a later complete `isError=true` migration.
+Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification is intentionally unchanged in `SPR-45`; BL-203 owns a later complete `isError=true` migration.
 
 ## Limits and Redaction
 
-Sprint 3.39 adds configurable hard limits for protocol input, tool arguments, filesystem payloads, and response size.
+`SPR-39` adds configurable hard limits for protocol input, tool arguments, filesystem payloads, and response size.
 
 | Environment variable | Default | Scope |
 |---|---:|---|

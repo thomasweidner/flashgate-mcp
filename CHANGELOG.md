@@ -15,6 +15,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Added Version 1.0 plans for per-principal quotas and fair scheduling, typed no-shell command definitions, native OS adapter precedence, audit lifecycle/correlation, MCP 2026 compatibility preparation, supply-chain evidence, and a pinned cross-project efficiency benchmark.
 - Added ADR-0015, Version 1.0 scope, execution-identity backend, efficiency-improvement, comparative-review, runtime/service, protocol, specification, and roadmap documentation.
 - Expanded the canonical backlog to the continuous range `BL-001` through `BL-332`; the current renumbering through `BL-324` is documented in [Backlog ID migration - 2026-07-20](docs/backlog-id-migration-2026-07-20.md), layered over the immutable earlier migration records. PR #16 adds `BL-325` through `BL-329` and the final PR #21 review adds `BL-330` through `BL-332` without changing existing canonical IDs.
+- Migrated current sprint identifiers to standalone `SPR-N` values. Former suffix-based entries now have independent IDs, subsequent entries shift without changing backlog assignments, and the complete mapping is recorded in [Sprint ID migration - 2026-07-25](docs/sprint-id-migration-2026-07-25.md).
 
 ### Migration
 
@@ -22,7 +23,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 - See [fail-closed root configuration](docs/fail-closed-root-configuration-2026-07-11.md). Clients must set an explicit absolute root; development CWD use requires the new opt-in.
 - See [filesystem tool contract cleanup](docs/filesystem-tool-contract-cleanup-2026-07-11.md). The old pre-1.0 tool names were removed without aliases; clients and smoke tests must use the eight-tool baseline.
-- Sprint 3.43 does not change `MCP_*` names, root defaults, capability policy, or the MCP protocol revision.
+- `SPR-43` does not change `MCP_*` names, root defaults, capability policy, or the MCP protocol revision.
 - See [technical rename to FlashGate](docs/technical-rename-to-flashgate-2026-07-11.md).
 - No MCP tool-contract or runtime-security change was made; existing `MCP_*` variables remain unchanged.
 
@@ -35,23 +36,23 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Added tag-gated release and metadata-regression workflows plus permanent build, validation, and decision documentation.
 - Added one shared SemVer/`SOURCE_DATE_EPOCH` fixture contract, linked-worktree-aware Bash builds, fail-closed native validation roots, and manifest-verified Git inventory snapshots with traversal- and special-entry-safe TAR extraction.
 - Added `scripts/Test-GoCoverage.ps1`, separate Windows/Linux text, HTML, profile, log, and JSON coverage reports, 14-day per-platform CI artifacts, README guidance, and `docs/development/code-coverage.md`.
-- Sprint 3.45d adds the development-only `cmd/benchmark` STDIO runner, Win32 and Linux procfs process metrics, ten machine-readable reference workflows, result schema `flashgate-benchmark/v1`, local budget evaluation, and diagnostic PowerShell/Bash launch scripts. Authoritative platform baselines use a separate two-phase prebuilt controller after Windows and native Linux preparation on the same clean implementation commit.
-- Sprint 3.45a adds explicit `TextContent` and `CallToolResult` protocol DTOs, a strict project-local decoder with legacy unwrapped negative fixtures, full success/error wire tests, and reproducible tool-result serialization benchmarks.
+- `SPR-47` adds the development-only `cmd/benchmark` STDIO runner, Win32 and Linux procfs process metrics, ten machine-readable reference workflows, result schema `flashgate-benchmark/v1`, local budget evaluation, and diagnostic PowerShell/Bash launch scripts. Authoritative platform baselines use a separate two-phase prebuilt controller after Windows and native Linux preparation on the same clean implementation commit.
+- `SPR-45` adds explicit `TextContent` and `CallToolResult` protocol DTOs, a strict project-local decoder with legacy unwrapped negative fixtures, full success/error wire tests, and reproducible tool-result serialization benchmarks.
 - A dated benchmark baseline records historical, text-only, and text-plus-structured payload/runtime/allocation costs without CI budgets.
 
-- Sprint 3.44 categorized startup configuration errors, exit-code tests, Windows/Linux startup-negative smokes, and a Codex read-only activation/rollback guide.
+- `SPR-44` categorized startup configuration errors, exit-code tests, Windows/Linux startup-negative smokes, and a Codex read-only activation/rollback guide.
 - FlashGate MCP project identity and transition documentation.
-- Sprint 3.41 architecture baseline.
+- `SPR-41` architecture baseline.
 - Vendor-neutral open-source and FlashGate module/provider direction, separated from MCP protocol extensions.
 - Accepted Operations and Job Manager target architecture.
 - ADRs for project identity, domain-separated core, deployment/modules/providers, capability profiles, operations/jobs, managed processes/commands, resource/token efficiency, and MCP version/extension compatibility.
 - Backlog ID migration documentation for the continuous `BL-001` sequence.
-- Sprint 3.38 JSON-RPC request validation and error behavior hardening.
-- Sprint 3.39 configurable hard limits, redacted diagnostics, and secrets-aware behavior.
-- Sprint 3.40 Windows/Linux JSON-RPC smoke-test matrix coverage.
-- Sprint 3.37 hidden, UNC, symlink, junction, and reparse policy enforcement.
-- Sprint 3.36 root, realpath, and traversal hardening for filesystem access.
-- Sprint 3.35 read-only tool capability gating for filesystem MCP tools.
+- `SPR-38` JSON-RPC request validation and error behavior hardening.
+- `SPR-39` configurable hard limits, redacted diagnostics, and secrets-aware behavior.
+- `SPR-40` Windows/Linux JSON-RPC smoke-test matrix coverage.
+- `SPR-37` hidden, UNC, symlink, junction, and reparse policy enforcement.
+- `SPR-36` root, realpath, and traversal hardening for filesystem access.
+- `SPR-35` read-only tool capability gating for filesystem MCP tools.
 - Initial Go module setup.
 - Project structure for a professional MCP server implementation.
 - Immutable configuration package.
@@ -123,23 +124,23 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - CI now enforces separate repository-wide Go statement-coverage gates of 71.4% on Windows and 70.6% on Linux. The values are evaluated independently, and `summary.json` reports threshold failures consistently as `FAIL`.
 - Non-authoritative benchmark output now binds the validated parent through `os.Root`, writes and syncs an exclusive temporary file through that stable handle, and publishes with a handle-relative rename that never follows the final target; all diagnostic names, final symlinks/reparse points, protected-directory aliases, and late output/protected-directory exchanges fail closed.
 - Registered the eight Major/Minor findings deferred from the independent PR #15 review as canonical post-merge tasks `BL-316` through `BL-323` without implementing them in the blocker fix.
-- Sprint 3.45d keeps functional serialization coverage active under race while evaluating allocation budgets only without race instrumentation; legacy baseline-record flags now fail closed in favor of the authoritative two-phase prebuilt workflow.
-- Sprint 3.45d physically resolves Windows diagnostic output parents to block junction/reparse aliases into versioned baseline paths and validates both platform artifacts together across provenance, budgets, resources, process outcomes, and deterministic fields.
-- Sprint 3.45d review corrections enforce clean-only versioned baselines, complete MCP initialization with `notifications/initialized`, validate exact profile/workflow measurement sets, activate all six serialization budgets, preserve partial Linux metrics, harden host-path redaction and cleanup, and define ordinary reads as `read_bytes` without `scanned_bytes`.
-- Sprint 3.45d establishes a reproducible Windows/Linux resource, startup, latency, payload, filesystem-counter, call-count, and approximate-token benchmark baseline without changing public MCP tool contracts.
+- `SPR-47` keeps functional serialization coverage active under race while evaluating allocation budgets only without race instrumentation; legacy baseline-record flags now fail closed in favor of the authoritative two-phase prebuilt workflow.
+- `SPR-47` physically resolves Windows diagnostic output parents to block junction/reparse aliases into versioned baseline paths and validates both platform artifacts together across provenance, budgets, resources, process outcomes, and deterministic fields.
+- `SPR-47` review corrections enforce clean-only versioned baselines, complete MCP initialization with `notifications/initialized`, validate exact profile/workflow measurement sets, activate all six serialization budgets, preserve partial Linux metrics, harden host-path redaction and cleanup, and define ordinary reads as `read_bytes` without `scanned_bytes`.
+- `SPR-47` establishes a reproducible Windows/Linux resource, startup, latency, payload, filesystem-counter, call-count, and approximate-token benchmark baseline without changing public MCP tool contracts.
 - Existing tool-result serialization fixtures now retain their historical/text/text-plus-structured measurements while also pinning full JSON-RPC response bytes; direct `tools/call` and both `tools/list` profiles have dedicated in-process benchmarks.
 - Deterministic wire/counter regression budgets are hard local gates, while startup, latency, RSS/working-set, and CPU budgets remain soft review warnings; full CI benchmark execution and comparison stay deferred to BL-249 and BL-250.
-- Sprint 3.45b exposes runtime `outputSchema` for all eight filesystem tools, with deep parity to catalog `resultSchema` and no changes to tool names or successful domain results.
-- Sprint 3.45a wraps every successful filesystem `tools/call` result in an MCP 2025-11-25 `CallToolResult` with one compact JSON `TextContent` block and the same domain object in `structuredContent`.
+- `SPR-46` exposes runtime `outputSchema` for all eight filesystem tools, with deep parity to catalog `resultSchema` and no changes to tool names or successful domain results.
+- `SPR-45` wraps every successful filesystem `tools/call` result in an MCP 2025-11-25 `CallToolResult` with one compact JSON `TextContent` block and the same domain object in `structuredContent`.
 - All eight filesystem tools use one central adapter wrapper; internal filesystem and domain result types remain protocol-independent.
 - Windows and Bash positive STDIO smokes now strictly validate the outer `CallToolResult` and assert domain values through `structuredContent`.
 - The existing safe JSON-RPC tool-error contract remains unchanged; normalized `isError=true` migration stays planned under BL-203.
 - Runtime output schemas describe successful `structuredContent` only; the existing JSON-RPC error contract remains unchanged.
-- Sprint 3.44 requires an explicit absolute `MCP_ROOT`; missing, empty, whitespace-only, and general relative roots now fail closed before tool registration or JSON-RPC processing.
+- `SPR-44` requires an explicit absolute `MCP_ROOT`; missing, empty, whitespace-only, and general relative roots now fail closed before tool registration or JSON-RPC processing.
 - `MCP_ROOT=.` now requires the explicit lowercase `MCP_ALLOW_CWD_ROOT=true` development opt-in and emits one safe stderr warning.
 - Root startup validates existence, policy, canonical resolution, and directory type before exposing tools.
 - Codex, Claude Desktop, and general STDIO read-only activation examples now require `MCP_READ_ONLY=true` and remain preparation only.
-- Sprint 3.43 replaces the pre-1.0 filesystem tool contract with the exact baseline `list_directory`, `read_file`, `get_path_info`, `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path`.
+- `SPR-43` replaces the pre-1.0 filesystem tool contract with the exact baseline `list_directory`, `read_file`, `get_path_info`, `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path`.
 - Tool arguments are decoded strictly: unknown properties, trailing JSON values, wrong types, missing required fields, and blank required paths are rejected.
 - `get_path_info` reports genuine missing paths as successful `exists:false` results, `create_directory` reports the actual `created` state, and `move_path` safely covers same-volume move and rename.
 - `copy_path` is explicitly file-only; directory copy remains planned work.
@@ -148,14 +149,14 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Binary renamed to `flashgate-mcp`; scripts, workflows, release artifacts, tests, and documentation updated.
 - MCP server implementation name (`serverInfo.name`) changed to `flashgate`.
 - Local project folder, clone instructions, and remote instructions updated.
-- Public project name changed from Fileserver MCP to FlashGate MCP; the technical repository, module, binary, MCP server implementation name (`serverInfo.name`), scripts, workflows, and catalog remain unchanged until Sprint 3.42.
+- Public project name changed from Fileserver MCP to FlashGate MCP; the technical repository, module, binary, MCP server implementation name (`serverInfo.name`), scripts, workflows, and catalog remained unchanged until `SPR-42`.
 - Backlog consolidated into one canonical continuously numbered task catalog without a separate `BL-D` series.
-- Former Sprint 3.41 Codex read-only preparation shifted to Sprint 3.44.
+- Former `SPR-41` Codex read-only preparation shifted to `SPR-44`.
 - Architecture expanded toward a domain-separated local system core while clearly distinguishing current and planned components.
 - Long-running or managed work is planned to use an optional shared Operations/Job runtime service without changing domain ownership; short synchronous domain operations do not require it.
 - Pre-1.0 tool contracts are explicitly allowed to change before a stable external contract exists.
 - Vendor-neutral open-source core and optional FlashGate module/provider direction documented without selecting a runtime model; MCP protocol extensions are treated separately.
-- Sprint 3.41 review corrections align planning with SEP-1613, SEP-2133, SEP-2577, SEP-2663, and MCP `2025-11-25` implementation-name semantics.
+- `SPR-41` review corrections align planning with SEP-1613, SEP-2133, SEP-2577, SEP-2663, and MCP `2025-11-25` implementation-name semantics.
 - Roadmap clarified as a high-level pointer to authoritative `BACKLOG.md` planning.
 - Unknown tool names in `tools/call`, including read-only-gated write tools, now return generic JSON-RPC Invalid params errors instead of Method not found.
 - `MCP_MAX_FILE_SIZE` is now a hard server cap for `read_file`; client `maxBytes` can reduce but not increase it.
@@ -191,16 +192,16 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Security
 
-- Sprint 3.44 prevents implicit process-working-directory exposure, rejects file roots, keeps startup stdout empty, and redacts startup failures to safe categories.
+- `SPR-44` prevents implicit process-working-directory exposure, rejects file roots, keeps startup stdout empty, and redacts startup failures to safe categories.
 - Read-only STDIO smokes reject all five write tool names, and negative smokes reject all five removed legacy names with the same generic Invalid params contract.
-- Sprint 3.38 validates JSON-RPC envelopes before dispatch, rejects unsupported batches, suppresses responses for notifications, prevents `tools/call` notification execution, serializes unknown IDs as `id:null`, and converts handler panics to generic Internal error responses.
-- Sprint 3.39 bounds JSON-RPC messages, tool arguments, filesystem operation payloads, recursive delete scope, and serialized responses with generic limit errors.
-- Sprint 3.39 adds centralized redaction before debug diagnostics reach stderr.
-- Sprint 3.36 adds effective path validation through `PathGuard` using evaluated existing paths and evaluated nearest existing parents for create targets.
-- Sprint 3.36 rejects symlink-based filesystem escapes that resolve outside the configured root.
-- Sprint 3.36 maps security/path denials to generic invalid-params tool errors without exposing host paths.
-- Sprint 3.35 enforces `MCP_READ_ONLY=true` at tool registration time by exposing only `list_files`, `read_file`, `stat_path`, and `exists_path`.
-- Sprint 3.35 prevents direct `tools/call` execution of write-capable tools in read-only mode because those tools are not registered.
+- `SPR-38` validates JSON-RPC envelopes before dispatch, rejects unsupported batches, suppresses responses for notifications, prevents `tools/call` notification execution, serializes unknown IDs as `id:null`, and converts handler panics to generic Internal error responses.
+- `SPR-39` bounds JSON-RPC messages, tool arguments, filesystem operation payloads, recursive delete scope, and serialized responses with generic limit errors.
+- `SPR-39` adds centralized redaction before debug diagnostics reach stderr.
+- `SPR-36` adds effective path validation through `PathGuard` using evaluated existing paths and evaluated nearest existing parents for create targets.
+- `SPR-36` rejects symlink-based filesystem escapes that resolve outside the configured root.
+- `SPR-36` maps security/path denials to generic invalid-params tool errors without exposing host paths.
+- `SPR-35` enforces `MCP_READ_ONLY=true` at tool registration time by exposing only `list_files`, `read_file`, `stat_path`, and `exists_path`.
+- `SPR-35` prevents direct `tools/call` execution of write-capable tools in read-only mode because those tools are not registered.
 - Filesystem paths are resolved through a sandbox root.
 - Absolute user paths are rejected.
 - Parent directory traversal is rejected.

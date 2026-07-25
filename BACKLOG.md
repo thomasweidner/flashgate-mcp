@@ -2,7 +2,7 @@
 
 This is the authoritative planning and steering document for FlashGate MCP.
 
-FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, local directory `flashgate-mcp`, Go module `github.com/thomasweidner/flashgate-mcp`, binary `flashgate-mcp`, and MCP server implementation name (`serverInfo.name`) `flashgate`. Sprint 3.42 completed the technical rename without functional changes; the later GitHub owner migration updated repository and module ownership without changing the product identity or runtime contract.
+FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, local directory `flashgate-mcp`, Go module `github.com/thomasweidner/flashgate-mcp`, binary `flashgate-mcp`, and MCP server implementation name (`serverInfo.name`) `flashgate`.
 
 ## Working rules
 
@@ -28,43 +28,49 @@ FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, local directory `fl
 
 ## Completed sprint baseline
 
-### Sprint 3.40 - Windows/Linux test matrix and smoke tests
+### SPR-40 - Windows/Linux test matrix and smoke tests
 
 Backlog IDs: `BL-023`, `BL-024`, `BL-025`.
 
-Completed sprint numbers through Sprint 3.40 are historical and are not renumbered. Task IDs were migrated into the continuous catalog below.
+The completed work through `SPR-40` remains historical. The 2026-07-25
+governance migration assigned canonical `SPR-N` identifiers without changing
+task IDs, scope, or status.
 
 ## Sprint sequence and status
 
 `Planned` tasks form the Version 1.0 scope. `Later` tasks are accepted post-Version-1.0 work and must not delay the initial stable release. Cross-cutting security, CI, release, governance, and documentation gates apply throughout the implementation sprints and are complete only when their canonical tasks are `Done`.
 
-Sprint 3.45 is tracked through the completed evidence-bearing subsets 3.45a, 3.45b, and 3.45d plus a remaining planned scope. No Sprint 3.45c is defined in the current planning or historical implementation evidence; the suffix is therefore intentionally unused rather than inferred or retroactively assigned.
+Every sprint has one standalone positive-integer identifier. The former
+suffix-based planning entries were assigned independent IDs, and every
+subsequent sprint was shifted forward without changing backlog assignments.
+The complete legacy mapping is recorded in
+[the 2026-07-25 sprint-ID migration](docs/sprint-id-migration-2026-07-25.md).
 
 | Sprint | Status | Backlog IDs | Scope |
 |---|---|---|---|
-| Sprint 3.41 | Done | BL-026–BL-035 | FlashGate architecture baseline and backlog consolidation |
-| Sprint 3.42 | Done | BL-264–BL-280 | Technical project rename to FlashGate MCP |
-| Sprint 3.43 | Done | BL-281–BL-294 | Pre-1.0 filesystem tool contract cleanup |
-| Sprint 3.44 | Done | BL-174, BL-295–BL-303 | Codex read-only activation preparation |
-| Sprint 3.45a | Done | BL-201 | MCP `CallToolResult` foundation and `structuredContent` |
-| Sprint 3.45b | Done | BL-200 | MCP runtime `outputSchema` integration and parity |
-| Sprint 3.45d | Done | BL-189–BL-199 | Resource, latency, payload, catalog, workflow, and baseline benchmarking |
-| Sprint 3.45 remaining | Planned | BL-202–BL-216, BL-218–BL-220 | Remaining MCP contracts, payload/result architecture, catalog budgets, and native-adapter policy |
-| Sprint 3.46 | Planned | BL-084–BL-099, BL-164 | Operations/Job Manager, identity-bound handles, quotas, fairness, and cleanup |
-| Sprint 3.47 | Planned | BL-036–BL-049 | Efficient filesystem listing, reading, batch inspection, MIME/binary handling, and large-result handoff |
-| Sprint 3.48 | Planned | BL-050–BL-061, BL-063–BL-067 | Targeted edits, conditional writes, bounded filesystem plans, and filesystem integration benchmarks |
-| Sprint 3.49 | Planned | BL-068–BL-080, BL-082 | Filesystem and text search |
-| Sprint 3.50 | Planned | BL-100–BL-111, BL-159–BL-161, BL-171 | Named roots, read-only safe default, capabilities, dynamic tool profiles, and negative authorization tests |
-| Sprint 3.51 | Planned | BL-113, BL-129, BL-162, BL-165 | Process architecture, execution identity, and stateful security model |
-| Sprint 3.52 | Planned | BL-114–BL-118 | Process observation |
-| Sprint 3.53 | Planned | BL-119–BL-126, BL-130–BL-135, BL-252–BL-254 | Managed process execution, output cursors, resource control, race tests, and CI jobs |
-| Sprint 3.54 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170 | Typed allowlisted command execution, OS isolation, redaction, and security tests |
-| Sprint 3.55 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
-| Sprint 3.56 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
-| Sprint 3.57 | Planned | BL-226–BL-231 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, and Variant A service-account execution |
-| Sprint 3.58 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-332 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, and PR #15/#16/#21 review follow-up |
+| SPR-41 | Done | BL-026–BL-035 | FlashGate architecture baseline and backlog consolidation |
+| SPR-42 | Done | BL-264–BL-280 | Technical project rename to FlashGate MCP |
+| SPR-43 | Done | BL-281–BL-294 | Pre-1.0 filesystem tool contract cleanup |
+| SPR-44 | Done | BL-174, BL-295–BL-303 | Codex read-only activation preparation |
+| SPR-45 | Done | BL-201 | MCP `CallToolResult` foundation and `structuredContent` |
+| SPR-46 | Done | BL-200 | MCP runtime `outputSchema` integration and parity |
+| SPR-47 | Done | BL-189–BL-199 | Resource, latency, payload, catalog, workflow, and baseline benchmarking |
+| SPR-48 | Planned | BL-202–BL-216, BL-218–BL-220 | Remaining MCP contracts, payload/result architecture, catalog budgets, and native-adapter policy |
+| SPR-49 | Planned | BL-084–BL-099, BL-164 | Operations/Job Manager, identity-bound handles, quotas, fairness, and cleanup |
+| SPR-50 | Planned | BL-036–BL-049 | Efficient filesystem listing, reading, batch inspection, MIME/binary handling, and large-result handoff |
+| SPR-51 | Planned | BL-050–BL-061, BL-063–BL-067 | Targeted edits, conditional writes, bounded filesystem plans, and filesystem integration benchmarks |
+| SPR-52 | Planned | BL-068–BL-080, BL-082 | Filesystem and text search |
+| SPR-53 | Planned | BL-100–BL-111, BL-159–BL-161, BL-171 | Named roots, read-only safe default, capabilities, dynamic tool profiles, and negative authorization tests |
+| SPR-54 | Planned | BL-113, BL-129, BL-162, BL-165 | Process architecture, execution identity, and stateful security model |
+| SPR-55 | Planned | BL-114–BL-118 | Process observation |
+| SPR-56 | Planned | BL-119–BL-126, BL-130–BL-135, BL-252–BL-254 | Managed process execution, output cursors, resource control, race tests, and CI jobs |
+| SPR-57 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170 | Typed allowlisted command execution, OS isolation, redaction, and security tests |
+| SPR-58 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
+| SPR-59 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
+| SPR-60 | Planned | BL-226–BL-231 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, and Variant A service-account execution |
+| SPR-61 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-332 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, and PR #15/#16/#21 review follow-up |
 
-Version 1.0 is reached only after Sprint 3.58 and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
+Version 1.0 is reached only after `SPR-61` and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
 
 | Post-1.0 workstream | Backlog IDs | Direction |
 |---|---|---|
@@ -72,7 +78,10 @@ Version 1.0 is reached only after Sprint 3.58 and the release gate in `BL-263`. 
 | Optional accelerators and expanded control | BL-081, BL-083, BL-112, BL-127–BL-128, BL-150, BL-158 | Ripgrep/index, legacy Roots, external PID/input, interactive shell, and network information decision gates |
 | Provider/community ecosystem | BL-169, BL-176, BL-180–BL-188, BL-313 | External provider security, licensing, governance extensions, provider contracts/runtime, and related documentation |
 
-Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use the FlashGate technical names created in Sprint 3.42 and the cleaned tool names created in Sprint 3.43.
+`SPR-44` replaces the former `SPR-41` Codex preparation plan and must use the FlashGate technical names established in `SPR-42` and the cleaned tool names created in `SPR-43`.
+
+The next free sprint identifier is `SPR-62`. It is reserved as the next
+available number only and is not an assigned sprint.
 
 ## Canonical task catalog
 
@@ -102,7 +111,7 @@ Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use 
 | BL-020 | Done | Enforce filesystem operation and response limits | Bounded reads, writes, listing, copy, recursive delete, and responses |
 | BL-021 | Done | Add centralized redaction and safe stderr diagnostics | Secret/host-path redaction, debug gating, and no stdout diagnostics |
 | BL-022 | Done | Add safe defaults for non-developer users | Deny-by-default limits and conservative behavior |
-| BL-023 | Done | Run Linux smoke test in Ubuntu CI | Sprint 3.40 real STDIO validation |
+| BL-023 | Done | Run Linux smoke test in Ubuntu CI | `SPR-40` real STDIO validation |
 | BL-024 | Done | Run JSON-RPC smoke matrix on Windows and Linux | Default, read-only, and negative variants |
 | BL-025 | Done | Isolate smoke JSONL artifacts per run | Unique files and deterministic cleanup |
 
@@ -304,7 +313,7 @@ Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use 
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-175 | Done | Confirm current open-source license | Repository and README currently declare GNU GPL v3.0; no license change in Sprint 3.41 |
+| BL-175 | Done | Confirm current open-source license | Repository and README currently declare GNU GPL v3.0; no license change in `SPR-41` |
 | BL-176 | Later | Review license and distribution compatibility before external module contract | Post-1.0 factual compatibility gate before the first external provider; no legal conclusions in backlog |
 | BL-177 | Planned | Define governance model | Decision authority, releases, and stewardship |
 | BL-178 | Planned | Define maintainer rules | Roles, review, security, and succession |
@@ -338,8 +347,8 @@ Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use 
 | BL-201 | Done | Add MCP `CallToolResult` foundation and `structuredContent` | All eight successful filesystem tools use one central text-plus-structured wrapper with deterministic parity, strict decoder/wire tests, corrected smokes, and no runtime `outputSchema` |
 | BL-202 | Planned | Review MCP tool annotations | Accurate metadata, never authorization |
 | BL-203 | Planned | Define normalized machine-readable errors | Stable categories without raw OS leakage |
-| BL-204 | Planned | Evaluate official MCP conformance testing and add schema snapshots | Sprint 3.45b adds full runtime/catalog output-schema parity and `tools/list` wire coverage; official tooling plus full input/output snapshots remain planned |
-| BL-205 | Planned | Add response-size regression tests | Sprint 3.45b measures `tools/list` payload impact without setting a persistent budget; success/error regression gates remain planned |
+| BL-204 | Planned | Evaluate official MCP conformance testing and add schema snapshots | `SPR-46` adds full runtime/catalog output-schema parity and `tools/list` wire coverage; official tooling plus full input/output snapshots remain planned |
+| BL-205 | Planned | Add response-size regression tests | `SPR-46` measures `tools/list` payload impact without setting a persistent budget; success/error regression gates remain planned |
 | BL-206 | Planned | Document local deterministic work principle | Prefer local copy/edit/hash/search over model retransmission |
 | BL-207 | Planned | Define Version 1.0 MCP protocol matrix | Keep core version-independent; retain `2025-11-25` until newer revisions are final and implemented; test every advertised revision and breaking upgrade path |
 | BL-208 | Planned | Define MCP extension-negotiation and stateless-adapter strategy | Official identifiers, capability negotiation, 2026 stateless-core adaptation, cache/TTL semantics, downgrade/mismatch tests, and no authorization implication |
@@ -399,22 +408,22 @@ Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use 
 | BL-252 | Planned | Run race detector for stateful components | Execute Go race detection against jobs, process registry, output buffers, cancellation, and shutdown; provide the reusable race-test command and failure gate consumed by CI tasks such as `BL-254` |
 | BL-253 | Planned | Add Windows/Linux process CI jobs | Dedicated CI matrix for process observation and managed lifecycle behavior on supported Windows and Linux runners; reuse implementation tests from the process packages rather than redefining them |
 | BL-254 | Planned | Add Operations/Job CI jobs | Dedicated CI execution for the Operations/Job integration suite from `BL-098`, including cancellation, timeout, cleanup, leak checks, and the race gate from `BL-252`; this task owns workflow orchestration, not duplicate test implementation |
-| BL-255 | Planned | Verify FlashGate release artifact names | After Sprint 3.42, including archives and summaries |
+| BL-255 | Planned | Verify FlashGate release artifact names | After `SPR-42`, including archives and summaries |
 | BL-256 | Planned | Enforce profile-specific catalog and initialization budgets | `tools/list`, tool count, schema bytes/tokens, server instructions, deterministic ordering, and fingerprint regression |
 | BL-257 | Planned | Run schema snapshot checks in CI | Contract changes require explicit review |
 | BL-258 | Planned | Run payload and response-efficiency tests in CI | Prevent unbounded contracts, duplicate heavy payloads, excessive wire amplification, and result-resource regressions |
-| BL-259 | Planned | Search repository for legacy names after Sprint 3.42 | Allow only migration/history exceptions |
+| BL-259 | Planned | Search repository for legacy names after `SPR-42` | Allow only migration/history exceptions |
 | BL-260 | Planned | Keep standard test/vet/lint/build gates | Preserve formatting, vet, tests, separate Windows/Linux coverage gates and artifacts, lint, and build validation; active thresholds remain authoritative in `.github/workflows/ci.yml` |
 | BL-261 | Planned | Add reproducible cross-project efficiency benchmark | Compare pinned FlashGate, official Node.js filesystem, selected native Rust filesystem, and selected Go filesystem servers on identical host/corpus/workflows without claiming unmeasured superiority |
 | BL-262 | Planned | Add native release supply-chain evidence | Checksums, Windows signing plan, Linux artifact/package signing plan, SBOM, build provenance, dependency inventory, reproducible-build comparison, and atomic rollback; no silent auto-update |
 | BL-263 | Planned | Define and enforce Version 1.0 release boundary | Verify every Planned task or documented waiver, stable protocol/tool contracts, migration/deprecation policy, Variant A-only service identity, performance/security budgets, supported platforms, and post-1.0 deferrals |
 
-### Sprint 3.42 technical rename
+### SPR-42 technical identity
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-264 | Done | Rename local folder to `flashgate-mcp` | Manually completed before Sprint 3.42 implementation |
-| BL-265 | Done | Rename GitHub repository to `flashgate-mcp` | Manually completed before Sprint 3.42 implementation |
+| BL-264 | Done | Rename local folder to `flashgate-mcp` | Manually completed before `SPR-42` implementation |
+| BL-265 | Done | Rename GitHub repository to `flashgate-mcp` | Manually completed before `SPR-42` implementation |
 | BL-266 | Done | Update Git remote URL | Remote verified with fetch and redirect checks |
 | BL-267 | Done | Update Go module and imports | Current module `github.com/thomasweidner/flashgate-mcp`; the former owner path is retained only in historical migration records |
 | BL-268 | Done | Rename binary to `flashgate-mcp` | Windows/Linux build and usage updated |
@@ -431,7 +440,7 @@ Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use 
 | BL-279 | Done | Document manual repository rename action | See dated migration note: clean-main/origin/auth/target/remote preconditions; GitHub rename, remote/default/folder actions and separate technical branch; view/remote/fetch/main/reachability/redirect/history/path verification; failure/rollback without force-pushes or old-name reuse |
 | BL-280 | Done | Keep rename sprint functionally neutral | No feature or tool-contract changes mixed in |
 
-### Sprint 3.43 pre-1.0 tool contract cleanup
+### SPR-43 pre-1.0 tool contract cleanup
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
@@ -450,7 +459,7 @@ Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use 
 | BL-293 | Done | Update tool docs, client examples, and catalog | README, current architecture/security/testing docs, tool docs, conventions, catalog, ADR amendments, and migration coordinated |
 | BL-294 | Done | Document breaking changes in changelog | Breaking pre-1.0 cleanup documented with no alias or artificial deprecation compatibility |
 
-### Sprint 3.44 Codex read-only activation preparation
+### SPR-44 Codex read-only activation preparation
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
@@ -473,7 +482,7 @@ Sprint 3.44 replaces the former Sprint 3.41 Codex preparation plan and must use 
 | BL-306 | Planned | Keep BACKLOG updated each sprint | Canonical IDs, sprint refs, migration rule, completed status |
 | BL-307 | Planned | Maintain FlashGate project identity reference | Name, tagline, scope, transition, planned identifiers |
 | BL-308 | Planned | Maintain architecture and ADRs | Current/target/planned/deferred separation |
-| BL-309 | Planned | Document benchmark method and baselines | Sprint 3.45a documents the tool-result-contract subset and single-machine noise limits; broader benchmark documentation remains planned |
+| BL-309 | Planned | Document benchmark method and baselines | `SPR-45` documents the tool-result-contract subset and single-machine noise limits; broader benchmark documentation remains planned |
 | BL-310 | Planned | Document capabilities, profiles, and named roots | Configuration and security model |
 | BL-311 | Planned | Document Operations/Job Manager | Handles, states, limits, lifecycle, cleanup |
 | BL-312 | Planned | Document process and execution security | Handles, PIDs, allowlists, isolation, redaction |
@@ -493,7 +502,7 @@ These tasks originate in the independent review of PR #15. They are intentionall
 | BL-319 | Planned | Record verifiable benchmark build and host provenance | **Origin/severity:** independent review of PR #15, Major. **Components:** baseline schema, authoritative controller, build preparation, host gate and reports. **Risk:** committed measurements cannot be tied cryptographically to the measured binary, source/build inputs, controller, workspace, or accepted host-load interval. **Acceptance:** record and validate binary, source/build-input, controller and workspace identities/hashes plus preparation and measurement timestamps, authoritative preflight evidence, and final host-gate evidence; reject incomplete or mismatched provenance. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 | BL-320 | Planned | Add native Linux race and cross-platform benchmark-policy CI gates | **Origin/severity:** independent review of PR #15, Major. **Components:** GitHub Actions, Windows/Linux policy scripts, window tests, native Linux `go test -race`. **Risk:** platform-specific symlink, reparse, policy-window, and race regressions may merge without executing the relevant native coverage. **Acceptance:** CI runs native Linux race coverage, Windows and Linux output/baseline policy tests, and both measurement-window suites with deterministic pass/fail artifacts; documented exceptions must fail the release gate rather than silently skip required coverage. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 | BL-321 | Planned | Derive Linux clock ticks instead of assuming 100 Hz | **Origin/severity:** independent review of PR #15, Minor. **Components:** Linux process/resource collector in `internal/benchmark`. **Risk:** CPU-time values are wrong on systems whose `_SC_CLK_TCK` differs from 100. **Acceptance:** obtain the platform value through a supported native mechanism without a shell, handle lookup failure explicitly, and test conversion with non-100 values. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
-| BL-322 | Planned | Reconcile BL-190 and BL-198 final status documentation | **Origin/severity:** independent review of PR #15, Minor. **Components:** `BACKLOG.md`, Sprint 3.45d report, related benchmark history/current-state documentation. **Risk:** steering state and sprint evidence disagree about whether baseline collection and validation are complete. **Acceptance:** after the authoritative merge decision, establish one canonical current status for BL-190 and BL-198, update current steering documents consistently, and preserve historical documents or append a dated correction instead of rewriting history. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
+| BL-322 | Planned | Reconcile BL-190 and BL-198 final status documentation | **Origin/severity:** independent review of PR #15, Minor. **Components:** `BACKLOG.md`, `SPR-47` report, related benchmark history/current-state documentation. **Risk:** steering state and sprint evidence disagree about whether baseline collection and validation are complete. **Acceptance:** after the authoritative merge decision, establish one canonical current status for BL-190 and BL-198, update current steering documents consistently, and preserve historical documents or append a dated correction instead of rewriting history. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 | BL-323 | Planned | Correct benchmark coverage claims for copy and search | **Origin/severity:** independent review of PR #15, Minor. **Components:** `docs/testing.md`, benchmark inventory and future filesystem/search benchmark work. **Risk:** testing documentation claims Copy and Search benchmarks that do not yet exist, overstating coverage. **Acceptance:** inventory implemented benchmark cases, make current documentation match that inventory, and describe copy/search only as planned until executable coverage and tests exist. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 
 ### GitHub dependency maintenance follow-up

@@ -60,7 +60,7 @@ The script checks the following areas:
 | Duplication | No Markdown files have identical content |
 | Relative links | Inline relative Markdown links resolve inside the repository |
 | Backlog catalog | Canonical IDs are unique and continuous from `BL-001` through the current highest ID |
-| Sprint assignments | No unknown or duplicate sprint references; every `Planned` task is assigned exactly once |
+| Sprint identifiers and assignments | Canonical rows use unique `SPR-<positive integer>` IDs without legacy `Sprint 3.x` rows; no unknown or duplicate backlog references; every `Planned` task is assigned exactly once |
 | Milestone separation | No `Later` task is assigned to a Version 1.0 sprint |
 | Sprint status | `Done` sprint rows contain only `Done` tasks; early completion inside a planned cross-cutting sprint is reported for manual review |
 | Project identity | Active identity documents use `thomasweidner/flashgate-mcp` and `github.com/thomasweidner/flashgate-mcp` |

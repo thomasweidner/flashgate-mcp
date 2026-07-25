@@ -11,7 +11,7 @@
 - `Later` means accepted post-Version-1.0 work;
 - a task may change milestone only through an explicit backlog and documentation decision.
 
-Version 1.0 is reached after Sprint 3.58 only when `BL-263` passes.
+Version 1.0 is reached after `SPR-61` only when `BL-263` passes.
 
 ## Version 1.0 product objective
 

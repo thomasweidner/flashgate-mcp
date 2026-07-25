@@ -25,13 +25,13 @@ Unrestricted host access, free-form remote shell behavior, implicit network expo
 
 The project is intended to be a general, vendor-neutral open-source project. Its core has no mandatory Voxtronic-specific paths, tools, proprietary systems, permissions, secrets, or infrastructure values.
 
-Public, community, vendor, organization-internal, and Voxtronic-specific **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. Sprint 3.41 defines no module/provider contract, identifier syntax, or runtime model.
+Public, community, vendor, organization-internal, and Voxtronic-specific **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. `SPR-41` defines no module/provider contract, identifier syntax, or runtime model.
 
 An **MCP protocol extension** is a separate negotiated addition to the MCP wire protocol and follows the official vendor-prefix/slash identifier contract, for example `io.modelcontextprotocol/tasks`. FlashGate modules/providers do not automatically define or implement MCP protocol extensions.
 
-## Technical rename completed
+## Technical identifiers
 
-Sprint 3.42 completed the technical rename. Current identifiers are:
+Current identifiers are:
 
 | Item | Current value |
 |---|---|
@@ -41,4 +41,5 @@ Sprint 3.42 completed the technical rename. Current identifiers are:
 | Go module | `github.com/thomasweidner/flashgate-mcp` |
 | Short name | FlashGate |
 
-The old technical name remains only in changelog history, migration guidance, and historical records. See [the technical rename migration note](technical-rename-to-flashgate-2026-07-11.md) for clone and redirect guidance.
+Historical rename and owner-migration records remain project history; they do
+not define current setup or compatibility requirements.

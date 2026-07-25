@@ -485,7 +485,7 @@ Version 1.0 also includes the pinned cross-project filesystem benchmark.
 
 ## Delivery sequence
 
-### Sprint 3.56 — architecture, contracts, identity, and security
+### SPR-59 — architecture, contracts, identity, and security
 
 Backlog: `BL-221`–`BL-225`, `BL-233`–`BL-239`, and `BL-166`.
 
@@ -501,7 +501,7 @@ Deliverables:
 - identity-bound state model;
 - audit lifecycle and correlation.
 
-### Sprint 3.57 — transports and Version 1.0 system hosts
+### SPR-60 — transports and Version 1.0 system hosts
 
 Backlog: `BL-226`–`BL-231`.
 
@@ -517,7 +517,7 @@ Deliverables:
 
 `BL-232` user-scoped hosts and `BL-240` user workers remain post-Version-1.0.
 
-### Sprint 3.58 — validation and release readiness
+### SPR-61 — validation and release readiness
 
 Backlog: `BL-241`–`BL-244` plus applicable CI/release/documentation tasks through `BL-263` and `BL-315`.
 
