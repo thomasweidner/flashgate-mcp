@@ -100,6 +100,8 @@ chmod +x \
     scripts/build.sh \
     scripts/build-input-validation.sh \
     scripts/Test-LinuxMetadata.sh \
+    scripts/test-verifier-process.sh \
+    scripts/verifier-process.sh \
     scripts/new-release-artifact.sh \
     scripts/test-release-artifact.sh \
     scripts/test-build-input-validation.sh \
@@ -120,12 +122,18 @@ file_version="${version%%[-+]*}.0"
 
 bash -n scripts/build.sh
 bash -n scripts/Test-LinuxMetadata.sh
+bash -n scripts/test-verifier-process.sh
+bash -n scripts/verifier-process.sh
 bash -n scripts/new-release-artifact.sh
 bash -n scripts/test-release-artifact.sh
 bash -n scripts/build-input-validation.sh
 bash -n scripts/test-build-input-validation.sh
 bash -n scripts/test-build-repository.sh
 bash -n scripts/test-native-validation-safety.sh
+python3 -c \
+    'import ast, pathlib; ast.parse(pathlib.Path("scripts/bounded-process-runner.py").read_text(encoding="utf-8"))'
+python3 -c \
+    'import ast, pathlib; ast.parse(pathlib.Path("scripts/testdata/verifier-process-helper.py").read_text(encoding="utf-8"))'
 
 bash scripts/test-build-input-validation.sh \
     >"$logs_dir/build-input-validation.log" 2>&1
@@ -228,6 +236,16 @@ bash scripts/Test-LinuxMetadata.sh \
     --expected-source-time "$source_time" \
     --expected-modified "$modified" \
     --skip-execution >"$logs_dir/metadata-linux-arm64.log" 2>&1
+
+bash scripts/test-verifier-process.sh \
+    --real-linux-x64 "$x64_a" \
+    --real-linux-arm64 "$arm64" \
+    --expected-product-version "$version" \
+    --expected-file-version "$file_version" \
+    --expected-commit "$head_commit" \
+    --expected-source-time "$source_time" \
+    --expected-modified "$modified" \
+    >"$logs_dir/verifier-process-contracts.log" 2>&1
 
 compact_output="$("$x64_a" --version)"
 verbose_output="$("$x64_a" --version --verbose)"

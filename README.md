@@ -347,7 +347,8 @@ Invoke the canonical Windows entry point with PowerShell 7.6.3:
 
 ```powershell
 & {
-    $result = & "C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1" `
+    $orchestrator = "C:\Path\To\Codex-Work\Scripts\Invoke-FlashGateLinuxValidation.ps1"
+    $result = & $orchestrator `
         -RunId "manual-validation-20260724-130500" `
         -ValidationClass "standard" `
         -ReportContext "Manual validation after filesystem changes"
@@ -489,7 +490,11 @@ flashgate-mcp_<version>_linux_arm64.tar.gz
 
 Each archive has a sibling `.sha256` file and exactly one top-level directory containing the platform binary, `LICENSE`, `README.md`, and `THIRD-PARTY-NOTICES.md`. Windows artifacts carry `VERSIONINFO`, an embedded machine-readable build manifest, and the canonical FlashGate icon; Linux artifacts carry matching CLI, embedded-manifest, Go/VCS, ELF architecture, and Go build-ID metadata. Before upload, every matrix path builds independently twice, validates metadata and exact archive contents, compares binary, archive, checksum-file, and inventory identities, and performs a machine-readable host/credential leak scan.
 
-Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-and-release-metadata.md) and [Manual metadata validation](docs/manual-metadata-validation.md).
+Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-and-release-metadata.md), [Artifact verification](docs/artifact-verification.md), and [Manual metadata validation](docs/manual-metadata-validation.md).
+
+BL-248 artifact verification is complete: the final Windows and native Linux
+contract suites passed `201/201` and `203/203`, respectively, and the
+independent focused Delta Review closed the last of the six original findings.
 
 ## Basic Usage
 

@@ -86,8 +86,13 @@ Automated validation uses `scripts/Test-WindowsMetadata.ps1`. It parses PE
 architecture and `VERSIONINFO`, reads the Go target from the binary, validates
 the embedded canonical build manifest, and compares every normalized embedded
 icon frame with the committed ICO by SHA-256. This static path covers ARM64
-without executing an ARM64 binary on an x64 runner and does not use Explorer
-thumbnail caches. A final Explorer property-sheet check is documented
+without execution on x64. Native execution starts only after every static
+check passes and the target matches the actual Windows OS architecture.
+Runtime and help subprocesses have deterministic time and output bounds,
+concurrent stream draining, a separate bounded cleanup deadline, structured
+tree/fallback termination outcomes, and fail-closed status. Static ARM64
+validation does not execute an ARM64 binary on an x64 runner and does not use
+Explorer thumbnail caches. A final Explorer property-sheet check is documented
 separately.
 
 The embedded build manifest is generated from the same resolved values as the
@@ -204,6 +209,9 @@ Stable, prerelease, and development expectations are stored in `internal/version
 
 The shared valid/invalid SemVer and epoch matrix is stored in
 `internal/version/testdata/build-input-validation-fixtures.json`.
+
+The canonical acceptance layers, report contracts, and fail-closed negative
+cases are mapped in [Artifact verification](artifact-verification.md).
 
 ## Reproducibility and privacy
 

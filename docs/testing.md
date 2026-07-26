@@ -460,6 +460,11 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
   length, and whitespace fixtures;
 - static canonical build-manifest validation on all four targets;
 - normalized embedded-icon frame identity and manipulation fixtures;
+- persistent Windows/Linux verifier-process contracts for native-host
+  selection, static-failure-before-launch, runtime/help status, timeout,
+  bounded stdout/stderr, deterministic Windows termination/cleanup deadlines,
+  complete verifier error aggregation, and READY-confirmed
+  child-tree/process-group cleanup;
 - regular-clone, linked-worktree, nonrepository, and damaged-Git fixtures;
 - no interpreter runtime dependency;
 - service asset syntax and install/remove dry validation;
@@ -472,7 +477,8 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - atomic rollback documentation and smoke procedure.
 
 The controlled commands and expected fields are documented in [Build and
-release metadata](build-and-release-metadata.md) and [Manual metadata
+release metadata](build-and-release-metadata.md), [Artifact
+verification](artifact-verification.md), and [Manual metadata
 validation](manual-metadata-validation.md). Native Linux validation verifies a
 manifest-bound Git inventory in a new controlled extraction directory before
 copying it into an ext4 clone under `/home`; Windows-mounted paths are

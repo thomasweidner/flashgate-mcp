@@ -30,8 +30,70 @@ param(
 
     [Parameter(Mandatory)]
     [ValidateRange(1970, 9999)]
-    [int] $ExpectedCopyrightYear
+    [int] $ExpectedCopyrightYear,
+
+    [ValidateRange(1, 60)]
+    [int] $ArtifactTimeoutSeconds = 10,
+
+    [ValidateRange(10, 300)]
+    [int] $ToolTimeoutSeconds = 120,
+
+    [ValidateRange(1024, 1048576)]
+    [int] $MaximumOutputCharacters = 65536,
+
+    [Parameter(DontShow)]
+    [string] $TestLaunchMarkerPath
 )
+
+function Invoke-FlashGateWindowsMetadataMain {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $BinaryPath,
+
+        [Parameter(Mandatory)]
+        [string] $ExpectedProductVersion,
+
+        [Parameter(Mandatory)]
+        [string] $ExpectedFileVersion,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('x64', 'arm64')]
+        [string] $ExpectedPublicArch,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('amd64', 'arm64')]
+        [string] $ExpectedGOARCH,
+
+        [Parameter(Mandatory)]
+        [ValidatePattern('^[0-9a-f]{40}$')]
+        [string] $ExpectedCommit,
+
+        [Parameter(Mandatory)]
+        [string] $ExpectedSourceTime,
+
+        [Parameter(Mandatory)]
+        [ValidateSet('true', 'false')]
+        [string] $ExpectedModified,
+
+        [Parameter(Mandatory)]
+        [ValidateRange(1970, 9999)]
+        [int] $ExpectedCopyrightYear,
+
+        [ValidateRange(1, 60)]
+        [int] $ArtifactTimeoutSeconds = 10,
+
+        [ValidateRange(10, 300)]
+        [int] $ToolTimeoutSeconds = 120,
+
+        [ValidateRange(1024, 1048576)]
+        [int] $MaximumOutputCharacters = 65536,
+
+        [string] $TestLaunchMarkerPath,
+
+        [Parameter(DontShow)]
+        [scriptblock] $RuntimeProcessInvoker
+    )
 
 $ErrorActionPreference = 'Stop'
 $RootPath = Split-Path -Parent $PSScriptRoot
@@ -39,6 +101,9 @@ $ExpectedIconPath = Join-Path $RootPath 'assets\branding\flashgate.ico'
 $InputValidationScript = Join-Path `
     $RootPath `
     'scripts\Build-InputValidation.ps1'
+$VerifierProcessScript = Join-Path `
+    $RootPath `
+    'scripts\VerifierProcess.ps1'
 
 $Warnings = [System.Collections.Generic.List[string]]::new()
 $Errors = [System.Collections.Generic.List[string]]::new()
@@ -62,6 +127,15 @@ $Result = [ordered]@{
     Machine                = $null
     IconFrameCount         = $null
     IconFrameIdentity      = $null
+    HostArchitecture       = $null
+    TargetArchitecture     = $ExpectedPublicArch
+    NativeExecutionEligible = $false
+    ExecutionSkipReason    = 'NotEvaluated'
+    RuntimeExecution       = 'SKIPPED'
+    RuntimeFailureReason   = $null
+    HelpContract           = 'SKIPPED'
+    HelpSkipReason         = 'NotEvaluated'
+    HelpFailureReason      = $null
     WarningCount           = 0
     ErrorCount             = 0
     Warnings               = $null
@@ -77,41 +151,58 @@ function Invoke-ProcessRequired {
         [string[]] $Arguments,
 
         [Parameter(Mandatory)]
-        [string] $WorkingDirectory
+        [string] $WorkingDirectory,
+
+        [Parameter(Mandatory)]
+        [int] $TimeoutMilliseconds
     )
 
-    $StartInfo = [Diagnostics.ProcessStartInfo]::new()
-    $StartInfo.FileName = $FilePath
-    $StartInfo.WorkingDirectory = $WorkingDirectory
-    $StartInfo.UseShellExecute = $false
-    $StartInfo.RedirectStandardOutput = $true
-    $StartInfo.RedirectStandardError = $true
-    $StartInfo.CreateNoWindow = $true
-    foreach ($Argument in $Arguments) {
-        $null = $StartInfo.ArgumentList.Add($Argument)
-    }
-
-    $Process = [Diagnostics.Process]::new()
-    $Process.StartInfo = $StartInfo
-    try {
-        if (-not $Process.Start()) {
-            throw "Unable to start process: $FilePath"
-        }
-        $Output = $Process.StandardOutput.ReadToEnd()
-        $ErrorOutput = $Process.StandardError.ReadToEnd()
-        $Process.WaitForExit()
-        $ProcessExitCode = $Process.ExitCode
-    }
-    finally {
-        $Process.Dispose()
-    }
-    if ($ProcessExitCode -ne 0) {
+    $ProcessResult = Invoke-FlashGateBoundedProcess `
+        -FilePath $FilePath `
+        -Arguments $Arguments `
+        -WorkingDirectory $WorkingDirectory `
+        -TimeoutMilliseconds $TimeoutMilliseconds `
+        -MaximumCharactersPerStream $MaximumOutputCharacters
+    if ($ProcessResult.Status -cne 'PASS') {
         throw (
-            "$FilePath $($Arguments -join ' ') failed with exit code " +
-            "${ProcessExitCode}: $ErrorOutput $Output"
+            "Required process failed safely. Reason=$($ProcessResult.FailureReason); " +
+            "ExitCode=$($ProcessResult.ExitCode); " +
+            "TimedOut=$($ProcessResult.TimedOut); " +
+            "OutputLimitExceeded=$($ProcessResult.OutputLimitExceeded)."
         )
     }
-    return $Output
+    return $ProcessResult.Stdout
+}
+
+function Invoke-ArtifactProcess {
+    param(
+        [Parameter(Mandatory)]
+        [string] $FilePath,
+
+        [Parameter(Mandatory)]
+        [string[]] $Arguments,
+
+        [Parameter(Mandatory)]
+        [string] $WorkingDirectory,
+
+        [Parameter(Mandatory)]
+        [int] $TimeoutMilliseconds
+    )
+
+    if ($null -ne $RuntimeProcessInvoker) {
+        return & $RuntimeProcessInvoker `
+            $FilePath `
+            ([string[]]$Arguments) `
+            $WorkingDirectory `
+            $TimeoutMilliseconds `
+            $MaximumOutputCharacters
+    }
+    return Invoke-FlashGateBoundedProcess `
+        -FilePath $FilePath `
+        -Arguments $Arguments `
+        -WorkingDirectory $WorkingDirectory `
+        -TimeoutMilliseconds $TimeoutMilliseconds `
+        -MaximumCharactersPerStream $MaximumOutputCharacters
 }
 
 function Assert-Equal {
@@ -134,6 +225,25 @@ function Assert-Equal {
 }
 
 try {
+    if (-not (Test-Path -LiteralPath $VerifierProcessScript -PathType Leaf)) {
+        throw "Bounded process helper not found: $VerifierProcessScript"
+    }
+    . $VerifierProcessScript
+    $ExecutionDecision = Get-FlashGateNativeExecutionDecision `
+        -HostArchitecture (
+            [Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+        ) `
+        -TargetArchitecture $ExpectedPublicArch
+    $Result.HostArchitecture = $ExecutionDecision.HostArchitecture
+    $Result.TargetArchitecture = $ExecutionDecision.TargetArchitecture
+    $Result.NativeExecutionEligible =
+        $ExecutionDecision.NativeExecutionEligible
+    $Result.ExecutionSkipReason = $ExecutionDecision.SkipReason
+    $Result.HelpSkipReason = $ExecutionDecision.SkipReason
+    if ($ExecutionDecision.HostArchitecture -ceq 'unsupported') {
+        $Errors.Add('The Windows OS architecture is unsupported.')
+    }
+
     if (-not (Test-Path -LiteralPath $BinaryPath -PathType Leaf)) {
         throw "Binary not found: $BinaryPath"
     }
@@ -146,6 +256,12 @@ try {
         throw "Input validation helper not found: $InputValidationScript"
     }
     . $InputValidationScript
+    if (
+        -not [string]::IsNullOrWhiteSpace($TestLaunchMarkerPath) -and
+        $env:FLASHGATE_VERIFIER_TEST_MODE -cne '1'
+    ) {
+        throw 'The launch marker is available only in verifier test mode.'
+    }
     $VersionIdentity = Get-FlashGateSemanticVersion `
         -Value $ExpectedProductVersion
     if ($VersionIdentity.FileVersion -cne $ExpectedFileVersion) {
@@ -276,7 +392,8 @@ try {
     $GoBuildInfo = Invoke-ProcessRequired `
         -FilePath 'go.exe' `
         -Arguments @('version', '-m', $ResolvedBinaryPath) `
-        -WorkingDirectory $RootPath
+        -WorkingDirectory $RootPath `
+        -TimeoutMilliseconds ($ToolTimeoutSeconds * 1000)
     foreach ($ExpectedBuildSetting in @(
         "path`tgithub.com/thomasweidner/flashgate-mcp/cmd/server"
         "build`tGOOS=windows"
@@ -321,7 +438,8 @@ try {
             '--expected-public-arch'
             $ExpectedPublicArch
         ) `
-        -WorkingDirectory $RootPath
+        -WorkingDirectory $RootPath `
+        -TimeoutMilliseconds ($ToolTimeoutSeconds * 1000)
     if ($ManifestOutput -notmatch '(?m)^Status: PASS$') {
         $Errors.Add('Static build-manifest verifier did not report PASS.')
     }
@@ -339,7 +457,8 @@ try {
             '--icon'
             $ExpectedIconPath
         ) `
-        -WorkingDirectory $RootPath
+        -WorkingDirectory $RootPath `
+        -TimeoutMilliseconds ($ToolTimeoutSeconds * 1000)
     if ($IconOutput -notmatch '(?m)^Status: PASS$') {
         $Errors.Add('Icon identity verifier did not report PASS.')
     }
@@ -369,6 +488,137 @@ try {
     $Result.InternalName = $VersionInfo.InternalName
     $Result.Comments = $VersionInfo.Comments
 
+    if ($Errors.Count -gt 0) {
+        $Result.ExecutionSkipReason = 'StaticValidationFailed'
+        $Result.HelpSkipReason = 'StaticValidationFailed'
+    }
+    elseif (-not $ExecutionDecision.NativeExecutionEligible) {
+        $Result.ExecutionSkipReason = $ExecutionDecision.SkipReason
+        $Result.HelpSkipReason = $ExecutionDecision.SkipReason
+    }
+    else {
+        $Result.ExecutionSkipReason = $null
+        $Result.HelpSkipReason = $null
+        $RuntimeErrorCount = $Errors.Count
+        $Result.RuntimeExecution = 'FAIL'
+        if (-not [string]::IsNullOrWhiteSpace($TestLaunchMarkerPath)) {
+            [IO.File]::WriteAllText(
+                $TestLaunchMarkerPath,
+                'runtime-attempted',
+                [Text.UTF8Encoding]::new($false)
+            )
+        }
+        $CompactResult = Invoke-ArtifactProcess `
+            -FilePath $ResolvedBinaryPath `
+            -Arguments @('--version') `
+            -WorkingDirectory $RootPath `
+            -TimeoutMilliseconds ($ArtifactTimeoutSeconds * 1000)
+        $Result.RuntimeExecution = ConvertTo-FlashGateExecutionState `
+            -Attempted $CompactResult.Attempted `
+            -ProcessStatus $CompactResult.Status
+        if ($CompactResult.Status -cne 'PASS') {
+            $Result.RuntimeFailureReason = $CompactResult.FailureReason
+            $Errors.Add(
+                "Compact version execution failed safely: " +
+                "$($CompactResult.FailureReason)."
+            )
+        }
+        else {
+            $CompactOutput = $CompactResult.Stdout.Trim()
+            Assert-Equal `
+                -Name 'Compact version output' `
+                -Actual $CompactOutput `
+                -Expected "flashgate-mcp $ExpectedProductVersion"
+            if ($Errors.Count -gt $RuntimeErrorCount) {
+                $Result.RuntimeFailureReason = 'CompactOutputMismatch'
+            }
+        }
+
+        if ($Errors.Count -eq $RuntimeErrorCount) {
+            $VerboseResult = Invoke-ArtifactProcess `
+                -FilePath $ResolvedBinaryPath `
+                -Arguments @('--version', '--verbose') `
+                -WorkingDirectory $RootPath `
+                -TimeoutMilliseconds ($ArtifactTimeoutSeconds * 1000)
+            if ($VerboseResult.Status -cne 'PASS') {
+                $Result.RuntimeFailureReason = $VerboseResult.FailureReason
+                $Errors.Add(
+                    "Verbose version execution failed safely: " +
+                    "$($VerboseResult.FailureReason)."
+                )
+            }
+            else {
+                foreach ($ExpectedLine in @(
+                    'Product:      FlashGate MCP'
+                    "Version:      $ExpectedProductVersion"
+                    "File version: $ExpectedFileVersion"
+                    "Commit:       $ExpectedCommit"
+                    "Source time:  $ExpectedSourceTime"
+                    "Modified:     $ExpectedModified"
+                    "Platform:     windows/$ExpectedPublicArch"
+                    "Go target:    windows/$ExpectedGOARCH"
+                )) {
+                    if (-not $VerboseResult.Stdout.Contains(
+                        $ExpectedLine,
+                        [StringComparison]::Ordinal
+                    )) {
+                        $Errors.Add(
+                            "Verbose version output is missing: $ExpectedLine"
+                        )
+                        $Result.RuntimeFailureReason =
+                            'VerboseOutputMismatch'
+                    }
+                }
+            }
+        }
+        if ($Errors.Count -eq $RuntimeErrorCount) {
+            $Result.RuntimeExecution = 'PASS'
+        }
+        else {
+            $Result.RuntimeExecution = 'FAIL'
+        }
+
+        if ($Result.RuntimeExecution -ceq 'PASS') {
+            $HelpErrorCount = $Errors.Count
+            $Result.HelpContract = 'FAIL'
+            $HelpResult = Invoke-ArtifactProcess `
+                -FilePath $ResolvedBinaryPath `
+                -Arguments @('--help') `
+                -WorkingDirectory $RootPath `
+                -TimeoutMilliseconds ($ArtifactTimeoutSeconds * 1000)
+            $Result.HelpContract = ConvertTo-FlashGateExecutionState `
+                -Attempted $HelpResult.Attempted `
+                -ProcessStatus $HelpResult.Status
+            if ($HelpResult.Status -cne 'PASS') {
+                $Result.HelpFailureReason = $HelpResult.FailureReason
+                $Errors.Add(
+                    "Help execution failed safely: " +
+                    "$($HelpResult.FailureReason)."
+                )
+            }
+            else {
+                foreach (
+                    $MissingHelpLine in
+                    @(Get-FlashGateMissingHelpLines -Output $HelpResult.Stdout)
+                ) {
+                    $Errors.Add(
+                        "Help output is missing: $MissingHelpLine"
+                    )
+                    $Result.HelpFailureReason = 'HelpContractMismatch'
+                }
+            }
+            if ($Errors.Count -eq $HelpErrorCount) {
+                $Result.HelpContract = 'PASS'
+            }
+            else {
+                $Result.HelpContract = 'FAIL'
+            }
+        }
+        else {
+            $Result.HelpSkipReason = 'RuntimeValidationFailed'
+        }
+    }
+
     if ($Errors.Count -eq 0) {
         $Result.Status = if ($Warnings.Count -gt 0) {
             'PASS_WITH_WARNINGS'
@@ -381,6 +631,10 @@ try {
 }
 catch {
     $Errors.Add($_.Exception.Message)
+    if ($Result.RuntimeExecution -ceq 'SKIPPED') {
+        $Result.ExecutionSkipReason = 'StaticValidationFailed'
+        $Result.HelpSkipReason = 'StaticValidationFailed'
+    }
 }
 finally {
     $Result.WarningCount = $Warnings.Count
@@ -398,7 +652,17 @@ finally {
         $null
     }
 
-    [pscustomobject]$Result | Format-List
+    $FinalResult = [pscustomobject]$Result
 }
 
-exit $ExitCode
+return [pscustomobject]@{
+    ExitCode = $ExitCode
+    Result   = $FinalResult
+}
+}
+
+if ($MyInvocation.InvocationName -cne '.') {
+    $InvocationResult = Invoke-FlashGateWindowsMetadataMain @PSBoundParameters
+    $InvocationResult.Result | Format-List
+    exit $InvocationResult.ExitCode
+}
