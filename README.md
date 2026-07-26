@@ -492,9 +492,12 @@ Each archive has a sibling `.sha256` file and exactly one top-level directory co
 
 Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-and-release-metadata.md), [Artifact verification](docs/artifact-verification.md), and [Manual metadata validation](docs/manual-metadata-validation.md).
 
-BL-248 artifact verification is complete: the final Windows and native Linux
-contract suites passed `201/201` and `203/203`, respectively, and the
-independent focused Delta Review closed the last of the six original findings.
+BL-248 artifact verification is complete and was merged through PR #25 on
+2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`. CI Run 82 and
+Metadata Regression Run 11 succeeded, the final Windows and native Linux
+contract suites passed `201/201` and `206/206`, respectively, and all six
+original findings are closed with no open BL-248 finding. BL-333/BL-334 are
+the next functional queue step; BL-251 and BL-324 remain not begun.
 
 ## Basic Usage
 
