@@ -78,8 +78,9 @@ BL-248 is `Done`. Its one independent Full Review and the required focused
 Delta Reviews are complete. All six original Full-Review findings are closed;
 `BL248-REV-004` is `CLOSED`, and no BL-248 finding remains open. The final
 Windows verifier-process contract suite passed `201/201`, the native Linux
-suite passed `203/203`, and the independent focused review of the final
-six-file correction returned `PASS`.
+suite passed `206/206`, and the independent focused review of the final
+six-file correction returned `PASS`. CI Run 82 and Metadata Regression Run 11
+both completed with `success`.
 
 The completed acceptance evidence proves:
 
@@ -96,10 +97,13 @@ The completed acceptance evidence proves:
 Generated binaries, archives, extracted trees, and local verification reports
 remain ignored validation output. They are not repository source.
 
-The BL-248 local commit is the final repository-local handoff for this state.
-Push, pull-request creation, merge, durable evidence preservation, and
-controlled preparation-workspace cleanup remain separate, explicitly
-authorized follow-up actions.
+PR #25 was merged on 2026-07-26 at
+`a30d3ab4958af6c1df5015300817aac1b692fde9`. The final post-merge chain is
+complete: review and CI correction passed, the pull request was merged,
+durable evidence was preserved with a verified manifest and ZIP inventory,
+and the local preparation workspace was removed only after that evidence
+passed validation. BL-333/BL-334 are the next functional queue step; BL-251
+and BL-324 remain not begun.
 
 ## Related documentation
 
