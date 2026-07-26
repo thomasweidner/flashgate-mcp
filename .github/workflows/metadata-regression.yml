@@ -83,6 +83,19 @@ jobs:
             -ExpectedModified false `
             -ExpectedCopyrightYear ${{ steps.source.outputs.year }}
 
+      - name: Validate Windows verifier process contracts
+        if: matrix.public_arch == 'x64'
+        shell: pwsh
+        run: |
+          ./scripts/Test-VerifierProcess.ps1 `
+            -RealWindowsX64Binary "build/metadata-1/windows_x64/flashgate-mcp.exe" `
+            -ExpectedProductVersion $env:METADATA_TEST_VERSION `
+            -ExpectedFileVersion $env:METADATA_TEST_FILE_VERSION `
+            -ExpectedCommit '${{ github.sha }}' `
+            -ExpectedSourceTime '${{ steps.source.outputs.time }}' `
+            -ExpectedModified false `
+            -ExpectedCopyrightYear ${{ steps.source.outputs.year }}
+
       - name: Build Windows binary with metadata (build 2)
         shell: pwsh
         env:
@@ -201,6 +214,18 @@ jobs:
             --expected-source-time '${{ steps.source.outputs.time }}' \
             --expected-modified false \
             ${{ matrix.execute_argument }}
+
+      - name: Validate Linux verifier process contracts
+        if: matrix.public_arch == 'x64'
+        shell: bash
+        run: |
+          bash scripts/test-verifier-process.sh \
+            --real-linux-x64 "build/metadata-1/linux_x64/flashgate-mcp" \
+            --expected-product-version "$METADATA_TEST_VERSION" \
+            --expected-file-version "$METADATA_TEST_FILE_VERSION" \
+            --expected-commit '${{ github.sha }}' \
+            --expected-source-time '${{ steps.source.outputs.time }}' \
+            --expected-modified false
 
       - name: Build Linux binary with metadata (build 2)
         shell: bash
