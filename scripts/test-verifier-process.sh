@@ -36,10 +36,22 @@ barrier_files=()
 barrier_directories=()
 temporary_directory="$(mktemp -d)"
 helper="$root_path/scripts/testdata/verifier-process-helper.py"
+repository_status_before="$temporary_directory/repository-status-before.txt"
+repository_status_after="$temporary_directory/repository-status-after.txt"
+scripts_pycache_before="$temporary_directory/scripts-pycache-before.bin"
+scripts_pycache_after="$temporary_directory/scripts-pycache-after.bin"
+repository_pyc_before="$temporary_directory/repository-pyc-before.bin"
+repository_pyc_after="$temporary_directory/repository-pyc-after.bin"
 
 cleanup() {
     local file=""
     for file in \
+        "$repository_status_before" \
+        "$repository_status_after" \
+        "$scripts_pycache_before" \
+        "$scripts_pycache_after" \
+        "$repository_pyc_before" \
+        "$repository_pyc_after" \
         "$temporary_directory/child-survived.txt" \
         "$temporary_directory/child-ready.txt" \
         "$temporary_directory/static-launch.txt" \
@@ -59,6 +71,34 @@ cleanup() {
     rmdir -- "$temporary_directory"
 }
 trap cleanup EXIT
+
+snapshot_repository_state() {
+    local status_path="$1"
+    local scripts_pycache_path="$2"
+    local repository_pyc_path="$3"
+
+    git -C "$root_path" status \
+        --porcelain=v1 \
+        --untracked-files=all >"$status_path" || return 1
+    find "$root_path/scripts" \
+        -type d \
+        -name __pycache__ \
+        -print0 |
+        sort -z >"$scripts_pycache_path" || return 1
+    find "$root_path" \
+        -type f \
+        -name '*.pyc' \
+        -print0 |
+        sort -z >"$repository_pyc_path"
+}
+
+if ! snapshot_repository_state \
+    "$repository_status_before" \
+    "$scripts_pycache_before" \
+    "$repository_pyc_before"; then
+    printf 'Unable to capture initial repository state.\n' >&2
+    exit 1
+fi
 
 check() {
     local condition="$1"
@@ -722,6 +762,36 @@ if [[ "$real_arguments_complete" == true ]]; then
         )" "real Linux ARM64 static verification is skipped on x64"
     fi
 fi
+
+repository_snapshot_succeeded=true
+snapshot_repository_state \
+    "$repository_status_after" \
+    "$scripts_pycache_after" \
+    "$repository_pyc_after" ||
+    repository_snapshot_succeeded=false
+check "$repository_snapshot_succeeded" \
+    "final repository state snapshot succeeds"
+check "$(
+    [[ "$repository_snapshot_succeeded" == true ]] &&
+        cmp --silent \
+            "$repository_status_before" \
+            "$repository_status_after" &&
+        printf true || printf false
+)" "verifier contracts preserve repository status"
+check "$(
+    [[ "$repository_snapshot_succeeded" == true ]] &&
+        cmp --silent \
+            "$scripts_pycache_before" \
+            "$scripts_pycache_after" &&
+        printf true || printf false
+)" "verifier contracts create no scripts pycache directory"
+check "$(
+    [[ "$repository_snapshot_succeeded" == true ]] &&
+        cmp --silent \
+            "$repository_pyc_before" \
+            "$repository_pyc_after" &&
+        printf true || printf false
+)" "verifier contracts create no repository pyc file"
 
 status=PASS
 if ((${#failures[@]} > 0)); then

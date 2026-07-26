@@ -550,12 +550,20 @@ def main() -> int:
             )
 
         module_name = "_flashgate_bounded_process_runner_testonly"
-        spec = importlib.util.spec_from_file_location(module_name, args.runner)
-        if spec is None or spec.loader is None:
-            raise RuntimeError("unable to load the bounded runner")
-        runner_module = importlib.util.module_from_spec(spec)
-        sys.modules[module_name] = runner_module
-        spec.loader.exec_module(runner_module)
+        previous_dont_write_bytecode = sys.dont_write_bytecode
+        try:
+            sys.dont_write_bytecode = True
+            spec = importlib.util.spec_from_file_location(
+                module_name,
+                args.runner,
+            )
+            if spec is None or spec.loader is None:
+                raise RuntimeError("unable to load the bounded runner")
+            runner_module = importlib.util.module_from_spec(spec)
+            sys.modules[module_name] = runner_module
+            spec.loader.exec_module(runner_module)
+        finally:
+            sys.dont_write_bytecode = previous_dont_write_bytecode
 
         state: dict[str, object] = {
             "ready_observed": False,
