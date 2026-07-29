@@ -56,6 +56,11 @@ Git/Hosted CI provenance. Re-manifesting altered bytes or rewriting
 self-reported hashes cannot replace the separately supplied expected hashes.
 The authoritative handoff gate remains the canonical external
 `Test-ClassicReviewArtifact.ps1` validator named by the handoff standard.
+Hosted CI executes the byte-bound repository mirror at
+`scripts/Test-ClassicReviewArtifact.ps1`; the mirror is an execution source,
+not an independent governance source. The fixture runner fails closed on
+mirror/canonical byte divergence whenever the external validator is locally
+available.
 
 The script writes its detailed report to:
 

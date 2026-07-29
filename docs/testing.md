@@ -17,6 +17,19 @@ first execution. Then run:
 }
 ```
 
+`scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
+mirror of the external canonical Classic artifact validator. Its integration
+baseline is 32719 bytes with SHA-256
+`c6da4524c881d339bdccfde5894277ddc549fae898348e538956302949518c51`.
+The mirror is not an independent governance source. The fixture runner resolves
+it relative to its own script by default and still accepts an explicit
+`-CanonicalArtifactValidatorPath`. When the external canonical validator exists
+locally, the runner compares both files byte-for-byte by SHA-256 and fails
+before creating fixtures on any divergence. Hosted Windows CI explicitly passes
+the repository mirror and therefore requires no contributor-local path. Fixture
+record current-commit and Hosted-CI head provenance are bound to the checked-out
+repository HEAD so the unchanged matrix remains valid on each committed CI head.
+
 The fixture matrix exercises the production validator with positive and
 negative canonical paths, every immutable mode flag, real tracked domains,
 same-run and deferred-finding bindings, byte-exact correction/current-delta

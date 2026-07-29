@@ -1,12 +1,14 @@
 [CmdletBinding()]
 param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
-    [string]$CanonicalArtifactValidatorPath = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Scripts\Test-ClassicReviewArtifact.ps1',
+    [string]$CanonicalArtifactValidatorPath = (Join-Path $PSScriptRoot 'Test-ClassicReviewArtifact.ps1'),
     [string[]]$CaseName = @()
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$repositoryArtifactValidatorMirrorPath = Join-Path $PSScriptRoot 'Test-ClassicReviewArtifact.ps1'
+$externalCanonicalArtifactValidatorPath = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Scripts\Test-ClassicReviewArtifact.ps1'
 
 function Copy-Record {
     param([Parameter(Mandatory)][object]$Record)
@@ -61,7 +63,7 @@ function New-BaseRecord {
         taskId = 'BL-333/BL-334'
         repository = 'https://github.com/thomasweidner/flashgate-mcp.git'
         baselineCommit = '537ea1c1660cddfde5aace1888242d80a6be77bf'
-        currentCommit = '537ea1c1660cddfde5aace1888242d80a6be77bf'
+        currentCommit = $actualHead
         branch = 'docs/bl-333-bl-334-change-trigger-governance'
         executionMode = $Mode
         checkpoint = $Checkpoint
@@ -1729,12 +1731,50 @@ $results = [System.Collections.Generic.List[object]]::new()
 $temporaryRoot = $null
 $repositoryInternalPackagePath = $null
 $resolvedRepositoryRoot = $null
+$actualHead = $null
 
 try {
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
+    $actualHead = [string](& git -C $resolvedRepositoryRoot rev-parse HEAD)
+    if ($LASTEXITCODE -ne 0 -or $actualHead -notmatch '^[0-9a-f]{40}$') {
+        throw "Cannot resolve the repository HEAD for fixture binding: $resolvedRepositoryRoot"
+    }
     $validatorPath = Join-Path $resolvedRepositoryRoot 'scripts/Test-GovernanceConsistency.ps1'
     if (-not (Test-Path -LiteralPath $validatorPath -PathType Leaf)) {
         throw "Validator does not exist: $validatorPath"
+    }
+    if (-not (Test-Path -LiteralPath $repositoryArtifactValidatorMirrorPath -PathType Leaf)) {
+        throw "Repository artifact validator mirror does not exist: $repositoryArtifactValidatorMirrorPath"
+    }
+    if (Test-Path -LiteralPath $externalCanonicalArtifactValidatorPath -PathType Leaf) {
+        $repositoryArtifactValidatorMirrorBytes = [System.IO.File]::ReadAllBytes(
+            $repositoryArtifactValidatorMirrorPath
+        )
+        $externalCanonicalArtifactValidatorBytes = [System.IO.File]::ReadAllBytes(
+            $externalCanonicalArtifactValidatorPath
+        )
+        $repositoryArtifactValidatorMirrorHash = (
+            Get-FileHash -LiteralPath $repositoryArtifactValidatorMirrorPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        $externalCanonicalArtifactValidatorHash = (
+            Get-FileHash -LiteralPath $externalCanonicalArtifactValidatorPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        $artifactValidatorBytesMatch = (
+            $repositoryArtifactValidatorMirrorBytes.Length -eq $externalCanonicalArtifactValidatorBytes.Length -and
+            [System.Linq.Enumerable]::SequenceEqual(
+                [byte[]]$repositoryArtifactValidatorMirrorBytes,
+                [byte[]]$externalCanonicalArtifactValidatorBytes
+            )
+        )
+        if (
+            -not $artifactValidatorBytesMatch -or
+            $repositoryArtifactValidatorMirrorHash -cne $externalCanonicalArtifactValidatorHash
+        ) {
+            throw (
+                'Repository artifact validator mirror does not match the available external ' +
+                'canonical validator byte-for-byte.'
+            )
+        }
     }
     if (-not (Test-Path -LiteralPath $CanonicalArtifactValidatorPath -PathType Leaf)) {
         throw "Canonical artifact validator does not exist: $CanonicalArtifactValidatorPath"
@@ -1819,7 +1859,7 @@ try {
     $release.hostedCI.required = $true
     $release.hostedCI.sourceVerified = $true
     $release.hostedCI.sources = @(
-        'thomasweidner/flashgate-mcp@537ea1c1660cddfde5aace1888242d80a6be77bf',
+        "thomasweidner/flashgate-mcp@$actualHead",
         'github-actions-run:123'
     )
     $release.hostedCI.workflowCommit = '537ea1c1660cddfde5aace1888242d80a6be77bf'
@@ -1827,7 +1867,7 @@ try {
     $release.hostedCI.runAttempt = 1
     $release.hostedCI.event = 'workflow_dispatch'
     $release.hostedCI.ref = 'refs/tags/v1.0.0'
-    $release.hostedCI.headSha = '537ea1c1660cddfde5aace1888242d80a6be77bf'
+    $release.hostedCI.headSha = $actualHead
     [void]$cases.Add([pscustomobject]@{
             Name = 'positive-release-hosted-ci'
             ExpectedExit = 0
@@ -1838,7 +1878,7 @@ try {
             ExpectedRunAttempt = 1
             ExpectedEvent = 'workflow_dispatch'
             ExpectedRef = 'refs/tags/v1.0.0'
-            ExpectedHeadSha = '537ea1c1660cddfde5aace1888242d80a6be77bf'
+            ExpectedHeadSha = $actualHead
         })
 
     $filesystem = New-BaseRecord -Mode BUNDLED_CORRECTION -Checkpoint MATERIAL_SCOPE_CHANGE -ObservedTriggers FILESYSTEM_SEMANTICS -TriggeredDomains filesystem -AffectedGates $filesystemGates
@@ -2105,7 +2145,7 @@ try {
             ExpectedRunAttempt = 1
             ExpectedEvent = 'workflow_dispatch'
             ExpectedRef = 'refs/tags/v1.0.0'
-            ExpectedHeadSha = '537ea1c1660cddfde5aace1888242d80a6be77bf'
+            ExpectedHeadSha = $actualHead
         }
         $caseProperties[$workflowProvenanceCase.Property] = $workflowProvenanceCase.Value
         [void]$cases.Add([pscustomobject]$caseProperties)
@@ -2442,7 +2482,7 @@ try {
             [string]$case.ExpectedCurrentCommit
         }
         else {
-            '537ea1c1660cddfde5aace1888242d80a6be77bf'
+            $actualHead
         }
         [void]$commandParts.Add('-ExpectedRepository ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $expectedRepository))
         [void]$commandParts.Add('-ExpectedBaselineCommit ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $expectedBaselineCommit))
@@ -2534,18 +2574,18 @@ try {
         '-TrackedPath @(''README.md'')',
         '-RuntimeCheckpoint RELEASE_CANDIDATE',
         '-HostedCISource ' + (ConvertTo-PowerShellArrayLiteral -Value @(
-                'thomasweidner/flashgate-mcp@537ea1c1660cddfde5aace1888242d80a6be77bf',
+                "thomasweidner/flashgate-mcp@$actualHead",
                 'github-actions-run:123'
             )),
         '-ExpectedRepository ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value 'https://github.com/thomasweidner/flashgate-mcp.git'),
         '-ExpectedBaselineCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
-        '-ExpectedCurrentCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
+        "-ExpectedCurrentCommit $actualHead",
         '-ExpectedWorkflowCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
         '-ExpectedRunId 123',
         '-ExpectedRunAttempt 1',
         '-ExpectedEvent workflow_dispatch',
         '-ExpectedRef refs/tags/v1.0.0',
-        '-ExpectedHeadSha 537ea1c1660cddfde5aace1888242d80a6be77bf'
+        "-ExpectedHeadSha $actualHead"
     ) -join ' '
     $runtimeOutput = @(& $pwsh -NoLogo -NoProfile -Command $runtimeCommand 2>&1)
     $runtimeExit = $LASTEXITCODE
@@ -2592,7 +2632,6 @@ try {
     $workflowFixtureNames = @('positive-real-ci-workflow-binding', 'positive-real-release-workflow-binding')
     if (@($CaseName).Count -eq 0 -or @($workflowFixtureNames | Where-Object { $_ -in $CaseName }).Count -gt 0) {
         $generatorPath = Join-Path $resolvedRepositoryRoot 'scripts/New-GovernanceWorkflowRecord.ps1'
-        $actualHead = [string](& git -C $resolvedRepositoryRoot rev-parse HEAD)
         $workflowDefinitions = @(
             [pscustomobject]@{
                 Name = 'positive-real-ci-workflow-binding'

@@ -54,7 +54,11 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   REV-013 and REV-015 alongside the three previously closed findings, records
   RUN-007 as independently reviewed, and makes BL-333/BL-334 technically ready
   for separately authorized bounded Commit Preparation without authorizing
-  Commit Preparation or commit.
+  Commit Preparation or commit. The focused Hosted-CI correction adds a
+  byte-bound repository execution mirror of the external Classic artifact
+  validator, makes the fixture default script-relative with fail-closed local
+  canonical-byte parity, and passes the mirror explicitly in Windows CI without
+  changing runtime or product logic.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.

@@ -92,7 +92,8 @@ jobs:
             -ExpectedEvent '${{ github.event_name }}' `
             -ExpectedRef '${{ github.ref }}' `
             -ExpectedHeadSha '${{ github.sha }}'
-          .\scripts\Test-GovernanceConsistencyFixtures.ps1
+          .\scripts\Test-GovernanceConsistencyFixtures.ps1 `
+            -CanonicalArtifactValidatorPath (Join-Path $PWD 'scripts\Test-ClassicReviewArtifact.ps1')
 
       - name: Set up Go
         uses: actions/setup-go@v6

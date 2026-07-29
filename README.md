@@ -322,6 +322,13 @@ positive/negative fixtures with:
 }
 ```
 
+Hosted Windows CI explicitly executes the versioned
+`scripts/Test-ClassicReviewArtifact.ps1` mirror. The mirror is a byte-bound
+execution copy of the external canonical validator, not a competing governance
+source. The fixture runner defaults to this script-relative mirror, still
+accepts an explicit validator path, and fails closed on byte divergence whenever
+the external canonical validator is locally available.
+
 CI and release create their assignment records ephemerally with
 `scripts/New-GovernanceWorkflowRecord.ps1`; no workflow record is maintained as
 a repository artifact. `ClassicReviewReady=true` additionally requires the
