@@ -14,7 +14,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Added payload-class result contracts, single-transmission rules for large content, opaque identity-bound result resources, wire-amplification metrics, profile catalog/instruction budgets, deterministic catalog fingerprints, and bounded server instructions.
 - Added Version 1.0 plans for per-principal quotas and fair scheduling, typed no-shell command definitions, native OS adapter precedence, audit lifecycle/correlation, MCP 2026 compatibility preparation, supply-chain evidence, and a pinned cross-project efficiency benchmark.
 - Added ADR-0015, Version 1.0 scope, execution-identity backend, efficiency-improvement, comparative-review, runtime/service, protocol, specification, and roadmap documentation.
-- Expanded the canonical backlog to the continuous range `BL-001` through `BL-332`; the current renumbering through `BL-324` is documented in [Backlog ID migration - 2026-07-20](docs/backlog-id-migration-2026-07-20.md), layered over the immutable earlier migration records. PR #16 adds `BL-325` through `BL-329` and the final PR #21 review adds `BL-330` through `BL-332` without changing existing canonical IDs.
+- Expanded the canonical backlog to the continuous range `BL-001` through `BL-335`; the current renumbering through `BL-324` is documented in [Backlog ID migration - 2026-07-20](docs/backlog-id-migration-2026-07-20.md), layered over the immutable earlier migration records. PR #16 adds `BL-325` through `BL-329`, the final PR #21 review adds `BL-330` through `BL-332`, BL-333/BL-334 provide governance foundation and enforcement, and INF-121 registers BL-335 without changing existing canonical IDs.
 - Migrated current sprint identifiers to standalone `SPR-N` values. Former suffix-based entries now have independent IDs, subsequent entries shift without changing backlog assignments, and the complete mapping is recorded in [Sprint ID migration - 2026-07-25](docs/sprint-id-migration-2026-07-25.md).
 
 ### Migration
@@ -29,6 +29,32 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added the BL-333 governance foundation: canonical change-trigger,
+  finding-remediation/review-mode, and Classic-readiness standards, a complete
+  machine-readable trigger catalog, and an assignment-record schema.
+- Added BL-334 fail-closed enforcement with diff-derived triggers, checkpoint,
+  boundary, same-run finding, focused-delta, actual-package handoff,
+  commit-preparation, trusted Git/workflow provenance, strict assignment and
+  completion-report schemas, ephemeral CI/release records, and a 198-case
+  production-path positive/negative fixture matrix. The second focused
+  correction binds the actual `correction-only.patch` and
+  `current-delta.patch` bytes to separately trusted expected hashes, adds
+  strict correction/regression/focused/report schemas, and enforces exact
+  finding, repository, external-governance, status, and queue parity. The third
+  bundled correction closes the remaining REV-013/REV-015 implementation gap:
+  exact canonical Windows external path-to-scope mappings, a schema-bound
+  HANDOFF contract produced from one typed status source, visible/JSON status
+  parity, and re-manifested negative fixtures for every added boundary. The
+  fourth bundled correction makes visible HANDOFF parity complete: it strictly
+  parses exactly 16 typed keys from the shared producer source, independently
+  counts and orders all four status/contract markers, rejects reserved control
+  lines outside the block, binds focused-review commit authorization to false,
+  and adds 18 re-manifested productive negative cases that fail their specific
+  gates. The subsequent focused independent Delta Review passed, closes
+  REV-013 and REV-015 alongside the three previously closed findings, records
+  RUN-007 as independently reviewed, and makes BL-333/BL-334 technically ready
+  for separately authorized bounded Commit Preparation without authorizing
+  Commit Preparation or commit.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.

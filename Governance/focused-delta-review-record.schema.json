@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/focused-delta-review-record.schema.json",
+  "title": "FlashGate focused delta review record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "mode",
+    "previousReviewPackage",
+    "previousReviewSha256",
+    "correctionStartCommit",
+    "correctionPatchArtifact",
+    "correctionPatchSha256",
+    "currentDeltaArtifact",
+    "currentDeltaSha256",
+    "correctionOnlyPaths",
+    "reviewedFindingIds",
+    "directInterfacePaths",
+    "regressionTestIds",
+    "allowedDeltaPaths",
+    "referenceOnlyPaths",
+    "fullReviewRepeatAuthorized",
+    "commitPreparationApproved",
+    "commitAuthorized"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "mode": { "const": "FOCUSED_INDEPENDENT_DELTA_REVIEW" },
+    "previousReviewPackage": { "type": "string", "minLength": 1 },
+    "previousReviewSha256": { "$ref": "#/$defs/sha256" },
+    "correctionStartCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "correctionPatchArtifact": { "const": "correction-only.patch" },
+    "correctionPatchSha256": { "$ref": "#/$defs/sha256" },
+    "currentDeltaArtifact": { "const": "current-delta.patch" },
+    "currentDeltaSha256": { "$ref": "#/$defs/sha256" },
+    "correctionOnlyPaths": { "$ref": "#/$defs/nonEmptyStringArray" },
+    "reviewedFindingIds": { "$ref": "#/$defs/nonEmptyStringArray" },
+    "directInterfacePaths": { "$ref": "#/$defs/nonEmptyStringArray" },
+    "regressionTestIds": { "$ref": "#/$defs/nonEmptyStringArray" },
+    "allowedDeltaPaths": { "$ref": "#/$defs/nonEmptyStringArray" },
+    "referenceOnlyPaths": { "$ref": "#/$defs/nonEmptyStringArray" },
+    "fullReviewRepeatAuthorized": { "const": false },
+    "commitPreparationApproved": { "const": false },
+    "commitAuthorized": { "const": false }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

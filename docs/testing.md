@@ -1,5 +1,46 @@
 # Testing
 
+## Governance enforcement
+
+BL-333 supplies the change-trigger, finding-remediation/review-mode, and
+handoff-readiness foundation. BL-334 enforces it through
+`scripts/Test-GovernanceConsistency.ps1`.
+
+Parse every new or changed PowerShell source with PowerShell 7.6.4 before its
+first execution. Then run:
+
+```powershell
+& {
+    .\scripts\Test-GovernanceConsistency.ps1
+    .\scripts\Test-GovernanceConsistencyFixtures.ps1
+    .\scripts\Test-DocumentationConsistency.ps1
+}
+```
+
+The fixture matrix exercises the production validator with positive and
+negative canonical paths, every immutable mode flag, real tracked domains,
+same-run and deferred-finding bindings, byte-exact correction/current-delta
+hashes, strict focused-delta and finding matrices, complete per-finding
+completion parity, exact narrative/report/repository/external/status sets,
+the five canonical external path-to-scope mappings, the strict bounded
+`HANDOFF.md` JSON contract, its exactly-16-key typed visible status block,
+independent counts for all four status/contract markers, rejection of reserved
+control lines outside the visible block, and complete visible/JSON parity,
+actual valid and re-manifested corrupt ZIPs, external before/after payloads,
+complete tracked-path coverage, and the real CI/release parameter binding.
+Negative packages alter bytes, self-reported hashes, findings, evidence, paths,
+interfaces, report and handoff blocks, external path/scope mappings, status,
+counts, duplicate/unknown visible keys, independently added or reversed
+markers, reserved outside-block lines, and queue through the same productive
+validator path. Each re-manifested negative case must fail its expected
+specific productive gate. A workflow checkpoint
+record passes only with an authoritative
+immutable repository, commit, event, ref, run, and Hosted CI source identity.
+
+The current BL-333/BL-334 governance matrix contains 198 cases. The count is
+reported by the fixture runner and must change together with its permanent
+case inventory.
+
 FlashGate MCP uses Go's standard testing framework and the `flashgate-mcp` binary.
 
 The project aims for high test coverage in security-sensitive and filesystem-related code.
@@ -73,7 +114,7 @@ MCP project is activated by this workflow.
 
 ### Canonical entry points
 
-Run PowerShell 7.6.3 through the Windows orchestrator:
+Run PowerShell 7.6.4 through the Windows orchestrator:
 
 ```text
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1

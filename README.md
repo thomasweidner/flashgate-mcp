@@ -308,7 +308,31 @@ flashgate-mcp --version --verbose
 
 ## Testing and Quality Checks
 
-Run the documentation consistency gate with PowerShell 7.6.3:
+FlashGate governance is defined by the
+[change-trigger](Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md),
+[finding-remediation](Governance/FINDING-REMEDIATION-AND-REVIEW-MODE-STANDARD.md),
+and [handoff-readiness](Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md)
+standards. Validate their catalog, schema, enforcement rules, and focused
+positive/negative fixtures with:
+
+```powershell
+& {
+    .\scripts\Test-GovernanceConsistency.ps1
+    .\scripts\Test-GovernanceConsistencyFixtures.ps1
+}
+```
+
+CI and release create their assignment records ephemerally with
+`scripts/New-GovernanceWorkflowRecord.ps1`; no workflow record is maintained as
+a repository artifact. `ClassicReviewReady=true` additionally requires the
+actual external ZIP validator, strict assignment, completion, finding-matrix,
+focused-delta, and report-contract schemas, byte-exact hashes for
+`correction-only.patch` and `current-delta.patch`, and exact
+assignment/report/scope/patch/finding/external-delta parity. A bundled
+correction remains `CORRECTED_PENDING_DELTA`; only a later successful
+independent focused delta review may close its findings.
+
+Run the documentation consistency gate with PowerShell 7.6.4:
 
 ```powershell
 .\scripts\Test-DocumentationConsistency.ps1
@@ -343,7 +367,7 @@ changes require the controlled native Linux validation described in
 remains the leading development environment; WSL2 receives a one-way test copy
 and never returns source changes.
 
-Invoke the canonical Windows entry point with PowerShell 7.6.3:
+Invoke the canonical Windows entry point with PowerShell 7.6.4:
 
 ```powershell
 & {
@@ -370,7 +394,7 @@ FlashGate enforces separate repository-wide Go statement-coverage gates for Wind
 | Windows | 71.4% |
 | Linux | 70.6% |
 
-Run the Windows coverage gate with PowerShell 7.6.3:
+Run the Windows coverage gate with PowerShell 7.6.4:
 
 ```powershell
 .\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 71.4
@@ -497,7 +521,9 @@ BL-248 artifact verification is complete and was merged through PR #25 on
 Metadata Regression Run 11 succeeded, the final Windows and native Linux
 contract suites passed `201/201` and `206/206`, respectively, and all six
 original findings are closed with no open BL-248 finding. BL-333/BL-334 are
-the next functional queue step; BL-251 and BL-324 remain not begun.
+implemented locally on their governance branch but remain incomplete pending
+their independent review, commit, exact-commit validation, Hosted CI, PR
+review, merge, and durable evidence. BL-251 and BL-324 remain not begun.
 
 ## Basic Usage
 

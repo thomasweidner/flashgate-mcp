@@ -1,5 +1,19 @@
 # Contributing to FlashGate MCP
 
+## Governance checkpoints
+
+Before implementing, after a material scope change, before commit, at sprint
+close, and for release candidate/stable release work, create or update an
+assignment governance record according to
+[the change-trigger standard](Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md).
+CI and release records are generated ephemerally by
+`scripts/New-GovernanceWorkflowRecord.ps1`. Run
+`scripts/Test-GovernanceConsistency.ps1` and
+`scripts/Test-GovernanceConsistencyFixtures.ps1` when catalog, schema,
+governance source, validator, or workflow behavior changes. Independent full
+and focused delta reviews are read-only; correction happens only in
+`BUNDLED_CORRECTION`.
+
 ## Scope
 
 FlashGate is a native, local-first MCP server optimized for low latency, low token use, low RAM/CPU consumption, and strict server-side security. Contributions must preserve those objectives and must not silently introduce an interpreter, remote listener, broad shell, unbounded operation, or security bypass.

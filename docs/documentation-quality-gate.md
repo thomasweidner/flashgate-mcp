@@ -10,7 +10,7 @@ The earlier temporary `CUR-010` audit finding demonstrated why this distinction 
 
 ## Command
 
-Use PowerShell 7.6.3:
+Use PowerShell 7.6.4:
 
 ```powershell
 & {
@@ -32,6 +32,30 @@ Use PowerShell 7.6.3:
     }
 }
 ```
+
+Governance source changes additionally require:
+
+```powershell
+& {
+    .\scripts\Test-GovernanceConsistency.ps1
+    .\scripts\Test-GovernanceConsistencyFixtures.ps1
+}
+```
+
+This gate checks the binding standards, catalog/schema parity, complete tracked
+path coverage, assignment checkpoints, immutable mode semantics, same-run and
+deferred-finding bindings, focused-delta scope, actual correction/current-delta
+byte hashes, strict finding, report, and bounded handoff contracts, exact
+finding/repository/external/status parity, exact case-insensitive Windows
+path-to-scope mapping for the five external governance entries, strict parsing
+of the exactly-16-key visible HANDOFF status block, independent counting and
+ordering of every status/contract marker, rejection of duplicate, unknown, or
+outside-block reserved control lines, complete typed visible-HANDOFF/JSON
+parity, actual-package handoff readiness, commit preparation, and trusted
+Git/Hosted CI provenance. Re-manifesting altered bytes or rewriting
+self-reported hashes cannot replace the separately supplied expected hashes.
+The authoritative handoff gate remains the canonical external
+`Test-ClassicReviewArtifact.ps1` validator named by the handoff standard.
 
 The script writes its detailed report to:
 
@@ -93,6 +117,6 @@ Run the gate:
 
 ## CI integration boundary
 
-The repository script is the permanent local gate. GitHub Actions integration should be added only after the script has passed under PowerShell 7.6.3 on the integrated target-branch state. A dedicated workflow or CI job should call the same script without duplicating its validation logic.
+The repository script is the permanent local gate. GitHub Actions integration should be added only after the script has passed under PowerShell 7.6.4 on the integrated target-branch state. A dedicated workflow or CI job should call the same script without duplicating its validation logic.
 
 CI integration must not silently convert exit code `2` into a documentation failure or ignore it. Infrastructure failure is separately actionable and blocks the gate because no trustworthy audit result was produced.

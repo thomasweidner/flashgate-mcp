@@ -30,6 +30,69 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Bind governance to checked diff and workflow provenance
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $currentCommit = (git rev-parse HEAD).Trim()
+          if ('${{ github.event_name }}' -eq 'pull_request') {
+            $baselineCommit = (git merge-base HEAD 'origin/${{ github.base_ref }}').Trim()
+          } else {
+            $eventBefore = '${{ github.event.before }}'
+            git cat-file -e "$eventBefore^{commit}" 2>$null
+            $eventBeforeExists = $LASTEXITCODE -eq 0
+            if ($eventBefore -match '^[0-9a-f]{40}$' -and
+                $eventBefore -ne ('0' * 40) -and
+                $eventBeforeExists) {
+              $baselineCommit = $eventBefore
+            } elseif ((git rev-list --count HEAD) -gt 1) {
+              $baselineCommit = (git rev-parse HEAD^).Trim()
+            } else {
+              $baselineCommit = $currentCommit
+            }
+          }
+          $changedPaths = @(
+            git diff --name-only "$baselineCommit...$currentCommit" |
+              Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+          )
+          $recordPath = Join-Path $env:RUNNER_TEMP 'flashgate-assignment-record.json'
+          $repository = 'https://github.com/${{ github.repository }}.git'
+          $workflowCommit = '${{ github.workflow_sha }}'
+          $hostedCISources = @(
+            '${{ github.repository }}@${{ github.sha }}'
+            'github-actions-run:${{ github.run_id }}'
+          )
+          .\scripts\New-GovernanceWorkflowRecord.ps1 `
+            -OutputPath $recordPath `
+            -Checkpoint SPRINT_CLOSE `
+            -ChangedPath $changedPaths `
+            -Repository $repository `
+            -BaselineCommit $baselineCommit `
+            -CurrentCommit $currentCommit `
+            -WorkflowCommit $workflowCommit `
+            -RunId '${{ github.run_id }}' `
+            -RunAttempt ${{ github.run_attempt }} `
+            -Event '${{ github.event_name }}' `
+            -Ref '${{ github.ref }}' `
+            -HeadSha '${{ github.sha }}'
+          .\scripts\Test-GovernanceConsistency.ps1 `
+            -AssignmentRecordPath $recordPath `
+            -ChangedPath $changedPaths `
+            -RuntimeCheckpoint SPRINT_CLOSE `
+            -HostedCISource $hostedCISources `
+            -ExpectedRepository $repository `
+            -ExpectedBaselineCommit $baselineCommit `
+            -ExpectedCurrentCommit $currentCommit `
+            -ExpectedWorkflowCommit $workflowCommit `
+            -ExpectedRunId '${{ github.run_id }}' `
+            -ExpectedRunAttempt ${{ github.run_attempt }} `
+            -ExpectedEvent '${{ github.event_name }}' `
+            -ExpectedRef '${{ github.ref }}' `
+            -ExpectedHeadSha '${{ github.sha }}'
+          .\scripts\Test-GovernanceConsistencyFixtures.ps1
 
       - name: Set up Go
         uses: actions/setup-go@v6
