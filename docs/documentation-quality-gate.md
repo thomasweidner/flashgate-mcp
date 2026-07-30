@@ -81,6 +81,17 @@ publication, missing expected path binding, the obsolete dynamic shell form,
 and case-sensitive path comparisons without changing the permanent 198-case
 inventory.
 
+Draft PR #27 passed its independent Exact-Commit Review on exact technical head
+`ecbd8dc61905c82cfdcb9386c0587c1089635f47`. Hosted CI Run `30531682280`
+created all four CI jobs and all 12 visible checks passed, including 1,051
+governance checks with zero errors and 198/198 fixtures.
+`PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are
+`CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no BL-333/BL-334 or PR27-EXACT
+review finding remains open. The documentation closure keeps BL-333 and BL-334
+`In Progress` until merge and post-merge completion, leaves BL-335 `Planned`
+and not begun, and preserves the separate explicit approval boundary for
+Ready-for-Review.
+
 The script writes its detailed report to:
 
 ```text

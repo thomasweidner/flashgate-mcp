@@ -88,6 +88,18 @@ The current BL-333/BL-334 governance matrix contains 198 cases. The count is
 reported by the fixture runner and must change together with its permanent
 case inventory.
 
+The independent Exact-Commit Review of Draft PR #27 passed on exact technical
+head `ecbd8dc61905c82cfdcb9386c0587c1089635f47`. Hosted CI Run
+`30531682280` created all four CI jobs and all 12 visible checks passed:
+exact-head checkout, current/expected-head parity, workflow-source parity,
+PowerShell 7.6.4 package and Windows-semantic process-path parity, 1,051
+productive governance checks with zero errors, and 198/198 Hosted fixtures.
+`PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are
+`CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`. The BL-333/BL-334 finding queue
+and PR27-EXACT review queue are empty. This review closure changes no runtime
+or product logic and does not authorize Ready-for-Review, merge, or
+auto-merge.
+
 FlashGate MCP uses Go's standard testing framework and the `flashgate-mcp` binary.
 
 The project aims for high test coverage in security-sensitive and filesystem-related code.

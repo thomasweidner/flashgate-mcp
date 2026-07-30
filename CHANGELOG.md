@@ -76,7 +76,16 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   explicit ordinal, case-insensitive equality for normalized absolute
   expected/actual paths, accepts casing-only differences, and keeps different
   drives, directories, subdirectories, filenames, relative paths, empty
-  values, and case-sensitive legacy comparisons fail-closed.
+  values, and case-sensitive legacy comparisons fail-closed. Hosted CI Run
+  `30531682280` passed all 12 visible checks on exact technical head
+  `ecbd8dc61905c82cfdcb9386c0587c1089635f47`, including 1,051 governance
+  checks with zero errors and 198/198 fixtures. The independent Exact-Commit
+  Review closed `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and
+  `PR27-EXACT-REV-003` as
+  `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no BL-333/BL-334 or
+  PR27-EXACT review finding remains open. BL-333 and BL-334 remain in progress
+  until merge and post-merge completion, and Ready-for-Review still requires
+  separate explicit approval.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.
