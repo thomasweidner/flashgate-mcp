@@ -67,9 +67,15 @@ from the merge-result Go matrix. It compares the event-loaded workflow blob with
 the exact-head workflow blob before accepting workflow provenance. It then uses
 the official PowerShell 7.6.4 Windows x64 ZIP only after the pinned SHA-256
 `80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
-passes. Both the productive validator and fixture harness fail closed on a
-different interpreter version; the productive validator also rechecks the
-downloaded package digest.
+passes. Only after the hash, extraction, and executable-existence gates does it
+publish the verified extraction directory through `GITHUB_PATH`; the
+governance step uses the static `shell: pwsh` and requires its actual process
+path to match the expected hash-gated executable. Both the productive validator
+and fixture harness fail closed on a different interpreter version; the
+productive validator also rechecks the downloaded package digest. The focused
+workflow-binding fixture rejects missing path publication, missing expected
+path binding, and the obsolete dynamic shell form without changing the
+permanent 198-case inventory.
 
 The script writes its detailed report to:
 

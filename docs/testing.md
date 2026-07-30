@@ -43,7 +43,10 @@ The governance job downloads
 `PowerShell-7.6.4-win-x64.zip` only from the official versioned PowerShell
 release URL and verifies SHA-256
 `80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
-before extraction. It invokes the extracted `pwsh.exe` explicitly, with no
+before extraction. After the hash, extraction, and executable-existence gates
+pass, it publishes only that extraction directory through `GITHUB_PATH` and
+uses the static `shell: pwsh`. The governance step compares the running
+PowerShell process path with the expected hash-gated executable path, with no
 global installation, latest-version resolution, or fallback. The productive
 validator gates the exact `7.6.4` interpreter and downloaded package digest;
 the fixture runner also requires 7.6.4 and launches child validators from its
@@ -69,7 +72,12 @@ specific productive gate. A workflow checkpoint
 record passes only with an authoritative
 immutable repository, commit, event, ref, run, and Hosted CI source identity.
 Focused runtime fixtures additionally prove that a wrong PowerShell version and
-a wrong package digest fail their specific productive checks.
+a wrong package digest fail their specific productive checks. The real-CI
+workflow-binding fixture also semantically requires the post-verification
+`GITHUB_PATH` publication, static governance shell, expected path binding, and
+expected/actual process-path diagnostics. In-memory negative variants prove
+that removing either binding or restoring the obsolete dynamic shell fails
+closed without adding permanent fixture cases.
 
 The current BL-333/BL-334 governance matrix contains 198 cases. The count is
 reported by the fixture runner and must change together with its permanent

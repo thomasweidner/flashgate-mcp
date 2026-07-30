@@ -78,6 +78,7 @@ jobs:
             'PowerShellPackageHashGatePassed: true'
             "pwsh_path=$pwshPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
             "package_path=$packagePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            $installRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           } catch {
             "PowerShellPreparationFailure: $($_.Exception.Message)"
             throw
@@ -86,7 +87,7 @@ jobs:
           }
 
       - name: Bind governance to exact commit and PowerShell 7.6.4
-        shell: ${{ steps.pwsh764.outputs.pwsh_path }} -NoLogo -NoProfile -NonInteractive -File {0}
+        shell: pwsh
         env:
           EVENT_NAME: ${{ github.event_name }}
           EXPECTED_HEAD: ${{ steps.exact_head.outputs.expected_head }}
@@ -98,6 +99,7 @@ jobs:
           GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT_VALUE: ${{ github.run_attempt }}
           GITHUB_REF_VALUE: ${{ github.ref }}
+          EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}
           PWSH_PACKAGE_PATH: ${{ steps.pwsh764.outputs.package_path }}
           PWSH_PACKAGE_SHA256: 80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793
         run: |
@@ -105,10 +107,19 @@ jobs:
           $governanceReportPath = Join-Path $env:RUNNER_TEMP 'flashgate-governance-report.json'
           try {
             $powerShellVersion = $PSVersionTable.PSVersion.ToString()
+            $actualPwshPath = (Get-Process -Id $PID).Path
+            $expectedPwshPath = [System.IO.Path]::GetFullPath($env:EXPECTED_PWSH_PATH)
+            $resolvedActualPwshPath = [System.IO.Path]::GetFullPath($actualPwshPath)
             "PowerShellVersion: $powerShellVersion"
+            "ExpectedPowerShellPath: $expectedPwshPath"
+            "ActualPowerShellPath: $resolvedActualPwshPath"
             if ($powerShellVersion -cne '7.6.4') {
               throw "PowerShell 7.6.4 is required; actual=$powerShellVersion"
             }
+            if ($resolvedActualPwshPath -cne $expectedPwshPath) {
+              throw "Governance shell does not use the verified PowerShell executable."
+            }
+            'PowerShellProcessPathParityPassed: true'
 
             $expectedHead = $env:EXPECTED_HEAD
             $checkedOutCommit = (git rev-parse HEAD).Trim()

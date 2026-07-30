@@ -2761,8 +2761,13 @@ try {
                     'ref: ${{ steps.exact_head.outputs.expected_head }}',
                     'https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-x64.zip',
                     '80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793',
-                    'shell: ${{ steps.pwsh764.outputs.pwsh_path }} -NoLogo -NoProfile -NonInteractive -File {0}',
+                    'shell: pwsh',
+                    'EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}',
+                    '$installRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append',
                     '"PowerShellVersion: $powerShellVersion"',
+                    '"ExpectedPowerShellPath: $expectedPwshPath"',
+                    '"ActualPowerShellPath: $resolvedActualPwshPath"',
+                    "'PowerShellProcessPathParityPassed: true'",
                     '"ExpectedPullRequestHead: $expectedHead"',
                     '"CheckedOutCommit: $checkedOutCommit"',
                     '"CurrentCommit: $checkedOutCommit"',
@@ -2797,6 +2802,126 @@ try {
                     "-ExpectedHeadSha '`${{ github.sha }}'"
                 )
             }
+            $workflowContractFailures = @()
+            if ($workflowDefinition.Name -ceq 'positive-real-ci-workflow-binding') {
+                $getNamedWorkflowStep = {
+                    param(
+                        [Parameter(Mandatory)][string]$Text,
+                        [Parameter(Mandatory)][string]$Name
+                    )
+
+                    $stepPattern = (
+                        '(?ms)^      - name: ' + [regex]::Escape($Name) +
+                        '\r?\n.*?(?=^      - name: |^  [A-Za-z0-9_-]+:\s*$|\z)'
+                    )
+                    $stepMatches = [regex]::Matches($Text, $stepPattern)
+                    if ($stepMatches.Count -eq 1) {
+                        return $stepMatches[0].Value
+                    }
+                    return ''
+                }
+                $testCIWorkflowContract = {
+                    param([Parameter(Mandatory)][string]$Text)
+
+                    $prepareStep = & $getNamedWorkflowStep `
+                        -Text $Text `
+                        -Name 'Prepare PowerShell 7.6.4'
+                    $governanceStep = & $getNamedWorkflowStep `
+                        -Text $Text `
+                        -Name 'Bind governance to exact commit and PowerShell 7.6.4'
+                    $pathWriteToken = '$installRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append'
+                    $expectedPathToken = 'EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}'
+                    $oldDynamicShellToken = 'shell: ${{ steps.pwsh764.outputs.pwsh_path }}'
+                    $pathWriteIndex = $prepareStep.IndexOf(
+                        $pathWriteToken,
+                        [System.StringComparison]::Ordinal
+                    )
+                    $hashGateIndex = $prepareStep.IndexOf(
+                        'PowerShell package SHA-256 mismatch',
+                        [System.StringComparison]::Ordinal
+                    )
+                    $extractIndex = $prepareStep.IndexOf(
+                        'Expand-Archive',
+                        [System.StringComparison]::Ordinal
+                    )
+                    $executableGateIndex = $prepareStep.IndexOf(
+                        'Extracted PowerShell executable does not exist',
+                        [System.StringComparison]::Ordinal
+                    )
+                    $preparePass = (
+                        -not [string]::IsNullOrWhiteSpace($prepareStep) -and
+                        $pathWriteIndex -gt $hashGateIndex -and
+                        $pathWriteIndex -gt $extractIndex -and
+                        $pathWriteIndex -gt $executableGateIndex
+                    )
+                    $governancePass = (
+                        -not [string]::IsNullOrWhiteSpace($governanceStep) -and
+                        [regex]::IsMatch($governanceStep, '(?m)^        shell: pwsh\s*$') -and
+                        $governanceStep.Contains(
+                            $expectedPathToken,
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            '"PowerShellVersion: $powerShellVersion"',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            '"ExpectedPowerShellPath: $expectedPwshPath"',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            '"ActualPowerShellPath: $resolvedActualPwshPath"',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            "'PowerShellProcessPathParityPassed: true'",
+                            [System.StringComparison]::Ordinal
+                        )
+                    )
+                    $oldDynamicShellAbsent = -not $Text.Contains(
+                        $oldDynamicShellToken,
+                        [System.StringComparison]::Ordinal
+                    )
+                    return [pscustomobject]@{
+                        Passed = $preparePass -and $governancePass -and $oldDynamicShellAbsent
+                        PrepareStep = $prepareStep
+                        GovernanceStep = $governanceStep
+                    }
+                }
+
+                $positiveWorkflowContract = & $testCIWorkflowContract -Text $workflowText
+                if (-not $positiveWorkflowContract.Passed) {
+                    $workflowContractFailures += 'corrected-workflow-contract'
+                }
+
+                $missingPathWriteCandidate = $workflowText.Replace(
+                    '$installRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append',
+                    '$installRoot | Out-Null'
+                )
+                if ((& $testCIWorkflowContract -Text $missingPathWriteCandidate).Passed) {
+                    $workflowContractFailures += 'missing-github-path-not-rejected'
+                }
+
+                $missingExpectedPathCandidate = $workflowText.Replace(
+                    'EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}',
+                    'REMOVED_EXPECTED_PWSH_PATH: true'
+                )
+                if ((& $testCIWorkflowContract -Text $missingExpectedPathCandidate).Passed) {
+                    $workflowContractFailures += 'missing-expected-pwsh-path-not-rejected'
+                }
+
+                $dynamicGovernanceStep = $positiveWorkflowContract.GovernanceStep.Replace(
+                    '        shell: pwsh',
+                    '        shell: ${{ steps.pwsh764.outputs.pwsh_path }} -NoLogo -NoProfile -NonInteractive -File {0}'
+                )
+                $dynamicShellCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.GovernanceStep,
+                    $dynamicGovernanceStep
+                )
+                if ((& $testCIWorkflowContract -Text $dynamicShellCandidate).Passed) {
+                    $workflowContractFailures += 'dynamic-shell-not-rejected'
+                }
+            }
             $missingWorkflowTokens = @($requiredWorkflowTokens | Where-Object {
                     -not $workflowText.Contains($_, [System.StringComparison]::Ordinal)
                 })
@@ -2807,7 +2932,7 @@ try {
             )
             $workflowOutput = @()
             $workflowExit = 1
-            if ($missingWorkflowTokens.Count -eq 0) {
+            if ($missingWorkflowTokens.Count -eq 0 -and $workflowContractFailures.Count -eq 0) {
                 $workflowOutput += @(
                     & $generatorPath `
                         -OutputPath $workflowRecordPath `
@@ -2849,12 +2974,24 @@ try {
                 Name = $workflowDefinition.Name
                 ExpectedExit = 0
                 ActualExit = $workflowExit
-                Result = if ($workflowExit -eq 0 -and $missingWorkflowTokens.Count -eq 0) { 'PASS' } else { 'FAIL' }
-                Diagnostic = if ($workflowExit -eq 0 -and $missingWorkflowTokens.Count -eq 0) {
+                Result = if (
+                    $workflowExit -eq 0 -and
+                    $missingWorkflowTokens.Count -eq 0 -and
+                    $workflowContractFailures.Count -eq 0
+                ) { 'PASS' } else { 'FAIL' }
+                Diagnostic = if (
+                    $workflowExit -eq 0 -and
+                    $missingWorkflowTokens.Count -eq 0 -and
+                    $workflowContractFailures.Count -eq 0
+                ) {
                     ''
                 }
                 else {
-                    "missingTokens=$($missingWorkflowTokens -join ', '); output=$($workflowOutput -join [Environment]::NewLine)"
+                    (
+                        "missingTokens=$($missingWorkflowTokens -join ', '); " +
+                        "contractFailures=$($workflowContractFailures -join ', '); " +
+                        "output=$($workflowOutput -join [Environment]::NewLine)"
+                    )
                 }
             })
         }
