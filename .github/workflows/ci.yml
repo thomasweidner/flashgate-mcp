@@ -116,7 +116,12 @@ jobs:
             if ($powerShellVersion -cne '7.6.4') {
               throw "PowerShell 7.6.4 is required; actual=$powerShellVersion"
             }
-            if ($resolvedActualPwshPath -cne $expectedPwshPath) {
+            $powerShellProcessPathParity = [string]::Equals(
+              $resolvedActualPwshPath,
+              $expectedPwshPath,
+              [System.StringComparison]::OrdinalIgnoreCase
+            )
+            if (-not $powerShellProcessPathParity) {
               throw "Governance shell does not use the verified PowerShell executable."
             }
             'PowerShellProcessPathParityPassed: true'

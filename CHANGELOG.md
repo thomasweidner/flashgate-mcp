@@ -72,7 +72,11 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   path against the expected hash-gated executable, and updates the existing
   workflow-binding fixture to reject missing path publication, missing
   expected-path binding, or the obsolete dynamic shell without changing the
-  permanent 198-case inventory.
+  permanent 198-case inventory. The focused Windows-path follow-up uses
+  explicit ordinal, case-insensitive equality for normalized absolute
+  expected/actual paths, accepts casing-only differences, and keeps different
+  drives, directories, subdirectories, filenames, relative paths, empty
+  values, and case-sensitive legacy comparisons fail-closed.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.

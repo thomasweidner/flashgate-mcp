@@ -46,11 +46,14 @@ release URL and verifies SHA-256
 before extraction. After the hash, extraction, and executable-existence gates
 pass, it publishes only that extraction directory through `GITHUB_PATH` and
 uses the static `shell: pwsh`. The governance step compares the running
-PowerShell process path with the expected hash-gated executable path, with no
-global installation, latest-version resolution, or fallback. The productive
-validator gates the exact `7.6.4` interpreter and downloaded package digest;
-the fixture runner also requires 7.6.4 and launches child validators from its
-current `$PSHOME`.
+PowerShell process path with the expected hash-gated executable path using
+explicit ordinal, case-insensitive equality after both absolute paths are
+normalized. Casing-only differences are accepted; different drives,
+directories, subdirectories, filenames, relative paths, and empty values
+remain fail-closed, with no global installation, latest-version resolution, or
+fallback. The productive validator gates the exact `7.6.4` interpreter and
+downloaded package digest; the fixture runner also requires 7.6.4 and launches
+child validators from its current `$PSHOME`.
 
 The fixture matrix exercises the production validator with positive and
 negative canonical paths, every immutable mode flag, real tracked domains,
@@ -76,8 +79,10 @@ a wrong package digest fail their specific productive checks. The real-CI
 workflow-binding fixture also semantically requires the post-verification
 `GITHUB_PATH` publication, static governance shell, expected path binding, and
 expected/actual process-path diagnostics. In-memory negative variants prove
-that removing either binding or restoring the obsolete dynamic shell fails
-closed without adding permanent fixture cases.
+that removing either binding, restoring the obsolete dynamic shell, or using a
+case-sensitive path comparison fails closed. The same focused check accepts
+the Hosted casing-only `.exe`/`.EXE` variant and rejects changed directories
+and filenames without adding permanent fixture cases.
 
 The current BL-333/BL-334 governance matrix contains 198 cases. The count is
 reported by the fixture runner and must change together with its permanent

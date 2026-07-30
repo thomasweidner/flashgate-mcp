@@ -70,12 +70,16 @@ the official PowerShell 7.6.4 Windows x64 ZIP only after the pinned SHA-256
 passes. Only after the hash, extraction, and executable-existence gates does it
 publish the verified extraction directory through `GITHUB_PATH`; the
 governance step uses the static `shell: pwsh` and requires its actual process
-path to match the expected hash-gated executable. Both the productive validator
-and fixture harness fail closed on a different interpreter version; the
-productive validator also rechecks the downloaded package digest. The focused
-workflow-binding fixture rejects missing path publication, missing expected
-path binding, and the obsolete dynamic shell form without changing the
-permanent 198-case inventory.
+path to equal the expected hash-gated executable under ordinal,
+case-insensitive Windows semantics after full-path normalization. Casing-only
+differences are accepted; changed drives, directories, subdirectories,
+filenames, relative paths, and empty paths remain fail-closed. Both the
+productive validator and fixture harness fail closed on a different
+interpreter version; the productive validator also rechecks the downloaded
+package digest. The focused workflow-binding fixture rejects missing path
+publication, missing expected path binding, the obsolete dynamic shell form,
+and case-sensitive path comparisons without changing the permanent 198-case
+inventory.
 
 The script writes its detailed report to:
 

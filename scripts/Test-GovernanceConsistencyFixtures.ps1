@@ -2767,6 +2767,9 @@ try {
                     '"PowerShellVersion: $powerShellVersion"',
                     '"ExpectedPowerShellPath: $expectedPwshPath"',
                     '"ActualPowerShellPath: $resolvedActualPwshPath"',
+                    '[System.StringComparison]::OrdinalIgnoreCase',
+                    'if (-not $powerShellProcessPathParity)',
+                    '"Governance shell does not use the verified PowerShell executable."',
                     "'PowerShellProcessPathParityPassed: true'",
                     '"ExpectedPullRequestHead: $expectedHead"',
                     '"CheckedOutCommit: $checkedOutCommit"',
@@ -2832,6 +2835,9 @@ try {
                     $pathWriteToken = '$installRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append'
                     $expectedPathToken = 'EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}'
                     $oldDynamicShellToken = 'shell: ${{ steps.pwsh764.outputs.pwsh_path }}'
+                    $legacyPathComparisonPattern = (
+                        '\$resolvedActualPwshPath\s+-(?:c)?ne\s+\$expectedPwshPath'
+                    )
                     $pathWriteIndex = $prepareStep.IndexOf(
                         $pathWriteToken,
                         [System.StringComparison]::Ordinal
@@ -2874,8 +2880,32 @@ try {
                             [System.StringComparison]::Ordinal
                         ) -and
                         $governanceStep.Contains(
+                            '$expectedPwshPath = [System.IO.Path]::GetFullPath($env:EXPECTED_PWSH_PATH)',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            '$resolvedActualPwshPath = [System.IO.Path]::GetFullPath($actualPwshPath)',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            '[System.StringComparison]::OrdinalIgnoreCase',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            'if (-not $powerShellProcessPathParity)',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
+                            '"Governance shell does not use the verified PowerShell executable."',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $governanceStep.Contains(
                             "'PowerShellProcessPathParityPassed: true'",
                             [System.StringComparison]::Ordinal
+                        ) -and
+                        -not [regex]::IsMatch(
+                            $governanceStep,
+                            $legacyPathComparisonPattern
                         )
                     )
                     $oldDynamicShellAbsent = -not $Text.Contains(
@@ -2888,10 +2918,71 @@ try {
                         GovernanceStep = $governanceStep
                     }
                 }
+                $testWindowsSemanticPathParity = {
+                    param(
+                        [AllowEmptyString()][string]$ExpectedPath,
+                        [AllowEmptyString()][string]$ActualPath
+                    )
+
+                    if ([string]::IsNullOrWhiteSpace($ExpectedPath) -or
+                        [string]::IsNullOrWhiteSpace($ActualPath) -or
+                        -not [System.IO.Path]::IsPathFullyQualified($ExpectedPath) -or
+                        -not [System.IO.Path]::IsPathFullyQualified($ActualPath)) {
+                        return $false
+                    }
+                    try {
+                        $normalizedExpectedPath = [System.IO.Path]::GetFullPath($ExpectedPath)
+                        $normalizedActualPath = [System.IO.Path]::GetFullPath($ActualPath)
+                        return [string]::Equals(
+                            $normalizedActualPath,
+                            $normalizedExpectedPath,
+                            [System.StringComparison]::OrdinalIgnoreCase
+                        )
+                    }
+                    catch {
+                        return $false
+                    }
+                }
 
                 $positiveWorkflowContract = & $testCIWorkflowContract -Text $workflowText
                 if (-not $positiveWorkflowContract.Passed) {
                     $workflowContractFailures += 'corrected-workflow-contract'
+                }
+                $expectedWindowsPwshPath = 'D:\a\_temp\PowerShell-7.6.4-win-x64\pwsh.exe'
+                if (-not (& $testWindowsSemanticPathParity `
+                        -ExpectedPath $expectedWindowsPwshPath `
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-win-x64\pwsh.EXE')) {
+                    $workflowContractFailures += 'case-only-path-difference-not-accepted'
+                }
+                if (& $testWindowsSemanticPathParity `
+                        -ExpectedPath $expectedWindowsPwshPath `
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-other\pwsh.exe') {
+                    $workflowContractFailures += 'different-directory-not-rejected'
+                }
+                if (& $testWindowsSemanticPathParity `
+                        -ExpectedPath $expectedWindowsPwshPath `
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-win-x64\powershell.exe') {
+                    $workflowContractFailures += 'different-filename-not-rejected'
+                }
+                if (& $testWindowsSemanticPathParity `
+                        -ExpectedPath $expectedWindowsPwshPath `
+                        -ActualPath 'E:\a\_temp\PowerShell-7.6.4-win-x64\pwsh.exe') {
+                    $workflowContractFailures += 'different-drive-not-rejected'
+                }
+                if (& $testWindowsSemanticPathParity `
+                        -ExpectedPath $expectedWindowsPwshPath `
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-win-x64\subdir\pwsh.exe') {
+                    $workflowContractFailures += 'different-subdirectory-not-rejected'
+                }
+                if (& $testWindowsSemanticPathParity `
+                        -ExpectedPath $expectedWindowsPwshPath `
+                        -ActualPath '.\pwsh.exe') {
+                    $workflowContractFailures += 'relative-path-not-rejected'
+                }
+                if (& $testWindowsSemanticPathParity `
+                        -ExpectedPath $expectedWindowsPwshPath `
+                        -ActualPath '') {
+                    $workflowContractFailures += 'empty-path-not-rejected'
                 }
 
                 $missingPathWriteCandidate = $workflowText.Replace(
@@ -2920,6 +3011,25 @@ try {
                 )
                 if ((& $testCIWorkflowContract -Text $dynamicShellCandidate).Passed) {
                     $workflowContractFailures += 'dynamic-shell-not-rejected'
+                }
+
+                $ordinalComparisonCandidate = $workflowText.Replace(
+                    '[System.StringComparison]::OrdinalIgnoreCase',
+                    '[System.StringComparison]::Ordinal'
+                )
+                if ((& $testCIWorkflowContract -Text $ordinalComparisonCandidate).Passed) {
+                    $workflowContractFailures += 'case-sensitive-ordinal-not-rejected'
+                }
+
+                $legacyComparisonCandidate = $workflowText.Replace(
+                    "'PowerShellProcessPathParityPassed: true'",
+                    (
+                        "'PowerShellProcessPathParityPassed: true'`r`n" +
+                        '            # $resolvedActualPwshPath -cne $expectedPwshPath'
+                    )
+                )
+                if ((& $testCIWorkflowContract -Text $legacyComparisonCandidate).Passed) {
+                    $workflowContractFailures += 'case-sensitive-legacy-comparison-not-rejected'
                 }
             }
             $missingWorkflowTokens = @($requiredWorkflowTokens | Where-Object {
