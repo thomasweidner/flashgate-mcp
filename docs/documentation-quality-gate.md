@@ -62,6 +62,15 @@ not an independent governance source. The fixture runner fails closed on
 mirror/canonical byte divergence whenever the external validator is locally
 available.
 
+The Windows governance job checks out the exact pull-request head independently
+from the merge-result Go matrix. It compares the event-loaded workflow blob with
+the exact-head workflow blob before accepting workflow provenance. It then uses
+the official PowerShell 7.6.4 Windows x64 ZIP only after the pinned SHA-256
+`80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
+passes. Both the productive validator and fixture harness fail closed on a
+different interpreter version; the productive validator also rechecks the
+downloaded package digest.
+
 The script writes its detailed report to:
 
 ```text
@@ -122,6 +131,9 @@ Run the gate:
 
 ## CI integration boundary
 
-The repository script is the permanent local gate. GitHub Actions integration should be added only after the script has passed under PowerShell 7.6.4 on the integrated target-branch state. A dedicated workflow or CI job should call the same script without duplicating its validation logic.
+The repository script is the permanent local gate. The dedicated Hosted
+governance job calls the same productive script and fixture matrix under the
+pinned PowerShell 7.6.4 package without duplicating their validation logic.
+Merge-result Go testing remains a separate CI responsibility.
 
 CI integration must not silently convert exit code `2` into a documentation failure or ignore it. Infrastructure failure is separately actionable and blocks the gate because no trustworthy audit result was produced.

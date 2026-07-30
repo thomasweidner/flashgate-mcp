@@ -58,7 +58,15 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   byte-bound repository execution mirror of the external Classic artifact
   validator, makes the fixture default script-relative with fail-closed local
   canonical-byte parity, and passes the mirror explicitly in Windows CI without
-  changing runtime or product logic.
+  changing runtime or product logic. The exact-head correction moves governance
+  into a separate Windows job that checks out the pull-request head SHA instead
+  of the synthetic merge commit, proves workflow-source blob parity before
+  binding workflow provenance, and downloads the official PowerShell 7.6.4
+  Windows x64 ZIP only from its versioned release URL after verifying SHA-256
+  `80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`.
+  The productive validator and the unchanged 198-case fixture matrix fail
+  closed on a different interpreter version or package digest; the existing
+  Windows/Linux Go matrix continues to test the merge result.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.

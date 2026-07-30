@@ -19,6 +19,9 @@ param(
     [string]$ExpectedEvent,
     [string]$ExpectedRef,
     [string]$ExpectedHeadSha,
+    [string]$ExpectedPowerShellVersion,
+    [string]$PowerShellPackagePath,
+    [string]$ExpectedPowerShellPackageSha256,
     [string]$ExpectedPriorReviewBaselineSha256,
     [string]$ExpectedCorrectionPatchSha256,
     [string]$ExpectedCurrentDeltaSha256,
@@ -784,6 +787,56 @@ try {
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
     if (-not (Test-Path -LiteralPath $resolvedRepositoryRoot -PathType Container)) {
         throw "Repository root does not exist: $resolvedRepositoryRoot"
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedPowerShellVersion)) {
+        $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
+        Add-GovernanceCheck -Id 'POWERSHELL-VERSION' `
+            -Passed ($actualPowerShellVersion -ceq $ExpectedPowerShellVersion) `
+            -Message "PowerShell version is exactly $ExpectedPowerShellVersion (actual: $actualPowerShellVersion)."
+    }
+
+    $powerShellPackageValidationRequested = (
+        -not [string]::IsNullOrWhiteSpace($PowerShellPackagePath) -or
+        -not [string]::IsNullOrWhiteSpace($ExpectedPowerShellPackageSha256)
+    )
+    if ($powerShellPackageValidationRequested) {
+        $powerShellPackageInputsComplete = (
+            -not [string]::IsNullOrWhiteSpace($PowerShellPackagePath) -and
+            -not [string]::IsNullOrWhiteSpace($ExpectedPowerShellPackageSha256)
+        )
+        Add-GovernanceCheck -Id 'POWERSHELL-PACKAGE-INPUTS' `
+            -Passed $powerShellPackageInputsComplete `
+            -Message 'PowerShell package validation requires both the package path and expected SHA-256.'
+
+        if ($powerShellPackageInputsComplete) {
+            $powerShellPackageExists = Test-Path -LiteralPath $PowerShellPackagePath -PathType Leaf
+            Add-GovernanceCheck -Id 'POWERSHELL-PACKAGE-PATH' `
+                -Passed $powerShellPackageExists `
+                -Message "PowerShell package exists at the bound path: $PowerShellPackagePath"
+
+            $expectedPowerShellPackageHashValid = (
+                $ExpectedPowerShellPackageSha256 -match '^[0-9A-Fa-f]{64}$'
+            )
+            Add-GovernanceCheck -Id 'POWERSHELL-PACKAGE-EXPECTED-SHA256' `
+                -Passed $expectedPowerShellPackageHashValid `
+                -Message 'Expected PowerShell package SHA-256 is a full hexadecimal digest.'
+
+            if ($powerShellPackageExists -and $expectedPowerShellPackageHashValid) {
+                $actualPowerShellPackageSha256 = (
+                    Get-FileHash -LiteralPath $PowerShellPackagePath -Algorithm SHA256
+                ).Hash
+                Add-GovernanceCheck -Id 'POWERSHELL-PACKAGE-SHA256' `
+                    -Passed (
+                        $actualPowerShellPackageSha256 -ceq
+                        $ExpectedPowerShellPackageSha256.ToUpperInvariant()
+                    ) `
+                    -Message (
+                        'PowerShell package SHA-256 matches the expected digest ' +
+                        "(actual: $actualPowerShellPackageSha256)."
+                    )
+            }
+        }
     }
 
     $governanceRoot = Join-Path $resolvedRepositoryRoot 'Governance'

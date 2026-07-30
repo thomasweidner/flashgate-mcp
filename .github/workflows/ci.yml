@@ -12,6 +12,229 @@ permissions:
   contents: read
 
 jobs:
+  governance:
+    name: Governance (exact PR head)
+    runs-on: windows-latest
+
+    steps:
+      - name: Select exact governance commit
+        id: exact_head
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_HEAD: ${{ github.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $expectedHead = $null
+          try {
+            $expectedHead = if ($env:EVENT_NAME -eq 'pull_request') {
+              $env:PULL_REQUEST_HEAD
+            } else {
+              $env:PUSH_HEAD
+            }
+            if ($expectedHead -notmatch '^[0-9a-f]{40}$') {
+              throw "Expected governance commit is not a full SHA-1: $expectedHead"
+            }
+            "ExpectedPullRequestHead: $expectedHead"
+            "expected_head=$expectedHead" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          } catch {
+            "ExactHeadSelectionFailure: $($_.Exception.Message)"
+            throw
+          } finally {
+            $expectedHead = $null
+          }
+
+      - name: Checkout exact governance commit
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.exact_head.outputs.expected_head }}
+
+      - name: Prepare PowerShell 7.6.4
+        id: pwsh764
+        shell: pwsh
+        env:
+          POWERSHELL_URI: https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-x64.zip
+          POWERSHELL_SHA256: 80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $packagePath = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.4-win-x64.zip'
+          $installRoot = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.4-win-x64'
+          $pwshPath = Join-Path $installRoot 'pwsh.exe'
+          try {
+            Invoke-WebRequest -Uri $env:POWERSHELL_URI -OutFile $packagePath
+            $actualHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash
+            if ($actualHash -cne $env:POWERSHELL_SHA256) {
+              throw "PowerShell package SHA-256 mismatch: expected=$($env:POWERSHELL_SHA256); actual=$actualHash"
+            }
+            [void][System.IO.Directory]::CreateDirectory($installRoot)
+            Expand-Archive -LiteralPath $packagePath -DestinationPath $installRoot -Force
+            if (-not (Test-Path -LiteralPath $pwshPath -PathType Leaf)) {
+              throw "Extracted PowerShell executable does not exist: $pwshPath"
+            }
+            "PowerShellPackage: $packagePath"
+            "PowerShellPackageSHA256: $actualHash"
+            'PowerShellPackageHashGatePassed: true'
+            "pwsh_path=$pwshPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            "package_path=$packagePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          } catch {
+            "PowerShellPreparationFailure: $($_.Exception.Message)"
+            throw
+          } finally {
+            $actualHash = $null
+          }
+
+      - name: Bind governance to exact commit and PowerShell 7.6.4
+        shell: ${{ steps.pwsh764.outputs.pwsh_path }} -NoLogo -NoProfile -NonInteractive -File {0}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EXPECTED_HEAD: ${{ steps.exact_head.outputs.expected_head }}
+          BASE_REF: ${{ github.base_ref }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          OBSERVED_WORKFLOW_SHA: ${{ github.workflow_sha }}
+          GITHUB_REPOSITORY_NAME: ${{ github.repository }}
+          GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT_VALUE: ${{ github.run_attempt }}
+          GITHUB_REF_VALUE: ${{ github.ref }}
+          PWSH_PACKAGE_PATH: ${{ steps.pwsh764.outputs.package_path }}
+          PWSH_PACKAGE_SHA256: 80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $governanceReportPath = Join-Path $env:RUNNER_TEMP 'flashgate-governance-report.json'
+          try {
+            $powerShellVersion = $PSVersionTable.PSVersion.ToString()
+            "PowerShellVersion: $powerShellVersion"
+            if ($powerShellVersion -cne '7.6.4') {
+              throw "PowerShell 7.6.4 is required; actual=$powerShellVersion"
+            }
+
+            $expectedHead = $env:EXPECTED_HEAD
+            $checkedOutCommit = (git rev-parse HEAD).Trim()
+            "ExpectedPullRequestHead: $expectedHead"
+            "CheckedOutCommit: $checkedOutCommit"
+            "CurrentCommit: $checkedOutCommit"
+            "ExpectedCurrentCommit: $expectedHead"
+            "ExpectedHeadSha: $expectedHead"
+            if ($checkedOutCommit -cne $expectedHead) {
+              throw "Checked out commit does not match the expected governance commit."
+            }
+            'CurrentCommitParityPassed: true'
+            'ExpectedHeadShaParityPassed: true'
+
+            $observedWorkflowSha = $env:OBSERVED_WORKFLOW_SHA
+            if ($observedWorkflowSha -notmatch '^[0-9a-f]{40}$') {
+              throw "Observed workflow SHA is not a full SHA-1: $observedWorkflowSha"
+            }
+            git cat-file -e "$observedWorkflowSha^{commit}" 2>$null
+            if ($LASTEXITCODE -ne 0) {
+              git fetch --no-tags origin $observedWorkflowSha
+              if ($LASTEXITCODE -ne 0 -and
+                  $env:EVENT_NAME -eq 'pull_request' -and
+                  $env:PULL_REQUEST_NUMBER -match '^[1-9][0-9]*$') {
+                git fetch --no-tags origin "refs/pull/$($env:PULL_REQUEST_NUMBER)/merge"
+              }
+              git cat-file -e "$observedWorkflowSha^{commit}" 2>$null
+              if ($LASTEXITCODE -ne 0) {
+                throw "Unable to fetch observed workflow SHA: $observedWorkflowSha"
+              }
+            }
+            $workflowPath = '.github/workflows/ci.yml'
+            $observedWorkflowBlob = (git rev-parse "$observedWorkflowSha`:$workflowPath").Trim()
+            $headWorkflowBlob = (git rev-parse "$expectedHead`:$workflowPath").Trim()
+            "ObservedWorkflowSha: $observedWorkflowSha"
+            "ObservedWorkflowBlob: $observedWorkflowBlob"
+            "HeadWorkflowBlob: $headWorkflowBlob"
+            if ($observedWorkflowBlob -cne $headWorkflowBlob) {
+              throw 'Observed workflow source and exact-head workflow source are not byte-identical.'
+            }
+            'WorkflowSourceParityPassed: true'
+            $workflowCommit = $expectedHead
+
+            if ($env:EVENT_NAME -eq 'pull_request') {
+              $baselineCommit = (git merge-base HEAD "origin/$($env:BASE_REF)").Trim()
+            } else {
+              $eventBefore = $env:EVENT_BEFORE
+              git cat-file -e "$eventBefore^{commit}" 2>$null
+              $eventBeforeExists = $LASTEXITCODE -eq 0
+              if ($eventBefore -match '^[0-9a-f]{40}$' -and
+                  $eventBefore -ne ('0' * 40) -and
+                  $eventBeforeExists) {
+                $baselineCommit = $eventBefore
+              } elseif ((git rev-list --count HEAD) -gt 1) {
+                $baselineCommit = (git rev-parse HEAD^).Trim()
+              } else {
+                $baselineCommit = $checkedOutCommit
+              }
+            }
+
+            $changedPaths = @(
+              git diff --name-only "$baselineCommit...$checkedOutCommit" |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            )
+            $recordPath = Join-Path $env:RUNNER_TEMP 'flashgate-assignment-record.json'
+            $repository = "https://github.com/$($env:GITHUB_REPOSITORY_NAME).git"
+            $hostedCISources = @(
+              "$($env:GITHUB_REPOSITORY_NAME)@$checkedOutCommit"
+              "github-actions-run:$($env:GITHUB_RUN_ID_VALUE)"
+            )
+
+            .\scripts\New-GovernanceWorkflowRecord.ps1 `
+              -OutputPath $recordPath `
+              -Checkpoint SPRINT_CLOSE `
+              -ChangedPath $changedPaths `
+              -Repository $repository `
+              -BaselineCommit $baselineCommit `
+              -CurrentCommit $checkedOutCommit `
+              -WorkflowCommit $workflowCommit `
+              -RunId $env:GITHUB_RUN_ID_VALUE `
+              -RunAttempt $env:GITHUB_RUN_ATTEMPT_VALUE `
+              -Event $env:EVENT_NAME `
+              -Ref $env:GITHUB_REF_VALUE `
+              -HeadSha $expectedHead
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Governance workflow record generation failed.'
+            }
+
+            .\scripts\Test-GovernanceConsistency.ps1 `
+              -AssignmentRecordPath $recordPath `
+              -ChangedPath $changedPaths `
+              -RuntimeCheckpoint SPRINT_CLOSE `
+              -HostedCISource $hostedCISources `
+              -ExpectedRepository $repository `
+              -ExpectedBaselineCommit $baselineCommit `
+              -ExpectedCurrentCommit $expectedHead `
+              -ExpectedWorkflowCommit $workflowCommit `
+              -ExpectedRunId $env:GITHUB_RUN_ID_VALUE `
+              -ExpectedRunAttempt $env:GITHUB_RUN_ATTEMPT_VALUE `
+              -ExpectedEvent $env:EVENT_NAME `
+              -ExpectedRef $env:GITHUB_REF_VALUE `
+              -ExpectedHeadSha $expectedHead `
+              -ExpectedPowerShellVersion '7.6.4' `
+              -PowerShellPackagePath $env:PWSH_PACKAGE_PATH `
+              -ExpectedPowerShellPackageSha256 $env:PWSH_PACKAGE_SHA256 `
+              -ReportPath $governanceReportPath
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Productive governance validation failed.'
+            }
+            $governanceReport = Get-Content -LiteralPath $governanceReportPath -Raw -Encoding UTF8 |
+              ConvertFrom-Json -Depth 100
+            "GovernanceCheckCount: $($governanceReport.checkCount)"
+            "GovernanceErrorCount: $($governanceReport.errorCount)"
+
+            .\scripts\Test-GovernanceConsistencyFixtures.ps1 `
+              -CanonicalArtifactValidatorPath (Join-Path $PWD 'scripts\Test-ClassicReviewArtifact.ps1')
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Governance fixture matrix failed.'
+            }
+          } catch {
+            "ExactGovernanceFailure: $($_.Exception.Message)"
+            throw
+          } finally {
+            $governanceReport = $null
+          }
+
   test:
     name: Test (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
@@ -32,68 +255,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-
-      - name: Bind governance to checked diff and workflow provenance
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          $currentCommit = (git rev-parse HEAD).Trim()
-          if ('${{ github.event_name }}' -eq 'pull_request') {
-            $baselineCommit = (git merge-base HEAD 'origin/${{ github.base_ref }}').Trim()
-          } else {
-            $eventBefore = '${{ github.event.before }}'
-            git cat-file -e "$eventBefore^{commit}" 2>$null
-            $eventBeforeExists = $LASTEXITCODE -eq 0
-            if ($eventBefore -match '^[0-9a-f]{40}$' -and
-                $eventBefore -ne ('0' * 40) -and
-                $eventBeforeExists) {
-              $baselineCommit = $eventBefore
-            } elseif ((git rev-list --count HEAD) -gt 1) {
-              $baselineCommit = (git rev-parse HEAD^).Trim()
-            } else {
-              $baselineCommit = $currentCommit
-            }
-          }
-          $changedPaths = @(
-            git diff --name-only "$baselineCommit...$currentCommit" |
-              Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-          )
-          $recordPath = Join-Path $env:RUNNER_TEMP 'flashgate-assignment-record.json'
-          $repository = 'https://github.com/${{ github.repository }}.git'
-          $workflowCommit = '${{ github.workflow_sha }}'
-          $hostedCISources = @(
-            '${{ github.repository }}@${{ github.sha }}'
-            'github-actions-run:${{ github.run_id }}'
-          )
-          .\scripts\New-GovernanceWorkflowRecord.ps1 `
-            -OutputPath $recordPath `
-            -Checkpoint SPRINT_CLOSE `
-            -ChangedPath $changedPaths `
-            -Repository $repository `
-            -BaselineCommit $baselineCommit `
-            -CurrentCommit $currentCommit `
-            -WorkflowCommit $workflowCommit `
-            -RunId '${{ github.run_id }}' `
-            -RunAttempt ${{ github.run_attempt }} `
-            -Event '${{ github.event_name }}' `
-            -Ref '${{ github.ref }}' `
-            -HeadSha '${{ github.sha }}'
-          .\scripts\Test-GovernanceConsistency.ps1 `
-            -AssignmentRecordPath $recordPath `
-            -ChangedPath $changedPaths `
-            -RuntimeCheckpoint SPRINT_CLOSE `
-            -HostedCISource $hostedCISources `
-            -ExpectedRepository $repository `
-            -ExpectedBaselineCommit $baselineCommit `
-            -ExpectedCurrentCommit $currentCommit `
-            -ExpectedWorkflowCommit $workflowCommit `
-            -ExpectedRunId '${{ github.run_id }}' `
-            -ExpectedRunAttempt ${{ github.run_attempt }} `
-            -ExpectedEvent '${{ github.event_name }}' `
-            -ExpectedRef '${{ github.ref }}' `
-            -ExpectedHeadSha '${{ github.sha }}'
-          .\scripts\Test-GovernanceConsistencyFixtures.ps1 `
-            -CanonicalArtifactValidatorPath (Join-Path $PWD 'scripts\Test-ClassicReviewArtifact.ps1')
 
       - name: Set up Go
         uses: actions/setup-go@v6

@@ -26,9 +26,28 @@ it relative to its own script by default and still accepts an explicit
 `-CanonicalArtifactValidatorPath`. When the external canonical validator exists
 locally, the runner compares both files byte-for-byte by SHA-256 and fails
 before creating fixtures on any divergence. Hosted Windows CI explicitly passes
-the repository mirror and therefore requires no contributor-local path. Fixture
-record current-commit and Hosted-CI head provenance are bound to the checked-out
-repository HEAD so the unchanged matrix remains valid on each committed CI head.
+the repository mirror and therefore requires no contributor-local path.
+
+The dedicated Windows governance job selects
+`github.event.pull_request.head.sha` for pull requests and `github.sha` for
+pushes, checks out that exact commit, and logs the expected head, checked-out
+commit, current commit, and validator expectations. Pull-request governance
+therefore validates the exact PR head rather than GitHub's synthetic merge
+commit. Because a pull-request workflow can be loaded through a different event
+commit, the job separately compares the `.github/workflows/ci.yml` Git blob at
+`github.workflow_sha` with the exact-head blob and binds workflow provenance to
+the head only after byte parity passes. The Windows/Linux Go matrix retains its
+normal merge checkout and continues to validate the prospective merge result.
+
+The governance job downloads
+`PowerShell-7.6.4-win-x64.zip` only from the official versioned PowerShell
+release URL and verifies SHA-256
+`80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
+before extraction. It invokes the extracted `pwsh.exe` explicitly, with no
+global installation, latest-version resolution, or fallback. The productive
+validator gates the exact `7.6.4` interpreter and downloaded package digest;
+the fixture runner also requires 7.6.4 and launches child validators from its
+current `$PSHOME`.
 
 The fixture matrix exercises the production validator with positive and
 negative canonical paths, every immutable mode flag, real tracked domains,
@@ -49,6 +68,8 @@ validator path. Each re-manifested negative case must fail its expected
 specific productive gate. A workflow checkpoint
 record passes only with an authoritative
 immutable repository, commit, event, ref, run, and Hosted CI source identity.
+Focused runtime fixtures additionally prove that a wrong PowerShell version and
+a wrong package digest fail their specific productive checks.
 
 The current BL-333/BL-334 governance matrix contains 198 cases. The count is
 reported by the fixture runner and must change together with its permanent

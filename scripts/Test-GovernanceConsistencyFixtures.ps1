@@ -1782,7 +1782,16 @@ try {
 
     $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('flashgate-governance-fixtures-' + [guid]::NewGuid().ToString('N'))
     [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
-    $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
+    $requiredPowerShellVersion = '7.6.4'
+    $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
+    if ($actualPowerShellVersion -cne $requiredPowerShellVersion) {
+        throw "PowerShell $requiredPowerShellVersion is required; actual=$actualPowerShellVersion"
+    }
+    $pwshExecutableName = if ($IsWindows) { 'pwsh.exe' } else { 'pwsh' }
+    $pwsh = Join-Path $PSHOME $pwshExecutableName
+    if (-not (Test-Path -LiteralPath $pwsh -PathType Leaf)) {
+        throw "Current PowerShell executable does not exist: $pwsh"
+    }
 
     $documentationGates = @('documentation-consistency', 'backlog-continuity', 'status', 'links', 'strict-utf8')
     $filesystemGates = @('root-confinement', 'symlink-reparse', 'limits', 'windows-linux')
@@ -2560,42 +2569,125 @@ try {
     }
 
     if (@($CaseName).Count -eq 0 -or 'positive-runtime-hosted-ci-array' -in $CaseName) {
-    $runtimeRecordPath = Join-Path $temporaryRoot 'runtime-release-record.json'
-    [System.IO.File]::WriteAllText(
-        $runtimeRecordPath,
-        ($release | ConvertTo-Json -Depth 100),
-        [System.Text.UTF8Encoding]::new($false)
-    )
-    $runtimeCommand = @(
-        '& ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $validatorPath),
-        '-RepositoryRoot ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepositoryRoot),
-        '-AssignmentRecordPath ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $runtimeRecordPath),
-        '-ChangedPath @()',
-        '-TrackedPath @(''README.md'')',
-        '-RuntimeCheckpoint RELEASE_CANDIDATE',
-        '-HostedCISource ' + (ConvertTo-PowerShellArrayLiteral -Value @(
-                "thomasweidner/flashgate-mcp@$actualHead",
-                'github-actions-run:123'
-            )),
-        '-ExpectedRepository ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value 'https://github.com/thomasweidner/flashgate-mcp.git'),
-        '-ExpectedBaselineCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
-        "-ExpectedCurrentCommit $actualHead",
-        '-ExpectedWorkflowCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
-        '-ExpectedRunId 123',
-        '-ExpectedRunAttempt 1',
-        '-ExpectedEvent workflow_dispatch',
-        '-ExpectedRef refs/tags/v1.0.0',
-        "-ExpectedHeadSha $actualHead"
-    ) -join ' '
-    $runtimeOutput = @(& $pwsh -NoLogo -NoProfile -Command $runtimeCommand 2>&1)
-    $runtimeExit = $LASTEXITCODE
-    [void]$results.Add([pscustomobject]@{
-        Name         = 'positive-runtime-hosted-ci-array'
-        ExpectedExit = 0
-        ActualExit   = $runtimeExit
-        Result       = if ($runtimeExit -eq 0) { 'PASS' } else { 'FAIL' }
-        Diagnostic   = if ($runtimeExit -eq 0) { '' } else { ($runtimeOutput -join [Environment]::NewLine) }
-    })
+        $runtimeRecordPath = Join-Path $temporaryRoot 'runtime-release-record.json'
+        $runtimePackagePath = Join-Path $temporaryRoot 'PowerShell-7.6.4-win-x64.zip'
+        [System.IO.File]::WriteAllText(
+            $runtimeRecordPath,
+            ($release | ConvertTo-Json -Depth 100),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        [System.IO.File]::WriteAllBytes(
+            $runtimePackagePath,
+            [System.Text.Encoding]::UTF8.GetBytes('PowerShell package hash fixture')
+        )
+        $runtimePackageSha256 = (
+            Get-FileHash -LiteralPath $runtimePackagePath -Algorithm SHA256
+        ).Hash
+        $runtimeCommandParts = @(
+            '& ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $validatorPath),
+            '-RepositoryRoot ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $resolvedRepositoryRoot),
+            '-AssignmentRecordPath ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value $runtimeRecordPath),
+            '-ChangedPath @()',
+            '-TrackedPath @(''README.md'')',
+            '-RuntimeCheckpoint RELEASE_CANDIDATE',
+            '-HostedCISource ' + (ConvertTo-PowerShellArrayLiteral -Value @(
+                    "thomasweidner/flashgate-mcp@$actualHead",
+                    'github-actions-run:123'
+                )),
+            '-ExpectedRepository ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value 'https://github.com/thomasweidner/flashgate-mcp.git'),
+            '-ExpectedBaselineCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
+            "-ExpectedCurrentCommit $actualHead",
+            '-ExpectedWorkflowCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
+            '-ExpectedRunId 123',
+            '-ExpectedRunAttempt 1',
+            '-ExpectedEvent workflow_dispatch',
+            '-ExpectedRef refs/tags/v1.0.0',
+            "-ExpectedHeadSha $actualHead",
+            '-PowerShellPackagePath ' + (
+                ConvertTo-PowerShellSingleQuotedLiteral -Value $runtimePackagePath
+            )
+        )
+
+        $runtimeCommand = @(
+            $runtimeCommandParts
+            "-ExpectedPowerShellVersion $requiredPowerShellVersion"
+            "-ExpectedPowerShellPackageSha256 $runtimePackageSha256"
+        ) -join ' '
+        $runtimeOutput = @(& $pwsh -NoLogo -NoProfile -Command $runtimeCommand 2>&1)
+        $runtimeExit = $LASTEXITCODE
+
+        $wrongVersionReportPath = Join-Path $temporaryRoot 'runtime-wrong-version-report.json'
+        $wrongVersionCommand = @(
+            $runtimeCommandParts
+            '-ExpectedPowerShellVersion 0.0.0'
+            "-ExpectedPowerShellPackageSha256 $runtimePackageSha256"
+            '-ReportPath ' + (
+                ConvertTo-PowerShellSingleQuotedLiteral -Value $wrongVersionReportPath
+            )
+        ) -join ' '
+        $wrongVersionOutput = @(& $pwsh -NoLogo -NoProfile -Command $wrongVersionCommand 2>&1)
+        $wrongVersionExit = $LASTEXITCODE
+        $wrongVersionCheckPass = $false
+        if (Test-Path -LiteralPath $wrongVersionReportPath -PathType Leaf) {
+            $wrongVersionReport = Get-Content -LiteralPath $wrongVersionReportPath -Raw -Encoding UTF8 |
+                ConvertFrom-Json -Depth 100 -DateKind String
+            $wrongVersionCheckPass = @(
+                $wrongVersionReport.checks | Where-Object {
+                    [string]$_.Id -ceq 'POWERSHELL-VERSION' -and
+                    [string]$_.Result -ceq 'FAIL'
+                }
+            ).Count -eq 1
+        }
+
+        $wrongHashReportPath = Join-Path $temporaryRoot 'runtime-wrong-hash-report.json'
+        $wrongHashCommand = @(
+            $runtimeCommandParts
+            "-ExpectedPowerShellVersion $requiredPowerShellVersion"
+            "-ExpectedPowerShellPackageSha256 $('0' * 64)"
+            '-ReportPath ' + (
+                ConvertTo-PowerShellSingleQuotedLiteral -Value $wrongHashReportPath
+            )
+        ) -join ' '
+        $wrongHashOutput = @(& $pwsh -NoLogo -NoProfile -Command $wrongHashCommand 2>&1)
+        $wrongHashExit = $LASTEXITCODE
+        $wrongHashCheckPass = $false
+        if (Test-Path -LiteralPath $wrongHashReportPath -PathType Leaf) {
+            $wrongHashReport = Get-Content -LiteralPath $wrongHashReportPath -Raw -Encoding UTF8 |
+                ConvertFrom-Json -Depth 100 -DateKind String
+            $wrongHashCheckPass = @(
+                $wrongHashReport.checks | Where-Object {
+                    [string]$_.Id -ceq 'POWERSHELL-PACKAGE-SHA256' -and
+                    [string]$_.Result -ceq 'FAIL'
+                }
+            ).Count -eq 1
+        }
+
+        $runtimePassed = (
+            $runtimeExit -eq 0 -and
+            $wrongVersionExit -eq 1 -and
+            $wrongVersionCheckPass -and
+            $wrongHashExit -eq 1 -and
+            $wrongHashCheckPass
+        )
+        [void]$results.Add([pscustomobject]@{
+            Name         = 'positive-runtime-hosted-ci-array'
+            ExpectedExit = 0
+            ActualExit   = if ($runtimePassed) { 0 } else { 1 }
+            Result       = if ($runtimePassed) { 'PASS' } else { 'FAIL' }
+            Diagnostic   = if ($runtimePassed) {
+                ''
+            }
+            else {
+                (
+                    "runtimeExit=$runtimeExit; wrongVersionExit=$wrongVersionExit; " +
+                    "wrongVersionCheckPass=$wrongVersionCheckPass; wrongHashExit=$wrongHashExit; " +
+                    "wrongHashCheckPass=$wrongHashCheckPass`n" +
+                    "runtime=$($runtimeOutput -join [Environment]::NewLine)`n" +
+                    "wrongVersion=$($wrongVersionOutput -join [Environment]::NewLine)`n" +
+                    "wrongHash=$($wrongHashOutput -join [Environment]::NewLine)"
+                )
+            }
+        })
     }
 
     if (@($CaseName).Count -eq 0 -or 'positive-complete-tracked-path-coverage' -in $CaseName) {
@@ -2659,17 +2751,52 @@ try {
                 'New-GovernanceWorkflowRecord.ps1',
                 '-AssignmentRecordPath $recordPath',
                 '-ChangedPath $changedPaths',
-                "-RuntimeCheckpoint $($workflowDefinition.Checkpoint)",
-                '-ExpectedRepository $repository',
-                '-ExpectedBaselineCommit $baselineCommit',
-                '-ExpectedCurrentCommit $currentCommit',
-                '-ExpectedWorkflowCommit $workflowCommit',
-                "-ExpectedRunId '`${{ github.run_id }}'",
-                '-ExpectedRunAttempt ${{ github.run_attempt }}',
-                "-ExpectedEvent '`${{ github.event_name }}'",
-                "-ExpectedRef '`${{ github.ref }}'",
-                "-ExpectedHeadSha '`${{ github.sha }}'"
+                "-RuntimeCheckpoint $($workflowDefinition.Checkpoint)"
             )
+            if ($workflowDefinition.Name -ceq 'positive-real-ci-workflow-binding') {
+                $requiredWorkflowTokens += @(
+                    'name: Governance (exact PR head)',
+                    'PULL_REQUEST_HEAD: ${{ github.event.pull_request.head.sha }}',
+                    'PUSH_HEAD: ${{ github.sha }}',
+                    'ref: ${{ steps.exact_head.outputs.expected_head }}',
+                    'https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-x64.zip',
+                    '80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793',
+                    'shell: ${{ steps.pwsh764.outputs.pwsh_path }} -NoLogo -NoProfile -NonInteractive -File {0}',
+                    '"PowerShellVersion: $powerShellVersion"',
+                    '"ExpectedPullRequestHead: $expectedHead"',
+                    '"CheckedOutCommit: $checkedOutCommit"',
+                    '"CurrentCommit: $checkedOutCommit"',
+                    '"ExpectedCurrentCommit: $expectedHead"',
+                    '"ExpectedHeadSha: $expectedHead"',
+                    "'WorkflowSourceParityPassed: true'",
+                    '-ExpectedRepository $repository',
+                    '-ExpectedBaselineCommit $baselineCommit',
+                    '-ExpectedCurrentCommit $expectedHead',
+                    '-ExpectedWorkflowCommit $workflowCommit',
+                    '-ExpectedRunId $env:GITHUB_RUN_ID_VALUE',
+                    '-ExpectedRunAttempt $env:GITHUB_RUN_ATTEMPT_VALUE',
+                    '-ExpectedEvent $env:EVENT_NAME',
+                    '-ExpectedRef $env:GITHUB_REF_VALUE',
+                    '-ExpectedHeadSha $expectedHead',
+                    "-ExpectedPowerShellVersion '7.6.4'",
+                    '-PowerShellPackagePath $env:PWSH_PACKAGE_PATH',
+                    '-ExpectedPowerShellPackageSha256 $env:PWSH_PACKAGE_SHA256',
+                    "Join-Path `$PWD 'scripts\Test-ClassicReviewArtifact.ps1'"
+                )
+            }
+            else {
+                $requiredWorkflowTokens += @(
+                    '-ExpectedRepository $repository',
+                    '-ExpectedBaselineCommit $baselineCommit',
+                    '-ExpectedCurrentCommit $currentCommit',
+                    '-ExpectedWorkflowCommit $workflowCommit',
+                    "-ExpectedRunId '`${{ github.run_id }}'",
+                    '-ExpectedRunAttempt ${{ github.run_attempt }}',
+                    "-ExpectedEvent '`${{ github.event_name }}'",
+                    "-ExpectedRef '`${{ github.ref }}'",
+                    "-ExpectedHeadSha '`${{ github.sha }}'"
+                )
+            }
             $missingWorkflowTokens = @($requiredWorkflowTokens | Where-Object {
                     -not $workflowText.Contains($_, [System.StringComparison]::Ordinal)
                 })
