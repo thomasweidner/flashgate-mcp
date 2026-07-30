@@ -88,17 +88,23 @@ The current BL-333/BL-334 governance matrix contains 198 cases. The count is
 reported by the fixture runner and must change together with its permanent
 case inventory.
 
-The independent Exact-Commit Review of Draft PR #27 passed on exact technical
-head `ecbd8dc61905c82cfdcb9386c0587c1089635f47`. Hosted CI Run
-`30531682280` created all four CI jobs and all 12 visible checks passed:
-exact-head checkout, current/expected-head parity, workflow-source parity,
-PowerShell 7.6.4 package and Windows-semantic process-path parity, 1,051
-productive governance checks with zero errors, and 198/198 Hosted fixtures.
-`PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are
-`CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`. The BL-333/BL-334 finding queue
-and PR27-EXACT review queue are empty. This review closure changes no runtime
-or product logic and does not authorize Ready-for-Review, merge, or
-auto-merge.
+PR #27 merged through `e42d57d57ea075640c9b123a533057bcac3861b8`.
+The merge has first parent `537ea1c1660cddfde5aace1888242d80a6be77bf`,
+second parent `c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`, identical merge/head
+trees, all six PR commits, and exact 26/26 path parity. Post-merge CI,
+Metadata Regression, and CodeQL completed successfully. The governance job
+bound exact head and workflow-source parity to the merge commit, used
+PowerShell 7.6.4, completed 1,051 checks with zero errors, and ran 198/198
+fixtures successfully. All BL-333/BL-334 and PR27-EXACT findings are closed.
+
+The post-merge finalization changes only `BACKLOG.md`, `CHANGELOG.md`,
+`docs/testing.md`, and `docs/documentation-quality-gate.md`. Validator,
+workflow, and fixture bytes are unchanged. Therefore the local 198-case run is
+reused from the exact post-merge Hosted evidence instead of being redundantly
+repeated; the Finalization PR must run the complete Hosted matrix again.
+This reuse contract does not waive productive governance or documentation
+consistency checks and introduces no runtime, product, INF-121, or BL-335
+change.
 
 FlashGate MCP uses Go's standard testing framework and the `flashgate-mcp` binary.
 

@@ -83,9 +83,20 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   Review closed `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and
   `PR27-EXACT-REV-003` as
   `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no BL-333/BL-334 or
-  PR27-EXACT review finding remains open. BL-333 and BL-334 remain in progress
-  until merge and post-merge completion, and Ready-for-Review still requires
-  separate explicit approval.
+  PR27-EXACT review finding remains open.
+- Completed BL-333 and BL-334 after PR #27 merged through regular merge commit
+  `e42d57d57ea075640c9b123a533057bcac3861b8`. The merge retains all six PR
+  commits through second parent `c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`,
+  matches its tree, and contains exactly the reviewed 26/26 paths. Post-merge
+  CI, Metadata Regression, and CodeQL passed with exact-head and
+  workflow-source parity, PowerShell 7.6.4, 1,051 governance checks with zero
+  errors, and 198/198 fixtures. All earlier and PR27-EXACT findings are closed;
+  durable reports, evidence, backups, and historical handoff inputs are
+  retained. Controlled cleanup removed no temporary review ZIP because each
+  remains the sole complete package for its review stage. This
+  documentation-only finalization changes no runtime or product logic.
+  BL-335 is the next planned and not-started queue step, followed by BL-251,
+  BL-324, final documentation convergence, and Local Work Register removal.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.
