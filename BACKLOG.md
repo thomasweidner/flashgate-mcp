@@ -543,32 +543,26 @@ These tasks originate in the final independent review of PR #21. They are accept
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-333 | In Progress | Establish change-trigger, review-mode, and handoff governance | **Foundation acceptance:** maintain the canonical change-trigger standard, complete machine-readable trigger catalog, assignment-record schema, four review/remediation modes, same-run `DISCOVERED_AND_CORRECTED_IN_RUN` handling, seven mandatory decision boundaries, Classic/independent-review handoff contract, required assignment/report fields, concise AGENTS rules, and validator foundations. Evidence must be separately attributable to BL-333 even when integrated with BL-334. The independent Full Review and complete bundled-correction/focused-delta-review track are complete; REV-007, REV-008, REV-010, REV-013, and REV-015 are `CLOSED_BY_INDEPENDENT_REVIEW`, and the 198-case matrix passed with zero warnings and failures. Draft PR #27 contains the reviewed governance implementation and four focused Hosted-CI corrections through exact reviewed head `ecbd8dc61905c82cfdcb9386c0587c1089635f47`. Hosted CI Run `30531682280` created all four CI jobs; all 12 visible checks passed, including exact-head governance with 1,051 checks, zero errors, and 198/198 fixtures. The independent Exact-Commit Review passed and closed `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` as `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no BL-333/BL-334 or PR27-EXACT review finding remains open. BL-333 remains `In Progress` until merge and post-merge completion; switching Draft PR #27 to Ready for Review requires separate explicit approval. |
-| BL-334 | In Progress | Enforce change-trigger, finding-remediation, and handoff governance | **Enforcement acceptance:** statically validate catalog/source/schema consistency; derive material triggers from diffs; require assignment records at start, scope change, pre-commit, sprint close, release candidate, and stable release; enforce external MCP, toolchain, security, dependency, review, CI, incident, and field triggers; require duplicate search and canonical backlog registration; bind actual correction/current-delta bytes; strictly validate focused, finding, completion, report, and handoff contracts; enforce exact external Windows path-to-scope mappings; fail closed on incomplete handoff or `ClassicReviewReady`; enforce commit-preparation and authoritative Hosted CI sources; and maintain the 198-case positive/negative production-path fixture matrix, including 18 re-manifested cases for visible HANDOFF values, duplicate/unknown keys, reserved outside-block control lines, and independent marker counts/order. Evidence must be separately attributable to BL-334. REV-007, REV-008, REV-010, REV-013, and REV-015 are `CLOSED_BY_INDEPENDENT_REVIEW`; RUN-007 is `CORRECTED_AND_INDEPENDENTLY_REVIEWED`. The final five-commit technical head `ecbd8dc61905c82cfdcb9386c0587c1089635f47` passed exact-head checkout, workflow-source parity, PowerShell 7.6.4 package/process-path gates, 1,051 productive governance checks with zero errors, and Hosted 198/198 fixtures. `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; both the finding queue and PR27-EXACT review queue are empty. Runtime and product logic remain unchanged. BL-334 remains `In Progress` until merge and post-merge completion, with the same separate Ready-for-Review approval boundary as BL-333. |
+| BL-333 | Done | Establish change-trigger, review-mode, and handoff governance | **Completed:** the canonical change-trigger, review-mode, finding-remediation, readiness, report, and handoff foundation is implemented and independently reviewed. PR #27 merged through regular merge commit `e42d57d57ea075640c9b123a533057bcac3861b8`; its second parent preserves all six PR commits at `c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`, and merge/head trees plus all 26/26 paths are identical. REV-007, REV-008, REV-010, REV-013, REV-015, `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are closed with no remaining BL-333/BL-334 or PR27-EXACT finding. Post-merge CI, Metadata Regression, and CodeQL passed; exact-head/workflow-source parity, PowerShell 7.6.4, 1,051 governance checks with zero errors, and 198/198 fixtures passed. Durable evidence is retained and the five complete temporary review packages remain preserved because none is a redundant disposable copy. No runtime or product logic changed. |
+| BL-334 | Done | Enforce change-trigger, finding-remediation, and handoff governance | **Completed:** fail-closed enforcement covers diff-derived triggers, checkpoints, immutable review modes, actual correction/current-delta bytes, exact finding and status parity, strict schemas, external path mappings, bounded handoff/readiness, commit preparation, and authoritative Hosted-CI provenance. PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8` with two-parent, tree, six-commit, and 26/26 path parity. REV-007, REV-008, REV-010, REV-013, and REV-015 remain `CLOSED_BY_INDEPENDENT_REVIEW`; RUN-007 remains `CORRECTED_AND_INDEPENDENTLY_REVIEWED`; `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` remain `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`. The finding and exact-review queues are empty. Post-merge Hosted CI passed with PowerShell 7.6.4, 1,051/0 governance, and 198/198 fixtures. Durable evidence is secured, controlled cleanup removed no sole-copy review package, and runtime/product logic remain unchanged. |
 | BL-335 | Planned | Migrate FlashGate reference-bound legacy Temp objects to local Temp | **Origin:** `INF-121 / MIG-003 / Welle 3`. **Objects:** `TMP-001`, `TMP-004`, `TMP-016`, and `TMP-059`; active references `REF-005`, `REF-006`, and `REF-007`; BL-246/BL-247 relationship. **Source paths:** `C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Temp\Backup-FlashGateFileProperties-BL246-BL247.ps1`, `...\flashgate-buildinfo-implementation`, `...\flashgate-file-properties-preintegration-20260723-123431`, and `...\New-FlashGate-BL246-BL247-IntegrationReport.ps1`. **Target:** the same relative names below `<CodexTempRoot>` (`C:\Voxtronic\Codex-Work\Temp`). **Acceptance:** migrate paths and active references atomically; treat TMP-016 and TMP-059 as one indivisible snapshot/generator pair; create timestamped reference backups; validate every changed PowerShell file with the PowerShell 7.6.4 parser; perform a complete active path scan, focused backup-producer dry run, focused BuildInfo package-path test, focused IntegrationReport dry run, and process/activity gate; remove no source before destination, reference, function, hash/manifest, and rollback validation pass. **Rollback:** restore reference backups and copy the validated destination objects back to their original OneDrive-Temp paths. **Authorization boundary:** INF-121 only registers this project work and grants no FlashGate implementation, commit, push, pull request, merge, remote, or source-removal authorization. |
 
-Current Draft PR #27 integration note: the focused BL-333/BL-334
-exact-head correction separates governance from merge-result Go testing,
-selects the exact pull-request head, proves workflow-source blob parity, and
-binds the official PowerShell 7.6.4 Windows x64 ZIP to SHA-256
-`80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`.
-The productive validator and focused fixtures fail closed on a wrong
-interpreter version or package digest. The zero-job correction publishes the
-verified extraction directory to `GITHUB_PATH`, uses the static
-`shell: pwsh`, and proves expected/actual PowerShell process-path parity; its
-focused workflow fixture rejects missing path publication, missing expected
-path binding, and the obsolete dynamic shell form. The follow-up Windows-path
-correction accepts casing-only differences through `OrdinalIgnoreCase` while
-the focused fixture rejects changed drives, directories, subdirectories,
-filenames, relative paths, empty paths, and case-sensitive legacy comparison.
-Hosted CI Run `30531682280` passed all 12 visible checks on
-`ecbd8dc61905c82cfdcb9386c0587c1089635f47`. The subsequent independent
-Exact-Commit Review closed `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and
-`PR27-EXACT-REV-003` as `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no
-BL-333/BL-334 or PR27-EXACT review finding remains open. BL-333 and BL-334
-remain `In Progress` until merge and post-merge completion. BL-335 remains
-`Planned` and has not begun. Draft PR #27 may be switched to Ready for Review
-only after separate explicit approval.
+PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8`.
+Its first parent is `537ea1c1660cddfde5aace1888242d80a6be77bf`;
+its second parent is `c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`.
+The second-parent history retains the six PR commits
+`b97cb1bf40399e2489bdacc1487038bfdba46506`,
+`981c9be89b5fb8eca21ea1003758dede7695ef8d`,
+`4afd08dad8a1544b4e3b2cede0d9c037bd90d132`,
+`63824dd2b90da4cbc4d91322a5d5fea00d892d76`,
+`ecbd8dc61905c82cfdcb9386c0587c1089635f47`, and
+`c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`. Merge/head tree parity and
+26/26 path parity passed. Post-merge CI, Metadata Regression, and CodeQL are
+terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
+1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
+three PR27-EXACT findings are closed. BL-333 and BL-334 are `Done`; BL-335 is
+the next planned queue step and remains not begun. The binding queue is:
+`BL-335 → BL-251 → BL-324 → final documentation convergence → remove Local Work Register`.
 
 ## Cross-epic rules
 

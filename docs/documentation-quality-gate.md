@@ -81,16 +81,23 @@ publication, missing expected path binding, the obsolete dynamic shell form,
 and case-sensitive path comparisons without changing the permanent 198-case
 inventory.
 
-Draft PR #27 passed its independent Exact-Commit Review on exact technical head
-`ecbd8dc61905c82cfdcb9386c0587c1089635f47`. Hosted CI Run `30531682280`
-created all four CI jobs and all 12 visible checks passed, including 1,051
-governance checks with zero errors and 198/198 fixtures.
-`PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are
-`CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no BL-333/BL-334 or PR27-EXACT
-review finding remains open. The documentation closure keeps BL-333 and BL-334
-`In Progress` until merge and post-merge completion, leaves BL-335 `Planned`
-and not begun, and preserves the separate explicit approval boundary for
-Ready-for-Review.
+PR #27 merged through regular merge commit
+`e42d57d57ea075640c9b123a533057bcac3861b8`. Its two-parent structure,
+second-parent six-commit reachability, merge/head tree equality, and 26/26 path
+parity passed. Post-merge CI, Metadata Regression, and CodeQL completed
+successfully; exact-head and workflow-source parity, PowerShell 7.6.4, 1,051
+governance checks with zero errors, and 198/198 fixtures passed.
+`PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` remain
+`CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`, all earlier findings remain
+closed, and both review queues are empty. BL-333 and BL-334 are `Done`.
+BL-335 remains `Planned` and not begun as the next queue step.
+
+The post-merge finalization is documentation-only. Its exact allowlist is
+`BACKLOG.md`, `CHANGELOG.md`, `docs/testing.md`, and
+`docs/documentation-quality-gate.md`; runtime, workflows, validators, fixtures,
+INF-121, and BL-335 remain unchanged. Local fixture reuse is allowed only
+because validator and fixture bytes are unchanged and the exact post-merge
+Hosted run binds 198/198; the Finalization PR must execute the full matrix.
 
 The script writes its detailed report to:
 
