@@ -14,7 +14,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Added payload-class result contracts, single-transmission rules for large content, opaque identity-bound result resources, wire-amplification metrics, profile catalog/instruction budgets, deterministic catalog fingerprints, and bounded server instructions.
 - Added Version 1.0 plans for per-principal quotas and fair scheduling, typed no-shell command definitions, native OS adapter precedence, audit lifecycle/correlation, MCP 2026 compatibility preparation, supply-chain evidence, and a pinned cross-project efficiency benchmark.
 - Added ADR-0015, Version 1.0 scope, execution-identity backend, efficiency-improvement, comparative-review, runtime/service, protocol, specification, and roadmap documentation.
-- Expanded the canonical backlog to the continuous range `BL-001` through `BL-332`; the current renumbering through `BL-324` is documented in [Backlog ID migration - 2026-07-20](docs/backlog-id-migration-2026-07-20.md), layered over the immutable earlier migration records. PR #16 adds `BL-325` through `BL-329` and the final PR #21 review adds `BL-330` through `BL-332` without changing existing canonical IDs.
+- Expanded the canonical backlog to the continuous range `BL-001` through `BL-335`; the current renumbering through `BL-324` is documented in [Backlog ID migration - 2026-07-20](docs/backlog-id-migration-2026-07-20.md), layered over the immutable earlier migration records. PR #16 adds `BL-325` through `BL-329`, the final PR #21 review adds `BL-330` through `BL-332`, BL-333/BL-334 provide governance foundation and enforcement, and INF-121 registers BL-335 without changing existing canonical IDs.
 - Migrated current sprint identifiers to standalone `SPR-N` values. Former suffix-based entries now have independent IDs, subsequent entries shift without changing backlog assignments, and the complete mapping is recorded in [Sprint ID migration - 2026-07-25](docs/sprint-id-migration-2026-07-25.md).
 
 ### Migration
@@ -29,6 +29,63 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added the BL-333 governance foundation: canonical change-trigger,
+  finding-remediation/review-mode, and Classic-readiness standards, a complete
+  machine-readable trigger catalog, and an assignment-record schema.
+- Added BL-334 fail-closed enforcement with diff-derived triggers, checkpoint,
+  boundary, same-run finding, focused-delta, actual-package handoff,
+  commit-preparation, trusted Git/workflow provenance, strict assignment and
+  completion-report schemas, ephemeral CI/release records, and a 198-case
+  production-path positive/negative fixture matrix. The second focused
+  correction binds the actual `correction-only.patch` and
+  `current-delta.patch` bytes to separately trusted expected hashes, adds
+  strict correction/regression/focused/report schemas, and enforces exact
+  finding, repository, external-governance, status, and queue parity. The third
+  bundled correction closes the remaining REV-013/REV-015 implementation gap:
+  exact canonical Windows external path-to-scope mappings, a schema-bound
+  HANDOFF contract produced from one typed status source, visible/JSON status
+  parity, and re-manifested negative fixtures for every added boundary. The
+  fourth bundled correction makes visible HANDOFF parity complete: it strictly
+  parses exactly 16 typed keys from the shared producer source, independently
+  counts and orders all four status/contract markers, rejects reserved control
+  lines outside the block, binds focused-review commit authorization to false,
+  and adds 18 re-manifested productive negative cases that fail their specific
+  gates. The subsequent focused independent Delta Review passed, closes
+  REV-013 and REV-015 alongside the three previously closed findings, records
+  RUN-007 as independently reviewed, and makes BL-333/BL-334 technically ready
+  for separately authorized bounded Commit Preparation without authorizing
+  Commit Preparation or commit. The focused Hosted-CI correction adds a
+  byte-bound repository execution mirror of the external Classic artifact
+  validator, makes the fixture default script-relative with fail-closed local
+  canonical-byte parity, and passes the mirror explicitly in Windows CI without
+  changing runtime or product logic. The exact-head correction moves governance
+  into a separate Windows job that checks out the pull-request head SHA instead
+  of the synthetic merge commit, proves workflow-source blob parity before
+  binding workflow provenance, and downloads the official PowerShell 7.6.4
+  Windows x64 ZIP only from its versioned release URL after verifying SHA-256
+  `80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`.
+  The productive validator and the unchanged 198-case fixture matrix fail
+  closed on a different interpreter version or package digest; the existing
+  Windows/Linux Go matrix continues to test the merge result. The focused
+  zero-job correction publishes the verified extraction directory through
+  `GITHUB_PATH`, uses the static `shell: pwsh`, verifies the running process
+  path against the expected hash-gated executable, and updates the existing
+  workflow-binding fixture to reject missing path publication, missing
+  expected-path binding, or the obsolete dynamic shell without changing the
+  permanent 198-case inventory. The focused Windows-path follow-up uses
+  explicit ordinal, case-insensitive equality for normalized absolute
+  expected/actual paths, accepts casing-only differences, and keeps different
+  drives, directories, subdirectories, filenames, relative paths, empty
+  values, and case-sensitive legacy comparisons fail-closed. Hosted CI Run
+  `30531682280` passed all 12 visible checks on exact technical head
+  `ecbd8dc61905c82cfdcb9386c0587c1089635f47`, including 1,051 governance
+  checks with zero errors and 198/198 fixtures. The independent Exact-Commit
+  Review closed `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and
+  `PR27-EXACT-REV-003` as
+  `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no BL-333/BL-334 or
+  PR27-EXACT review finding remains open. BL-333 and BL-334 remain in progress
+  until merge and post-merge completion, and Ready-for-Review still requires
+  separate explicit approval.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.

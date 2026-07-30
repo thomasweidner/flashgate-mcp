@@ -1,5 +1,105 @@
 # Testing
 
+## Governance enforcement
+
+BL-333 supplies the change-trigger, finding-remediation/review-mode, and
+handoff-readiness foundation. BL-334 enforces it through
+`scripts/Test-GovernanceConsistency.ps1`.
+
+Parse every new or changed PowerShell source with PowerShell 7.6.4 before its
+first execution. Then run:
+
+```powershell
+& {
+    .\scripts\Test-GovernanceConsistency.ps1
+    .\scripts\Test-GovernanceConsistencyFixtures.ps1
+    .\scripts\Test-DocumentationConsistency.ps1
+}
+```
+
+`scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
+mirror of the external canonical Classic artifact validator. Its integration
+baseline is 32719 bytes with SHA-256
+`c6da4524c881d339bdccfde5894277ddc549fae898348e538956302949518c51`.
+The mirror is not an independent governance source. The fixture runner resolves
+it relative to its own script by default and still accepts an explicit
+`-CanonicalArtifactValidatorPath`. When the external canonical validator exists
+locally, the runner compares both files byte-for-byte by SHA-256 and fails
+before creating fixtures on any divergence. Hosted Windows CI explicitly passes
+the repository mirror and therefore requires no contributor-local path.
+
+The dedicated Windows governance job selects
+`github.event.pull_request.head.sha` for pull requests and `github.sha` for
+pushes, checks out that exact commit, and logs the expected head, checked-out
+commit, current commit, and validator expectations. Pull-request governance
+therefore validates the exact PR head rather than GitHub's synthetic merge
+commit. Because a pull-request workflow can be loaded through a different event
+commit, the job separately compares the `.github/workflows/ci.yml` Git blob at
+`github.workflow_sha` with the exact-head blob and binds workflow provenance to
+the head only after byte parity passes. The Windows/Linux Go matrix retains its
+normal merge checkout and continues to validate the prospective merge result.
+
+The governance job downloads
+`PowerShell-7.6.4-win-x64.zip` only from the official versioned PowerShell
+release URL and verifies SHA-256
+`80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
+before extraction. After the hash, extraction, and executable-existence gates
+pass, it publishes only that extraction directory through `GITHUB_PATH` and
+uses the static `shell: pwsh`. The governance step compares the running
+PowerShell process path with the expected hash-gated executable path using
+explicit ordinal, case-insensitive equality after both absolute paths are
+normalized. Casing-only differences are accepted; different drives,
+directories, subdirectories, filenames, relative paths, and empty values
+remain fail-closed, with no global installation, latest-version resolution, or
+fallback. The productive validator gates the exact `7.6.4` interpreter and
+downloaded package digest; the fixture runner also requires 7.6.4 and launches
+child validators from its current `$PSHOME`.
+
+The fixture matrix exercises the production validator with positive and
+negative canonical paths, every immutable mode flag, real tracked domains,
+same-run and deferred-finding bindings, byte-exact correction/current-delta
+hashes, strict focused-delta and finding matrices, complete per-finding
+completion parity, exact narrative/report/repository/external/status sets,
+the five canonical external path-to-scope mappings, the strict bounded
+`HANDOFF.md` JSON contract, its exactly-16-key typed visible status block,
+independent counts for all four status/contract markers, rejection of reserved
+control lines outside the visible block, and complete visible/JSON parity,
+actual valid and re-manifested corrupt ZIPs, external before/after payloads,
+complete tracked-path coverage, and the real CI/release parameter binding.
+Negative packages alter bytes, self-reported hashes, findings, evidence, paths,
+interfaces, report and handoff blocks, external path/scope mappings, status,
+counts, duplicate/unknown visible keys, independently added or reversed
+markers, reserved outside-block lines, and queue through the same productive
+validator path. Each re-manifested negative case must fail its expected
+specific productive gate. A workflow checkpoint
+record passes only with an authoritative
+immutable repository, commit, event, ref, run, and Hosted CI source identity.
+Focused runtime fixtures additionally prove that a wrong PowerShell version and
+a wrong package digest fail their specific productive checks. The real-CI
+workflow-binding fixture also semantically requires the post-verification
+`GITHUB_PATH` publication, static governance shell, expected path binding, and
+expected/actual process-path diagnostics. In-memory negative variants prove
+that removing either binding, restoring the obsolete dynamic shell, or using a
+case-sensitive path comparison fails closed. The same focused check accepts
+the Hosted casing-only `.exe`/`.EXE` variant and rejects changed directories
+and filenames without adding permanent fixture cases.
+
+The current BL-333/BL-334 governance matrix contains 198 cases. The count is
+reported by the fixture runner and must change together with its permanent
+case inventory.
+
+The independent Exact-Commit Review of Draft PR #27 passed on exact technical
+head `ecbd8dc61905c82cfdcb9386c0587c1089635f47`. Hosted CI Run
+`30531682280` created all four CI jobs and all 12 visible checks passed:
+exact-head checkout, current/expected-head parity, workflow-source parity,
+PowerShell 7.6.4 package and Windows-semantic process-path parity, 1,051
+productive governance checks with zero errors, and 198/198 Hosted fixtures.
+`PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are
+`CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`. The BL-333/BL-334 finding queue
+and PR27-EXACT review queue are empty. This review closure changes no runtime
+or product logic and does not authorize Ready-for-Review, merge, or
+auto-merge.
+
 FlashGate MCP uses Go's standard testing framework and the `flashgate-mcp` binary.
 
 The project aims for high test coverage in security-sensitive and filesystem-related code.
@@ -73,7 +173,7 @@ MCP project is activated by this workflow.
 
 ### Canonical entry points
 
-Run PowerShell 7.6.3 through the Windows orchestrator:
+Run PowerShell 7.6.4 through the Windows orchestrator:
 
 ```text
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1

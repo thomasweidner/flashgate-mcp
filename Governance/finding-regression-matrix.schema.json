@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/finding-regression-matrix.schema.json",
+  "title": "FlashGate finding regression matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "fixtureCount",
+    "fixtureResult",
+    "validatorPath",
+    "findings"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "fixtureCount": { "type": "integer", "minimum": 1 },
+    "fixtureResult": { "const": "PASS" },
+    "validatorPath": { "type": "string", "minLength": 1 },
+    "findings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "regressionTests"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^BL333-BL334-REV-[0-9]{3}$" },
+        "regressionTests": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/regressionTest" }
+        }
+      }
+    },
+    "regressionTest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "validatorPath", "evidence"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "status": { "const": "PASS" },
+        "validatorPath": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

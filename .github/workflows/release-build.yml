@@ -29,6 +29,54 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify release governance sources
+        shell: pwsh
+        run: |
+          $currentCommit = (git rev-parse HEAD).Trim()
+          if ((git rev-list --count HEAD) -gt 1) {
+            $baselineCommit = (git rev-parse HEAD^).Trim()
+          } else {
+            $baselineCommit = $currentCommit
+          }
+          $changedPaths = @(
+            git diff --name-only "$baselineCommit...$currentCommit" |
+              Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+          )
+          $recordPath = Join-Path $env:RUNNER_TEMP 'flashgate-release-assignment-record.json'
+          $repository = 'https://github.com/${{ github.repository }}.git'
+          $workflowCommit = '${{ github.workflow_sha }}'
+          $hostedCISources = @(
+            '${{ github.repository }}@${{ github.sha }}'
+            'github-actions-run:${{ github.run_id }}'
+          )
+          ./scripts/New-GovernanceWorkflowRecord.ps1 `
+            -OutputPath $recordPath `
+            -Checkpoint RELEASE_CANDIDATE `
+            -ChangedPath $changedPaths `
+            -Repository $repository `
+            -BaselineCommit $baselineCommit `
+            -CurrentCommit $currentCommit `
+            -WorkflowCommit $workflowCommit `
+            -RunId '${{ github.run_id }}' `
+            -RunAttempt ${{ github.run_attempt }} `
+            -Event '${{ github.event_name }}' `
+            -Ref '${{ github.ref }}' `
+            -HeadSha '${{ github.sha }}'
+          ./scripts/Test-GovernanceConsistency.ps1 `
+            -AssignmentRecordPath $recordPath `
+            -ChangedPath $changedPaths `
+            -RuntimeCheckpoint RELEASE_CANDIDATE `
+            -HostedCISource $hostedCISources `
+            -ExpectedRepository $repository `
+            -ExpectedBaselineCommit $baselineCommit `
+            -ExpectedCurrentCommit $currentCommit `
+            -ExpectedWorkflowCommit $workflowCommit `
+            -ExpectedRunId '${{ github.run_id }}' `
+            -ExpectedRunAttempt ${{ github.run_attempt }} `
+            -ExpectedEvent '${{ github.event_name }}' `
+            -ExpectedRef '${{ github.ref }}' `
+            -ExpectedHeadSha '${{ github.sha }}'
+
       - name: Resolve and validate release values
         id: release
         shell: bash

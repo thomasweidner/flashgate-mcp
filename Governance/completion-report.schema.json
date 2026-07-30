@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/completion-report.schema.json",
+  "title": "FlashGate governance completion report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "recordedAt",
+    "taskId",
+    "repository",
+    "baselineCommit",
+    "currentCommit",
+    "branch",
+    "executionMode",
+    "checkpoint",
+    "changeTriggerReviewResult",
+    "triggeredDomains",
+    "observedTriggers",
+    "affectedContinuousGates",
+    "existingBacklogCoverage",
+    "duplicateSearch",
+    "repeatedChecks",
+    "checksNotRequired",
+    "newBacklogItems",
+    "updatedBacklogOrRegisterEntries",
+    "deferredTriggerItems",
+    "decisionBoundaries",
+    "releaseImpact",
+    "documentationConsistencyResult",
+    "review",
+    "handoff",
+    "hostedCI",
+    "commitPreparation",
+    "repositoryArtifacts",
+    "externalGovernanceChanges",
+    "correctionPatchArtifact",
+    "correctionPatchSha256",
+    "currentDeltaArtifact",
+    "currentDeltaSha256",
+    "reviewStatus",
+    "run007Status",
+    "queue",
+    "scopeInventorySha256",
+    "assignmentRecordSha256",
+    "findingStatus",
+    "warningCount",
+    "failureCount",
+    "nextAction"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "recordedAt": { "type": "string", "format": "date-time" },
+    "taskId": { "type": "string", "pattern": "^(?:BL-[0-9]{3})(?:/BL-[0-9]{3})?$" },
+    "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
+    "baselineCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "currentCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "branch": { "type": "string", "minLength": 1 },
+    "executionMode": {
+      "enum": [
+        "INDEPENDENT_REVIEW",
+        "BUNDLED_CORRECTION",
+        "FOCUSED_INDEPENDENT_DELTA_REVIEW",
+        "COMMIT_PREPARATION"
+      ]
+    },
+    "checkpoint": {
+      "enum": [
+        "ASSIGNMENT_START",
+        "MATERIAL_SCOPE_CHANGE",
+        "PRE_COMMIT",
+        "SPRINT_CLOSE",
+        "RELEASE_CANDIDATE",
+        "STABLE_RELEASE"
+      ]
+    },
+    "changeTriggerReviewResult": {
+      "enum": [
+        "NO_TRIGGER",
+        "EXISTING_GATES_REQUIRED",
+        "EXISTING_BACKLOG_UPDATED",
+        "NEW_BACKLOG_REGISTERED",
+        "BLOCKED_PENDING_DECISION"
+      ]
+    },
+    "triggeredDomains": { "$ref": "#/$defs/stringArray" },
+    "observedTriggers": { "$ref": "#/$defs/stringArray" },
+    "affectedContinuousGates": { "$ref": "#/$defs/stringArray" },
+    "existingBacklogCoverage": { "$ref": "#/$defs/stringArray" },
+    "duplicateSearch": { "$ref": "#/$defs/duplicateSearch" },
+    "repeatedChecks": { "$ref": "#/$defs/stringArray" },
+    "checksNotRequired": { "$ref": "#/$defs/stringArray" },
+    "newBacklogItems": { "$ref": "#/$defs/stringArray" },
+    "updatedBacklogOrRegisterEntries": { "$ref": "#/$defs/stringArray" },
+    "deferredTriggerItems": { "$ref": "#/$defs/stringArray" },
+    "decisionBoundaries": { "type": "array", "items": { "$ref": "#/$defs/decisionBoundary" } },
+    "releaseImpact": { "type": "string", "minLength": 1 },
+    "documentationConsistencyResult": { "enum": ["PASS", "PASS_WITH_WARNINGS", "FAIL", "PENDING"] },
+    "review": { "$ref": "#/$defs/review" },
+    "handoff": { "$ref": "#/$defs/handoff" },
+    "hostedCI": { "$ref": "#/$defs/hostedCI" },
+    "commitPreparation": { "$ref": "#/$defs/commitPreparation" },
+    "repositoryArtifacts": { "$ref": "#/$defs/stringArray" },
+    "externalGovernanceChanges": { "$ref": "#/$defs/stringArray" },
+    "correctionPatchArtifact": { "const": "correction-only.patch" },
+    "correctionPatchSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "currentDeltaArtifact": { "const": "current-delta.patch" },
+    "currentDeltaSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "reviewStatus": { "enum": ["AWAITING_FOCUSED_DELTA_REVIEW", "FOCUSED_DELTA_REVIEW_PASSED", "FOCUSED_DELTA_REVIEW_FAILED"] },
+    "run007Status": { "enum": ["CORRECTED_PENDING_DELTA", "CLOSED"] },
+    "queue": {
+      "const": "BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register"
+    },
+    "scopeInventorySha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "assignmentRecordSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "findingStatus": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "severity",
+          "status",
+          "disposition",
+          "correctionEvidence",
+          "affectedPaths",
+          "regressionTestIds",
+          "evidenceReferences"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "severity": { "enum": ["BLOCKER", "MAJOR", "MINOR", "NOTE"] },
+          "status": { "enum": ["CORRECTED_PENDING_DELTA", "OPEN", "BLOCKED"] },
+          "disposition": { "enum": ["CORRECTED", "OPEN", "DEFERRED_WITH_BOUNDARY", "CLOSED_BY_INDEPENDENT_REVIEW"] },
+          "correctionEvidence": { "type": "string", "minLength": 1 },
+          "affectedPaths": { "$ref": "#/$defs/nonEmptyStringArray" },
+          "regressionTestIds": { "$ref": "#/$defs/nonEmptyStringArray" },
+          "evidenceReferences": { "$ref": "#/$defs/nonEmptyStringArray" }
+        }
+      }
+    },
+    "warningCount": { "type": "integer", "minimum": 0 },
+    "failureCount": { "type": "integer", "minimum": 0 },
+    "nextAction": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "nonEmptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "duplicateSearch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["performed", "sources", "result"],
+      "properties": {
+        "performed": { "type": "boolean" },
+        "sources": { "$ref": "#/$defs/stringArray" },
+        "result": { "enum": ["NO_DUPLICATE", "EXISTING_ITEM_REUSED", "NOT_REQUIRED"] }
+      }
+    },
+    "decisionBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "cause", "evidence", "blocking", "owner", "nextAction"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": {
+          "enum": [
+            "PRODUCT_DECISION",
+            "ARCHITECTURE_DECISION",
+            "SECURITY_DECISION",
+            "PLATFORM_DECISION",
+            "DEPENDENCY_DECISION",
+            "RELEASE_DECISION",
+            "SCOPE_DECISION"
+          ]
+        },
+        "cause": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 },
+        "blocking": { "type": "boolean" },
+        "owner": { "type": "string", "minLength": 1 },
+        "nextAction": { "type": "string", "minLength": 1 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "severity",
+        "disposition",
+        "evidence",
+        "cause",
+        "correction",
+        "regressionEvidenceIds",
+        "affectedPaths",
+        "nonFileBoundary",
+        "boundaryId",
+        "boundaryType"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "severity": { "enum": ["BLOCKER", "MAJOR", "MINOR", "NOTE"] },
+        "disposition": {
+          "enum": [
+            "OPEN",
+            "CORRECTED",
+            "DISCOVERED_AND_CORRECTED_IN_RUN",
+            "DEFERRED_WITH_BOUNDARY",
+            "CLOSED_BY_INDEPENDENT_REVIEW"
+          ]
+        },
+        "evidence": { "type": "string", "minLength": 1 },
+        "cause": { "type": "string", "minLength": 1 },
+        "correction": { "type": "string" },
+        "regressionEvidenceIds": { "$ref": "#/$defs/stringArray" },
+        "affectedPaths": { "$ref": "#/$defs/stringArray" },
+        "nonFileBoundary": { "type": ["string", "null"] },
+        "boundaryId": { "type": ["string", "null"] },
+        "boundaryType": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "PRODUCT_DECISION",
+            "ARCHITECTURE_DECISION",
+            "SECURITY_DECISION",
+            "PLATFORM_DECISION",
+            "DEPENDENCY_DECISION",
+            "RELEASE_DECISION",
+            "SCOPE_DECISION"
+          ]
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repositoryMutationAllowed",
+        "externalMutationAllowed",
+        "findingFixesPerformed",
+        "reviewerIndependencePreserved",
+        "originalFindings",
+        "discoveredInRunFindings",
+        "correctedInRunFindings",
+        "deferredFindings",
+        "stopConditionsEncountered",
+        "selfReviewIterations",
+        "permanentRegressionEvidence",
+        "focusedValidationResult",
+        "independentDeltaReviewRequired"
+      ],
+      "properties": {
+        "repositoryMutationAllowed": { "type": "boolean" },
+        "externalMutationAllowed": { "type": "boolean" },
+        "findingFixesPerformed": { "type": "boolean" },
+        "reviewerIndependencePreserved": { "type": "boolean" },
+        "originalFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "discoveredInRunFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "correctedInRunFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "deferredFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
+        "stopConditionsEncountered": { "$ref": "#/$defs/stringArray" },
+        "selfReviewIterations": { "type": "integer", "minimum": 0 },
+        "permanentRegressionEvidence": { "$ref": "#/$defs/stringArray" },
+        "focusedValidationResult": { "enum": ["PASS", "PASS_WITH_WARNINGS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
+        "independentDeltaReviewRequired": { "type": "boolean" }
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "package",
+        "artifacts",
+        "scopeInventoryResult",
+        "patchCompletenessResult",
+        "manifestResult",
+        "missingArtifacts",
+        "classicReviewReady",
+        "canonicalValidatorPath",
+        "canonicalValidatorSha256",
+        "canonicalValidatorExitCode",
+        "canonicalValidatorResult"
+      ],
+      "properties": {
+        "required": { "type": "boolean" },
+        "package": { "type": ["string", "null"] },
+        "artifacts": { "$ref": "#/$defs/stringArray" },
+        "scopeInventoryResult": { "enum": ["PASS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
+        "patchCompletenessResult": { "enum": ["PASS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
+        "manifestResult": { "enum": ["PASS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
+        "missingArtifacts": { "$ref": "#/$defs/stringArray" },
+        "classicReviewReady": { "type": "boolean" },
+        "canonicalValidatorPath": { "type": ["string", "null"] },
+        "canonicalValidatorSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "canonicalValidatorExitCode": { "type": ["integer", "null"], "minimum": 0, "maximum": 2 },
+        "canonicalValidatorResult": { "enum": ["PASS", "FAIL", "ERROR", "PENDING", "NOT_APPLICABLE"] }
+      }
+    },
+    "hostedCI": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "sourceVerified",
+        "sources",
+        "workflowCommit",
+        "runId",
+        "runAttempt",
+        "event",
+        "ref",
+        "headSha"
+      ],
+      "properties": {
+        "required": { "type": "boolean" },
+        "sourceVerified": { "type": "boolean" },
+        "sources": { "$ref": "#/$defs/stringArray" },
+        "workflowCommit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
+        "runId": { "type": ["string", "null"], "pattern": "^[1-9][0-9]*$" },
+        "runAttempt": { "type": ["integer", "null"], "minimum": 1 },
+        "event": { "type": ["string", "null"] },
+        "ref": { "type": ["string", "null"] },
+        "headSha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "commitPreparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allFindingsClosed",
+        "independentDeltaReviewComplete",
+        "scopeVerified",
+        "validationPassed",
+        "commitAuthorized"
+      ],
+      "properties": {
+        "allFindingsClosed": { "type": "boolean" },
+        "independentDeltaReviewComplete": { "type": "boolean" },
+        "scopeVerified": { "type": "boolean" },
+        "validationPassed": { "type": "boolean" },
+        "commitAuthorized": { "const": false }
+      }
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/governance-handoff-contract.schema.json",
+  "title": "FlashGate governance handoff contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "correctionMode",
+    "status",
+    "classicReviewReady",
+    "targetFindings",
+    "pendingFindings",
+    "closedFindings",
+    "run007Status",
+    "commitPreparationApproved",
+    "commitAuthorized",
+    "requiredReviewMode",
+    "targetFindingCount",
+    "correctedFindingCount",
+    "pendingDeltaFindingCount",
+    "closedFindingCount",
+    "openFindingCount",
+    "nextAction"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "const": "BL-333/BL-334" },
+    "correctionMode": { "const": "BUNDLED_CORRECTION" },
+    "status": {
+      "const": "FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW"
+    },
+    "classicReviewReady": { "const": true },
+    "targetFindings": {
+      "const": [
+        "BL333-BL334-REV-013",
+        "BL333-BL334-REV-015"
+      ]
+    },
+    "pendingFindings": {
+      "const": [
+        "BL333-BL334-REV-013",
+        "BL333-BL334-REV-015"
+      ]
+    },
+    "closedFindings": {
+      "const": [
+        "BL333-BL334-REV-007",
+        "BL333-BL334-REV-008",
+        "BL333-BL334-REV-010"
+      ]
+    },
+    "run007Status": { "const": "CORRECTED_PENDING_DELTA" },
+    "commitPreparationApproved": { "const": false },
+    "commitAuthorized": { "const": false },
+    "requiredReviewMode": { "const": "FOCUSED_INDEPENDENT_DELTA_REVIEW" },
+    "targetFindingCount": { "const": 2 },
+    "correctedFindingCount": { "const": 2 },
+    "pendingDeltaFindingCount": { "const": 2 },
+    "closedFindingCount": { "const": 3 },
+    "openFindingCount": { "const": 0 },
+    "nextAction": {
+      "const": "Perform only the focused independent delta review of BL333-BL334-REV-013 and BL333-BL334-REV-015 with the new verified review package."
+    }
+  }
+}

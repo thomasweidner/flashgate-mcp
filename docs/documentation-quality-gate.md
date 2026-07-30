@@ -10,7 +10,7 @@ The earlier temporary `CUR-010` audit finding demonstrated why this distinction 
 
 ## Command
 
-Use PowerShell 7.6.3:
+Use PowerShell 7.6.4:
 
 ```powershell
 & {
@@ -32,6 +32,65 @@ Use PowerShell 7.6.3:
     }
 }
 ```
+
+Governance source changes additionally require:
+
+```powershell
+& {
+    .\scripts\Test-GovernanceConsistency.ps1
+    .\scripts\Test-GovernanceConsistencyFixtures.ps1
+}
+```
+
+This gate checks the binding standards, catalog/schema parity, complete tracked
+path coverage, assignment checkpoints, immutable mode semantics, same-run and
+deferred-finding bindings, focused-delta scope, actual correction/current-delta
+byte hashes, strict finding, report, and bounded handoff contracts, exact
+finding/repository/external/status parity, exact case-insensitive Windows
+path-to-scope mapping for the five external governance entries, strict parsing
+of the exactly-16-key visible HANDOFF status block, independent counting and
+ordering of every status/contract marker, rejection of duplicate, unknown, or
+outside-block reserved control lines, complete typed visible-HANDOFF/JSON
+parity, actual-package handoff readiness, commit preparation, and trusted
+Git/Hosted CI provenance. Re-manifesting altered bytes or rewriting
+self-reported hashes cannot replace the separately supplied expected hashes.
+The authoritative handoff gate remains the canonical external
+`Test-ClassicReviewArtifact.ps1` validator named by the handoff standard.
+Hosted CI executes the byte-bound repository mirror at
+`scripts/Test-ClassicReviewArtifact.ps1`; the mirror is an execution source,
+not an independent governance source. The fixture runner fails closed on
+mirror/canonical byte divergence whenever the external validator is locally
+available.
+
+The Windows governance job checks out the exact pull-request head independently
+from the merge-result Go matrix. It compares the event-loaded workflow blob with
+the exact-head workflow blob before accepting workflow provenance. It then uses
+the official PowerShell 7.6.4 Windows x64 ZIP only after the pinned SHA-256
+`80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
+passes. Only after the hash, extraction, and executable-existence gates does it
+publish the verified extraction directory through `GITHUB_PATH`; the
+governance step uses the static `shell: pwsh` and requires its actual process
+path to equal the expected hash-gated executable under ordinal,
+case-insensitive Windows semantics after full-path normalization. Casing-only
+differences are accepted; changed drives, directories, subdirectories,
+filenames, relative paths, and empty paths remain fail-closed. Both the
+productive validator and fixture harness fail closed on a different
+interpreter version; the productive validator also rechecks the downloaded
+package digest. The focused workflow-binding fixture rejects missing path
+publication, missing expected path binding, the obsolete dynamic shell form,
+and case-sensitive path comparisons without changing the permanent 198-case
+inventory.
+
+Draft PR #27 passed its independent Exact-Commit Review on exact technical head
+`ecbd8dc61905c82cfdcb9386c0587c1089635f47`. Hosted CI Run `30531682280`
+created all four CI jobs and all 12 visible checks passed, including 1,051
+governance checks with zero errors and 198/198 fixtures.
+`PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are
+`CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`; no BL-333/BL-334 or PR27-EXACT
+review finding remains open. The documentation closure keeps BL-333 and BL-334
+`In Progress` until merge and post-merge completion, leaves BL-335 `Planned`
+and not begun, and preserves the separate explicit approval boundary for
+Ready-for-Review.
 
 The script writes its detailed report to:
 
@@ -93,6 +152,9 @@ Run the gate:
 
 ## CI integration boundary
 
-The repository script is the permanent local gate. GitHub Actions integration should be added only after the script has passed under PowerShell 7.6.3 on the integrated target-branch state. A dedicated workflow or CI job should call the same script without duplicating its validation logic.
+The repository script is the permanent local gate. The dedicated Hosted
+governance job calls the same productive script and fixture matrix under the
+pinned PowerShell 7.6.4 package without duplicating their validation logic.
+Merge-result Go testing remains a separate CI responsibility.
 
 CI integration must not silently convert exit code `2` into a documentation failure or ignore it. Infrastructure failure is separately actionable and blocks the gate because no trustworthy audit result was produced.

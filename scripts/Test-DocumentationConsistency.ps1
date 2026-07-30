@@ -372,6 +372,81 @@ try {
     }
     Add-DocumentationCheck -Id 'TOOL-003' -Category 'ToolCatalog' -Passed (($documentedTools -join ',') -eq ($expectedTools -join ',')) -Severity Error -Message 'docs/tools.md lists the exact eight implemented tools in canonical order.' -Evidence ($documentedTools -join ', ')
 
+    $governanceSources = @(
+        'Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md',
+        'Governance/FINDING-REMEDIATION-AND-REVIEW-MODE-STANDARD.md',
+        'Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md',
+        'Governance/change-trigger-catalog.json',
+        'Governance/assignment-governance-record.schema.json',
+        'Governance/completion-report.schema.json',
+        'Governance/finding-correction-matrix.schema.json',
+        'Governance/finding-regression-matrix.schema.json',
+        'Governance/focused-delta-review-record.schema.json',
+        'Governance/governance-handoff-contract.schema.json',
+        'Governance/governance-report-contract.schema.json',
+        'scripts/New-GovernanceHandoff.ps1',
+        'scripts/New-GovernanceWorkflowRecord.ps1',
+        'scripts/Test-GovernanceConsistency.ps1',
+        'scripts/Test-GovernanceConsistencyFixtures.ps1'
+    )
+    foreach ($relativePath in $governanceSources) {
+        $governancePath = Join-Path $resolvedRepositoryRoot $relativePath
+        $governanceId = ($relativePath -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
+        Add-DocumentationCheck -Id "GOV-$governanceId" -Category 'Governance' -Passed (Test-Path -LiteralPath $governancePath -PathType Leaf) -Severity Error -Message "Required governance source exists: $relativePath" -Evidence $relativePath
+    }
+
+    $governanceCatalogPath = Join-Path $resolvedRepositoryRoot 'Governance/change-trigger-catalog.json'
+    $governanceSchemaPath = Join-Path $resolvedRepositoryRoot 'Governance/assignment-governance-record.schema.json'
+    $governanceCatalog = Get-Content -LiteralPath $governanceCatalogPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
+    $governanceSchema = Get-Content -LiteralPath $governanceSchemaPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
+    Add-DocumentationCheck -Id 'GOV-CATALOG-TRIGGERS' -Category 'Governance' -Passed (@($governanceCatalog.triggers).Count -ge 14) -Severity Error -Message 'Governance catalog contains the complete current trigger set.' -Evidence @($governanceCatalog.triggers).Count
+    Add-DocumentationCheck -Id 'GOV-SCHEMA-STRICT' -Category 'Governance' -Passed ($governanceSchema.additionalProperties -eq $false) -Severity Error -Message 'Assignment governance schema rejects unknown top-level properties.'
+    $completionSchemaPath = Join-Path $resolvedRepositoryRoot 'Governance/completion-report.schema.json'
+    $completionSchema = Get-Content -LiteralPath $completionSchemaPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
+    Add-DocumentationCheck -Id 'GOV-COMPLETION-SCHEMA-STRICT' -Category 'Governance' -Passed ($completionSchema.additionalProperties -eq $false) -Severity Error -Message 'Completion-report schema rejects unknown top-level properties.'
+    foreach ($contractSchemaName in @(
+            'finding-correction-matrix.schema.json',
+            'finding-regression-matrix.schema.json',
+            'focused-delta-review-record.schema.json',
+            'governance-handoff-contract.schema.json',
+            'governance-report-contract.schema.json'
+        )) {
+        $contractSchemaPath = Join-Path $resolvedRepositoryRoot (
+            'Governance/' + $contractSchemaName
+        )
+        $contractSchema = Get-Content -LiteralPath $contractSchemaPath -Raw -Encoding UTF8 |
+            ConvertFrom-Json -Depth 100
+        Add-DocumentationCheck -Id (
+            'GOV-' + $contractSchemaName.Replace('.schema.json', '').Replace('-', '-').ToUpperInvariant() + '-STRICT'
+        ) -Category 'Governance' -Passed ($contractSchema.additionalProperties -eq $false) `
+            -Severity Error -Message "$contractSchemaName rejects unknown top-level properties."
+    }
+
+    $handoffStandardPath = Join-Path $resolvedRepositoryRoot 'Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md'
+    $handoffStandard = [System.IO.File]::ReadAllText($handoffStandardPath, $strictUtf8)
+    $canonicalArtifactValidator = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Scripts\Test-ClassicReviewArtifact.ps1'
+    foreach ($bindingText in @(
+            $canonicalArtifactValidator,
+            '-ArtifactPath',
+            '-ReadinessRequirement RequireTrue',
+            'PowerShell 7.6.4',
+            'Exit code `0` is PASS',
+            'prerequisite static/semantic gate',
+            'it is not an alternative'
+        )) {
+        $bindingId = ($bindingText -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
+        Add-DocumentationCheck -Id "GOV-CANONICAL-ARTIFACT-$bindingId" -Category 'Governance' -Passed (
+            $handoffStandard.Contains($bindingText, [System.StringComparison]::Ordinal)
+        ) -Severity Error -Message "Handoff standard binds canonical artifact-validator contract: $bindingText"
+    }
+
+    foreach ($relativePath in @('AGENTS.md', 'README.md', 'CONTRIBUTING.md', 'docs/testing.md', 'docs/documentation-quality-gate.md')) {
+        $fullPath = Join-Path $resolvedRepositoryRoot $relativePath
+        $sourceText = if ($contentByPath.ContainsKey($fullPath)) { $contentByPath[$fullPath] } else { [System.IO.File]::ReadAllText($fullPath, $strictUtf8) }
+        $governanceId = ($relativePath -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
+        Add-DocumentationCheck -Id "GOV-REFERENCE-$governanceId" -Category 'Governance' -Passed $sourceText.Contains('Test-GovernanceConsistency', [System.StringComparison]::Ordinal) -Severity Error -Message "$relativePath references the governance enforcement gate."
+    }
+
     $status = if ($script:Errors.Count -gt 0) { 'FAIL' } elseif ($script:Warnings.Count -gt 0) { 'PASS_WITH_WARNINGS' } else { 'PASS' }
     $exitCode = if ($script:Errors.Count -gt 0) { 1 } else { 0 }
     $nextAction = if ($script:Errors.Count -gt 0) {

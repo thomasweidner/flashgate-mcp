@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "2026-07-28",
+  "modes": [
+    {
+      "id": "INDEPENDENT_REVIEW",
+      "repositoryMutationAllowed": false,
+      "externalMutationAllowed": false,
+      "independent": true
+      ,"reviewScope": "FULL_INTEGRATION"
+      ,"commitAllowed": false
+      ,"correctionAllowed": false
+      ,"requiresPriorReview": false
+      ,"requiresFocusedDeltaReview": false
+    },
+    {
+      "id": "BUNDLED_CORRECTION",
+      "repositoryMutationAllowed": true,
+      "externalMutationAllowed": true,
+      "independent": false
+      ,"reviewScope": "APPROVED_CORRECTION_SCOPE"
+      ,"commitAllowed": false
+      ,"correctionAllowed": true
+      ,"requiresPriorReview": true
+      ,"requiresFocusedDeltaReview": true
+    },
+    {
+      "id": "FOCUSED_INDEPENDENT_DELTA_REVIEW",
+      "repositoryMutationAllowed": false,
+      "externalMutationAllowed": false,
+      "independent": true
+      ,"reviewScope": "CORRECTION_DELTA"
+      ,"commitAllowed": false
+      ,"correctionAllowed": false
+      ,"requiresPriorReview": true
+      ,"requiresFocusedDeltaReview": false
+    },
+    {
+      "id": "COMMIT_PREPARATION",
+      "repositoryMutationAllowed": false,
+      "externalMutationAllowed": false,
+      "independent": false
+      ,"reviewScope": "COMMIT_SCOPE"
+      ,"commitAllowed": false
+      ,"correctionAllowed": false
+      ,"requiresPriorReview": true
+      ,"requiresFocusedDeltaReview": true
+    }
+  ],
+  "checkpoints": [
+    "ASSIGNMENT_START",
+    "MATERIAL_SCOPE_CHANGE",
+    "PRE_COMMIT",
+    "SPRINT_CLOSE",
+    "RELEASE_CANDIDATE",
+    "STABLE_RELEASE"
+  ],
+  "decisionBoundaries": [
+    "PRODUCT_DECISION",
+    "ARCHITECTURE_DECISION",
+    "SECURITY_DECISION",
+    "PLATFORM_DECISION",
+    "DEPENDENCY_DECISION",
+    "RELEASE_DECISION",
+    "SCOPE_DECISION"
+  ],
+  "changeTriggerResults": [
+    "NO_TRIGGER",
+    "EXISTING_GATES_REQUIRED",
+    "EXISTING_BACKLOG_UPDATED",
+    "NEW_BACKLOG_REGISTERED",
+    "BLOCKED_PENDING_DECISION"
+  ],
+  "findingDispositions": [
+    "OPEN",
+    "CORRECTED",
+    "DISCOVERED_AND_CORRECTED_IN_RUN",
+    "DEFERRED_WITH_BOUNDARY",
+    "CLOSED_BY_INDEPENDENT_REVIEW"
+  ],
+  "triggers": [
+    {
+      "id": "PUBLIC_MCP_CONTRACT",
+      "domain": "protocol",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["cmd/server/**", "internal/mcp/**", "internal/mcptest/**", "internal/protocol/**", "docs/protocol.md", "docs/specification.md", "docs/mcp-tool-catalog.json"],
+      "continuousGates": ["schema", "catalog", "wire", "smoke", "compatibility"]
+    },
+    {
+      "id": "FILESYSTEM_SEMANTICS",
+      "domain": "filesystem",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["internal/fs/**", "internal/search/**", "internal/security/**", "docs/tools.md", "docs/security.md"],
+      "continuousGates": ["root-confinement", "symlink-reparse", "limits", "windows-linux"]
+    },
+    {
+      "id": "PROCESS_EXECUTION_JOB_STATE",
+      "domain": "process-execution-jobs",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["internal/process/**", "internal/execution/**", "internal/jobs/**"],
+      "continuousGates": ["identity", "authorization", "quotas", "cleanup", "race", "audit"]
+    },
+    {
+      "id": "SECURITY_BOUNDARY",
+      "domain": "security",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["internal/config/**", "internal/diagnostics/**", "internal/security/**", "docs/security.md", "docs/threat-model*.md", "docs/decisions/**"],
+      "continuousGates": ["fail-closed-negatives", "redaction", "least-privilege", "threat-model"]
+    },
+    {
+      "id": "PLATFORM_ARCHITECTURE",
+      "domain": "platform",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["**/*_windows.go", "**/*_linux.go", "scripts/linux-*.sh", "scripts/*Windows*.ps1", ".github/workflows/**"],
+      "continuousGates": ["windows", "native-linux", "architecture", "artifact-metadata"]
+    },
+    {
+      "id": "ARTIFACT_RELEASE_CONTRACT",
+      "domain": "release",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["LICENSE", "THIRD-PARTY-NOTICES.md", "assets/branding/**", "cmd/iconverify/**", "cmd/releaseaudit/**", "cmd/versioninfo/**", "cmd/versionmanifest/**", "internal/version/**", "scripts/New-ReleaseArtifact.ps1", "scripts/new-release-artifact.sh", "scripts/Test-ReleaseArtifact.ps1", "scripts/test-release-artifact.sh", ".github/workflows/release-build.yml", "docs/artifact-verification.md"],
+      "continuousGates": ["metadata", "inventory", "checksums", "reproducibility", "leak-scan", "provenance"]
+    },
+    {
+      "id": "DEPENDENCY_TOOLCHAIN",
+      "domain": "dependency-toolchain",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": [".gitattributes", ".gitignore", "go.mod", "go.sum", "vendor/**", ".golangci.yml", "scripts/**"],
+      "continuousGates": ["dependency", "build", "lint", "supply-chain", "reproducibility"]
+    },
+    {
+      "id": "WORKFLOW_CI",
+      "domain": "workflow-ci",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": [".github/workflows/**", ".github/actions/**"],
+      "continuousGates": ["workflow-source", "hosted-ci", "permissions", "action-pinning"]
+    },
+    {
+      "id": "PERFORMANCE_RESOURCE",
+      "domain": "performance",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["benchmarks/**", "cmd/benchmark/**", "internal/benchmark/**", "scripts/benchmark*.ps1", "scripts/benchmark*.sh"],
+      "continuousGates": ["budgets", "workspace-isolation", "host-load", "baseline-provenance"]
+    },
+    {
+      "id": "DOCUMENTATION_GOVERNANCE_LIFECYCLE",
+      "domain": "documentation-governance",
+      "sources": ["DIFF", "EVENT"],
+      "pathPatterns": ["Governance/**", "AGENTS.md", "BACKLOG.md", "CHANGELOG.md", "CONTRIBUTING.md", "README.md", "docs/**", "scripts/Test-DocumentationConsistency.ps1", "scripts/Test-Governance*.ps1"],
+      "continuousGates": ["documentation-consistency", "backlog-continuity", "status", "links", "strict-utf8"]
+    },
+    {
+      "id": "EXTERNAL_MCP_CHANGE",
+      "domain": "external-ecosystem",
+      "sources": ["EVENT"],
+      "pathPatterns": [],
+      "continuousGates": ["spec-compatibility", "client-compatibility", "security", "licensing"]
+    },
+    {
+      "id": "REVIEW_FINDING",
+      "domain": "finding",
+      "sources": ["EVENT"],
+      "pathPatterns": [],
+      "continuousGates": ["finding-remediation", "regression-evidence", "independent-delta-review"]
+    },
+    {
+      "id": "CI_FINDING",
+      "domain": "finding",
+      "sources": ["EVENT"],
+      "pathPatterns": [],
+      "continuousGates": ["hosted-ci-source", "failure-reproduction", "focused-correction"]
+    },
+    {
+      "id": "INCIDENT_FIELD_FINDING",
+      "domain": "finding",
+      "sources": ["EVENT"],
+      "pathPatterns": [],
+      "continuousGates": ["incident-evidence", "security-impact", "regression-evidence", "release-impact"]
+    }
+  ],
+  "trackedPathExclusions": [],
+  "requiredReportFields": [
+    "RecordedAt",
+    "Repository",
+    "BaselineCommit",
+    "Branch",
+    "ExecutionMode",
+    "Checkpoint",
+    "ChangeTriggerReviewResult",
+    "TriggeredDomains",
+    "ObservedTriggers",
+    "AffectedContinuousGates",
+    "ExistingBacklogCoverage",
+    "DuplicateSearch",
+    "RepeatedChecks",
+    "ChecksNotRequired",
+    "NewBacklogItems",
+    "UpdatedBacklogOrRegisterEntries",
+    "DeferredTriggerItems",
+    "DecisionBoundaries",
+    "ReleaseImpact",
+    "DocumentationConsistencyResult",
+    "OriginalFindings",
+    "DiscoveredInRunFindings",
+    "CorrectedInRunFindings",
+    "DeferredFindings",
+    "StopConditionsEncountered",
+    "SelfReviewIterations",
+    "PermanentRegressionEvidence",
+    "FocusedValidationResult",
+    "IndependentDeltaReviewRequired",
+    "HandoffRequired",
+    "HandoffPackage",
+    "HandoffArtifacts",
+    "ScopeInventoryResult",
+    "PatchCompletenessResult",
+    "HandoffManifestResult",
+    "HostedCISourceVerification",
+    "MissingHandoffArtifacts",
+    "ClassicReviewReady"
+  ]
+}
