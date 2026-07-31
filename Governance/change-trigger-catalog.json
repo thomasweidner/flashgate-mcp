@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "2026-07-28",
+  "catalogVersion": "2026-07-31",
   "modes": [
     {
       "id": "INDEPENDENT_REVIEW",
@@ -78,6 +78,38 @@
     "DEFERRED_WITH_BOUNDARY",
     "CLOSED_BY_INDEPENDENT_REVIEW"
   ],
+  "remediationPolicy": {
+    "newOrMateriallyRebuiltArtifactCycleBudget": 12,
+    "establishedValidatedArtifactCycleBudget": 6,
+    "automaticRetryBudgetAfterFirstProductiveWrite": 0,
+    "mutationAttemptBoundary": "BEFORE_FIRST_PRODUCTIVE_WRITE_CAPABLE_OPERATION",
+    "directlyCorrectableDefectClasses": [
+      "HARNESS",
+      "FIXTURE",
+      "PARSER",
+      "INSTRUMENTATION",
+      "DIAGNOSTIC",
+      "CLASSIFICATION"
+    ],
+    "classicReturnRequiredOnlyAtDecisionAuthorizationScopeOrBudgetBoundary": true
+  },
+  "activityGatePolicy": {
+    "finalGateRequiredImmediatelyBeforeFirstProductiveWrite": true,
+    "externalMonitorMustBeStoppedOrPlaintextRedacted": true,
+    "monitoredPlaintextPathsAndObjectNamesForbiddenInConcurrentControlState": true,
+    "timeVaryingChecksAllowedBetweenFinalGateAndWrite": false
+  },
+  "classicHandoffPolicy": {
+    "singleRequiredFileDirectTransferAllowed": true,
+    "multipleRequiredFilesRequireExactlyOneZip": true,
+    "separatePackageMemberTransferAllowed": false,
+    "freshFullRebuildRequiredAfterArtifactChange": true,
+    "manifestCoverageRequired": true,
+    "sha256ValidationRequired": true,
+    "rejectUnsafeDuplicateOrCaseCollidingPaths": true,
+    "rejectLinkJunctionOrReparseTargets": true,
+    "classicReviewReadyRequiresCompletePackage": true
+  },
   "triggers": [
     {
       "id": "PUBLIC_MCP_CONTRACT",

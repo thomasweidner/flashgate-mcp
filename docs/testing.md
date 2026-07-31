@@ -57,7 +57,9 @@ child validators from its current `$PSHOME`.
 
 The fixture matrix exercises the production validator with positive and
 negative canonical paths, every immutable mode flag, real tracked domains,
-same-run and deferred-finding bindings, byte-exact correction/current-delta
+the immutable 12/6/0 remediation, productive-mutation, final-activity-gate,
+and single-package policies, same-run and deferred-finding bindings,
+byte-exact correction/current-delta
 hashes, strict focused-delta and finding matrices, complete per-finding
 completion parity, exact narrative/report/repository/external/status sets,
 the five canonical external path-to-scope mappings, the strict bounded
@@ -84,7 +86,15 @@ case-sensitive path comparison fails closed. The same focused check accepts
 the Hosted casing-only `.exe`/`.EXE` variant and rejects changed directories
 and filenames without adding permanent fixture cases.
 
-The current BL-333/BL-334 governance matrix contains 198 cases. The count is
+Classic handoff policy fixtures additionally accept one direct file, accept
+one complete multi-file ZIP, verify manifest SHA-256/length coverage and a
+fresh full rebuild after payload change, and reject missing files, stale
+manifests, wrong hashes, exact or case-colliding ZIP paths, absolute/traversing
+paths, link/junction/reparse entries, unmanifested objects, incomplete
+`ClassicReviewReady=true`, and instructions to transfer package members
+separately.
+
+The current governance matrix contains 225 cases. The count is
 reported by the fixture runner and must change together with its permanent
 case inventory.
 

@@ -470,6 +470,43 @@ function Get-CanonicalModeDefinitions {
     }
 }
 
+function Get-CanonicalOperatingPolicies {
+    return [ordered]@{
+        remediationPolicy = [ordered]@{
+            newOrMateriallyRebuiltArtifactCycleBudget = 12
+            establishedValidatedArtifactCycleBudget = 6
+            automaticRetryBudgetAfterFirstProductiveWrite = 0
+            mutationAttemptBoundary = 'BEFORE_FIRST_PRODUCTIVE_WRITE_CAPABLE_OPERATION'
+            directlyCorrectableDefectClasses = @(
+                'HARNESS',
+                'FIXTURE',
+                'PARSER',
+                'INSTRUMENTATION',
+                'DIAGNOSTIC',
+                'CLASSIFICATION'
+            )
+            classicReturnRequiredOnlyAtDecisionAuthorizationScopeOrBudgetBoundary = $true
+        }
+        activityGatePolicy = [ordered]@{
+            finalGateRequiredImmediatelyBeforeFirstProductiveWrite = $true
+            externalMonitorMustBeStoppedOrPlaintextRedacted = $true
+            monitoredPlaintextPathsAndObjectNamesForbiddenInConcurrentControlState = $true
+            timeVaryingChecksAllowedBetweenFinalGateAndWrite = $false
+        }
+        classicHandoffPolicy = [ordered]@{
+            singleRequiredFileDirectTransferAllowed = $true
+            multipleRequiredFilesRequireExactlyOneZip = $true
+            separatePackageMemberTransferAllowed = $false
+            freshFullRebuildRequiredAfterArtifactChange = $true
+            manifestCoverageRequired = $true
+            sha256ValidationRequired = $true
+            rejectUnsafeDuplicateOrCaseCollidingPaths = $true
+            rejectLinkJunctionOrReparseTargets = $true
+            classicReviewReadyRequiresCompletePackage = $true
+        }
+    }
+}
+
 function Test-RequiredProperties {
     param(
         [Parameter(Mandatory)][object]$Value,
@@ -881,6 +918,7 @@ try {
     $schema = Read-StrictJson -LiteralPath $schemaPath
     $completionSchema = Read-StrictJson -LiteralPath $completionSchemaPath
     $canonicalModes = Get-CanonicalModeDefinitions
+    $canonicalOperatingPolicies = Get-CanonicalOperatingPolicies
 
     $modeIds = @($catalog.modes | ForEach-Object { [string]$_.id })
     $triggerIds = @($catalog.triggers | ForEach-Object { [string]$_.id })
@@ -911,6 +949,39 @@ try {
                     -Message 'Catalog mode property matches immutable validator semantics.' `
                     -Evidence "expected=$expectedValue; actual=$actualValue"
             }
+        }
+    }
+
+    foreach ($policyName in @($canonicalOperatingPolicies.Keys)) {
+        $expectedPolicy = $canonicalOperatingPolicies[$policyName]
+        $actualPolicy = $catalog.$policyName
+        $actualPolicyExists = $null -ne $actualPolicy
+        Add-GovernanceCheck -Id "CATALOG-POLICY-$policyName-EXISTS" `
+            -Passed $actualPolicyExists `
+            -Message 'Catalog contains the canonical operating policy.'
+        if (-not $actualPolicyExists) {
+            continue
+        }
+
+        $expectedPropertyNames = @($expectedPolicy.Keys)
+        $actualPropertyNames = @(Get-PropertyNames -Value $actualPolicy)
+        Add-GovernanceCheck -Id "CATALOG-POLICY-$policyName-SHAPE" `
+            -Passed (Test-OrdinalSetEqual -Left $actualPropertyNames -Right $expectedPropertyNames) `
+            -Message 'Operating policy contains exactly the canonical properties.'
+
+        foreach ($propertyName in $expectedPropertyNames) {
+            $expectedValue = $expectedPolicy[$propertyName]
+            $actualValue = $actualPolicy.$propertyName
+            $propertyMatches = if ($expectedValue -is [System.Array]) {
+                Test-OrdinalSequenceEqual -Left @($actualValue) -Right @($expectedValue)
+            }
+            else {
+                $actualValue -ceq $expectedValue
+            }
+            Add-GovernanceCheck -Id "CATALOG-POLICY-$policyName-$propertyName" `
+                -Passed $propertyMatches `
+                -Message 'Catalog operating-policy value matches immutable validator semantics.' `
+                -Evidence "expected=$($expectedValue -join ','); actual=$($actualValue -join ',')"
         }
     }
 
@@ -987,10 +1058,10 @@ try {
         -Evidence "max=$maxBacklogId; duplicates=$(@($duplicateBacklogIds | ForEach-Object Name) -join ','); missing=$($missingBacklogNumbers -join ',')"
     Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
         -Passed $backlogText.Contains(
-            'BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register',
+            'BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register',
             [System.StringComparison]::Ordinal
         ) `
-        -Message 'Backlog records the exact post-governance queue.'
+        -Message 'Backlog records the exact remaining queue after BL-335.'
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedBaselineCommit)) {
         $baselineBacklog = @(& git -C $resolvedRepositoryRoot show "${ExpectedBaselineCommit}:BACKLOG.md")

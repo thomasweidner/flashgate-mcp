@@ -14,6 +14,21 @@ governance source, validator, or workflow behavior changes. Independent full
 and focused delta reviews are read-only; correction happens only in
 `BUNDLED_CORRECTION`.
 
+Same-assignment remediation is bounded to 12 correction/revalidation cycles
+for new or materially rebuilt artifacts and 6 for established validated
+artifacts. Automatic retries after the first productive write-capable
+operation are forbidden. Directly caused isolated harness, fixture, parser,
+instrumentation, diagnostic, and classification defects stay in the same
+authorized correction assignment unless a decision, authorization, scope, or
+budget boundary is reached. End or redact external monitors before final
+activity gates; no time-varying check may occur between the final gate and the
+first productive write.
+
+Classic receives exactly one handoff file. One required file may be transferred
+directly; multiple required files must be rebuilt and validated as one ZIP,
+never as separately uploaded package members. See
+[the handoff standard](Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md).
+
 ## Scope
 
 FlashGate is a native, local-first MCP server optimized for low latency, low token use, low RAM/CPU consumption, and strict server-side security. Contributions must preserve those objectives and must not silently introduce an interpreter, remote listener, broad shell, unbounded operation, or security bypass.

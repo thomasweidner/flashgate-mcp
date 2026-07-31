@@ -97,6 +97,26 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   documentation-only finalization changes no runtime or product logic.
   BL-335 is the next planned and not-started queue step, followed by BL-251,
   BL-324, final documentation convergence, and Local Work Register removal.
+- Completed BL-335 after the productive migration, focused function
+  validation, concrete isolated rollback rehearsal, and controlled source
+  removal all passed their applicable gates. The final physical inventory has
+  zero original source objects, four unchanged productive targets, three
+  unchanged active target references, an unchanged productive reference
+  backup, and no quarantine remainder. `BL335-D-VAL-012` is
+  `CLOSED_BY_INDEPENDENT_REVIEW_VALIDATION_CONTROL_INTERFERENCE`: a concurrent
+  plaintext monitoring command caused the post-removal gate observation, and
+  the identical diagnostic after that monitor ended was `0/0/0/0`. No BL-335
+  finding remains open; the remaining local queue is BL-251, BL-324, final
+  documentation convergence, and Local Work Register removal.
+- Hardened governance with immutable adaptive same-assignment remediation
+  budgets of 12 cycles for new/materially rebuilt artifacts, 6 for established
+  validated artifacts, and 0 automatic retries after the first productive
+  write-capable operation. The catalog and productive governance validator now
+  bind the precise mutation-attempt boundary, final activity-gate monitor
+  isolation, and single Classic package policy. The expanded fixture matrix
+  covers direct single-file handoff, fresh package rebuild, manifests, unsafe
+  ZIP paths, case collisions, reparse entries, incomplete readiness, and
+  forbidden separate package-member transfer.
 - Added one canonical build-information model and embedded machine-readable manifest for compact and verbose CLI identity, Windows resources, Linux Go/ELF metadata, and release artifacts.
 - Added deterministic Windows x64/ARM64 `VERSIONINFO` and the Font Awesome-based FlashGate application icon, with vendored resource tooling and third-party notices.
 - Added native Linux x64 and cross-compiled Linux ARM64 metadata validation, including Go/VCS information, ELF headers and Go build IDs.
