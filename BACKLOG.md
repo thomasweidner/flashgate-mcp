@@ -419,10 +419,10 @@ available number only and is not an assigned sprint.
 | BL-262 | Planned | Add native release supply-chain evidence | Checksums, Windows signing plan, Linux artifact/package signing plan, SBOM, build provenance, dependency inventory, reproducible-build comparison, and atomic rollback; no silent auto-update |
 | BL-263 | Planned | Define and enforce Version 1.0 release boundary | Verify every Planned task or documented waiver, stable protocol/tool contracts, migration/deprecation policy, Variant A-only service identity, performance/security budgets, supported platforms, and post-1.0 deferrals |
 
-The next functional queue step after the BL-248 post-merge documentation correction is BL-333/BL-334. BL-251 and BL-324 remain `Planned` and have not begun.
+BL-333/BL-334 and BL-335 are complete. BL-251 and BL-324 remain `Planned` and have not begun.
 
-Binding queue after the governance correction:
-`BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register`.
+Binding remaining queue after BL-335:
+`BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register`.
 
 ### SPR-42 technical identity
 
@@ -545,7 +545,7 @@ These tasks originate in the final independent review of PR #21. They are accept
 |---|---|---|---|
 | BL-333 | Done | Establish change-trigger, review-mode, and handoff governance | **Completed:** the canonical change-trigger, review-mode, finding-remediation, readiness, report, and handoff foundation is implemented and independently reviewed. PR #27 merged through regular merge commit `e42d57d57ea075640c9b123a533057bcac3861b8`; its second parent preserves all six PR commits at `c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`, and merge/head trees plus all 26/26 paths are identical. REV-007, REV-008, REV-010, REV-013, REV-015, `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are closed with no remaining BL-333/BL-334 or PR27-EXACT finding. Post-merge CI, Metadata Regression, and CodeQL passed; exact-head/workflow-source parity, PowerShell 7.6.4, 1,051 governance checks with zero errors, and 198/198 fixtures passed. Durable evidence is retained and the five complete temporary review packages remain preserved because none is a redundant disposable copy. No runtime or product logic changed. |
 | BL-334 | Done | Enforce change-trigger, finding-remediation, and handoff governance | **Completed:** fail-closed enforcement covers diff-derived triggers, checkpoints, immutable review modes, actual correction/current-delta bytes, exact finding and status parity, strict schemas, external path mappings, bounded handoff/readiness, commit preparation, and authoritative Hosted-CI provenance. PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8` with two-parent, tree, six-commit, and 26/26 path parity. REV-007, REV-008, REV-010, REV-013, and REV-015 remain `CLOSED_BY_INDEPENDENT_REVIEW`; RUN-007 remains `CORRECTED_AND_INDEPENDENTLY_REVIEWED`; `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` remain `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`. The finding and exact-review queues are empty. Post-merge Hosted CI passed with PowerShell 7.6.4, 1,051/0 governance, and 198/198 fixtures. Durable evidence is secured, controlled cleanup removed no sole-copy review package, and runtime/product logic remain unchanged. |
-| BL-335 | Planned | Migrate FlashGate reference-bound legacy Temp objects to local Temp | **Origin:** `INF-121 / MIG-003 / Welle 3`. **Objects:** `TMP-001`, `TMP-004`, `TMP-016`, and `TMP-059`; active references `REF-005`, `REF-006`, and `REF-007`; BL-246/BL-247 relationship. **Source paths:** `C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Temp\Backup-FlashGateFileProperties-BL246-BL247.ps1`, `...\flashgate-buildinfo-implementation`, `...\flashgate-file-properties-preintegration-20260723-123431`, and `...\New-FlashGate-BL246-BL247-IntegrationReport.ps1`. **Target:** the same relative names below `<CodexTempRoot>` (`C:\Voxtronic\Codex-Work\Temp`). **Acceptance:** migrate paths and active references atomically; treat TMP-016 and TMP-059 as one indivisible snapshot/generator pair; create timestamped reference backups; validate every changed PowerShell file with the PowerShell 7.6.4 parser; perform a complete active path scan, focused backup-producer dry run, focused BuildInfo package-path test, focused IntegrationReport dry run, and process/activity gate; remove no source before destination, reference, function, hash/manifest, and rollback validation pass. **Rollback:** restore reference backups and copy the validated destination objects back to their original OneDrive-Temp paths. **Authorization boundary:** INF-121 only registers this project work and grants no FlashGate implementation, commit, push, pull request, merge, remote, or source-removal authorization. |
+| BL-335 | Done | Migrate FlashGate reference-bound legacy Temp objects to local Temp | **Completed:** `TMP-001`, `TMP-004`, `TMP-016`, and `TMP-059` were copied to `<CodexTempRoot>` and `REF-005` through `REF-007` were atomically rebound with a complete productive reference backup. Productive migration, focused function validation, and the concrete isolated rollback rehearsal passed. The four original source objects were then removed as one controlled source-removal assignment; final read-only evidence confirms `SourceObjectCountAfter=0`, four unchanged productive targets, three unchanged active target references, an unchanged productive backup, no quarantine remainder, parser/hash/manifest parity, and a clean repository before this governance convergence. `BL335-D-VAL-012` is `CLOSED_BY_INDEPENDENT_REVIEW_VALIDATION_CONTROL_INTERFERENCE`: the only failed post-removal activity gate observed the concurrently running plaintext Codex monitor, while the identical post-monitor diagnostic was processes/tasks/shortcuts/exclusive-probe failures `0/0/0/0`. No BL-335 finding remains open. Durable evidence is in the BL-335 Freigabe B, Freigabe C, VAL-008, and Freigabe D reports under `Codex-Work\Reports`. |
 
 PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8`.
 Its first parent is `537ea1c1660cddfde5aace1888242d80a6be77bf`;
@@ -560,9 +560,9 @@ The second-parent history retains the six PR commits
 26/26 path parity passed. Post-merge CI, Metadata Regression, and CodeQL are
 terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
-three PR27-EXACT findings are closed. BL-333 and BL-334 are `Done`; BL-335 is
-the next planned queue step and remains not begun. The binding queue is:
-`BL-335 → BL-251 → BL-324 → final documentation convergence → remove Local Work Register`.
+three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
+The binding remaining queue is:
+`BL-251 → BL-324 → final documentation convergence → remove Local Work Register`.
 
 ## Cross-epic rules
 

@@ -37,6 +37,58 @@ Both entries state cause, evidence, affected paths or an explicit non-file
 boundary, correction, and permanent regression-evidence IDs. Missing, duplicate,
 or orphaned partners fail closed.
 
+### Adaptive bounded remediation budgets
+
+The remediation budget is selected once from the artifact state at assignment
+start:
+
+- a new or materially rebuilt artifact permits at most 12 correction and
+  revalidation cycles;
+- an established, previously validated artifact permits at most 6 cycles; and
+- after the first productive write-capable operation has been invoked,
+  automatic retry or automatic full-assignment re-execution has a budget of 0.
+
+A cycle is one directly related correction followed by the smallest sufficient
+focused validation. The budget is a safety ceiling, not a target. Stop earlier
+when validation passes or a mandatory decision or authorization boundary is
+reached. A material rebuild means that prior validation evidence no longer
+represents the artifact's relevant control flow or structure; normal focused
+maintenance of an established artifact does not reset its budget to 12.
+
+Directly caused, isolated harness, fixture, parser, instrumentation,
+diagnostic, or classification defects remain in the same authorized assignment
+while budget and scope remain. They are not returned individually to Classic.
+Classic or the owner is required only for a binding decision, authorization,
+scope expansion, exhausted budget, or an independently required review.
+
+### Productive mutation-attempt boundary
+
+The productive mutation attempt begins immediately before invoking the first
+operation that is capable of changing productive or otherwise authorization-
+bound state. This includes create, replace, move, delete, rename, reference
+rewrite, productive backup creation, remote write, or an equivalent write-
+capable API request. The attempt counts even when that operation returns
+without a confirmed state change.
+
+Read-only inspection, parsing, dry runs, isolated fixtures, and writes confined
+to an expressly isolated disposable validation root do not cross this boundary.
+Preparation that creates or changes a productive backup, quarantine, source,
+target, active reference, repository, remote, or other authorization-bound
+object does cross it. After the boundary, do not automatically launch another
+productive attempt. Only an explicitly preauthorized compensating action
+inside the same attempt is allowed; a new productive attempt requires a new
+explicit authorization.
+
+### Final activity-gate isolation
+
+Before a final activity gate, external monitors and control processes must
+either be ended or operate without the monitored plaintext roots, paths, and
+object names in their command line, environment, temporary files, or other
+gate-visible state. A control process is not exempt merely because it is
+read-only. Between the final passing gate and the first productive
+write-capable operation, perform no external, filesystem, process, task,
+shortcut, network, or other time-varying check.
+
 ## Mandatory stop conditions
 
 Stop rather than infer a decision when correction requires a new product,

@@ -10,9 +10,12 @@ identify one authoritative source state, and pass integrity and scope checks.
 A report that names an uncreated or inaccessible artifact is incomplete.
 
 The cross-project storage rule is authoritative. FlashGate produces exactly
-one handoff file below `<CodexTempRoot>`. When more than one payload file is
-required, the handoff is exactly one ZIP archive. Task-related names begin
-with the identifier confirmed in the leading Local Work Register.
+one handoff file below `<CodexTempRoot>` or an explicitly authorized
+assignment-specific override. When exactly one payload file is required, that
+file may be transferred directly without a ZIP. When more than one payload
+file is required, the handoff is exactly one ZIP archive. Package members are
+never requested, uploaded, or transferred separately. Task-related names
+begin with the identifier confirmed in the leading Local Work Register.
 
 ## Required payload by transition
 
@@ -48,8 +51,16 @@ The root `MANIFEST.sha256` is ordinally sorted and covers every payload file
 exactly once while excluding itself. Each line contains lowercase SHA-256,
 decimal byte size, and safe relative path. The final ZIP is reopened and
 validated independently. Absolute/traversing ZIP paths, duplicate entries,
+case-colliding paths, symlink/junction/reparse entries or source targets,
 invalid UTF-8, control characters, unresolved placeholders, secret material,
 and unintended host/user paths fail closed.
+
+Any payload-byte, required-file, path, manifest, readiness, or instruction
+change invalidates the previous package. Rebuild the complete package from a
+fresh staging root, regenerate the full manifest, reopen the resulting ZIP,
+and validate every entry hash and length. Incremental archive updates and a
+manifest carried forward from older payload bytes are forbidden. Extra
+unmanifested objects and missing required objects fail closed.
 
 The authoritative external artifact gate is:
 
@@ -129,6 +140,8 @@ pass.
 - the package remains outside the active repository.
 
 False, absent, mistyped, or conflicting readiness is never promoted to true.
+An instruction to transfer individual members of a multi-file package also
+fails readiness, even if the ZIP itself is technically valid.
 
 ## Required report fields
 

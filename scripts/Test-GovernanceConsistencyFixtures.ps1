@@ -181,6 +181,177 @@ function Convert-GlobToRegex {
     return '^' + $escaped + '$'
 }
 
+function New-MinimalClassicReviewPackage {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][string]$ReadmeText,
+        [ValidateSet('NONE', 'DUPLICATE_PATH', 'CASE_COLLISION', 'ABSOLUTE_PATH', 'TRAVERSAL_PATH', 'REPARSE_ENTRY')]
+        [string]$Mutation = 'NONE'
+    )
+
+    $utf8 = [System.Text.UTF8Encoding]::new($false)
+    $packagePath = Join-Path $Root ($Name + '.zip')
+    $readmeBytes = $utf8.GetBytes($ReadmeText)
+    $handoffBytes = $utf8.GetBytes(
+        '{"schemaVersion":1,"classicReviewReady":true,"transferUnit":"single-package"}' + "`n"
+    )
+    $manifestObject = [ordered]@{
+        schemaVersion = 1
+        classicReviewReady = $true
+        entries = @(
+            [ordered]@{
+                path = 'README.md'
+                length = $readmeBytes.LongLength
+                sha256 = Get-LowerSha256 -Bytes $readmeBytes
+            },
+            [ordered]@{
+                path = 'handoff.json'
+                length = $handoffBytes.LongLength
+                sha256 = Get-LowerSha256 -Bytes $handoffBytes
+            }
+        )
+    }
+    $manifestJsonBytes = $utf8.GetBytes(
+        (($manifestObject | ConvertTo-Json -Depth 20) + "`n")
+    )
+
+    $payloads = [System.Collections.Generic.List[object]]::new()
+    foreach ($payload in @(
+            [pscustomobject]@{ Path = 'README.md'; Bytes = $readmeBytes; ExternalAttributes = 0 },
+            [pscustomobject]@{ Path = 'handoff.json'; Bytes = $handoffBytes; ExternalAttributes = 0 },
+            [pscustomobject]@{ Path = 'manifest.json'; Bytes = $manifestJsonBytes; ExternalAttributes = 0 }
+        )) {
+        [void]$payloads.Add($payload)
+    }
+
+    $manifestRecords = @(
+        $payloads |
+            ForEach-Object {
+                [pscustomobject]@{
+                    Path = [string]$_.Path
+                    Line = "$(Get-LowerSha256 -Bytes ([byte[]]$_.Bytes))  $($_.Bytes.LongLength)  $($_.Path)"
+                }
+            }
+    )
+    $manifestPaths = [string[]]@($manifestRecords | ForEach-Object Path)
+    [array]::Sort($manifestPaths, [System.StringComparer]::Ordinal)
+    $manifestLineByPath = @{}
+    foreach ($record in $manifestRecords) {
+        $manifestLineByPath[$record.Path] = $record.Line
+    }
+    $manifestBytes = $utf8.GetBytes(
+        ((@($manifestPaths | ForEach-Object { $manifestLineByPath[$_] }) -join "`n") + "`n")
+    )
+    [void]$payloads.Add([pscustomobject]@{
+            Path = 'MANIFEST.sha256'
+            Bytes = $manifestBytes
+            ExternalAttributes = 0
+        })
+
+    switch ($Mutation) {
+        'DUPLICATE_PATH' {
+            [void]$payloads.Add([pscustomobject]@{
+                    Path = 'README.md'
+                    Bytes = $utf8.GetBytes("duplicate`n")
+                    ExternalAttributes = 0
+                })
+        }
+        'CASE_COLLISION' {
+            [void]$payloads.Add([pscustomobject]@{
+                    Path = 'readme.md'
+                    Bytes = $utf8.GetBytes("case collision`n")
+                    ExternalAttributes = 0
+                })
+        }
+        'ABSOLUTE_PATH' {
+            [void]$payloads.Add([pscustomobject]@{
+                    Path = '/absolute.txt'
+                    Bytes = $utf8.GetBytes("unsafe`n")
+                    ExternalAttributes = 0
+                })
+        }
+        'TRAVERSAL_PATH' {
+            [void]$payloads.Add([pscustomobject]@{
+                    Path = '../traversal.txt'
+                    Bytes = $utf8.GetBytes("unsafe`n")
+                    ExternalAttributes = 0
+                })
+        }
+        'REPARSE_ENTRY' {
+            [void]$payloads.Add([pscustomobject]@{
+                    Path = 'linked.txt'
+                    Bytes = $utf8.GetBytes("link target`n")
+                    ExternalAttributes = [int][System.IO.FileAttributes]::ReparsePoint
+                })
+        }
+    }
+
+    Add-Type -AssemblyName System.IO.Compression
+    $stream = [System.IO.File]::Open(
+        $packagePath,
+        [System.IO.FileMode]::CreateNew,
+        [System.IO.FileAccess]::ReadWrite,
+        [System.IO.FileShare]::None
+    )
+    $archive = $null
+    try {
+        $archive = [System.IO.Compression.ZipArchive]::new(
+            $stream,
+            [System.IO.Compression.ZipArchiveMode]::Create,
+            $true
+        )
+        foreach ($payload in $payloads) {
+            $entry = $archive.CreateEntry(
+                [string]$payload.Path,
+                [System.IO.Compression.CompressionLevel]::Optimal
+            )
+            $entry.ExternalAttributes = [int]$payload.ExternalAttributes
+            $entryStream = $entry.Open()
+            try {
+                $entryStream.Write([byte[]]$payload.Bytes, 0, [int]$payload.Bytes.LongLength)
+            }
+            finally {
+                $entryStream.Dispose()
+            }
+        }
+    }
+    finally {
+        if ($null -ne $archive) {
+            $archive.Dispose()
+        }
+        $stream.Dispose()
+    }
+
+    return [pscustomobject]@{
+        PackagePath = $packagePath
+        PackageSha256 = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        ManifestJsonSha256 = Get-LowerSha256 -Bytes $manifestJsonBytes
+    }
+}
+
+function Test-ClassicTransferPlan {
+    param(
+        [Parameter(Mandatory)][ValidateRange(1, [int]::MaxValue)][int]$RequiredFileCount,
+        [Parameter(Mandatory)][ValidateRange(1, [int]::MaxValue)][int]$TransferFileCount,
+        [Parameter(Mandatory)][string]$TransferFileName,
+        [Parameter(Mandatory)][string]$Instruction
+    )
+
+    if ($RequiredFileCount -eq 1) {
+        return $TransferFileCount -eq 1
+    }
+
+    $forbiddenMemberInstruction = $Instruction -match (
+        '(?i)\b(separate|separately|individual|individually|einzeln|Paketmitglieder)\b'
+    )
+    return (
+        $TransferFileCount -eq 1 -and
+        [System.IO.Path]::GetExtension($TransferFileName) -ieq '.zip' -and
+        -not $forbiddenMemberInstruction
+    )
+}
+
 function New-ClassicFixturePackage {
     param(
         [Parameter(Mandatory)][string]$Root,
@@ -2420,6 +2591,43 @@ try {
         }
     }
 
+    foreach ($policyName in @('remediationPolicy', 'activityGatePolicy', 'classicHandoffPolicy')) {
+        foreach ($propertyName in @($catalog.$policyName.PSObject.Properties.Name)) {
+            $mutatedCatalog = $catalog | ConvertTo-Json -Depth 100 |
+                ConvertFrom-Json -Depth 100 -DateKind String
+            $currentValue = $mutatedCatalog.$policyName.$propertyName
+            $mutatedCatalog.$policyName.$propertyName = if ($currentValue -is [System.Array]) {
+                @($currentValue | Select-Object -Skip 1)
+            }
+            elseif ($currentValue -is [bool]) {
+                -not [bool]$currentValue
+            }
+            elseif ($currentValue -is [long] -or $currentValue -is [int]) {
+                [int]$currentValue + 1
+            }
+            else {
+                'UNSAFE_POLICY_VALUE'
+            }
+            $mutatedCatalogPath = Join-Path $temporaryRoot (
+                'catalog-policy-' + $policyName.ToLowerInvariant() + '-' +
+                $propertyName.ToLowerInvariant() + '.json'
+            )
+            [System.IO.File]::WriteAllText(
+                $mutatedCatalogPath,
+                ($mutatedCatalog | ConvertTo-Json -Depth 100),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+            [void]$cases.Add([pscustomobject]@{
+                    Name = 'negative-policy-' + $policyName.ToLowerInvariant() + '-' +
+                        $propertyName.ToLowerInvariant()
+                    ExpectedExit = 1
+                    ChangedPaths = @('Governance/change-trigger-catalog.json')
+                    Record = $bundled
+                    CatalogPath = $mutatedCatalogPath
+                })
+        }
+    }
+
     $selectedCases = if (@($CaseName).Count -gt 0) {
         @($cases | Where-Object { $_.Name -in $CaseName })
     }
@@ -2566,6 +2774,111 @@ try {
                     ($output -join [Environment]::NewLine)
             }
         })
+    }
+
+    $artifactPolicyFixtureNames = @(
+        'positive-package-single-file-direct',
+        'positive-package-full-rebuild-after-change',
+        'negative-package-duplicate-zip-path',
+        'negative-package-case-colliding-zip-path',
+        'negative-package-absolute-zip-path',
+        'negative-package-traversal-zip-path',
+        'negative-package-link-junction-reparse-entry',
+        'negative-package-separate-member-transfer'
+    )
+    foreach ($fixtureName in $artifactPolicyFixtureNames) {
+        if (@($CaseName).Count -gt 0 -and $fixtureName -notin $CaseName) {
+            continue
+        }
+
+        $expectedExit = if ($fixtureName.StartsWith('positive-', [System.StringComparison]::Ordinal)) {
+            0
+        }
+        else {
+            1
+        }
+        $actualExit = 1
+        $output = @()
+        switch ($fixtureName) {
+            'positive-package-single-file-direct' {
+                $artifactPath = Join-Path $temporaryRoot 'BL-335-single-review-file.md'
+                [System.IO.File]::WriteAllText(
+                    $artifactPath,
+                    "ClassicReviewReady: true`n",
+                    [System.Text.UTF8Encoding]::new($false)
+                )
+                $output = @(
+                    & $pwsh -NoLogo -NoProfile -File $CanonicalArtifactValidatorPath `
+                        -ArtifactPath $artifactPath -ReadinessRequirement RequireTrue 2>&1
+                )
+                $actualExit = $LASTEXITCODE
+            }
+            'positive-package-full-rebuild-after-change' {
+                $firstPackage = New-MinimalClassicReviewPackage -Root $temporaryRoot `
+                    -Name 'BL-335-package-before-change' `
+                    -ReadmeText "ClassicReviewReady: true`nVersion: one`n"
+                $rebuiltPackage = New-MinimalClassicReviewPackage -Root $temporaryRoot `
+                    -Name 'BL-335-package-after-change' `
+                    -ReadmeText "ClassicReviewReady: true`nVersion: two`n"
+                $firstOutput = @(
+                    & $pwsh -NoLogo -NoProfile -File $CanonicalArtifactValidatorPath `
+                        -ArtifactPath $firstPackage.PackagePath `
+                        -ReadinessRequirement RequireTrue 2>&1
+                )
+                $firstExit = $LASTEXITCODE
+                $secondOutput = @(
+                    & $pwsh -NoLogo -NoProfile -File $CanonicalArtifactValidatorPath `
+                        -ArtifactPath $rebuiltPackage.PackagePath `
+                        -ReadinessRequirement RequireTrue 2>&1
+                )
+                $secondExit = $LASTEXITCODE
+                $rebuildChanged = (
+                    $firstPackage.PackageSha256 -cne $rebuiltPackage.PackageSha256 -and
+                    $firstPackage.ManifestJsonSha256 -cne $rebuiltPackage.ManifestJsonSha256
+                )
+                $actualExit = if ($firstExit -eq 0 -and $secondExit -eq 0 -and $rebuildChanged) {
+                    0
+                }
+                else {
+                    1
+                }
+                $output = @($firstOutput + $secondOutput + "rebuildChanged=$rebuildChanged")
+            }
+            'negative-package-separate-member-transfer' {
+                $planPassed = Test-ClassicTransferPlan -RequiredFileCount 3 `
+                    -TransferFileCount 3 -TransferFileName 'README.md' `
+                    -Instruction 'Upload README.md, report.md, and handoff.json separately.'
+                $actualExit = if ($planPassed) { 0 } else { 1 }
+                $output = @("transferPlanPassed=$planPassed")
+            }
+            default {
+                $mutation = switch ($fixtureName) {
+                    'negative-package-duplicate-zip-path' { 'DUPLICATE_PATH' }
+                    'negative-package-case-colliding-zip-path' { 'CASE_COLLISION' }
+                    'negative-package-absolute-zip-path' { 'ABSOLUTE_PATH' }
+                    'negative-package-traversal-zip-path' { 'TRAVERSAL_PATH' }
+                    'negative-package-link-junction-reparse-entry' { 'REPARSE_ENTRY' }
+                }
+                $mutatedPackage = New-MinimalClassicReviewPackage -Root $temporaryRoot `
+                    -Name $fixtureName -ReadmeText "ClassicReviewReady: true`n" `
+                    -Mutation $mutation
+                $output = @(
+                    & $pwsh -NoLogo -NoProfile -File $CanonicalArtifactValidatorPath `
+                        -ArtifactPath $mutatedPackage.PackagePath `
+                        -ReadinessRequirement RequireTrue 2>&1
+                )
+                $actualExit = $LASTEXITCODE
+            }
+        }
+
+        $passed = $actualExit -eq $expectedExit
+        [void]$results.Add([pscustomobject]@{
+                Name = $fixtureName
+                ExpectedExit = $expectedExit
+                ActualExit = $actualExit
+                Result = if ($passed) { 'PASS' } else { 'FAIL' }
+                Diagnostic = if ($passed) { '' } else { $output -join [Environment]::NewLine }
+            })
     }
 
     if (@($CaseName).Count -eq 0 -or 'positive-runtime-hosted-ci-array' -in $CaseName) {
