@@ -302,6 +302,13 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Fixed
 
+- Corrected and independently closed the documentation-only PR #30 review
+  finding `PR30-REV-001` as `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`:
+  README now reports all 21 persistent PowerShell harness cases, and README
+  plus the BL-251 backlog entry replace their obsolete pre-commit Git boundary
+  with the completed exact-commit, remote-push, Draft-PR, Hosted-CI and focused
+  independent documentation-review status. Merge remains separately
+  authorized; no shell, workflow, governance, or product behavior changed.
 - Removed the five tracked `MIXED` and seven `NO_FINAL_NEWLINE` line-ending cases through byte-preserving mechanical corrections; encoding, BOM state, text, and whitespace remain unchanged.
 - Fixed benchmark runner result construction so soft budget messages remain exclusively in `budget_evaluation` instead of being duplicated into general `warnings`.
 - Fixed coverage summaries so a failed minimum-coverage gate produces `status: FAIL` instead of a misleading successful artifact.

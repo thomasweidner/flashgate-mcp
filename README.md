@@ -370,7 +370,7 @@ gates. The full policy, negative-test matrix, and fallback when optional
 linters are unavailable are documented in [Testing](docs/testing.md#shell-script-validation).
 The bounded subprocess helper verifies termination after a timeout and never
 waits indefinitely for redirected streams after an unconfirmed process-tree
-termination. The persistent PowerShell harness covers 20 focused cases; the
+termination. The persistent PowerShell harness covers 21 focused cases; the
 native Bash harness also verifies fail-closed cleanup reporting with exactly
 one terminal result block.
 
@@ -563,8 +563,11 @@ repository mutation. The Windows shell harness passes 21/21 cases and obtains
 the bounded child PID directly from the process-start result, so its timeout
 cleanup evidence no longer depends on child-authored PID-file timing. The PID
 correction passed focused independent delta review with no warnings or
-failures, and `BL251-PRECOMMIT-REV-001` is closed. Any Git integration remains
-separately authorized. BL-324 remains not begun.
+failures, and `BL251-PRECOMMIT-REV-001` is closed. The exact commit, remote
+push, Draft PR, Hosted CI, and focused independent review of the documentation
+correction are complete. `PR30-REV-001` is
+`CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. Merge remains separately authorized.
+BL-324 remains not begun.
 
 ## Basic Usage
 
