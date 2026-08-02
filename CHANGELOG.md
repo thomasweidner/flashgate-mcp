@@ -29,6 +29,39 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Implemented the BL-251 deterministic shell-validation foundation: dynamic
+  tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,
+  exact Git Bash and native `/usr/bin/bash` syntax gates, UTF-8/line-ending/
+  shebang policy, repository-mutation detection, CI integration, and durable
+  positive/negative harnesses. Windows validation passes for 54 entry points
+  and 21/21 PowerShell harness cases. The Windows bounded-process result now
+  exposes the PID captured directly after process start, and its timeout
+  regression proves cleanup of that concrete process even when the child is
+  terminated before an optional PID-file write. Independent focused delta review
+  `BL-251-focused-independent-delta-review-20260802-102407.md` passed with
+  0 warnings/0 failures and closed `BL251-REV-001` through `BL251-REV-004` as
+  `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`: the external scope
+  is delivered as qualified Before/After evidence, bounded-process termination
+  and stream draining fail closed, Bash cleanup status is truthful with a
+  controlled negative probe, and current documentation uses neutral focused-
+  validation terminology. The subsequent focused independent PID review
+  `BL-251-pid-focused-independent-delta-review-20260802-121605.md` passed with
+  0 warnings/0 failures and closed `BL251-PRECOMMIT-REV-001` as
+  `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`; no BL-251 review finding remains open.
+  Native run
+  `bl251-review-findings-closure-20260802-100200` passed all twelve standard
+  commands with 0 warnings and 0 failures. INF-122 is technically remediated: the canonical
+  orchestrator now requires PowerShell 7.6.4 and the one authorized native
+  Linux `standard` run passed with 0 warnings and 0 failures. The one
+  authorized full governance run executed all current 225 fixtures as PASS,
+  cleaned up successfully, and detected no repository mutation, but its final
+  count assertion still expected the historical 198. The expectation is now
+  corrected to 225. A runspace-free outer wrapper passed 12/12 focused stream,
+  exit, timeout-tree, persistence, and reconstruction tests; the single
+  authorized final replacement persisted its child result atomically and
+  passed all 225 fixtures with exit code 0, cleanup PASS, and no repository
+  mutation. BL-251, INF-122, and INF-129 are closed.
+
 - Added the BL-333 governance foundation: canonical change-trigger,
   finding-remediation/review-mode, and Classic-readiness standards, a complete
   machine-readable trigger catalog, and an assignment-record schema.
@@ -106,8 +139,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   `CLOSED_BY_INDEPENDENT_REVIEW_VALIDATION_CONTROL_INTERFERENCE`: a concurrent
   plaintext monitoring command caused the post-removal gate observation, and
   the identical diagnostic after that monitor ended was `0/0/0/0`. No BL-335
-  finding remains open; the remaining local queue is BL-251, BL-324, final
-  documentation convergence, and Local Work Register removal.
+  finding remains open; after completion of BL-251, the remaining local queue
+  is BL-324, final documentation convergence, and Local Work Register removal.
 - Hardened governance with immutable adaptive same-assignment remediation
   budgets of 12 cycles for new/materially rebuilt artifacts, 6 for established
   validated artifacts, and 0 automatic retries after the first productive

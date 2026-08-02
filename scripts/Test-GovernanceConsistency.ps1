@@ -1058,15 +1058,15 @@ try {
         -Evidence "max=$maxBacklogId; duplicates=$(@($duplicateBacklogIds | ForEach-Object Name) -join ','); missing=$($missingBacklogNumbers -join ',')"
     Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
         -Passed $backlogText.Contains(
-            'BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register',
+            'BL-324 -> final documentation convergence -> remove Local Work Register',
             [System.StringComparison]::Ordinal
         ) `
-        -Message 'Backlog records the exact remaining queue after BL-335.'
+        -Message 'Backlog records the exact remaining queue after BL-251.'
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedBaselineCommit)) {
         $baselineBacklog = @(& git -C $resolvedRepositoryRoot show "${ExpectedBaselineCommit}:BACKLOG.md")
         $baselineBacklogExit = $LASTEXITCODE
-        foreach ($protectedId in @('BL-251', 'BL-324')) {
+        foreach ($protectedId in @('BL-324')) {
             $currentLine = @($backlogText -split '\r?\n' | Where-Object { $_ -match "^\| $protectedId \|" })
             $baselineLine = @($baselineBacklog | Where-Object { $_ -match "^\| $protectedId \|" })
             Add-GovernanceCheck -Id "BACKLOG-PROTECTED-$protectedId" `

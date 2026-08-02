@@ -116,6 +116,23 @@ golangci-lint run
 go build -o build/flashgate-mcp ./cmd/server
 ```
 
+Changes to PowerShell, Bash, CI, build, release, smoke, or validation scripts
+also require the deterministic shell gates. On Windows, use PowerShell 7.6.4:
+
+```powershell
+& {
+    .\scripts\Test-ShellScripts.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1
+}
+```
+
+On native Ubuntu, use the fixed Bash entry point:
+
+```bash
+/usr/bin/bash scripts/test-shell-scripts.sh
+/usr/bin/bash scripts/test-shell-scripts.tests.sh
+```
+
 Also run affected Windows/Linux smoke, race, schema, response-size, security, service, and benchmark checks. State explicitly when a platform-specific check could not be executed.
 
 ## Git and review

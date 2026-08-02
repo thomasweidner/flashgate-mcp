@@ -2,7 +2,9 @@
 param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$CanonicalArtifactValidatorPath = (Join-Path $PSScriptRoot 'Test-ClassicReviewArtifact.ps1'),
-    [string[]]$CaseName = @()
+    [string[]]$CaseName = @(),
+    [string]$ProgressPath,
+    [string]$ResultPath
 )
 
 Set-StrictMode -Version Latest
@@ -1899,13 +1901,47 @@ function New-CompletionFixture {
 $status = 'FAIL'
 $failureMessage = $null
 $results = [System.Collections.Generic.List[object]]::new()
+$startedAt = [DateTimeOffset]::Now
+$expectedFullFixtureCount = 225
+$cleanupErrors = [System.Collections.Generic.List[string]]::new()
+$cleanupStatus = 'NOT_RUN'
+$repositoryMutationDetected = $false
+$repositoryStatusBefore = $null
+$lastCompletedFixture = $null
 $temporaryRoot = $null
 $repositoryInternalPackagePath = $null
 $resolvedRepositoryRoot = $null
 $actualHead = $null
+$resolvedResultPath = $null
 
 try {
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
+    $repositoryStatusBefore = @(& git -C $resolvedRepositoryRoot status --porcelain=v1 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Cannot capture the repository status before fixture execution: $resolvedRepositoryRoot"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+        $resolvedProgressPath = [System.IO.Path]::GetFullPath($ProgressPath)
+        $progressParent = [System.IO.Path]::GetDirectoryName($resolvedProgressPath)
+        if (-not (Test-Path -LiteralPath $progressParent -PathType Container)) {
+            throw "Progress path parent does not exist: $progressParent"
+        }
+        if (Test-Path -LiteralPath $resolvedProgressPath) {
+            throw "Progress path must be new: $resolvedProgressPath"
+        }
+        $ProgressPath = $resolvedProgressPath
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ResultPath)) {
+        $resolvedResultPath = [System.IO.Path]::GetFullPath($ResultPath)
+        $resultParent = [System.IO.Path]::GetDirectoryName($resolvedResultPath)
+        if (-not (Test-Path -LiteralPath $resultParent -PathType Container)) {
+            throw "Result path parent does not exist: $resultParent"
+        }
+        if (Test-Path -LiteralPath $resolvedResultPath) {
+            throw "Result path must be new: $resolvedResultPath"
+        }
+        $ResultPath = $resolvedResultPath
+    }
     $actualHead = [string](& git -C $resolvedRepositoryRoot rev-parse HEAD)
     if ($LASTEXITCODE -ne 0 -or $actualHead -notmatch '^[0-9a-f]{40}$') {
         throw "Cannot resolve the repository HEAD for fixture binding: $resolvedRepositoryRoot"
@@ -2774,6 +2810,19 @@ try {
                     ($output -join [Environment]::NewLine)
             }
         })
+        $lastCompletedFixture = $case.Name
+        if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+            [System.IO.File]::AppendAllText(
+                $ProgressPath,
+                (([ordered]@{
+                    CompletedAt = [DateTimeOffset]::Now.ToString('o')
+                    FixtureNumber = $results.Count
+                    Name = $case.Name
+                    Result = $results[$results.Count - 1].Result
+                } | ConvertTo-Json -Compress) + [Environment]::NewLine),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
     }
 
     $artifactPolicyFixtureNames = @(
@@ -2879,6 +2928,19 @@ try {
                 Result = if ($passed) { 'PASS' } else { 'FAIL' }
                 Diagnostic = if ($passed) { '' } else { $output -join [Environment]::NewLine }
             })
+        $lastCompletedFixture = $fixtureName
+        if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+            [System.IO.File]::AppendAllText(
+                $ProgressPath,
+                (([ordered]@{
+                    CompletedAt = [DateTimeOffset]::Now.ToString('o')
+                    FixtureNumber = $results.Count
+                    Name = $fixtureName
+                    Result = $results[$results.Count - 1].Result
+                } | ConvertTo-Json -Compress) + [Environment]::NewLine),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
     }
 
     if (@($CaseName).Count -eq 0 -or 'positive-runtime-hosted-ci-array' -in $CaseName) {
@@ -3001,6 +3063,19 @@ try {
                 )
             }
         })
+        $lastCompletedFixture = 'positive-runtime-hosted-ci-array'
+        if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+            [System.IO.File]::AppendAllText(
+                $ProgressPath,
+                (([ordered]@{
+                    CompletedAt = [DateTimeOffset]::Now.ToString('o')
+                    FixtureNumber = $results.Count
+                    Name = $lastCompletedFixture
+                    Result = $results[$results.Count - 1].Result
+                } | ConvertTo-Json -Compress) + [Environment]::NewLine),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
     }
 
     if (@($CaseName).Count -eq 0 -or 'positive-complete-tracked-path-coverage' -in $CaseName) {
@@ -3016,6 +3091,19 @@ try {
         Result = if ($coverageExit -eq 0) { 'PASS' } else { 'FAIL' }
         Diagnostic = if ($coverageExit -eq 0) { '' } else { ($coverageOutput -join [Environment]::NewLine) }
     })
+    $lastCompletedFixture = 'positive-complete-tracked-path-coverage'
+    if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+        [System.IO.File]::AppendAllText(
+            $ProgressPath,
+            (([ordered]@{
+                CompletedAt = [DateTimeOffset]::Now.ToString('o')
+                FixtureNumber = $results.Count
+                Name = $lastCompletedFixture
+                Result = $results[$results.Count - 1].Result
+            } | ConvertTo-Json -Compress) + [Environment]::NewLine),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+    }
     }
 
     if (@($CaseName).Count -eq 0 -or 'negative-unclassified-tracked-path' -in $CaseName) {
@@ -3032,6 +3120,19 @@ try {
             Result = if ($unknownCoverageExit -eq 1) { 'PASS' } else { 'FAIL' }
             Diagnostic = if ($unknownCoverageExit -eq 1) { '' } else { ($unknownCoverageOutput -join [Environment]::NewLine) }
         })
+        $lastCompletedFixture = 'negative-unclassified-tracked-path'
+        if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+            [System.IO.File]::AppendAllText(
+                $ProgressPath,
+                (([ordered]@{
+                    CompletedAt = [DateTimeOffset]::Now.ToString('o')
+                    FixtureNumber = $results.Count
+                    Name = $lastCompletedFixture
+                    Result = $results[$results.Count - 1].Result
+                } | ConvertTo-Json -Compress) + [Environment]::NewLine),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
     }
 
     $workflowFixtureNames = @('positive-real-ci-workflow-binding', 'positive-real-release-workflow-binding')
@@ -3417,9 +3518,25 @@ try {
                     )
                 }
             })
+            $lastCompletedFixture = $workflowDefinition.Name
+            if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+                [System.IO.File]::AppendAllText(
+                    $ProgressPath,
+                    (([ordered]@{
+                        CompletedAt = [DateTimeOffset]::Now.ToString('o')
+                        FixtureNumber = $results.Count
+                        Name = $workflowDefinition.Name
+                        Result = $results[$results.Count - 1].Result
+                    } | ConvertTo-Json -Compress) + [Environment]::NewLine),
+                    [System.Text.UTF8Encoding]::new($false)
+                )
+            }
         }
     }
 
+    if (@($CaseName).Count -eq 0 -and $results.Count -ne $expectedFullFixtureCount) {
+        throw "Full fixture matrix produced $($results.Count) results; expected $expectedFullFixtureCount."
+    }
     $status = if (@($results | Where-Object Result -eq 'FAIL').Count -eq 0) { 'PASS' } else { 'FAIL' }
 }
 catch {
@@ -3427,32 +3544,105 @@ catch {
     $failureMessage = $_.Exception.Message
 }
 finally {
-    if ($null -ne $repositoryInternalPackagePath -and
-        $null -ne $resolvedRepositoryRoot -and
-        (Test-Path -LiteralPath $repositoryInternalPackagePath -PathType Leaf) -and
-        [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetFullPath($repositoryInternalPackagePath)) -ceq
-            [System.IO.Path]::GetFullPath($resolvedRepositoryRoot).TrimEnd('\')) {
-        Remove-Item -LiteralPath $repositoryInternalPackagePath -Force
+    try {
+        if ($null -ne $repositoryInternalPackagePath -and
+            $null -ne $resolvedRepositoryRoot -and
+            (Test-Path -LiteralPath $repositoryInternalPackagePath -PathType Leaf) -and
+            [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetFullPath($repositoryInternalPackagePath)) -ceq
+                [System.IO.Path]::GetFullPath($resolvedRepositoryRoot).TrimEnd('\')) {
+            Remove-Item -LiteralPath $repositoryInternalPackagePath -Force
+        }
     }
-    if ($null -ne $temporaryRoot -and (Test-Path -LiteralPath $temporaryRoot -PathType Container)) {
-        $resolvedTemporaryRoot = [System.IO.Path]::GetFullPath($temporaryRoot)
-        $systemTemporaryRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
-        if ($resolvedTemporaryRoot.StartsWith($systemTemporaryRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
-            [System.IO.Path]::GetFileName($resolvedTemporaryRoot).StartsWith('flashgate-governance-fixtures-', [System.StringComparison]::Ordinal)) {
-            Remove-Item -LiteralPath $resolvedTemporaryRoot -Recurse -Force
+    catch {
+        $cleanupErrors.Add("Repository package cleanup failed: $($_.Exception.Message)")
+    }
+    try {
+        if ($null -ne $temporaryRoot -and (Test-Path -LiteralPath $temporaryRoot -PathType Container)) {
+            $resolvedTemporaryRoot = [System.IO.Path]::GetFullPath($temporaryRoot)
+            $systemTemporaryRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+            if ($resolvedTemporaryRoot.StartsWith($systemTemporaryRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
+                [System.IO.Path]::GetFileName($resolvedTemporaryRoot).StartsWith('flashgate-governance-fixtures-', [System.StringComparison]::Ordinal)) {
+                Remove-Item -LiteralPath $resolvedTemporaryRoot -Recurse -Force
+            }
+        }
+    }
+    catch {
+        $cleanupErrors.Add("Temporary root cleanup failed: $($_.Exception.Message)")
+    }
+    $cleanupStatus = if ($cleanupErrors.Count -eq 0) { 'PASS' } else { 'FAIL' }
+}
+
+if ($null -ne $resolvedRepositoryRoot -and $null -ne $repositoryStatusBefore) {
+    $repositoryStatusAfter = @(& git -C $resolvedRepositoryRoot status --porcelain=v1 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0) {
+        $repositoryMutationDetected = $true
+        $cleanupErrors.Add('Cannot capture the repository status after fixture execution.')
+    }
+    else {
+        $repositoryMutationDetected = (($repositoryStatusBefore -join "`n") -cne ($repositoryStatusAfter -join "`n"))
+    }
+}
+if ($cleanupErrors.Count -gt 0 -or $repositoryMutationDetected) {
+    $status = 'FAIL'
+}
+
+$completedAt = [DateTimeOffset]::Now
+$resultFailureCount = @($results | Where-Object Result -eq 'FAIL').Count
+$structuralFailureCount = if ([string]::IsNullOrWhiteSpace($failureMessage)) { 0 } else { 1 }
+$warningCount = 0
+$failureCount = $resultFailureCount + $structuralFailureCount + $cleanupErrors.Count + [int]$repositoryMutationDetected
+$skippedCount = if (@($CaseName).Count -eq 0) { [Math]::Max(0, $expectedFullFixtureCount - $results.Count) } else { 0 }
+$progressRecordCount = 0
+$progressSHA256 = $null
+if (-not [string]::IsNullOrWhiteSpace($ProgressPath) -and
+    (Test-Path -LiteralPath $ProgressPath -PathType Leaf)) {
+    $progressRecordCount = [System.IO.File]::ReadAllLines($ProgressPath).Count
+    $progressSHA256 = (Get-FileHash -LiteralPath $ProgressPath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+$finalResult = [pscustomobject]@{
+    Status       = $status
+    StartedAt    = $startedAt.ToString('o')
+    CompletedAt  = $completedAt.ToString('o')
+    DurationSeconds = [Math]::Round(($completedAt - $startedAt).TotalSeconds, 3)
+    ExpectedFixtureCount = if (@($CaseName).Count -eq 0) { $expectedFullFixtureCount } else { $results.Count }
+    ExecutedFixtureCount = $results.Count
+    FixtureCount = $results.Count
+    PassedCount  = @($results | Where-Object Result -eq 'PASS').Count
+    FailedCount  = $resultFailureCount
+    SkippedCount = $skippedCount
+    WarningCount = $warningCount
+    FailureCount = $failureCount
+    CleanupStatus = $cleanupStatus
+    CleanupErrors = $cleanupErrors -join [Environment]::NewLine
+    RepositoryMutationDetected = $repositoryMutationDetected
+    LastCompletedFixture = $lastCompletedFixture
+    ProgressPath = $ProgressPath
+    ProgressRecordCount = $progressRecordCount
+    ProgressSHA256 = $progressSHA256
+    Failures     = @($results | Where-Object Result -eq 'FAIL' | ForEach-Object { "$($_.Name): expected $($_.ExpectedExit), actual $($_.ActualExit); $($_.Diagnostic)" }) -join [Environment]::NewLine
+    FailureMessage = $failureMessage
+    NextAction   = if ($status -eq 'PASS') { 'Use the governance validator in CI and commit preparation.' } else { 'Correct the failing fixture cases and rerun the matrix.' }
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ResultPath)) {
+    $temporaryResultPath = "$ResultPath.$PID.$([guid]::NewGuid().ToString('N')).tmp"
+    try {
+        [System.IO.File]::WriteAllText(
+            $temporaryResultPath,
+            (($finalResult | ConvertTo-Json -Depth 8) + [Environment]::NewLine),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        [System.IO.File]::Move($temporaryResultPath, $ResultPath)
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporaryResultPath -PathType Leaf) {
+            Remove-Item -LiteralPath $temporaryResultPath -Force
         }
     }
 }
 
-[pscustomobject]@{
-    Status       = $status
-    FixtureCount = $results.Count
-    PassedCount  = @($results | Where-Object Result -eq 'PASS').Count
-    FailedCount  = @($results | Where-Object Result -eq 'FAIL').Count
-    Failures     = @($results | Where-Object Result -eq 'FAIL' | ForEach-Object { "$($_.Name): expected $($_.ExpectedExit), actual $($_.ActualExit); $($_.Diagnostic)" }) -join [Environment]::NewLine
-    FailureMessage = $failureMessage
-    NextAction   = if ($status -eq 'PASS') { 'Use the governance validator in CI and commit preparation.' } else { 'Correct the failing fixture cases and rerun the matrix.' }
-} | Format-List
+$finalResult | Format-List
 
 if ($status -eq 'PASS') {
     exit 0

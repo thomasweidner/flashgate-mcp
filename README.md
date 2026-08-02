@@ -329,6 +329,13 @@ source. The fixture runner defaults to this script-relative mirror, still
 accepts an explicit validator path, and fails closed on byte divergence whenever
 the external canonical validator is locally available.
 
+The full fixture runner currently expects 225 result cases. For long local
+runs, `-ProgressPath <new-jsonl-path>` records one deterministic completion
+record per case. `-ResultPath <new-json-path>` atomically persists the terminal
+typed result, including progress count and SHA-256, before normal process exit.
+The runner fails closed on a different full-run count, cleanup failure, or
+repository mutation.
+
 CI and release create their assignment records ephemerally with
 `scripts/New-GovernanceWorkflowRecord.ps1`; no workflow record is maintained as
 a repository artifact. `ClassicReviewReady=true` additionally requires the
@@ -346,6 +353,26 @@ Run the documentation consistency gate with PowerShell 7.6.4:
 ```
 
 The detailed checklist and exit-code contract are documented in [docs/documentation-quality-gate.md](docs/documentation-quality-gate.md).
+
+Validate the complete PowerShell and Bash entry-point inventory on Windows
+with the required PowerShell 7.6.4 and Git Bash runtimes:
+
+```powershell
+& {
+    .\scripts\Test-ShellScripts.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1
+}
+```
+
+Native Ubuntu CI runs the matching `/usr/bin/bash`
+`scripts/test-shell-scripts.sh` and `scripts/test-shell-scripts.tests.sh`
+gates. The full policy, negative-test matrix, and fallback when optional
+linters are unavailable are documented in [Testing](docs/testing.md#shell-script-validation).
+The bounded subprocess helper verifies termination after a timeout and never
+waits indefinitely for redirected streams after an unconfirmed process-tree
+termination. The persistent PowerShell harness covers 20 focused cases; the
+native Bash harness also verifies fail-closed cleanup reporting with exactly
+one terminal result block.
 
 Run the standard validation chain:
 
@@ -527,10 +554,17 @@ BL-248 artifact verification is complete and was merged through PR #25 on
 2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`. CI Run 82 and
 Metadata Regression Run 11 succeeded, the final Windows and native Linux
 contract suites passed `201/201` and `206/206`, respectively, and all six
-original findings are closed with no open BL-248 finding. BL-333/BL-334 are
-implemented locally on their governance branch but remain incomplete pending
-their independent review, commit, exact-commit validation, Hosted CI, PR
-review, merge, and durable evidence. BL-251 and BL-324 remain not begun.
+original findings are closed with no open BL-248 finding. BL-333/BL-334 and
+BL-335 and BL-251 are complete. The canonical orchestrator binds PowerShell
+7.6.4, the native Linux `standard` gate passes, and the final runspace-free
+wrapper plus atomically persisted child result prove `225/225` governance
+fixtures with zero failures, skips, warnings, timeouts, cleanup errors, or
+repository mutation. The Windows shell harness passes 21/21 cases and obtains
+the bounded child PID directly from the process-start result, so its timeout
+cleanup evidence no longer depends on child-authored PID-file timing. The PID
+correction passed focused independent delta review with no warnings or
+failures, and `BL251-PRECOMMIT-REV-001` is closed. Any Git integration remains
+separately authorized. BL-324 remains not begun.
 
 ## Basic Usage
 
