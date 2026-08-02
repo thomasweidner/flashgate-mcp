@@ -251,6 +251,12 @@ jobs:
             $governanceReport = $null
           }
 
+      - name: Validate PowerShell and Bash scripts on Windows
+        shell: pwsh
+        run: |
+          .\scripts\Test-ShellScripts.ps1
+          .\scripts\Test-ShellScripts.Tests.ps1
+
   test:
     name: Test (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
@@ -277,6 +283,13 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+
+      - name: Validate Bash scripts natively
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          /usr/bin/bash scripts/test-shell-scripts.sh
+          /usr/bin/bash scripts/test-shell-scripts.tests.sh
 
       - name: Check formatting
         run: |

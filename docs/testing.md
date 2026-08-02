@@ -17,6 +17,15 @@ first execution. Then run:
 }
 ```
 
+The complete governance fixture matrix currently contains 225 result cases.
+Long local runs may pass `-ProgressPath <new-jsonl-path>` to record fixture ID,
+sequence, completion time, and result as JSONL. They may additionally pass
+`-ResultPath <new-json-path>` to atomically persist the typed terminal result,
+including the progress record count and SHA-256, before normal process exit.
+Full runs fail closed unless all 225 cases are present, none are skipped,
+cleanup succeeds, and repository status is unchanged. Historical 198-case results below remain evidence for the
+earlier committed governance state rather than the current working-tree count.
+
 `scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
 mirror of the external canonical Classic artifact validator. Its integration
 baseline is 32719 bytes with SHA-256
@@ -161,6 +170,51 @@ Run tests with coverage:
 go test -cover ./...
 ```
 
+### Shell script validation
+
+BL-251 validates the complete repository shell-entry-point inventory rather
+than a fixed file list. The Windows gate requires PowerShell 7.6.4 and
+`C:\Program Files\Git\bin\bash.exe`, parses every `.ps1` and `.psm1`, runs
+Git Bash syntax checks for every `.sh`, validates strict UTF-8, line endings,
+final newlines and supported Bash shebangs, and proves that validation did not
+change repository status or script bytes:
+
+```powershell
+& {
+    .\scripts\Test-ShellScripts.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1
+}
+```
+
+The native Ubuntu gate uses only `/usr/bin/bash` and native standard tools:
+
+```bash
+/usr/bin/bash scripts/test-shell-scripts.sh
+/usr/bin/bash scripts/test-shell-scripts.tests.sh
+```
+
+The persistent negative matrices cover an empty inventory, missing files,
+invalid PowerShell and Bash syntax, wrong runtime paths or versions, invalid
+repository roots, paths with spaces, stable inventory ordering, mutation
+detection, bounded subprocess exit and timeout behavior, unconfirmed
+termination without an unbounded stream wait, deterministic failure
+classification, cleanup failure reporting, and a symlink shell entry point.
+The bounded-process result records the PID immediately after a successful
+process start. Its timeout regression validates the positive direct PID,
+exit code 124, confirmed tree termination, absence of that concrete process,
+and the case where timeout occurs before an optional child-authored PID file.
+The PowerShell matrix currently passes 21/21 cases. The Bash cleanup-negative
+probe uses only its task-local fixture root and requires `Status: FAIL`,
+`Cleanup: FAIL`, a nonzero failure count, a nonzero exit code, and exactly one
+terminal status block. CI
+runs both Windows commands after binding the verified PowerShell 7.6.4
+runtime, and both native Bash commands on Ubuntu. PSScriptAnalyzer and
+ShellCheck remain optional local enrichments: when they are unavailable and
+installation is not authorized, the parser, native syntax checks, structural
+policy checks, and positive/negative harnesses are the approved deterministic
+alternative. Script changes still require the controlled native Linux gate
+below before completion.
+
 ## Required Quality Checks
 
 Before committing, run:
@@ -172,6 +226,9 @@ go test ./...
 golangci-lint run
 go build -o build/flashgate-mcp ./cmd/server
 ```
+
+Run the applicable Windows or native Linux shell-validation pair above when
+PowerShell, Bash, CI, build, release, smoke, or validation scripts change.
 
 On Windows, the build command is usually:
 

@@ -405,7 +405,7 @@ available number only and is not an assigned sprint.
 | BL-248 | Done | Add artifact verification | Reuse the canonical `internal/version`, build, manifest, icon, releaseaudit, and platform-verifier paths; validate real Windows/Linux x64 and cross-built ARM64 binaries and ZIP/TAR.GZ packages, including version/help, product/platform/architecture metadata, exact inventories, checksums, two-build reproducibility, leak scans, structured results, and focused negative cases. PR #25 was merged on 2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`; CI Run 82 and Metadata Regression Run 11 succeeded. The final Windows contract suite passed `201/201`, the native Linux contract suite passed `206/206`, all six original findings including `BL248-REV-004` are closed, and no BL-248 finding remains open. Durable evidence is preserved and the local preparation workspace is removed. |
 | BL-249 | Planned | Run benchmark suite in CI | Stable selection and artifacted results |
 | BL-250 | Planned | Compare benchmark baselines in CI | Budgets from `BL-199` |
-| BL-251 | Planned | Validate PowerShell and Bash scripts | Syntax/lint and smoke portability |
+| BL-251 | Done | Validate PowerShell and Bash scripts | Deterministic Windows validation is complete for the dynamic 54-file inventory (32 PowerShell, 22 Bash): PowerShell 7.6.4 parser, exact Git Bash syntax, UTF-8/line-ending/shebang rules, no-mutation checks, 21/21 persistent PowerShell harness cases, and Windows/native-Ubuntu CI wiring. The bounded-process result carries the PID captured directly after process start, so the timeout regression proves termination of the concrete process without depending on child-authored PID-file timing; process-tree termination and stream draining remain bounded and fail closed. The native Bash harness reports cleanup truthfully and includes a controlled cleanup-negative case. Native `standard` run `bl251-review-findings-closure-20260802-100200` passed all twelve ordered commands with 0 warnings and 0 failures. Independent review `BL-251-focused-independent-delta-review-20260802-102407.md` passed with 0 warnings/0 failures and closed `BL251-REV-001` through `BL251-REV-004` as `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. Independent PID review `BL-251-pid-focused-independent-delta-review-20260802-121605.md` also passed with 0 warnings/0 failures and closed `BL251-PRECOMMIT-REV-001` as `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`; the earlier BL-251 review findings remain closed. The exact commit, remote push, Draft PR, Hosted CI, and focused independent review of the documentation correction are complete. The final independent PR review found the documentation-only Minor finding `PR30-REV-001`; it is `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. Merge remains separately authorized. INF-122 and INF-129 remain closed, BL-324 remains planned, the focused wrapper validation passed `12/12`, and the reusable terminal governance evidence remains `225/225 PASS`. |
 | BL-252 | Planned | Run race detector for stateful components | Execute Go race detection against jobs, process registry, output buffers, cancellation, and shutdown; provide the reusable race-test command and failure gate consumed by CI tasks such as `BL-254` |
 | BL-253 | Planned | Add Windows/Linux process CI jobs | Dedicated CI matrix for process observation and managed lifecycle behavior on supported Windows and Linux runners; reuse implementation tests from the process packages rather than redefining them |
 | BL-254 | Planned | Add Operations/Job CI jobs | Dedicated CI execution for the Operations/Job integration suite from `BL-098`, including cancellation, timeout, cleanup, leak checks, and the race gate from `BL-252`; this task owns workflow orchestration, not duplicate test implementation |
@@ -419,10 +419,13 @@ available number only and is not an assigned sprint.
 | BL-262 | Planned | Add native release supply-chain evidence | Checksums, Windows signing plan, Linux artifact/package signing plan, SBOM, build provenance, dependency inventory, reproducible-build comparison, and atomic rollback; no silent auto-update |
 | BL-263 | Planned | Define and enforce Version 1.0 release boundary | Verify every Planned task or documented waiver, stable protocol/tool contracts, migration/deprecation policy, Variant A-only service identity, performance/security budgets, supported platforms, and post-1.0 deferrals |
 
-BL-333/BL-334 and BL-335 are complete. BL-251 and BL-324 remain `Planned` and have not begun.
+BL-333/BL-334, BL-335, and BL-251 are complete. The twelve-command native
+standard profile, the final native run, the runspace-free wrapper validation,
+and the terminally persisted 225-case fixture replacement all pass. INF-122
+and INF-129 are closed. BL-324 remains `Planned` and has not begun.
 
-Binding remaining queue after BL-335:
-`BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register`.
+Binding remaining queue after BL-251:
+`BL-324 -> final documentation convergence -> remove Local Work Register`.
 
 ### SPR-42 technical identity
 
@@ -562,7 +565,7 @@ terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
 three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
 The binding remaining queue is:
-`BL-251 → BL-324 → final documentation convergence → remove Local Work Register`.
+`BL-324 → final documentation convergence → remove Local Work Register`.
 
 ## Cross-epic rules
 
