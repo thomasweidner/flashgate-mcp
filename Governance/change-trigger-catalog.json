@@ -6,19 +6,19 @@
     { "id": "BL-334", "status": "Done", "role": "ENFORCEMENT" },
     {
       "id": "BL-336",
-      "status": "Done",
+      "status": "In Progress",
       "role": "HANDOFF_PROFILE_GENERALIZATION",
-      "implementationStatus": "COMPLETE",
+      "implementationStatus": "PR31_CORRECTION_COMPLETE_PENDING_INDEPENDENT_REVIEW",
       "validationStatus": "PASS",
-      "independentReviewStatus": "PASS",
-      "openFindingCount": 0,
+      "independentReviewStatus": "FOCUSED_EXACT_HEAD_DELTA_REVIEW_REQUIRED",
+      "openFindingCount": 1,
       "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
       "commitPreparationStatus": "PASS",
       "commitPreparationBlocker": "NONE",
       "gitStagingAuthorized": true,
       "gitCommitAuthorized": true,
       "remoteActionsAuthorized": false,
-      "nextAuthorization": "NONE"
+      "nextAuthorization": "FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW"
     }
   ],
   "handoffProfiles": [

@@ -48,6 +48,16 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   the patch. Nine semantic mismatch packages are fully re-signed and assert
   their specific repository, staged-path, or authoritative-scope failure gate.
 
+- Corrected PR #31 finding `BL336-PR31-REV-001` by replacing the flat generic
+  scope state with disjoint postimage, deletion, and rename forms. Baseline
+  preimages and current postimages are byte-bound, unstaged rename pairing uses
+  a temporary alternate index while complete Porcelain-v2 and `staged=false`
+  stay authoritative, binary patch parity includes both rename sides, and
+  untracked modes carry explicit Windows/Unix normalization sources. The
+  generic fixture matrix now passes 72/72 without changing MCP runtime or
+  product behavior. The finding remains pending a focused independent
+  Exact-Head Delta Review of the new PR commit.
+
 - Implemented the BL-251 deterministic shell-validation foundation: dynamic
   tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,
   exact Git Bash and native `/usr/bin/bash` syntax gates, UTF-8/line-ending/

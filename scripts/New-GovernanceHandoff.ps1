@@ -166,7 +166,12 @@ $contractJson
         $scopePaths = @(
             $scope.entries |
                 Where-Object { [string]$_.inclusionDecision -ceq 'INCLUDE' } |
-                ForEach-Object { [string]$_.path }
+                ForEach-Object {
+                    if ([string]$_.gitStatus -ceq 'TRACKED_RENAMED') {
+                        [string]$_.previousPath
+                    }
+                    [string]$_.path
+                }
         )
         if ((($scopePaths | Sort-Object) -join "`n") -cne
             (($AllowedDeltaPath | Sort-Object) -join "`n")) {

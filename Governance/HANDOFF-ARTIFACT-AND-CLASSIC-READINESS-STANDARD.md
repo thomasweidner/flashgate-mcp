@@ -211,6 +211,31 @@ only after every dependent scope hash, typed contract, embedded HANDOFF/report
 contract, package inventory, and manifest has been regenerated and the
 intended named gate is the observed failure.
 
+Generic scope entries use disjoint `gitStatus` forms:
+
+- ordinary tracked postimages require current `path`, Git-derived `mode`,
+  `modeSource=GIT_WORKTREE`, byte length, and SHA-256;
+- untracked regular files require current bytes and an explicit platform mode
+  classification: `WINDOWS_REGULAR_FILE_NORMALIZED` with `100644`, or
+  `UNIX_EXECUTABLE_BIT_NORMALIZED` with normalized `100644`/`100755`;
+- `TRACKED_DELETED` requires a binary-safe baseline `preimage` with commit,
+  `BASELINE_TREE` mode source, Git mode, byte length, and SHA-256, plus
+  `postimageAbsent=true`;
+- `TRACKED_RENAMED` requires distinct `previousPath` and `path`, binds the
+  baseline preimage to `previousPath`, and binds the current postimage to
+  `path`.
+
+The real NUL-separated Porcelain-v2 status remains complete evidence and every
+entry remains `staged=false`. Because an unstaged filesystem rename may appear
+there as a delete plus an untracked target, the validator may additionally use
+a temporary alternate index with read-only source semantics and
+`git diff --name-status -z --find-renames` to pair source and target. That
+temporary index never replaces or mutates the real index. Authoritative patch
+generation uses the bound baseline in another temporary index, includes both
+rename paths, preserves binary bytes, and must equal `task.patch` and
+`current-delta.patch` byte-for-byte. Baseline identity is validated before any
+baseline-dependent plumbing command.
+
 False, absent, mistyped, or conflicting readiness is never promoted to true.
 An instruction to transfer individual members of a multi-file package also
 fails readiness, even if the ZIP itself is technically valid.

@@ -19,7 +19,7 @@ first execution. Then run:
 ```
 
 The historical governance fixture matrix contains 225 result cases. BL-336 adds
-a separate 52-case generic-handoff matrix, for 277 permanent governance cases
+a separate 72-case generic-handoff matrix, for 297 permanent governance cases
 across both harnesses. The legacy count remains unchanged for byte- and
 behavior-compatible BL-333/BL-334 regression evidence.
 Long local runs may pass `-ProgressPath <new-jsonl-path>` to record fixture ID,
@@ -29,6 +29,15 @@ including the progress record count and SHA-256, before normal process exit.
 Full runs fail closed unless all 225 cases are present, none are skipped,
 cleanup succeeds, and repository status is unchanged. Historical 198-case results below remain evidence for the
 earlier committed governance state rather than the current working-tree count.
+
+The generic matrix includes positive end-to-end packages for tracked deletion,
+unchanged and content-modified renames, Windows-normalized and Unix-normalized
+untracked modes, and their closed negative matrix. Delete preimages come from
+the exact baseline blob; rename preimages bind `previousPath`, postimages bind
+`path`, and both rename paths participate in binary patch parity. Semantic
+negative packages regenerate every dependent contract, inventory, and manifest
+and must fail their named check exactly once. A restored deletion is rejected
+at `GENERIC-PATCH-SCOPE-PARITY` before later authoritative-scope binding.
 
 `scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
 mirror of the external canonical Classic artifact validator. Its integration

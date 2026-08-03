@@ -74,6 +74,10 @@ function Get-HostPathCandidates {
     foreach ($pattern in $patterns) {
         foreach ($match in [regex]::Matches($Text, $pattern)) {
             $candidate = $match.Groups['path'].Value.TrimEnd('.', ',', ';', ':', ')', ']', '}')
+            if ($candidate -ceq '/dev/null') { continue }
+            $lineStart = $Text.LastIndexOf("`n", [Math]::Max(0, $match.Index - 1)) + 1
+            $linePrefix = $Text.Substring($lineStart, $match.Index - $lineStart)
+            if ($linePrefix -cin @('#!', '+#!', '-#!')) { continue }
             if (-not [string]::IsNullOrWhiteSpace($candidate) -and $candidate -notin $candidates) {
                 [void]$candidates.Add($candidate)
             }
@@ -133,32 +137,202 @@ function ConvertTo-CanonicalRepositoryIdentity {
     return $candidate.TrimEnd('/')
 }
 
-function Get-AuthoritativeStatusEntries {
-    param([Parameter(Mandatory)][string]$Root)
+function Invoke-GitBytes {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string[]]$Argument,
+        [int[]]$AllowedExitCode = @(0),
+        [hashtable]$Environment = @{}
+    )
 
-    $statusResult = Invoke-GitText -Root $Root -Argument @(
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = (Get-Command git -ErrorAction Stop).Source
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    [void]$startInfo.ArgumentList.Add('-C')
+    [void]$startInfo.ArgumentList.Add($Root)
+    foreach ($item in $Argument) { [void]$startInfo.ArgumentList.Add($item) }
+    foreach ($name in $Environment.Keys) { $startInfo.Environment[[string]$name] = [string]$Environment[$name] }
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    $memory = [System.IO.MemoryStream]::new()
+    try {
+        [void]$process.Start()
+        $standardErrorTask = $process.StandardError.ReadToEndAsync()
+        $process.StandardOutput.BaseStream.CopyTo($memory)
+        $process.WaitForExit()
+        $standardError = $standardErrorTask.GetAwaiter().GetResult()
+        if ($process.ExitCode -notin $AllowedExitCode) {
+            throw "Authoritative binary Git query failed with exit code $($process.ExitCode): $standardError"
+        }
+        return [pscustomobject]@{
+            ExitCode = $process.ExitCode
+            Bytes = $memory.ToArray()
+            StandardError = $standardError
+        }
+    }
+    finally {
+        $memory.Dispose()
+        $process.Dispose()
+    }
+}
+
+function ConvertFrom-StrictUtf8Bytes {
+    param([Parameter(Mandatory)][byte[]]$Bytes, [string]$Label = 'Git output')
+    try {
+        return [System.Text.UTF8Encoding]::new($false, $true).GetString($Bytes)
+    }
+    catch {
+        throw "$Label is not strict UTF-8."
+    }
+}
+
+function Split-NulTerminatedUtf8 {
+    param([Parameter(Mandatory)][AllowEmptyCollection()][byte[]]$Bytes, [string]$Label)
+
+    $records = [System.Collections.Generic.List[string]]::new()
+    $start = 0
+    for ($index = 0; $index -lt $Bytes.Length; $index++) {
+        if ($Bytes[$index] -ne 0) { continue }
+        $length = $index - $start
+        $segment = [byte[]]::new($length)
+        if ($length -gt 0) { [Array]::Copy($Bytes, $start, $segment, 0, $length) }
+        [void]$records.Add((ConvertFrom-StrictUtf8Bytes -Bytes $segment -Label $Label))
+        $start = $index + 1
+    }
+    if ($start -ne $Bytes.Length) { throw "$Label is not NUL terminated." }
+    return @($records)
+}
+
+function Get-BaselineBlobEvidence {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$Commit,
+        [Parameter(Mandatory)][string]$Path
+    )
+
+    $tree = Invoke-GitBytes -Root $Root -Argument @('ls-tree', '-z', '--full-tree', $Commit, '--', $Path)
+    $records = @(Split-NulTerminatedUtf8 -Bytes $tree.Bytes -Label 'git ls-tree output' | Where-Object { $_ -ne '' })
+    if ($records.Count -ne 1) { throw "Baseline path is not exactly one Git tree entry: $Path" }
+    $match = [regex]::Match($records[0], '^(?<mode>[0-7]{6}) blob (?<oid>[0-9a-f]{40})\t(?<path>.+)$')
+    if (-not $match.Success -or $match.Groups['path'].Value -cne $Path) {
+        throw "Baseline path is not a regular Git blob: $Path"
+    }
+    $mode = $match.Groups['mode'].Value
+    if ($mode -notin @('100644', '100755')) { throw "Unsupported baseline file mode for ${Path}: $mode" }
+    $blob = Invoke-GitBytes -Root $Root -Argument @('cat-file', 'blob', $match.Groups['oid'].Value)
+    return [ordered]@{
+        commit = $Commit
+        mode = $mode
+        modeSource = 'BASELINE_TREE'
+        length = [int64]$blob.Bytes.Length
+        sha256 = Get-ByteSha256 -Bytes $blob.Bytes
+    }
+}
+
+function Get-CurrentPostimageEvidence {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$Path,
+        [string]$GitMode,
+        [switch]$Untracked
+    )
+
+    $fullPath = Join-Path $Root ($Path.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        throw "Current postimage is not a regular file: $Path"
+    }
+    $item = Get-Item -LiteralPath $fullPath -Force
+    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Current postimage is a reparse point or symbolic link: $Path"
+    }
+    $bytes = [System.IO.File]::ReadAllBytes($fullPath)
+    if ($Untracked) {
+        if ($IsWindows) {
+            $mode = '100644'
+            $modeSource = 'WINDOWS_REGULAR_FILE_NORMALIZED'
+        }
+        else {
+            $unixMode = [System.IO.File]::GetUnixFileMode($fullPath)
+            $executeMask = [System.IO.UnixFileMode]::UserExecute -bor
+                [System.IO.UnixFileMode]::GroupExecute -bor [System.IO.UnixFileMode]::OtherExecute
+            $mode = if (($unixMode -band $executeMask) -ne 0) { '100755' } else { '100644' }
+            $modeSource = 'UNIX_EXECUTABLE_BIT_NORMALIZED'
+        }
+    }
+    else {
+        if ($GitMode -notin @('100644', '100755')) {
+            throw "Unsupported current Git worktree mode for ${Path}: $GitMode"
+        }
+        $mode = $GitMode
+        $modeSource = 'GIT_WORKTREE'
+    }
+    return [ordered]@{
+        mode = $mode
+        modeSource = $modeSource
+        length = [int64]$bytes.Length
+        sha256 = Get-ByteSha256 -Bytes $bytes
+    }
+}
+
+function Get-UnstagedRenamePairs {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$BaselineCommit)
+    $indexPath = Join-Path ([System.IO.Path]::GetTempPath()) ('flashgate-governance-index-' + [guid]::NewGuid().ToString('N'))
+    $environment = @{ GIT_INDEX_FILE = $indexPath }
+    try {
+        $null = Invoke-GitBytes -Root $Root -Argument @('read-tree',$BaselineCommit) -Environment $environment
+        $null = Invoke-GitBytes -Root $Root -Argument @('add','-A','--','.') -Environment $environment
+        $diff = Invoke-GitBytes -Root $Root -Argument @('diff','--cached','--name-status','-z','--find-renames','--diff-filter=R',$BaselineCommit,'--') -Environment $environment
+        $records = @(Split-NulTerminatedUtf8 -Bytes $diff.Bytes -Label 'temporary-index rename diff')
+        $pairs = [System.Collections.Generic.List[object]]::new()
+        for($index=0;$index -lt $records.Count;$index++){
+            if([string]::IsNullOrEmpty($records[$index])){continue}
+            $status=$records[$index]
+            if(-not $status.StartsWith('R',[System.StringComparison]::Ordinal) -or $index+2 -ge $records.Count){throw 'Malformed NUL-separated rename diff.'}
+            $previousPath=$records[++$index].Replace('\','/');$path=$records[++$index].Replace('\','/')
+            $stage=Invoke-GitBytes -Root $Root -Argument @('ls-files','--stage','-z','--',$path) -Environment $environment
+            $stageRecords=@(Split-NulTerminatedUtf8 -Bytes $stage.Bytes -Label 'temporary-index stage entry'|Where-Object{$_ -ne ''})
+            if($stageRecords.Count -ne 1){throw "Temporary rename target has no unique stage entry: $path"}
+            $match=[regex]::Match($stageRecords[0],'^(?<mode>[0-7]{6}) [0-9a-f]{40} 0\t(?<path>.+)$')
+            if(-not $match.Success -or $match.Groups['path'].Value -cne $path){throw "Malformed temporary stage entry: $path"}
+            [void]$pairs.Add([pscustomobject]@{PreviousPath=$previousPath;Path=$path;Mode=$match.Groups['mode'].Value})
+        }
+        return @($pairs)
+    }
+    finally{foreach($candidate in @($indexPath,$indexPath+'.lock')){if([System.IO.File]::Exists($candidate)){[System.IO.File]::Delete($candidate)}}}
+}
+
+function Get-AuthoritativeStatusEntries {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$BaselineCommit
+    )
+
+    $renamePairs=@(Get-UnstagedRenamePairs -Root $Root -BaselineCommit $BaselineCommit)
+    $renameByTarget=[System.Collections.Generic.Dictionary[string,object]]::new([System.StringComparer]::Ordinal)
+    $renameSources=[System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach($pair in $renamePairs){$renameByTarget.Add([string]$pair.Path,$pair);[void]$renameSources.Add([string]$pair.PreviousPath)}
+    $consumedRenameTargets=[System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $statusResult = Invoke-GitBytes -Root $Root -Argument @(
         'status', '--porcelain=v2', '-z', '--untracked-files=all'
     )
-    $records = @($statusResult.StandardOutput.Split([char]0))
+    $records = @(Split-NulTerminatedUtf8 -Bytes $statusResult.Bytes -Label 'git status --porcelain=v2 output')
     $entries = [System.Collections.Generic.List[object]]::new()
-    $skipRenameSource = $false
-    foreach ($record in $records) {
+    for ($recordIndex = 0; $recordIndex -lt $records.Count; $recordIndex++) {
+        $record = $records[$recordIndex]
         if ([string]::IsNullOrEmpty($record)) { continue }
-        if ($skipRenameSource) {
-            $skipRenameSource = $false
-            continue
-        }
 
         $path = $null
+        $previousPath = $null
         $gitStatus = $null
         $tracked = $true
         $staged = $false
         $mode = $null
         if ($record.StartsWith('? ', [System.StringComparison]::Ordinal)) {
-            $path = $record.Substring(2)
-            $gitStatus = 'UNTRACKED'
-            $tracked = $false
-            $mode = '100644'
+            $path = $record.Substring(2).Replace('\','/')
+            if($renameByTarget.ContainsKey($path)){$pair=$renameByTarget[$path];$previousPath=[string]$pair.PreviousPath;$gitStatus='TRACKED_RENAMED';$tracked=$true;$mode=[string]$pair.Mode;[void]$consumedRenameTargets.Add($path)}
+            else{$gitStatus='UNTRACKED';$tracked=$false}
         }
         elseif ($record.StartsWith('1 ', [System.StringComparison]::Ordinal)) {
             $fields = $record.Split(' ', 9, [System.StringSplitOptions]::None)
@@ -175,12 +349,19 @@ function Get-AuthoritativeStatusEntries {
         elseif ($record.StartsWith('2 ', [System.StringComparison]::Ordinal)) {
             $fields = $record.Split(' ', 10, [System.StringSplitOptions]::None)
             if ($fields.Count -ne 10) { throw 'Unsupported renamed porcelain-v2 status record.' }
+            if (-not $fields[8].StartsWith('R', [System.StringComparison]::Ordinal)) {
+                throw 'Porcelain-v2 copy records are not supported as renames.'
+            }
             $xy = $fields[1]
             $path = $fields[9]
             $mode = $fields[5]
             $staged = $xy[0] -cne '.'
             $gitStatus = 'TRACKED_RENAMED'
-            $skipRenameSource = $true
+            $recordIndex++
+            if ($recordIndex -ge $records.Count -or [string]::IsNullOrEmpty($records[$recordIndex])) {
+                throw 'Porcelain-v2 rename source record is missing.'
+            }
+            $previousPath = $records[$recordIndex]
         }
         elseif ($record.StartsWith('! ', [System.StringComparison]::Ordinal)) {
             continue
@@ -190,25 +371,72 @@ function Get-AuthoritativeStatusEntries {
         }
 
         $normalizedPath = $path.Replace('\', '/')
+        $normalizedPreviousPath = if ($null -ne $previousPath) { $previousPath.Replace('\', '/') } else { $null }
+        if($gitStatus -ceq 'TRACKED_DELETED' -and $renameSources.Contains($normalizedPath)){continue}
         $fullPath = Join-Path $Root ($normalizedPath.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
-        $length = $null
-        $sha256 = $null
-        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
-            $file = Get-Item -LiteralPath $fullPath
-            $length = [int64]$file.Length
-            $sha256 = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash.ToLowerInvariant()
-        }
-        [void]$entries.Add([pscustomobject]@{
+        $entry = [ordered]@{
             Path = $normalizedPath
             GitStatus = $gitStatus
             Tracked = $tracked
             Staged = $staged
-            Mode = $mode
-            Length = $length
-            Sha256 = $sha256
-        })
+            PreviousPath = $normalizedPreviousPath
+            Preimage = $null
+            Postimage = $null
+            PostimageAbsent = $false
+        }
+        switch ($gitStatus) {
+            'TRACKED_DELETED' {
+                if (Test-Path -LiteralPath $fullPath) { throw "Deleted path is still present: $normalizedPath" }
+                $entry.Preimage = Get-BaselineBlobEvidence -Root $Root -Commit $BaselineCommit -Path $normalizedPath
+                $entry.PostimageAbsent = $true
+            }
+            'TRACKED_RENAMED' {
+                if ($normalizedPreviousPath -ceq $normalizedPath) { throw 'Rename source and target must differ.' }
+                $entry.Preimage = Get-BaselineBlobEvidence -Root $Root -Commit $BaselineCommit -Path $normalizedPreviousPath
+                $entry.Postimage = Get-CurrentPostimageEvidence -Root $Root -Path $normalizedPath -GitMode $mode
+            }
+            'UNTRACKED' {
+                $entry.Postimage = Get-CurrentPostimageEvidence -Root $Root -Path $normalizedPath -Untracked
+            }
+            default {
+                $entry.Postimage = Get-CurrentPostimageEvidence -Root $Root -Path $normalizedPath -GitMode $mode
+            }
+        }
+        [void]$entries.Add([pscustomobject]$entry)
     }
+    if($consumedRenameTargets.Count -ne $renamePairs.Count){throw 'Temporary rename pairs did not match the complete real Porcelain-v2 delete/untracked state.'}
     return @($entries)
+}
+
+function Get-ScopePathList {
+    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Entry)
+
+    return @(
+        foreach ($item in $Entry) {
+            if ([string]$item.gitStatus -ceq 'TRACKED_RENAMED') {
+                [string]$item.previousPath
+            }
+            [string]$item.path
+        }
+    )
+}
+
+function Get-AuthoritativeDeltaBytes {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$BaselineCommit,
+        [Parameter(Mandatory)][object[]]$IncludedEntry
+    )
+    $paths=@(Get-ScopePathList -Entry $IncludedEntry|Sort-Object -Unique)
+    $indexPath=Join-Path ([System.IO.Path]::GetTempPath()) ('flashgate-governance-delta-index-'+[guid]::NewGuid().ToString('N'))
+    $environment=@{GIT_INDEX_FILE=$indexPath}
+    try{
+        $null=Invoke-GitBytes -Root $Root -Argument @('read-tree',$BaselineCommit) -Environment $environment
+        $null=Invoke-GitBytes -Root $Root -Argument @('add','-A','--','.') -Environment $environment
+        $delta = Invoke-GitBytes -Root $Root -Argument (@('diff','--cached','--binary','--find-renames',$BaselineCommit,'--')+$paths) -Environment $environment
+        return ,([byte[]]$delta.Bytes)
+    }
+    finally{foreach($candidate in @($indexPath,$indexPath+'.lock')){if([System.IO.File]::Exists($candidate)){[System.IO.File]::Delete($candidate)}}}
 }
 
 try {
@@ -424,54 +652,6 @@ try {
                 throw 'Generic identity, current-state, or finding parity failed.'
             }
 
-            $patchBytesEqual = [System.Linq.Enumerable]::SequenceEqual(
-                [byte[]]$entryBytes['task.patch'], [byte[]]$entryBytes['current-delta.patch']
-            )
-            $patchText = $entryText['current-delta.patch']
-            $patchPaths = @(
-                [regex]::Matches($patchText, '(?m)^diff --git a/(?<path>[^\r\n]+) b/[^\r\n]+$') |
-                    ForEach-Object { $_.Groups['path'].Value } | Sort-Object -Unique
-            )
-            $scopeEntryPaths = @($scope.entries | ForEach-Object { [string]$_.path })
-            $includedScopePaths = @(
-                $scope.entries |
-                    Where-Object { [string]$_.inclusionDecision -ceq 'INCLUDE' } |
-                    ForEach-Object { [string]$_.path } |
-                    Sort-Object
-            )
-            $excludedScopePaths = @(
-                $scope.entries |
-                    Where-Object { [string]$_.inclusionDecision -ceq 'EXCLUDE' } |
-                    ForEach-Object { [string]$_.path } |
-                    Sort-Object
-            )
-            $scopeMetadataPass = (
-                ($scopeEntryPaths | Sort-Object -Unique).Count -eq $scopeEntryPaths.Count -and
-                (($includedScopePaths -join "`n") -ceq (@($scope.allowedDeltaPaths | Sort-Object) -join "`n")) -and
-                (($excludedScopePaths -join "`n") -ceq (@($scope.excludedDeltaPaths | Sort-Object) -join "`n"))
-            )
-            foreach ($scopeEntry in @($scope.entries)) {
-                $statusTrackedParity = if ([string]$scopeEntry.gitStatus -ceq 'UNTRACKED') {
-                    -not [bool]$scopeEntry.tracked
-                }
-                else {
-                    [bool]$scopeEntry.tracked
-                }
-                $scopeMetadataPass = $scopeMetadataPass -and
-                    -not [bool]$scopeEntry.staged -and
-                    $statusTrackedParity -and
-                    -not [string]::IsNullOrWhiteSpace([string]$scopeEntry.reason)
-            }
-            $scopePass = (
-                $patchBytesEqual -and $patchPaths.Count -gt 0 -and
-                ($patchPaths -join "`n") -ceq ($includedScopePaths -join "`n") -and
-                @($patchPaths | Where-Object { $_ -in $excludedScopePaths }).Count -eq 0 -and
-                $scopeMetadataPass
-            )
-            Add-Check -Id 'GENERIC-SCOPE-METADATA-PARITY' -Passed $scopeMetadataPass
-            Add-Check -Id 'GENERIC-PATCH-SCOPE-PARITY' -Passed $scopePass
-            if (-not $scopePass) { throw 'Task patch, current delta, and scope inventory do not agree.' }
-
             $authoritativeTopLevel = (Invoke-GitText -Root $resolvedAuthoritativeRepositoryRoot -Argument @(
                     'rev-parse', '--show-toplevel'
                 )).StandardOutput.Trim()
@@ -500,10 +680,55 @@ try {
                 throw 'Authoritative repository, baseline, current commit, or branch identity failed.'
             }
 
-            $authoritativeEntries = @(Get-AuthoritativeStatusEntries -Root $resolvedAuthoritativeRepositoryRoot)
+            $includedEntries = @($scope.entries | Where-Object { [string]$_.inclusionDecision -ceq 'INCLUDE' })
+            $excludedEntries = @($scope.entries | Where-Object { [string]$_.inclusionDecision -ceq 'EXCLUDE' })
+            $scopeEntryPaths = @($scope.entries | ForEach-Object { [string]$_.path })
+            $allScopePaths = @(Get-ScopePathList -Entry @($scope.entries))
+            $includedScopePaths = @(Get-ScopePathList -Entry $includedEntries | Sort-Object)
+            $excludedScopePaths = @(Get-ScopePathList -Entry $excludedEntries | Sort-Object)
+            $scopeMetadataPass = (
+                @($scopeEntryPaths | Sort-Object -Unique).Count -eq $scopeEntryPaths.Count -and
+                @($allScopePaths | Sort-Object -Unique).Count -eq $allScopePaths.Count -and
+                (($includedScopePaths -join "`n") -ceq (@($scope.allowedDeltaPaths | Sort-Object) -join "`n")) -and
+                (($excludedScopePaths -join "`n") -ceq (@($scope.excludedDeltaPaths | Sort-Object) -join "`n"))
+            )
+            foreach ($scopeEntry in @($scope.entries)) {
+                $statusTrackedParity = if ([string]$scopeEntry.gitStatus -ceq 'UNTRACKED') {
+                    -not [bool]$scopeEntry.tracked
+                }
+                else {
+                    [bool]$scopeEntry.tracked
+                }
+                $scopeMetadataPass = $scopeMetadataPass -and
+                    -not [bool]$scopeEntry.staged -and
+                    $statusTrackedParity -and
+                    -not [string]::IsNullOrWhiteSpace([string]$scopeEntry.reason) -and
+                    ([string]$scopeEntry.gitStatus -cne 'TRACKED_RENAMED' -or
+                        [string]$scopeEntry.previousPath -cne [string]$scopeEntry.path)
+            }
+            $authoritativePatchBytes = Get-AuthoritativeDeltaBytes `
+                -Root $resolvedAuthoritativeRepositoryRoot -BaselineCommit ([string]$scope.baselineCommit) -IncludedEntry $includedEntries
+            $packagePatchesEqual = [System.Linq.Enumerable]::SequenceEqual(
+                [byte[]]$entryBytes['task.patch'], [byte[]]$entryBytes['current-delta.patch']
+            )
+            $authoritativePatchEqual = [System.Linq.Enumerable]::SequenceEqual(
+                [byte[]]$entryBytes['current-delta.patch'], [byte[]]$authoritativePatchBytes
+            )
+            $scopePass = (
+                $packagePatchesEqual -and $authoritativePatchEqual -and
+                $authoritativePatchBytes.Length -gt 0 -and $includedScopePaths.Count -gt 0 -and
+                @($includedScopePaths | Where-Object { $_ -in $excludedScopePaths }).Count -eq 0 -and
+                $scopeMetadataPass
+            )
+            Add-Check -Id 'GENERIC-SCOPE-METADATA-PARITY' -Passed $scopeMetadataPass
+            Add-Check -Id 'GENERIC-PATCH-SCOPE-PARITY' -Passed $scopePass
+            if (-not $scopePass) { throw 'Task patch, current delta, and scope inventory do not agree.' }
+
+            $authoritativeEntries = @(Get-AuthoritativeStatusEntries `
+                -Root $resolvedAuthoritativeRepositoryRoot -BaselineCommit ([string]$scope.baselineCommit))
             $authoritativePaths = @($authoritativeEntries | ForEach-Object Path | Sort-Object)
             $authoritativeScopePass = (
-                ($authoritativePaths | Sort-Object -Unique).Count -eq $authoritativePaths.Count -and
+                @($authoritativePaths | Sort-Object -Unique).Count -eq $authoritativePaths.Count -and
                 ($authoritativePaths -join "`n") -ceq (@($scopeEntryPaths | Sort-Object) -join "`n")
             )
             foreach ($scopeEntry in @($scope.entries)) {
@@ -516,13 +741,39 @@ try {
                 $authoritativeScopePass = $authoritativeScopePass -and
                     [string]$scopeEntry.gitStatus -ceq [string]$actual.GitStatus -and
                     [bool]$scopeEntry.tracked -eq [bool]$actual.Tracked -and
-                    [bool]$scopeEntry.staged -eq [bool]$actual.Staged -and
-                    [string]$scopeEntry.mode -ceq [string]$actual.Mode -and
-                    [int64]$scopeEntry.length -eq [int64]$actual.Length -and
-                    [string]$scopeEntry.sha256 -ceq [string]$actual.Sha256
+                    [bool]$scopeEntry.staged -eq [bool]$actual.Staged
+                switch ([string]$scopeEntry.gitStatus) {
+                    'TRACKED_DELETED' {
+                        $authoritativeScopePass = $authoritativeScopePass -and
+                            [bool]$scopeEntry.postimageAbsent -and [bool]$actual.PostimageAbsent -and
+                            [string]$scopeEntry.preimage.commit -ceq [string]$actual.Preimage.commit -and
+                            [string]$scopeEntry.preimage.mode -ceq [string]$actual.Preimage.mode -and
+                            [string]$scopeEntry.preimage.modeSource -ceq [string]$actual.Preimage.modeSource -and
+                            [int64]$scopeEntry.preimage.length -eq [int64]$actual.Preimage.length -and
+                            [string]$scopeEntry.preimage.sha256 -ceq [string]$actual.Preimage.sha256
+                    }
+                    'TRACKED_RENAMED' {
+                        $authoritativeScopePass = $authoritativeScopePass -and
+                            [string]$scopeEntry.previousPath -ceq [string]$actual.PreviousPath -and
+                            [string]$scopeEntry.preimage.commit -ceq [string]$actual.Preimage.commit -and
+                            [string]$scopeEntry.preimage.mode -ceq [string]$actual.Preimage.mode -and
+                            [string]$scopeEntry.preimage.modeSource -ceq [string]$actual.Preimage.modeSource -and
+                            [int64]$scopeEntry.preimage.length -eq [int64]$actual.Preimage.length -and
+                            [string]$scopeEntry.preimage.sha256 -ceq [string]$actual.Preimage.sha256 -and
+                            [string]$scopeEntry.postimage.mode -ceq [string]$actual.Postimage.mode -and
+                            [string]$scopeEntry.postimage.modeSource -ceq [string]$actual.Postimage.modeSource -and
+                            [int64]$scopeEntry.postimage.length -eq [int64]$actual.Postimage.length -and
+                            [string]$scopeEntry.postimage.sha256 -ceq [string]$actual.Postimage.sha256
+                    }
+                    default {
+                        $authoritativeScopePass = $authoritativeScopePass -and
+                            [string]$scopeEntry.postimage.mode -ceq [string]$actual.Postimage.mode -and
+                            [string]$scopeEntry.postimage.modeSource -ceq [string]$actual.Postimage.modeSource -and
+                            [int64]$scopeEntry.postimage.length -eq [int64]$actual.Postimage.length -and
+                            [string]$scopeEntry.postimage.sha256 -ceq [string]$actual.Postimage.sha256
+                    }
+                }
             }
-            $authoritativeScopePass = $authoritativeScopePass -and
-                @($patchPaths | Where-Object { $_ -in $excludedScopePaths }).Count -eq 0
             Add-Check -Id 'GENERIC-AUTHORITATIVE-SCOPE-BINDING' -Passed $authoritativeScopePass
             if (-not $authoritativeScopePass) {
                 throw 'Scope inventory does not match the authoritative Git worktree state.'

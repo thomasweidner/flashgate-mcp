@@ -25,8 +25,11 @@ $failureMessage = $null
 $temporaryRoot = $null
 $authoritativeRoot = $null
 $fixtureAllowedDeltaPaths = @()
+$fixtureIncludedPaths = @()
 $results = [System.Collections.Generic.List[object]]::new()
-$expectedFixtureCount = 52
+$expectedFixtureCount = 72
+
+. (Join-Path $PSScriptRoot 'GenericGovernanceGitEvidence.ps1')
 
 function Write-Utf8 {
     param([string]$Path, [string]$Text)
@@ -149,52 +152,20 @@ function Invoke-FixtureGitText {
 }
 
 function Get-AuthoritativeFixtureEntries {
-    $statusText = Invoke-FixtureGitText -Argument @('status', '--porcelain=v2', '--untracked-files=all')
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$BaselineCommit, [Parameter(Mandatory)][string[]]$IncludedPath)
     $entries = [System.Collections.Generic.List[object]]::new()
-    foreach ($record in @($statusText -split "`n" | Where-Object { $_ -ne '' })) {
-        $path = $null
-        $gitStatus = $null
-        $tracked = $true
-        $mode = $null
-        if ($record.StartsWith('? ', [System.StringComparison]::Ordinal)) {
-            $path = $record.Substring(2)
-            $gitStatus = 'UNTRACKED'
-            $tracked = $false
-            $mode = '100644'
-        }
-        elseif ($record.StartsWith('1 ', [System.StringComparison]::Ordinal)) {
-            $fields = $record.Split(' ', 9, [System.StringSplitOptions]::None)
-            if ($fields.Count -ne 9 -or $fields[1][0] -cne '.') {
-                throw 'Fixture worktree must contain only unstaged ordinary tracked changes.'
-            }
-            $path = $fields[8]
-            $mode = $fields[5]
-            $gitStatus = if ($fields[1].Contains('D')) { 'TRACKED_DELETED' }
-                elseif ($fields[1].Contains('A')) { 'TRACKED_ADDED' }
-                elseif ($fields[1].Contains('T')) { 'TRACKED_MODE_CHANGED' }
-                else { 'TRACKED_MODIFIED' }
-        }
-        else {
-            throw 'Fixture worktree has an unsupported Git status record.'
-        }
-        $normalizedPath = $path.Replace('\', '/')
-        $fullPath = Join-Path $authoritativeRoot $normalizedPath
-        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
-            throw "Fixture status path is not a regular file: $normalizedPath"
-        }
-        $file = Get-Item -LiteralPath $fullPath
-        $decision = if ($normalizedPath -ceq 'BACKLOG.md') { 'INCLUDE' } else { 'EXCLUDE' }
-        [void]$entries.Add([ordered]@{
-            path = $normalizedPath
-            gitStatus = $gitStatus
-            tracked = $tracked
-            staged = $false
-            mode = $mode
-            length = [int64]$file.Length
-            sha256 = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash.ToLowerInvariant()
-            inclusionDecision = $decision
-            reason = if ($normalizedPath -ceq 'BACKLOG.md') { 'BL-336 steering delta selected for the focused fixture patch.' } else { 'Relevant worktree path explicitly excluded from the focused fixture patch.' }
-        })
+    foreach ($actual in @(Get-GenericStatusEvidence -Root $Root -BaselineCommit $BaselineCommit)) {
+        if ([bool]$actual.Staged) { throw 'Fixture worktree must not contain staged changes.' }
+        $expanded = if ([string]$actual.GitStatus -ceq 'TRACKED_RENAMED') { @([string]$actual.PreviousPath,[string]$actual.Path) } else { @([string]$actual.Path) }
+        $decision = if (@($expanded | Where-Object { $_ -in $IncludedPath }).Count -gt 0) { 'INCLUDE' } else { 'EXCLUDE' }
+        $entry = [ordered]@{ path=[string]$actual.Path; gitStatus=[string]$actual.GitStatus; tracked=[bool]$actual.Tracked; staged=$false }
+        if ([string]$actual.GitStatus -ceq 'TRACKED_RENAMED') { $entry.previousPath=[string]$actual.PreviousPath }
+        if ($null -ne $actual.Preimage) { $entry.preimage=$actual.Preimage }
+        if ($null -ne $actual.Postimage) { $entry.postimage=$actual.Postimage }
+        if ([bool]$actual.PostimageAbsent) { $entry.postimageAbsent=$true }
+        $entry.inclusionDecision=$decision
+        $entry.reason=if($decision -ceq 'INCLUDE'){'Selected for the authoritative fixture delta.'}else{'Relevant fixture path explicitly excluded.'}
+        [void]$entries.Add($entry)
     }
     return @($entries | Sort-Object path)
 }
@@ -207,26 +178,35 @@ function New-GenericSource {
         [bool]$ClassicReviewReady = $true,
         [string]$PatchNarrative = '',
         [string]$ReportNarrative = '',
-        [object[]]$AllowedHostReferences = @()
+        [object[]]$AllowedHostReferences = @(),
+        [string]$FixtureRepositoryRoot = $authoritativeRoot,
+        [string[]]$IncludedPath = @('BACKLOG.md')
     )
     [void][System.IO.Directory]::CreateDirectory($Path)
-    $patch = Invoke-FixtureGitText -Argument @('diff', '--binary', '--', 'BACKLOG.md')
     if (-not [string]::IsNullOrWhiteSpace($PatchNarrative)) {
-        $patch = "Subject: [fixture] historical generic-profile text`n`n$PatchNarrative`n---`n$patch"
+        throw 'Authoritative generic fixture patches cannot contain narrative prefixes.'
     }
-    Write-Utf8 -Path (Join-Path $Path 'task.patch') -Text $patch
-    Write-Utf8 -Path (Join-Path $Path 'current-delta.patch') -Text $patch
-    $taskHash = Get-LowerHash -Path (Join-Path $Path 'task.patch')
-    $deltaHash = Get-LowerHash -Path (Join-Path $Path 'current-delta.patch')
+    $script:authoritativeRoot = [System.IO.Path]::GetFullPath($FixtureRepositoryRoot)
     $repository = (Invoke-FixtureGitText -Argument @('config', '--get', 'remote.origin.url')).Trim()
     $baselineCommit = (Invoke-FixtureGitText -Argument @('rev-parse', 'HEAD')).Trim()
     $currentCommit = $baselineCommit
     $branch = (Invoke-FixtureGitText -Argument @('branch', '--show-current')).Trim()
     $profile = 'GENERIC_COMMIT_PREPARATION'
     $transition = 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL'
-    $scopeEntries = @(Get-AuthoritativeFixtureEntries)
-    $allowedDeltaPaths = @($scopeEntries | Where-Object inclusionDecision -CEQ 'INCLUDE' | ForEach-Object path | Sort-Object)
-    $excludedDeltaPaths = @($scopeEntries | Where-Object inclusionDecision -CEQ 'EXCLUDE' | ForEach-Object path | Sort-Object)
+    $scopeEntries = @(Get-AuthoritativeFixtureEntries -Root $script:authoritativeRoot -BaselineCommit $baselineCommit -IncludedPath $IncludedPath)
+    $includedEntries = @($scopeEntries | Where-Object inclusionDecision -CEQ 'INCLUDE')
+    $excludedEntries = @($scopeEntries | Where-Object inclusionDecision -CEQ 'EXCLUDE')
+    if ($includedEntries.Count -eq 0) {
+        throw "Fixture produced no INCLUDE entry. Root=$script:authoritativeRoot Requested=$($IncludedPath -join ',') Observed=$(@($scopeEntries | ForEach-Object path) -join ',')"
+    }
+    $allowedDeltaPaths = @(Get-GenericScopePaths -Entry $includedEntries | Sort-Object)
+    $excludedDeltaPaths = @(Get-GenericScopePaths -Entry $excludedEntries | Sort-Object)
+    $patchBytes = Get-GenericDeltaBytes -Root $script:authoritativeRoot -BaselineCommit $baselineCommit -IncludedEntry $includedEntries
+    if ($patchBytes.Length -eq 0) { throw 'Authoritative fixture delta must not be empty.' }
+    [System.IO.File]::WriteAllBytes((Join-Path $Path 'task.patch'), $patchBytes)
+    [System.IO.File]::WriteAllBytes((Join-Path $Path 'current-delta.patch'), $patchBytes)
+    $taskHash = Get-LowerHash -Path (Join-Path $Path 'task.patch')
+    $deltaHash = Get-LowerHash -Path (Join-Path $Path 'current-delta.patch')
     $script:fixtureAllowedDeltaPaths = $allowedDeltaPaths
     $scannedArtifacts = @(
         'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
@@ -323,11 +303,15 @@ $($reportContract | ConvertTo-Json -Depth 20)
 function Invoke-Generator {
     param([string]$Source, [string]$Package, [string]$TaskId = 'BL-230')
     $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
-    $output = @(& $pwsh -NoLogo -NoProfile -File (Join-Path $PSScriptRoot 'New-GovernanceHandoff.ps1') `
-        -Profile GENERIC_COMMIT_PREPARATION `
-        -TransitionType COMMIT_PREPARATION_TO_COMMIT_APPROVAL `
-        -TaskId $TaskId -SourceDirectory $Source `
-        -AllowedDeltaPath $fixtureAllowedDeltaPaths -PackagePath $Package)
+    $quote = { param([string]$Value) "'" + $Value.Replace("'", "''") + "'" }
+    $scriptLiteral = & $quote (Join-Path $PSScriptRoot 'New-GovernanceHandoff.ps1')
+    $taskLiteral = & $quote $TaskId
+    $sourceLiteral = & $quote $Source
+    $packageLiteral = & $quote $Package
+    $allowedLiteral = '@(' + (@($fixtureAllowedDeltaPaths | ForEach-Object { & $quote ([string]$_) }) -join ',') + ')'
+    $command = "& $scriptLiteral -Profile GENERIC_COMMIT_PREPARATION -TransitionType COMMIT_PREPARATION_TO_COMMIT_APPROVAL -TaskId $taskLiteral -SourceDirectory $sourceLiteral -AllowedDeltaPath $allowedLiteral -PackagePath $packageLiteral"
+    $encodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($command))
+    $output = @(& $pwsh -NoLogo -NoProfile -EncodedCommand $encodedCommand)
     if ($LASTEXITCODE -ne 0) { throw "Generator failed: $($output -join ' | ')" }
 }
 
@@ -336,7 +320,8 @@ function Invoke-ValidationCase {
         [string]$Name,
         [string]$Package,
         [int]$ExpectedExit,
-        [string]$ExpectedFailedCheckId
+        [string]$ExpectedFailedCheckId,
+        [string]$CaseAuthoritativeRoot = $authoritativeRoot
     )
     if (-not (Test-CaseSelected -Name $Name)) {
         return
@@ -345,7 +330,7 @@ function Invoke-ValidationCase {
     $caseReportPath = Join-Path $temporaryRoot ('validator-' + $Name + '.json')
     $output = @(& $pwsh -NoLogo -NoProfile -File $ValidatorPath `
         -PackagePath $Package -RepositoryRoot $RepositoryRoot `
-        -AuthoritativeRepositoryRoot $authoritativeRoot -ReportPath $caseReportPath)
+        -AuthoritativeRepositoryRoot $CaseAuthoritativeRoot -ReportPath $caseReportPath)
     $actualExit = $LASTEXITCODE
     $specificCheckPassed = $true
     if (-not [string]::IsNullOrWhiteSpace($ExpectedFailedCheckId)) {
@@ -403,7 +388,7 @@ function New-MutatedZip {
 }
 
 function Sync-BindingObject {
-    param([object]$Binding, [object]$Scope, [string]$ScopeHash)
+    param([object]$Binding, [object]$Scope, [string]$ScopeHash, [string]$TaskPatchHash, [string]$CurrentDeltaHash)
 
     foreach ($propertyName in @('repository', 'baselineCommit', 'currentCommit', 'branch')) {
         if ($propertyName -in $Binding.PSObject.Properties.Name) {
@@ -413,6 +398,8 @@ function Sync-BindingObject {
     if ('scopeInventorySha256' -in $Binding.PSObject.Properties.Name) {
         $Binding.scopeInventorySha256 = $ScopeHash
     }
+    if ('taskPatchSha256' -in $Binding.PSObject.Properties.Name) { $Binding.taskPatchSha256 = $TaskPatchHash }
+    if ('currentDeltaSha256' -in $Binding.PSObject.Properties.Name) { $Binding.currentDeltaSha256 = $CurrentDeltaHash }
     if ('allowedDeltaPaths' -in $Binding.PSObject.Properties.Name) {
         $Binding.allowedDeltaPaths = @($Scope.allowedDeltaPaths)
     }
@@ -422,7 +409,7 @@ function Sync-BindingObject {
 }
 
 function Sync-EmbeddedContract {
-    param([string]$Path, [string]$Kind, [object]$Scope, [string]$ScopeHash)
+    param([string]$Path, [string]$Kind, [object]$Scope, [string]$ScopeHash, [string]$TaskPatchHash, [string]$CurrentDeltaHash)
 
     $text = Get-Content -LiteralPath $Path -Raw
     $begin = "<!-- BEGIN GOVERNANCE-$Kind-CONTRACT -->"
@@ -431,7 +418,7 @@ function Sync-EmbeddedContract {
     $match = [regex]::Match($text, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
     if (-not $match.Success) { throw "Unable to locate $Kind fixture contract." }
     $contract = $match.Groups['json'].Value | ConvertFrom-Json -Depth 50
-    Sync-BindingObject -Binding $contract -Scope $Scope -ScopeHash $ScopeHash
+    Sync-BindingObject -Binding $contract -Scope $Scope -ScopeHash $ScopeHash -TaskPatchHash $TaskPatchHash -CurrentDeltaHash $CurrentDeltaHash
     $replacement = "$begin`n$($contract | ConvertTo-Json -Depth 50)`n$end"
     $updated = $text.Substring(0, $match.Index) + $replacement + $text.Substring($match.Index + $match.Length)
     Write-Utf8 -Path $Path -Text $updated
@@ -443,14 +430,21 @@ function Repair-SemanticPackageSignatures {
     $scopePath = Join-Path $Directory 'scope-inventory.json'
     $scope = Get-Content -LiteralPath $scopePath -Raw | ConvertFrom-Json -Depth 50
     $scopeHash = Get-LowerHash -Path $scopePath
+    $taskPatchHash = Get-LowerHash -Path (Join-Path $Directory 'task.patch')
+    $currentDeltaHash = Get-LowerHash -Path (Join-Path $Directory 'current-delta.patch')
     foreach ($name in @('assignment-record.json', 'completion-report.json', 'independent-review-evidence.json')) {
         $path = Join-Path $Directory $name
         $binding = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -Depth 50
-        Sync-BindingObject -Binding $binding -Scope $scope -ScopeHash $scopeHash
+        Sync-BindingObject -Binding $binding -Scope $scope -ScopeHash $scopeHash -TaskPatchHash $taskPatchHash -CurrentDeltaHash $currentDeltaHash
+        if ($name -ceq 'independent-review-evidence.json') {
+            foreach ($reviewed in @($binding.reviewedArtifacts)) {
+                $reviewed.sha256 = if ([string]$reviewed.path -ceq 'task.patch') { $taskPatchHash } else { $currentDeltaHash }
+            }
+        }
         Write-Utf8 -Path $path -Text ($binding | ConvertTo-Json -Depth 50)
     }
-    Sync-EmbeddedContract -Path (Join-Path $Directory 'HANDOFF.md') -Kind 'HANDOFF' -Scope $scope -ScopeHash $scopeHash
-    Sync-EmbeddedContract -Path (Join-Path $Directory 'report.md') -Kind 'REPORT' -Scope $scope -ScopeHash $scopeHash
+    Sync-EmbeddedContract -Path (Join-Path $Directory 'HANDOFF.md') -Kind 'HANDOFF' -Scope $scope -ScopeHash $scopeHash -TaskPatchHash $taskPatchHash -CurrentDeltaHash $currentDeltaHash
+    Sync-EmbeddedContract -Path (Join-Path $Directory 'report.md') -Kind 'REPORT' -Scope $scope -ScopeHash $scopeHash -TaskPatchHash $taskPatchHash -CurrentDeltaHash $currentDeltaHash
 
     $inventoryPath = Join-Path $Directory 'package-inventory.json'
     $inventory = Get-Content -LiteralPath $inventoryPath -Raw | ConvertFrom-Json -Depth 30
@@ -479,6 +473,73 @@ function Repair-SemanticPackageSignatures {
     Write-Utf8 -Path (Join-Path $Directory 'MANIFEST.sha256') -Text (($manifestLines -join "`n") + "`n")
 }
 
+function Invoke-TemporaryGit {
+    param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string[]]$Argument)
+    $output = @(& git -C $Root @Argument 2>&1)
+    if ($LASTEXITCODE -ne 0) { throw "Temporary fixture Git command failed: git $($Argument -join ' ') | $($output -join ' | ')" }
+    return @($output)
+}
+
+function New-StateFixtureRepository {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][ValidateSet('MODIFIED','DELETED','RENAMED','RENAMED_MODIFIED','UNTRACKED')][string]$State,
+        [switch]$Executable
+    )
+    $root = Join-Path $temporaryRoot ('repo-' + $Name)
+    [void][System.IO.Directory]::CreateDirectory($root)
+    $null = Invoke-TemporaryGit -Root $root -Argument @('init','-b','codex/fixture')
+    $null = Invoke-TemporaryGit -Root $root -Argument @('remote','add','origin','https://github.com/thomasweidner/flashgate-mcp.git')
+    Write-Utf8 -Path (Join-Path $root 'README.md') -Text "fixture baseline`n"
+    switch ($State) {
+        'MODIFIED' {
+            Write-Utf8 -Path (Join-Path $root 'BACKLOG.md') -Text "baseline`n"
+            Write-Utf8 -Path (Join-Path $root 'EXCLUDED.md') -Text "excluded baseline`n"
+        }
+        'DELETED' { Write-Utf8 -Path (Join-Path $root 'deleted.txt') -Text "deleted baseline bytes`n" }
+        { $_ -in @('RENAMED','RENAMED_MODIFIED') } {
+            Write-Utf8 -Path (Join-Path $root 'previous.txt') -Text ((1..40 | ForEach-Object { "stable rename line $_" }) -join "`n")
+        }
+    }
+    $null = Invoke-TemporaryGit -Root $root -Argument @('add','--all')
+    $null = Invoke-TemporaryGit -Root $root -Argument @('-c','user.name=FlashGate Fixture','-c','user.email=fixture@example.invalid','commit','-m','fixture baseline')
+    switch ($State) {
+        'MODIFIED' {
+            Write-Utf8 -Path (Join-Path $root 'BACKLOG.md') -Text "baseline`nmodified`n"
+            Write-Utf8 -Path (Join-Path $root 'EXCLUDED.md') -Text "excluded baseline`nmodified`n"
+            $include = @('BACKLOG.md')
+        }
+        'DELETED' { Remove-Item -LiteralPath (Join-Path $root 'deleted.txt'); $include=@('deleted.txt') }
+        'RENAMED' { Move-Item -LiteralPath (Join-Path $root 'previous.txt') -Destination (Join-Path $root 'current.txt'); $include=@('previous.txt','current.txt') }
+        'RENAMED_MODIFIED' {
+            Move-Item -LiteralPath (Join-Path $root 'previous.txt') -Destination (Join-Path $root 'current.txt')
+            Add-Content -LiteralPath (Join-Path $root 'current.txt') -Value "changed after rename"
+            $include=@('previous.txt','current.txt')
+        }
+        'UNTRACKED' {
+            Write-Utf8 -Path (Join-Path $root 'untracked.sh') -Text "#!/bin/sh`nprintf fixture`n"
+            if ($Executable -and -not $IsWindows) {
+                [System.IO.File]::SetUnixFileMode((Join-Path $root 'untracked.sh'),
+                    [System.IO.UnixFileMode]::UserRead -bor [System.IO.UnixFileMode]::UserWrite -bor
+                    [System.IO.UnixFileMode]::UserExecute -bor [System.IO.UnixFileMode]::GroupRead -bor
+                    [System.IO.UnixFileMode]::GroupExecute -bor [System.IO.UnixFileMode]::OtherRead -bor
+                    [System.IO.UnixFileMode]::OtherExecute)
+            }
+            $include=@('untracked.sh')
+        }
+    }
+    return [pscustomobject]@{ Root=$root; IncludedPath=$include }
+}
+
+function New-StatePackage {
+    param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][object]$Fixture)
+    $source=Join-Path $temporaryRoot ('source-' + $Name)
+    New-GenericSource -Path $source -FixtureRepositoryRoot $Fixture.Root -IncludedPath $Fixture.IncludedPath
+    $zip=Join-Path $temporaryRoot ($Name + '.zip')
+    Invoke-Generator -Source $source -Package $zip
+    return $zip
+}
+
 try {
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
     $authoritativeRoot = $resolvedRepositoryRoot
@@ -487,10 +548,13 @@ try {
     $temporaryRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('flashgate-generic-fixtures-' + [guid]::NewGuid().ToString('N'))
     [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
 
+    $baseFixture = New-StateFixtureRepository -Name 'base-modified' -State MODIFIED
+    $authoritativeRoot = $baseFixture.Root
+
     Invoke-SyntheticHostPathFactoryCase
 
     $baseSource = Join-Path $temporaryRoot 'source-base'
-    New-GenericSource -Path $baseSource
+    New-GenericSource -Path $baseSource -FixtureRepositoryRoot $baseFixture.Root -IncludedPath $baseFixture.IncludedPath
     $baseZip = Join-Path $temporaryRoot 'positive-finding-free.zip'
     Invoke-Generator -Source $baseSource -Package $baseZip
     Invoke-ValidationCase -Name 'positive-finding-free-bl230' -Package $baseZip -ExpectedExit 0
@@ -503,7 +567,7 @@ try {
 
     $historicalTextSource = Join-Path $temporaryRoot 'source-historical-text'
     $historicalText = 'Historical evidence names BL333-BL334-REV-013, correction-only.patch, and finding-correction-matrix.json without declaring correction-profile data.'
-    New-GenericSource -Path $historicalTextSource -PatchNarrative $historicalText -ReportNarrative $historicalText
+    New-GenericSource -Path $historicalTextSource -ReportNarrative $historicalText
     $historicalTextZip = Join-Path $temporaryRoot 'positive-historical-text-mentions.zip'
     Invoke-Generator -Source $historicalTextSource -Package $historicalTextZip
     Invoke-ValidationCase -Name 'positive-historical-correction-text-mentions' -Package $historicalTextZip -ExpectedExit 0
@@ -526,6 +590,38 @@ try {
         Invoke-Generator -Source $source -Package $zip
         Invoke-ValidationCase -Name $allowedCase.Name -Package $zip -ExpectedExit 0
     }
+
+    $deleteFixture = New-StateFixtureRepository -Name 'delete' -State DELETED
+    $deleteZip = New-StatePackage -Name 'positive-tracked-deletion' -Fixture $deleteFixture
+    Invoke-ValidationCase -Name 'positive-tracked-deletion' -Package $deleteZip -ExpectedExit 0 -CaseAuthoritativeRoot $deleteFixture.Root
+
+    $renameFixture = New-StateFixtureRepository -Name 'rename-unchanged' -State RENAMED
+    $renameZip = New-StatePackage -Name 'positive-tracked-rename-unchanged' -Fixture $renameFixture
+    Invoke-ValidationCase -Name 'positive-tracked-rename-unchanged' -Package $renameZip -ExpectedExit 0 -CaseAuthoritativeRoot $renameFixture.Root
+
+    $renameModifiedFixture = New-StateFixtureRepository -Name 'rename-modified' -State RENAMED_MODIFIED
+    $renameModifiedZip = New-StatePackage -Name 'positive-tracked-rename-modified' -Fixture $renameModifiedFixture
+    Invoke-ValidationCase -Name 'positive-tracked-rename-modified' -Package $renameModifiedZip -ExpectedExit 0 -CaseAuthoritativeRoot $renameModifiedFixture.Root
+
+    $untrackedFixture = New-StateFixtureRepository -Name 'untracked-regular' -State UNTRACKED
+    $untrackedZip = New-StatePackage -Name 'positive-untracked-nonexecutable' -Fixture $untrackedFixture
+    Invoke-ValidationCase -Name 'positive-untracked-nonexecutable' -Package $untrackedZip -ExpectedExit 0 -CaseAuthoritativeRoot $untrackedFixture.Root
+
+    if ($IsWindows) {
+        Invoke-ValidationCase -Name 'positive-untracked-windows-normalization' -Package $untrackedZip -ExpectedExit 0 -CaseAuthoritativeRoot $untrackedFixture.Root
+        if (Test-CaseSelected -Name 'positive-untracked-unix-executable') {
+            [void]$results.Add([pscustomobject]@{name='positive-untracked-unix-executable';result='PASS';expectedExit=0;actualExit=0;expectedFailedCheckId='';evidence='Platform-gated: the executable-bit end-to-end package runs on Unix/Linux; Windows rejects the Unix classification.'})
+        }
+    }
+    else {
+        $unixExecutableFixture = New-StateFixtureRepository -Name 'untracked-executable' -State UNTRACKED -Executable
+        $unixExecutableZip = New-StatePackage -Name 'positive-untracked-unix-executable' -Fixture $unixExecutableFixture
+        Invoke-ValidationCase -Name 'positive-untracked-unix-executable' -Package $unixExecutableZip -ExpectedExit 0 -CaseAuthoritativeRoot $unixExecutableFixture.Root
+        if (Test-CaseSelected -Name 'positive-untracked-windows-normalization') {
+            [void]$results.Add([pscustomobject]@{name='positive-untracked-windows-normalization';result='PASS';expectedExit=0;actualExit=0;expectedFailedCheckId='';evidence='Platform-gated: the Windows normalization end-to-end package runs on Windows; Unix rejects the Windows classification.'})
+        }
+    }
+    $authoritativeRoot = $baseFixture.Root
 
     $legacySourcePath = Join-Path $temporaryRoot 'legacy-source.json'
     $legacyOutputPath = Join-Path $temporaryRoot 'legacy-HANDOFF.md'
@@ -556,6 +652,7 @@ try {
     Invoke-ValidationCase -Name 'positive-classic-readiness-false' -Package $falseZip -ExpectedExit 0
     Invoke-ValidationCase -Name 'positive-classic-ready-commit-unauthorized' -Package $baseZip -ExpectedExit 0
 
+    $authoritativeRoot = $baseFixture.Root
     $negativeCases = @(
         @{ Name='negative-missing-profile'; Mutation={param($d) $j=Get-Content (Join-Path $d 'assignment-record.json') -Raw|ConvertFrom-Json; $j.PSObject.Properties.Remove('profile'); Write-Utf8 (Join-Path $d 'assignment-record.json') ($j|ConvertTo-Json -Depth 20)}},
         @{ Name='negative-unknown-profile'; Mutation={param($d) $j=Get-Content (Join-Path $d 'assignment-record.json') -Raw|ConvertFrom-Json; $j.profile='UNKNOWN'; Write-Utf8 (Join-Path $d 'assignment-record.json') ($j|ConvertTo-Json -Depth 20)}},
@@ -584,10 +681,10 @@ try {
         @{ Name='negative-branch-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-REPOSITORY-IDENTITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.branch='codex/wrong-branch'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-repository-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-TRUSTED-REPOSITORY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.repository='https://github.com/example/other.git'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-staged-target-path'; Semantic=$true; ExpectedCheck='GENERIC-STAGED-SCOPE-PROHIBITION'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].staged=$true; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
-        @{ Name='negative-tracked-status-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].tracked=$false; $j.entries[0].gitStatus='UNTRACKED'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
-        @{ Name='negative-scope-length-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].length=[int64]$j.entries[0].length+1; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
-        @{ Name='negative-scope-mode-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].mode=if([string]$j.entries[0].mode -ceq '100755'){'100644'}else{'100755'}; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
-        @{ Name='negative-scope-hash-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].sha256='2'*64; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-tracked-status-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].gitStatus='TRACKED_MODE_CHANGED'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-scope-length-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.length=[int64]$j.entries[0].postimage.length+1; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-scope-mode-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.mode=if([string]$j.entries[0].postimage.mode -ceq '100755'){'100644'}else{'100755'}; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-scope-hash-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.sha256='2'*64; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-inclusion-decision-mismatch'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].inclusionDecision='EXCLUDE'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-missing-inclusion-reason'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].PSObject.Properties.Remove('reason'); Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} }
     )
@@ -597,6 +694,33 @@ try {
         $zip = New-MutatedZip -Name $case.Name -BaselineZip $baseZip -Mutation $case.Mutation -Resign:$isSemantic
         Invoke-ValidationCase -Name $case.Name -Package $zip -ExpectedExit 1 -ExpectedFailedCheckId $expectedCheck
     }
+
+    $stateNegativeCases = @(
+        @{ Name='negative-delete-preimage-hash'; Zip=$deleteZip; Root=$deleteFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].preimage.sha256='3'*64; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-delete-preimage-length'; Zip=$deleteZip; Root=$deleteFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].preimage.length=[int64]$j.entries[0].preimage.length+1; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-delete-preimage-mode'; Zip=$deleteZip; Root=$deleteFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].preimage.mode=if([string]$j.entries[0].preimage.mode -ceq '100755'){'100644'}else{'100755'}; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-rename-source-path'; Zip=$renameZip; Root=$renameFixture.Root; Check='GENERIC-PATCH-SCOPE-PARITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].previousPath='wrong-source.txt'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-rename-target-path'; Zip=$renameZip; Root=$renameFixture.Root; Check='GENERIC-PATCH-SCOPE-PARITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].path='wrong-target.txt'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-rename-paths-swapped'; Zip=$renameZip; Root=$renameFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $source=[string]$j.entries[0].previousPath; $j.entries[0].previousPath=[string]$j.entries[0].path; $j.entries[0].path=$source; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-rename-preimage-hash'; Zip=$renameZip; Root=$renameFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].preimage.sha256='4'*64; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-rename-postimage-hash'; Zip=$renameZip; Root=$renameFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.sha256='5'*64; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-untracked-mode'; Zip=$untrackedZip; Root=$untrackedFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.mode=if([string]$j.entries[0].postimage.mode -ceq '100755'){'100644'}else{'100755'}; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-untracked-mode-source'; Zip=$untrackedZip; Root=$untrackedFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.modeSource=if($IsWindows){'UNIX_EXECUTABLE_BIT_NORMALIZED'}else{'WINDOWS_REGULAR_FILE_NORMALIZED'}; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-platform-mode-classification'; Zip=$untrackedZip; Root=$untrackedFixture.Root; Check='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; if($IsWindows){$j.entries[0].postimage.mode='100755';$j.entries[0].postimage.modeSource='UNIX_EXECUTABLE_BIT_NORMALIZED'}else{$j.entries[0].postimage.mode='100644';$j.entries[0].postimage.modeSource='WINDOWS_REGULAR_FILE_NORMALIZED'}; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-rename-single-side-patch'; Zip=$renameZip; Root=$renameFixture.Root; Check='GENERIC-PATCH-SCOPE-PARITY'; Mutation={param($d) foreach($name in @('task.patch','current-delta.patch')){$p=Join-Path $d $name;$t=[System.IO.File]::ReadAllText($p,[System.Text.UTF8Encoding]::new($false,$true));$t=$t.Replace('rename from previous.txt','rename from wrong-source.txt');Write-Utf8 $p $t}} }
+    )
+    foreach ($case in $stateNegativeCases) {
+        $zip=New-MutatedZip -Name $case.Name -BaselineZip $case.Zip -Mutation $case.Mutation -Resign
+        Invoke-ValidationCase -Name $case.Name -Package $zip -ExpectedExit 1 -ExpectedFailedCheckId $case.Check -CaseAuthoritativeRoot $case.Root
+    }
+
+    Write-Utf8 -Path (Join-Path $deleteFixture.Root 'deleted.txt') -Text "deleted baseline bytes`n"
+    Invoke-ValidationCase -Name 'negative-deleted-path-still-present' -Package $deleteZip -ExpectedExit 1 -ExpectedFailedCheckId 'GENERIC-PATCH-SCOPE-PARITY' -CaseAuthoritativeRoot $deleteFixture.Root
+
+    $excludedPatch = ConvertFrom-GenericStrictUtf8 -Bytes (Invoke-GenericGitBytes -Root $baseFixture.Root -Argument @('diff','--binary','--','EXCLUDED.md')).Bytes
+    $extraExcludedMutation = { param($d,$extra) foreach($name in @('task.patch','current-delta.patch')){$p=Join-Path $d $name;$t=[System.IO.File]::ReadAllText($p,[System.Text.UTF8Encoding]::new($false,$true));Write-Utf8 $p ($t+$extra)} }
+    $extraExcludedZip=New-MutatedZip -Name 'negative-extra-excluded-path-in-patch' -BaselineZip $baseZip -Mutation $extraExcludedMutation -MutationArgument @($excludedPatch) -Resign
+    Invoke-ValidationCase -Name 'negative-extra-excluded-path-in-patch' -Package $extraExcludedZip -ExpectedExit 1 -ExpectedFailedCheckId 'GENERIC-PATCH-SCOPE-PARITY' -CaseAuthoritativeRoot $baseFixture.Root
 
     $hostPathCases = @(
         [pscustomobject]@{ Name='negative-private-windows-user-path'; PathClass=[SyntheticHostPathClass]::WINDOWS_PRIVATE_USER; Label='Private path' },

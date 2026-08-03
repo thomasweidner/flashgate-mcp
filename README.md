@@ -331,7 +331,7 @@ accepts an explicit validator path, and fails closed on byte divergence whenever
 the external canonical validator is locally available.
 
 The legacy fixture runner continues to expect 225 result cases. The BL-336
-generic-profile harness adds 52 positive and negative cases without replacing
+generic-profile harness adds 72 positive and negative cases without replacing
 or weakening the historical matrix. Its private and undeclared host-path
 negatives use a closed typed factory that materializes seven deterministic
 synthetic path classes only at fixture runtime. For long local
@@ -364,6 +364,17 @@ EXCLUDE paths must be absent from the patch. Profile isolation uses discriminato
 names, and typed fields rather than narrative tokens. Host paths are checked per
 artifact against exact canonical, documented-example, or synthetic-fixture
 classifications; private or undeclared host paths fail closed.
+
+Scope entries are disjoint by `gitStatus`. Ordinary tracked postimages bind the
+Git worktree mode and current bytes; untracked regular files bind current bytes
+plus an explicit Windows `100644` normalization or the normalized Unix execute
+bits. Tracked deletions bind the baseline blob as a binary-safe preimage and
+assert `postimageAbsent=true`. Tracked renames bind `previousPath` to the
+baseline preimage and `path` to the current postimage. Rename discovery uses a
+temporary alternate index and `--name-status -z --find-renames`, while the real
+Porcelain-v2 status and `staged=false` remain separate mandatory evidence. The
+authoritative binary patch includes both rename sides and is byte-equal to both
+packaged patches.
 
 Run the documentation consistency gate with PowerShell 7.6.4:
 
