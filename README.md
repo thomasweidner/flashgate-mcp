@@ -331,10 +331,13 @@ accepts an explicit validator path, and fails closed on byte divergence whenever
 the external canonical validator is locally available.
 
 The legacy fixture runner continues to expect 225 result cases. The BL-336
-generic-profile harness adds 72 positive and negative cases without replacing
+generic-profile harness adds 85 positive and negative cases without replacing
 or weakening the historical matrix. Its private and undeclared host-path
 negatives use a closed typed factory that materializes seven deterministic
-synthetic path classes only at fixture runtime. For long local
+synthetic path classes only at fixture runtime. Git-evidence regressions also
+prove temporary index/object-database isolation, real-object inventory parity,
+literal metacharacter paths, exact NUL-separated delta inventory, EXCLUDE
+prohibition, and fail-closed cleanup. For long local
 runs, `-ProgressPath <new-jsonl-path>` records one deterministic completion
 record per case. `-ResultPath <new-json-path>` atomically persists the terminal
 typed result, including progress count and SHA-256, before normal process exit.

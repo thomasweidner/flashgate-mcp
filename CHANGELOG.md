@@ -58,6 +58,22 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   product behavior. The finding remains pending a focused independent
   Exact-Head Delta Review of the new PR commit.
 
+- Corrected PR #31 findings `BL336-PR31-REV-002` and
+  `BL336-PR31-REV-003` in the shared generic Git-evidence path. Temporary
+  indices now write new objects only to a unique temporary object database
+  with a canonical alternate to the real database; complete real-object
+  inventories remain identical and cleanup fails closed. All repository paths
+  are validated and passed literally, while authoritative and package-patch
+  NUL-separated delta inventories must exactly equal INCLUDE and prohibit every
+  EXCLUDE path. The generic matrix increases to 85 cases. The three PR findings
+  remain technically corrected pending one focused independent Exact-Head
+  Delta Review; PR metadata convergence remains pending until the authorized
+  post-push, post-CI body update.
+  PRE_COMMIT revalidation passes 85/85 generic fixtures, 225/225 historical
+  fixtures, 946/946 static governance checks, and 84/84 documentation checks
+  with zero warnings or errors; the seven directly affected historical
+  fail-closed check-ID cases also pass 7/7.
+
 - Implemented the BL-251 deterministic shell-validation foundation: dynamic
   tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,
   exact Git Bash and native `/usr/bin/bash` syntax gates, UTF-8/line-ending/

@@ -228,13 +228,34 @@ Generic scope entries use disjoint `gitStatus` forms:
 The real NUL-separated Porcelain-v2 status remains complete evidence and every
 entry remains `staged=false`. Because an unstaged filesystem rename may appear
 there as a delete plus an untracked target, the validator may additionally use
-a temporary alternate index with read-only source semantics and
+a temporary alternate index with object-isolated source semantics and
 `git diff --name-status -z --find-renames` to pair source and target. That
 temporary index never replaces or mutates the real index. Authoritative patch
 generation uses the bound baseline in another temporary index, includes both
 rename paths, preserves binary bytes, and must equal `task.patch` and
 `current-delta.patch` byte-for-byte. Baseline identity is validated before any
 baseline-dependent plumbing command.
+
+Every temporary-index operation that can create Git objects also uses a unique
+temporary `GIT_OBJECT_DIRECTORY`. Its `info/alternates` contains exactly one
+canonical absolute binding to the real object directory resolved through the
+worktree's Git common directory. New blobs and trees are written only to that
+temporary database. A deterministic inventory of every real object-directory
+file and directory, including loose objects, pack/index files, commit graphs,
+multi-pack indexes, and `info` content when present, must be byte-identical
+before and after evidence generation. Temporary index and object directories
+are removed in `finally`; inventory divergence or cleanup failure fails
+`GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY`.
+
+All path-bound Git plumbing receives `GIT_LITERAL_PATHSPECS=1` and passes each
+validated repository-relative path as a separate argument after `--`. The
+isolated index stages only the exact INCLUDE path set. Its NUL-separated actual
+`--name-status --find-renames` inventory is parsed fail-closed and must match
+the declared INCLUDE entries exactly, including deletion and rename tuples.
+No actual or package-patch delta may contain an EXCLUDE path. These contracts
+are enforced by `GENERIC-LITERAL-PATHSPEC-BINDING`,
+`GENERIC-ACTUAL-DELTA-INVENTORY-PARITY`, and
+`GENERIC-EXCLUDED-DELTA-PATH-PROHIBITION`.
 
 False, absent, mistyped, or conflicting readiness is never promoted to true.
 An instruction to transfer individual members of a multi-file package also

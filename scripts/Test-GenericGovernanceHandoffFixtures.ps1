@@ -27,7 +27,7 @@ $authoritativeRoot = $null
 $fixtureAllowedDeltaPaths = @()
 $fixtureIncludedPaths = @()
 $results = [System.Collections.Generic.List[object]]::new()
-$expectedFixtureCount = 72
+$expectedFixtureCount = 85
 
 . (Join-Path $PSScriptRoot 'GenericGovernanceGitEvidence.ps1')
 
@@ -201,7 +201,7 @@ function New-GenericSource {
     }
     $allowedDeltaPaths = @(Get-GenericScopePaths -Entry $includedEntries | Sort-Object)
     $excludedDeltaPaths = @(Get-GenericScopePaths -Entry $excludedEntries | Sort-Object)
-    $patchBytes = Get-GenericDeltaBytes -Root $script:authoritativeRoot -BaselineCommit $baselineCommit -IncludedEntry $includedEntries
+    $patchBytes = Get-GenericDeltaBytes -Root $script:authoritativeRoot -BaselineCommit $baselineCommit -IncludedEntry $includedEntries -ExcludedEntry $excludedEntries
     if ($patchBytes.Length -eq 0) { throw 'Authoritative fixture delta must not be empty.' }
     [System.IO.File]::WriteAllBytes((Join-Path $Path 'task.patch'), $patchBytes)
     [System.IO.File]::WriteAllBytes((Join-Path $Path 'current-delta.patch'), $patchBytes)
@@ -531,6 +531,71 @@ function New-StateFixtureRepository {
     return [pscustomobject]@{ Root=$root; IncludedPath=$include }
 }
 
+function New-LiteralPathFixtureRepository {
+    $root=Join-Path $temporaryRoot 'repo-literal-pathspecs'
+    [void][System.IO.Directory]::CreateDirectory((Join-Path $root 'docs'))
+    $null=Invoke-TemporaryGit -Root $root -Argument @('init','-b','codex/fixture')
+    $null=Invoke-TemporaryGit -Root $root -Argument @('remote','add','origin','https://github.com/thomasweidner/flashgate-mcp.git')
+    foreach($path in @('docs/[a].md','docs/a.md','!literal.md','literal.md')){Write-Utf8 -Path (Join-Path $root $path) -Text "baseline $path`n"}
+    $null=Invoke-TemporaryGit -Root $root -Argument @('add','--all')
+    $null=Invoke-TemporaryGit -Root $root -Argument @('-c','user.name=FlashGate Fixture','-c','user.email=fixture@example.invalid','commit','-m','literal fixture baseline')
+    foreach($path in @('docs/[a].md','docs/a.md','!literal.md','literal.md')){Write-Utf8 -Path (Join-Path $root $path) -Text "uniquely changed $path`n"}
+    return [pscustomobject]@{Root=$root;IncludedPath=@('docs/[a].md','!literal.md')}
+}
+
+function Invoke-ExpectedFailureCase {
+    param([Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string]$ExpectedCheck,[Parameter(Mandatory)][scriptblock]$Operation)
+    if(-not(Test-CaseSelected -Name $Name)){return}
+    $passed=$false;$message='No failure was raised.'
+    try{& $Operation}
+    catch{$message=$_.Exception.Message;$passed=$message.Contains("[$ExpectedCheck]",[System.StringComparison]::Ordinal)}
+    [void]$results.Add([pscustomobject]@{name=$Name;result=if($passed){'PASS'}else{'FAIL'};expectedExit=1;actualExit=if($passed){1}else{0};expectedFailedCheckId=$ExpectedCheck;evidence=$message})
+}
+
+function Invoke-DirectGitEvidenceCases {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string]$BaselineCommit)
+    Invoke-ExpectedFailureCase -Name 'negative-literal-pathspec-environment-disabled' -ExpectedCheck 'GENERIC-LITERAL-PATHSPEC-BINDING' -Operation {
+        $context=New-GenericGitIsolationContext -Root $Root
+        try{$environment=@{};foreach($name in $context.Environment.Keys){$environment[$name]=$context.Environment[$name]};$environment.GIT_LITERAL_PATHSPECS='0';$null=Invoke-GenericGitBytes -Root $Root -Argument @('ls-files','--','docs/[a].md') -Environment $environment -RepositoryPaths}
+        finally{Remove-GenericGitIsolationContext -Context $context}
+    }
+    Invoke-ExpectedFailureCase -Name 'negative-temporary-object-alternate-missing' -ExpectedCheck 'GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY' -Operation {
+        $context=New-GenericGitIsolationContext -Root $Root
+        try{[System.IO.File]::Delete([string]$context.AlternatePath);Assert-GenericIsolatedGitEnvironment -Root $Root -Environment $context.Environment}
+        finally{Remove-GenericGitIsolationContext -Context $context}
+    }
+    Invoke-ExpectedFailureCase -Name 'negative-temporary-object-alternate-wrong' -ExpectedCheck 'GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY' -Operation {
+        $context=New-GenericGitIsolationContext -Root $Root
+        try{[System.IO.File]::WriteAllText([string]$context.AlternatePath,"C:/wrong/object/path`n",[System.Text.UTF8Encoding]::new($false));Assert-GenericIsolatedGitEnvironment -Root $Root -Environment $context.Environment}
+        finally{Remove-GenericGitIsolationContext -Context $context}
+    }
+    Invoke-ExpectedFailureCase -Name 'negative-temporary-object-directory-left-behind' -ExpectedCheck 'GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY' -Operation {
+        $context=New-GenericGitIsolationContext -Root $Root
+        try{Assert-GenericGitIsolationRemoved -Context $context}
+        finally{Remove-GenericGitIsolationContext -Context $context}
+    }
+    Invoke-ExpectedFailureCase -Name 'negative-unknown-name-status-code' -ExpectedCheck 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Operation {
+        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes("X`0docs/[a].md`0");$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
+    }
+    Invoke-ExpectedFailureCase -Name 'negative-duplicate-delta-inventory-entry' -ExpectedCheck 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Operation {
+        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes("M`0docs/[a].md`0M`0docs/[a].md`0");$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
+    }
+    Invoke-ExpectedFailureCase -Name 'negative-rename-delta-target-missing' -ExpectedCheck 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Operation {
+        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes("R100`0previous.txt`0");$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
+    }
+    Invoke-ExpectedFailureCase -Name 'negative-repository-path-crlf' -ExpectedCheck 'GENERIC-LITERAL-PATHSPEC-BINDING' -Operation {$null=Assert-GenericRepositoryPath -Path "docs/bad`r`npath.md"}
+    Invoke-ExpectedFailureCase -Name 'negative-repository-path-nul' -ExpectedCheck 'GENERIC-LITERAL-PATHSPEC-BINDING' -Operation {$null=Assert-GenericRepositoryPath -Path ('docs/bad'+[char]0+'path.md')}
+    $divergenceName='negative-real-object-inventory-divergence'
+    if(Test-CaseSelected -Name $divergenceName){
+        $realObjects=Get-GenericRealObjectDirectory -Root $Root;$before=Get-GenericRealObjectInventory -Root $Root;$marker=Join-Path $realObjects 'info\flashgate-fixture-divergence'
+        $passed=$false;$message='Real object inventory divergence was not detected.'
+        try{[System.IO.Directory]::CreateDirectory((Split-Path -Parent $marker))|Out-Null;[System.IO.File]::WriteAllText($marker,'fixture divergence',[System.Text.UTF8Encoding]::new($false));$after=Get-GenericRealObjectInventory -Root $Root;$passed=-not(Test-GenericObjectInventoryEqual -Before $before -After $after);$message='Synthetic fixture-only object write changed the canonical inventory and was removed.'}
+        finally{if([System.IO.File]::Exists($marker)){[System.IO.File]::Delete($marker)}}
+        $restored=Get-GenericRealObjectInventory -Root $Root;$passed=$passed-and(Test-GenericObjectInventoryEqual -Before $before -After $restored)
+        [void]$results.Add([pscustomobject]@{name=$divergenceName;result=if($passed){'PASS'}else{'FAIL'};expectedExit=1;actualExit=if($passed){1}else{0};expectedFailedCheckId='GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY';evidence=$message})
+    }
+}
+
 function New-StatePackage {
     param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][object]$Fixture)
     $source=Join-Path $temporaryRoot ('source-' + $Name)
@@ -621,6 +686,11 @@ try {
             [void]$results.Add([pscustomobject]@{name='positive-untracked-windows-normalization';result='PASS';expectedExit=0;actualExit=0;expectedFailedCheckId='';evidence='Platform-gated: the Windows normalization end-to-end package runs on Windows; Unix rejects the Windows classification.'})
         }
     }
+    $literalFixture=New-LiteralPathFixtureRepository
+    $literalZip=New-StatePackage -Name 'positive-literal-pathspec-metacharacters' -Fixture $literalFixture
+    Invoke-ValidationCase -Name 'positive-literal-pathspec-metacharacters' -Package $literalZip -ExpectedExit 0 -CaseAuthoritativeRoot $literalFixture.Root
+    $literalBaseline=@(Invoke-TemporaryGit -Root $literalFixture.Root -Argument @('rev-parse','HEAD'))[0]
+    Invoke-DirectGitEvidenceCases -Root $literalFixture.Root -BaselineCommit $literalBaseline
     $authoritativeRoot = $baseFixture.Root
 
     $legacySourcePath = Join-Path $temporaryRoot 'legacy-source.json'
@@ -721,6 +791,26 @@ try {
     $extraExcludedMutation = { param($d,$extra) foreach($name in @('task.patch','current-delta.patch')){$p=Join-Path $d $name;$t=[System.IO.File]::ReadAllText($p,[System.Text.UTF8Encoding]::new($false,$true));Write-Utf8 $p ($t+$extra)} }
     $extraExcludedZip=New-MutatedZip -Name 'negative-extra-excluded-path-in-patch' -BaselineZip $baseZip -Mutation $extraExcludedMutation -MutationArgument @($excludedPatch) -Resign
     Invoke-ValidationCase -Name 'negative-extra-excluded-path-in-patch' -Package $extraExcludedZip -ExpectedExit 1 -ExpectedFailedCheckId 'GENERIC-PATCH-SCOPE-PARITY' -CaseAuthoritativeRoot $baseFixture.Root
+
+    if(Test-CaseSelected -Name 'negative-literal-pathspec-excluded-leak'){
+        $literalExcludedBytes=(Invoke-GenericGitBytes -Root $literalFixture.Root -Argument @('diff','--binary',$literalBaseline,'--','docs/a.md','literal.md') -RepositoryPaths).Bytes
+        $literalExcludedPath=Join-Path $temporaryRoot 'literal-excluded.patch'
+        [System.IO.File]::WriteAllBytes($literalExcludedPath,$literalExcludedBytes)
+        $leakMutation={param($d,$extraPath)foreach($name in @('task.patch','current-delta.patch')){$path=Join-Path $d $name;$base=[System.IO.File]::ReadAllBytes($path);$extra=[System.IO.File]::ReadAllBytes($extraPath);$combined=[byte[]]::new($base.Length+$extra.Length);[Array]::Copy($base,0,$combined,0,$base.Length);[Array]::Copy($extra,0,$combined,$base.Length,$extra.Length);[System.IO.File]::WriteAllBytes($path,$combined)}}
+        $leakZip=New-MutatedZip -Name 'negative-literal-pathspec-excluded-leak' -BaselineZip $literalZip -Mutation $leakMutation -MutationArgument @($literalExcludedPath) -Resign
+        Invoke-ValidationCase -Name 'negative-literal-pathspec-excluded-leak' -Package $leakZip -ExpectedExit 1 -ExpectedFailedCheckId 'GENERIC-EXCLUDED-DELTA-PATH-PROHIBITION' -CaseAuthoritativeRoot $literalFixture.Root
+    }
+
+    if(Test-CaseSelected -Name 'negative-include-path-missing-from-actual-delta'){
+        $literalEntries=@(Get-AuthoritativeFixtureEntries -Root $literalFixture.Root -BaselineCommit $literalBaseline -IncludedPath $literalFixture.IncludedPath)
+        $singleIncluded=@($literalEntries|Where-Object path -CEQ 'docs/[a].md')
+        $remainingEntries=@($literalEntries|Where-Object path -CNE 'docs/[a].md')
+        $missingBytes=Get-GenericDeltaBytes -Root $literalFixture.Root -BaselineCommit $literalBaseline -IncludedEntry $singleIncluded -ExcludedEntry $remainingEntries
+        $missingPath=Join-Path $temporaryRoot 'literal-missing-include.patch';[System.IO.File]::WriteAllBytes($missingPath,$missingBytes)
+        $missingMutation={param($d,$patchPath)foreach($name in @('task.patch','current-delta.patch')){[System.IO.File]::WriteAllBytes((Join-Path $d $name),[System.IO.File]::ReadAllBytes($patchPath))}}
+        $missingZip=New-MutatedZip -Name 'negative-include-path-missing-from-actual-delta' -BaselineZip $literalZip -Mutation $missingMutation -MutationArgument @($missingPath) -Resign
+        Invoke-ValidationCase -Name 'negative-include-path-missing-from-actual-delta' -Package $missingZip -ExpectedExit 1 -ExpectedFailedCheckId 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -CaseAuthoritativeRoot $literalFixture.Root
+    }
 
     $hostPathCases = @(
         [pscustomobject]@{ Name='negative-private-windows-user-path'; PathClass=[SyntheticHostPathClass]::WINDOWS_PRIVATE_USER; Label='Private path' },

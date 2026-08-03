@@ -19,7 +19,7 @@ first execution. Then run:
 ```
 
 The historical governance fixture matrix contains 225 result cases. BL-336 adds
-a separate 72-case generic-handoff matrix, for 297 permanent governance cases
+a separate 85-case generic-handoff matrix, for 310 permanent governance cases
 across both harnesses. The legacy count remains unchanged for byte- and
 behavior-compatible BL-333/BL-334 regression evidence.
 Long local runs may pass `-ProgressPath <new-jsonl-path>` to record fixture ID,
@@ -38,6 +38,18 @@ the exact baseline blob; rename preimages bind `previousPath`, postimages bind
 negative packages regenerate every dependent contract, inventory, and manifest
 and must fail their named check exactly once. A restored deletion is rejected
 at `GENERIC-PATCH-SCOPE-PARITY` before later authoritative-scope binding.
+
+The Git-evidence matrix additionally proves that every temporary index that can
+write objects uses an isolated temporary object database with an exact
+read-only alternate to the real object directory. Canonical real-object
+inventories must remain identical before and after the operation, new fixture
+blobs must occur only in the temporary database, and all temporary index/object
+artifacts must be removed. Literal pathspec packages cover `docs/[a].md` and a
+leading `!` filename while similarly matching paths remain explicit EXCLUDE.
+The actual NUL-separated delta inventory and the package-patch inventory must
+equal INCLUDE exactly; EXCLUDE leaks, missing INCLUDE entries, invalid literal
+environment, bad alternates, leftover temp state, inventory divergence,
+unknown or duplicate status records, and CR/LF/NUL paths fail their named gate.
 
 `scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
 mirror of the external canonical Classic artifact validator. Its integration

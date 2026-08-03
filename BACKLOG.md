@@ -554,7 +554,7 @@ These tasks originate in the final independent review of PR #21. They are accept
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-336 | In Progress | Generalize governance handoff contracts and commit-preparation validation | **Origin/severity:** BL-230 commit-preparation blocker, Major. **Components:** the canonical handoff standard, handoff/report/review schemas, `scripts/New-GovernanceHandoff.ps1`, `scripts/Test-GovernanceConsistency.ps1`, fixtures, and related documentation. **Risk:** every Classic-ready handoff is currently forced into BL-333/BL-334-specific correction semantics, making truthful finding-free and task-neutral commit preparation impossible and creating pressure to fabricate findings or unrelated artifacts. **Acceptance:** introduce an explicit transition/profile discriminator; support finding-free, task-neutral `COMMIT_PREPARATION` handoffs; retain strict compatibility for historical BL-333/BL-334 correction packages; remove task-, finding-, status-, queue-, and path-specific assumptions from the generic profile; keep specialized correction requirements confined to the correction profile; generate and validate complete report, patch, assignment, review, validation, inventory, manifest, and hash evidence; bind the complete scope inventory to the authoritative worktree identity and current Git status; preserve fail-closed scope, path, UTF-8, manifest, review-independence, and Classic-readiness gates; add comprehensive positive and negative fixtures and pass the full governance validation matrix. **PR #31 correction:** `BL336-PR31-REV-001` is technically corrected with disjoint delete/rename/postimage states, binary-safe preimage/postimage and patch binding, and explicit untracked platform modes; it remains pending the focused independent Exact-Head Delta Review. **Sequence:** prerequisite before resuming BL-230 or BL-324 commit preparation. No runtime or product behavior changes. |
+| BL-336 | In Progress | Generalize governance handoff contracts and commit-preparation validation | **Origin/severity:** BL-230 commit-preparation blocker, Major. **Components:** the canonical handoff standard, handoff/report/review schemas, `scripts/New-GovernanceHandoff.ps1`, `scripts/Test-GovernanceConsistency.ps1`, fixtures, and related documentation. **Risk:** every Classic-ready handoff is currently forced into BL-333/BL-334-specific correction semantics, making truthful finding-free and task-neutral commit preparation impossible and creating pressure to fabricate findings or unrelated artifacts. **Acceptance:** introduce an explicit transition/profile discriminator; support finding-free, task-neutral `COMMIT_PREPARATION` handoffs; retain strict compatibility for historical BL-333/BL-334 correction packages; remove task-, finding-, status-, queue-, and path-specific assumptions from the generic profile; keep specialized correction requirements confined to the correction profile; generate and validate complete report, patch, assignment, review, validation, inventory, manifest, and hash evidence; bind the complete scope inventory to the authoritative worktree identity and current Git status; preserve fail-closed scope, path, UTF-8, manifest, review-independence, and Classic-readiness gates; add comprehensive positive and negative fixtures and pass the full governance validation matrix. **PR #31 corrections:** `BL336-PR31-REV-001`, `BL336-PR31-REV-002`, and `BL336-PR31-REV-003` are technically corrected with disjoint delete/rename/postimage states, binary-safe preimage/postimage and patch binding, explicit untracked platform modes, isolated temporary Git object writes, real-object inventory parity, literal pathspecs, exact actual-delta inventory, and EXCLUDE prohibition; all three remain pending one focused independent Exact-Head Delta Review. `BL336-PR31-WARN-001` remains `PENDING_AUTHORIZED_PR_METADATA_CONVERGENCE` until the one authorized post-push, post-CI PR-body update succeeds. **Sequence:** prerequisite before resuming BL-230 or BL-324 commit preparation. No runtime or product behavior changes. |
 
 BL-336 PRE_COMMIT checkpoint: `BL336-VAL-001` and `BL336-VAL-002` remain
 `CLOSED_BY_IMPLEMENTATION_AND_FULL_REVALIDATION`; `BL336-REV-001`,
@@ -564,7 +564,7 @@ negatives now use one closed seven-class factory and assemble deterministic
 synthetic values only at fixture runtime. All seven re-signed packages reach
 the unchanged `GENERIC-CLASSIFIED-HOST-PATH-POLICY` gate and fail there with
 the expected check exactly once. No complete private synthetic path literal
-remains in the reviewed delta. The generic matrix is 72/72 PASS, the historical
+remains in the reviewed delta. The generic matrix is 85/85 PASS, the historical
 matrix remains 225/225 PASS, and the complete static governance,
 documentation, schema, parser, deterministic-generation, BL-230,
 finding-bearing BL-336, full-text-patch, inventory, manifest, authoritative
@@ -573,20 +573,30 @@ scope, internal-validator, and unchanged external-validator gates pass.
 The trusted repository, baseline object, current HEAD, branch, complete
 relevant Git status, tracked/staged state, mode, length, SHA-256, and
 INCLUDE/EXCLUDE decisions remain bound to the isolated worktree. The earlier
-BL-336 findings remain closed. PR #31 finding `BL336-PR31-REV-001` is
+BL-336 findings remain closed. PR #31 findings `BL336-PR31-REV-001`,
+`BL336-PR31-REV-002`, and `BL336-PR31-REV-003` are
 `CORRECTED_PENDING_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; therefore
-`OpenFindingCount: 1` and BL-336 remains `In Progress`. The correction adds
+`OpenFindingCount: 3` and BL-336 remains `In Progress`. The corrections add
 baseline-bound tracked deletions, source/target-bound tracked renames,
-platform-classified untracked modes, complete binary patch parity, and the
-corresponding positive and fail-closed negative packages. The PRE_COMMIT
+platform-classified untracked modes, complete binary patch parity, isolated
+temporary object writes, real-object inventory parity, literal pathspecs,
+actual NUL-separated delta parity, EXCLUDE prohibition, and the corresponding
+positive and fail-closed negative packages. `BL336-PR31-WARN-001` is
+`PENDING_AUTHORIZED_PR_METADATA_CONVERGENCE` until the one authorized PR-body
+update succeeds after push and terminal Hosted CI. The PRE_COMMIT
+revalidation is PASS with 85/85 generic fixtures, 225/225 historical fixtures,
+946/946 static governance checks, 84/84 documentation checks, zero parser,
+JSON, strict-UTF-8, diff, object-inventory, or parallel-worktree errors, and no
+warnings. The directly caused seven-case historical check-ID delta also passes
+7/7. The PRE_COMMIT
 change-trigger result is `EXISTING_GATES_REQUIRED`; triggered domains are
 governance schema, handoff validation, fixtures, and documentation; existing
 backlog coverage is BL-336; no new backlog item or product/runtime decision is
-introduced. Exact staging, one local commit, one review ZIP, and one normal
-push to the existing Draft PR branch are authorized only by this assignment.
-Ready-for-Review, reviewer requests, PR metadata changes, merge, rebase, and
-force-push remain prohibited; the persistent catalog keeps remote actions
-closed.
+introduced. Exact staging, one local commit, one review ZIP, one normal push to
+the existing Draft PR branch, and exactly one post-CI PR-body update are
+authorized only by this assignment. Ready-for-Review, reviewer requests, every
+other PR metadata change, merge, rebase, and force-push remain prohibited; the
+persistent catalog keeps general remote actions closed.
 
 The highest assigned backlog identifier is `BL-336`; the next free identifier is
 `BL-337`. BL-333, BL-334, and BL-335 remain `Done`.

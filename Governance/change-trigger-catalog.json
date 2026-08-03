@@ -11,7 +11,7 @@
       "implementationStatus": "PR31_CORRECTION_COMPLETE_PENDING_INDEPENDENT_REVIEW",
       "validationStatus": "PASS",
       "independentReviewStatus": "FOCUSED_EXACT_HEAD_DELTA_REVIEW_REQUIRED",
-      "openFindingCount": 1,
+      "openFindingCount": 3,
       "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
       "commitPreparationStatus": "PASS",
       "commitPreparationBlocker": "NONE",

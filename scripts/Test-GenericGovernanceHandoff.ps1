@@ -93,35 +93,9 @@ function Invoke-GitText {
         [switch]$AllowFailure
     )
 
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = (Get-Command git -ErrorAction Stop).Source
-    $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    [void]$startInfo.ArgumentList.Add('-C')
-    [void]$startInfo.ArgumentList.Add($Root)
-    foreach ($item in $Argument) {
-        [void]$startInfo.ArgumentList.Add($item)
-    }
-    $process = [System.Diagnostics.Process]::new()
-    $process.StartInfo = $startInfo
-    try {
-        [void]$process.Start()
-        $standardOutput = $process.StandardOutput.ReadToEnd()
-        $standardError = $process.StandardError.ReadToEnd()
-        $process.WaitForExit()
-        if ($process.ExitCode -ne 0 -and -not $AllowFailure) {
-            throw "Authoritative Git query failed with exit code $($process.ExitCode)."
-        }
-        return [pscustomobject]@{
-            ExitCode = $process.ExitCode
-            StandardOutput = $standardOutput
-            StandardError = $standardError
-        }
-    }
-    finally {
-        $process.Dispose()
-    }
+    $allowed=if($AllowFailure){@(0,1)}else{@(0)}
+    $result=Invoke-GenericGitBytes -Root $Root -Argument $Argument -AllowedExitCode $allowed
+    return [pscustomobject]@{ExitCode=$result.ExitCode;StandardOutput=ConvertFrom-GenericStrictUtf8 -Bytes $result.Bytes -Label 'Git text output';StandardError=$result.StandardError}
 }
 
 function ConvertTo-CanonicalRepositoryIdentity {
@@ -142,40 +116,10 @@ function Invoke-GitBytes {
         [Parameter(Mandatory)][string]$Root,
         [Parameter(Mandatory)][string[]]$Argument,
         [int[]]$AllowedExitCode = @(0),
-        [hashtable]$Environment = @{}
+        [hashtable]$Environment = @{},
+        [switch]$RepositoryPaths
     )
-
-    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
-    $startInfo.FileName = (Get-Command git -ErrorAction Stop).Source
-    $startInfo.UseShellExecute = $false
-    $startInfo.RedirectStandardOutput = $true
-    $startInfo.RedirectStandardError = $true
-    [void]$startInfo.ArgumentList.Add('-C')
-    [void]$startInfo.ArgumentList.Add($Root)
-    foreach ($item in $Argument) { [void]$startInfo.ArgumentList.Add($item) }
-    foreach ($name in $Environment.Keys) { $startInfo.Environment[[string]$name] = [string]$Environment[$name] }
-    $process = [System.Diagnostics.Process]::new()
-    $process.StartInfo = $startInfo
-    $memory = [System.IO.MemoryStream]::new()
-    try {
-        [void]$process.Start()
-        $standardErrorTask = $process.StandardError.ReadToEndAsync()
-        $process.StandardOutput.BaseStream.CopyTo($memory)
-        $process.WaitForExit()
-        $standardError = $standardErrorTask.GetAwaiter().GetResult()
-        if ($process.ExitCode -notin $AllowedExitCode) {
-            throw "Authoritative binary Git query failed with exit code $($process.ExitCode): $standardError"
-        }
-        return [pscustomobject]@{
-            ExitCode = $process.ExitCode
-            Bytes = $memory.ToArray()
-            StandardError = $standardError
-        }
-    }
-    finally {
-        $memory.Dispose()
-        $process.Dispose()
-    }
+    return Invoke-GenericGitBytes -Root $Root -Argument $Argument -AllowedExitCode $AllowedExitCode -Environment $Environment -RepositoryPaths:$RepositoryPaths
 }
 
 function ConvertFrom-StrictUtf8Bytes {
@@ -278,29 +222,7 @@ function Get-CurrentPostimageEvidence {
 
 function Get-UnstagedRenamePairs {
     param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string]$BaselineCommit)
-    $indexPath = Join-Path ([System.IO.Path]::GetTempPath()) ('flashgate-governance-index-' + [guid]::NewGuid().ToString('N'))
-    $environment = @{ GIT_INDEX_FILE = $indexPath }
-    try {
-        $null = Invoke-GitBytes -Root $Root -Argument @('read-tree',$BaselineCommit) -Environment $environment
-        $null = Invoke-GitBytes -Root $Root -Argument @('add','-A','--','.') -Environment $environment
-        $diff = Invoke-GitBytes -Root $Root -Argument @('diff','--cached','--name-status','-z','--find-renames','--diff-filter=R',$BaselineCommit,'--') -Environment $environment
-        $records = @(Split-NulTerminatedUtf8 -Bytes $diff.Bytes -Label 'temporary-index rename diff')
-        $pairs = [System.Collections.Generic.List[object]]::new()
-        for($index=0;$index -lt $records.Count;$index++){
-            if([string]::IsNullOrEmpty($records[$index])){continue}
-            $status=$records[$index]
-            if(-not $status.StartsWith('R',[System.StringComparison]::Ordinal) -or $index+2 -ge $records.Count){throw 'Malformed NUL-separated rename diff.'}
-            $previousPath=$records[++$index].Replace('\','/');$path=$records[++$index].Replace('\','/')
-            $stage=Invoke-GitBytes -Root $Root -Argument @('ls-files','--stage','-z','--',$path) -Environment $environment
-            $stageRecords=@(Split-NulTerminatedUtf8 -Bytes $stage.Bytes -Label 'temporary-index stage entry'|Where-Object{$_ -ne ''})
-            if($stageRecords.Count -ne 1){throw "Temporary rename target has no unique stage entry: $path"}
-            $match=[regex]::Match($stageRecords[0],'^(?<mode>[0-7]{6}) [0-9a-f]{40} 0\t(?<path>.+)$')
-            if(-not $match.Success -or $match.Groups['path'].Value -cne $path){throw "Malformed temporary stage entry: $path"}
-            [void]$pairs.Add([pscustomobject]@{PreviousPath=$previousPath;Path=$path;Mode=$match.Groups['mode'].Value})
-        }
-        return @($pairs)
-    }
-    finally{foreach($candidate in @($indexPath,$indexPath+'.lock')){if([System.IO.File]::Exists($candidate)){[System.IO.File]::Delete($candidate)}}}
+    return @(Get-GenericUnstagedRenamePairs -Root $Root -BaselineCommit $BaselineCommit)
 }
 
 function Get-AuthoritativeStatusEntries {
@@ -425,18 +347,65 @@ function Get-AuthoritativeDeltaBytes {
     param(
         [Parameter(Mandatory)][string]$Root,
         [Parameter(Mandatory)][string]$BaselineCommit,
-        [Parameter(Mandatory)][object[]]$IncludedEntry
+        [Parameter(Mandatory)][object[]]$IncludedEntry,
+        [AllowEmptyCollection()][object[]]$ExcludedEntry=@()
     )
-    $paths=@(Get-ScopePathList -Entry $IncludedEntry|Sort-Object -Unique)
-    $indexPath=Join-Path ([System.IO.Path]::GetTempPath()) ('flashgate-governance-delta-index-'+[guid]::NewGuid().ToString('N'))
-    $environment=@{GIT_INDEX_FILE=$indexPath}
-    try{
-        $null=Invoke-GitBytes -Root $Root -Argument @('read-tree',$BaselineCommit) -Environment $environment
-        $null=Invoke-GitBytes -Root $Root -Argument @('add','-A','--','.') -Environment $environment
-        $delta = Invoke-GitBytes -Root $Root -Argument (@('diff','--cached','--binary','--find-renames',$BaselineCommit,'--')+$paths) -Environment $environment
-        return ,([byte[]]$delta.Bytes)
-    }
-    finally{foreach($candidate in @($indexPath,$indexPath+'.lock')){if([System.IO.File]::Exists($candidate)){[System.IO.File]::Delete($candidate)}}}
+    $script:lastGenericDeltaEvidence=Get-GenericDeltaEvidence -Root $Root -BaselineCommit $BaselineCommit -IncludedEntry $IncludedEntry -ExcludedEntry $ExcludedEntry
+    return ,([byte[]]$script:lastGenericDeltaEvidence.Bytes)
+}
+
+# The shared helper is authoritative for every generic Git-evidence operation.
+# These late-bound adapters replace the historical in-file implementations above
+# without changing the validator's public call surface.
+. (Join-Path $PSScriptRoot 'GenericGovernanceGitEvidence.ps1')
+$script:lastGenericDeltaEvidence = $null
+
+function Invoke-GitText {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string[]]$Argument,[switch]$AllowFailure)
+    $allowed=if($AllowFailure){@(0,1,128)}else{@(0)}
+    $result=Invoke-GenericGitBytes -Root $Root -Argument $Argument -AllowedExitCode $allowed
+    return [pscustomobject]@{ExitCode=$result.ExitCode;StandardOutput=ConvertFrom-GenericStrictUtf8 -Bytes $result.Bytes -Label 'Git text output';StandardError=$result.StandardError}
+}
+
+function Invoke-GitBytes {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string[]]$Argument,[int[]]$AllowedExitCode=@(0),[hashtable]$Environment=@{},[switch]$RepositoryPaths)
+    return Invoke-GenericGitBytes -Root $Root -Argument $Argument -AllowedExitCode $AllowedExitCode -Environment $Environment -RepositoryPaths:$RepositoryPaths
+}
+
+function Get-BaselineBlobEvidence {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string]$Commit,[Parameter(Mandatory)][string]$Path)
+    return Get-GenericBaselineBlobEvidence -Root $Root -Commit $Commit -Path $Path
+}
+
+function Get-CurrentPostimageEvidence {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string]$Path,[string]$GitMode,[switch]$Untracked)
+    return Get-GenericPostimageEvidence -Root $Root -Path $Path -GitMode $GitMode -Untracked:$Untracked
+}
+
+function Get-UnstagedRenamePairs {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string]$BaselineCommit)
+    return @(Get-GenericUnstagedRenamePairs -Root $Root -BaselineCommit $BaselineCommit)
+}
+
+function Get-AuthoritativeStatusEntries {
+    param([Parameter(Mandatory)][string]$Root,[Parameter(Mandatory)][string]$BaselineCommit)
+    return @(Get-GenericStatusEvidence -Root $Root -BaselineCommit $BaselineCommit)
+}
+
+function Get-ScopePathList {
+    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Entry)
+    return @(Get-GenericScopePaths -Entry $Entry)
+}
+
+function Get-AuthoritativeDeltaBytes {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$BaselineCommit,
+        [Parameter(Mandatory)][object[]]$IncludedEntry,
+        [AllowEmptyCollection()][object[]]$ExcludedEntry=@()
+    )
+    $script:lastGenericDeltaEvidence=Get-GenericDeltaEvidence -Root $Root -BaselineCommit $BaselineCommit -IncludedEntry $IncludedEntry -ExcludedEntry $ExcludedEntry
+    return ,([byte[]]$script:lastGenericDeltaEvidence.Bytes)
 }
 
 try {
@@ -706,8 +675,52 @@ try {
                     ([string]$scopeEntry.gitStatus -cne 'TRACKED_RENAMED' -or
                         [string]$scopeEntry.previousPath -cne [string]$scopeEntry.path)
             }
-            $authoritativePatchBytes = Get-AuthoritativeDeltaBytes `
-                -Root $resolvedAuthoritativeRepositoryRoot -BaselineCommit ([string]$scope.baselineCommit) -IncludedEntry $includedEntries
+            $emptyGitEvidence = [pscustomobject]@{
+                RealObjectDatabaseImmutable = $false
+                TemporaryArtifactsRemoved = $true
+                RealObjectInventoryBeforeSha256 = ''
+                RealObjectInventoryAfterSha256 = ''
+                LiteralPathspecBinding = $false
+                ActualDeltaInventoryParity = $false
+                ExcludedDeltaPathProhibition = $false
+            }
+            $authoritativePatchBytes = [byte[]]@()
+            $script:lastGenericDeltaEvidence = $emptyGitEvidence
+            try {
+                $authoritativePatchBytes = Get-AuthoritativeDeltaBytes `
+                    -Root $resolvedAuthoritativeRepositoryRoot -BaselineCommit ([string]$scope.baselineCommit) `
+                    -IncludedEntry $includedEntries -ExcludedEntry $excludedEntries
+            }
+            catch {
+                $script:lastGenericDeltaEvidence = $emptyGitEvidence
+            }
+            try {
+                $packagePatchEvidence = Get-GenericPatchDeltaEvidence `
+                    -Root $resolvedAuthoritativeRepositoryRoot -BaselineCommit ([string]$scope.baselineCommit) `
+                    -PatchBytes ([byte[]]$entryBytes['current-delta.patch']) `
+                    -IncludedEntry $includedEntries -ExcludedEntry $excludedEntries
+            }
+            catch {
+                $packagePatchEvidence = $emptyGitEvidence
+            }
+            $realObjectDatabasePass = [bool]$script:lastGenericDeltaEvidence.RealObjectDatabaseImmutable -and
+                [bool]$script:lastGenericDeltaEvidence.TemporaryArtifactsRemoved -and
+                [string]$script:lastGenericDeltaEvidence.RealObjectInventoryBeforeSha256 -ceq
+                    [string]$script:lastGenericDeltaEvidence.RealObjectInventoryAfterSha256 -and
+                [bool]$packagePatchEvidence.RealObjectDatabaseImmutable -and
+                [bool]$packagePatchEvidence.TemporaryArtifactsRemoved -and
+                [string]$packagePatchEvidence.RealObjectInventoryBeforeSha256 -ceq
+                    [string]$packagePatchEvidence.RealObjectInventoryAfterSha256
+            $literalPathspecPass = [bool]$script:lastGenericDeltaEvidence.LiteralPathspecBinding -and
+                [bool]$packagePatchEvidence.LiteralPathspecBinding
+            $actualDeltaInventoryPass = [bool]$script:lastGenericDeltaEvidence.ActualDeltaInventoryParity -and
+                [bool]$packagePatchEvidence.ActualDeltaInventoryParity
+            $excludedDeltaPathPass = [bool]$script:lastGenericDeltaEvidence.ExcludedDeltaPathProhibition -and
+                [bool]$packagePatchEvidence.ExcludedDeltaPathProhibition
+            Add-Check -Id 'GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY' -Passed $realObjectDatabasePass
+            Add-Check -Id 'GENERIC-LITERAL-PATHSPEC-BINDING' -Passed $literalPathspecPass
+            Add-Check -Id 'GENERIC-EXCLUDED-DELTA-PATH-PROHIBITION' -Passed $excludedDeltaPathPass
+            Add-Check -Id 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Passed $actualDeltaInventoryPass
             $packagePatchesEqual = [System.Linq.Enumerable]::SequenceEqual(
                 [byte[]]$entryBytes['task.patch'], [byte[]]$entryBytes['current-delta.patch']
             )
@@ -722,7 +735,6 @@ try {
             )
             Add-Check -Id 'GENERIC-SCOPE-METADATA-PARITY' -Passed $scopeMetadataPass
             Add-Check -Id 'GENERIC-PATCH-SCOPE-PARITY' -Passed $scopePass
-            if (-not $scopePass) { throw 'Task patch, current delta, and scope inventory do not agree.' }
 
             $authoritativeEntries = @(Get-AuthoritativeStatusEntries `
                 -Root $resolvedAuthoritativeRepositoryRoot -BaselineCommit ([string]$scope.baselineCommit))
@@ -775,8 +787,10 @@ try {
                 }
             }
             Add-Check -Id 'GENERIC-AUTHORITATIVE-SCOPE-BINDING' -Passed $authoritativeScopePass
-            if (-not $authoritativeScopePass) {
-                throw 'Scope inventory does not match the authoritative Git worktree state.'
+            if (-not $realObjectDatabasePass -or -not $literalPathspecPass -or
+                -not $actualDeltaInventoryPass -or -not $excludedDeltaPathPass -or
+                -not $scopePass -or -not $authoritativeScopePass) {
+                throw 'Authoritative Git isolation, literal path, patch scope, actual delta inventory, or worktree binding failed.'
             }
 
             $reviewedNames = @($review.reviewedArtifacts | ForEach-Object { [string]$_.path })
