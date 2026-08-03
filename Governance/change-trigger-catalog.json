@@ -1,6 +1,46 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "2026-07-31",
+  "catalogVersion": "2026-08-03",
+  "registeredGovernanceTasks": [
+    { "id": "BL-333", "status": "Done", "role": "FOUNDATION" },
+    { "id": "BL-334", "status": "Done", "role": "ENFORCEMENT" },
+    {
+      "id": "BL-336",
+      "status": "Done",
+      "role": "HANDOFF_PROFILE_GENERALIZATION",
+      "implementationStatus": "COMPLETE",
+      "validationStatus": "PASS",
+      "independentReviewStatus": "PASS",
+      "openFindingCount": 0,
+      "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
+      "commitPreparationStatus": "PASS",
+      "commitPreparationBlocker": "NONE",
+      "gitStagingAuthorized": true,
+      "gitCommitAuthorized": true,
+      "remoteActionsAuthorized": false,
+      "nextAuthorization": "NONE"
+    }
+  ],
+  "handoffProfiles": [
+    {
+      "id": "GENERIC_COMMIT_PREPARATION",
+      "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
+      "explicitDiscriminatorRequired": true,
+      "narrativeTokensAreDiscriminators": false,
+      "findingCorrectionArtifactsAllowed": false,
+      "completeCurrentStateBindingRequired": true,
+      "classifiedHostPathPolicyRequired": true,
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "current-delta.patch", "independent-review-evidence.json", "MANIFEST.sha256", "package-inventory.json", "report.md", "scope-inventory.json", "task.patch", "validation-summary.json"]
+    },
+    {
+      "id": "FINDING_CORRECTION",
+      "transitionType": "BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW",
+      "explicitDiscriminatorRequired": true,
+      "historicalImplicitTaskIds": ["BL-333/BL-334"],
+      "findingCorrectionArtifactsAllowed": true,
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "correction-only.patch", "current-delta.patch", "external-governance-manifest.json", "finding-correction-matrix.json", "finding-regression-matrix.json", "focused-delta-review-record.json", "MANIFEST.sha256", "readiness-evidence.json", "report.md", "scope-inventory.json", "trusted-expected-hashes.json", "validation-summary.json"]
+    }
+  ],
   "modes": [
     {
       "id": "INDEPENDENT_REVIEW",

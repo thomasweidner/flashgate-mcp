@@ -1,7 +1,7 @@
 # FlashGate Finding Remediation and Review-Mode Standard
 
 **Status:** Binding
-**Tasks:** BL-333 foundation and BL-334 enforcement
+**Tasks:** BL-333 foundation, BL-334 enforcement, and BL-336 handoff-profile generalization
 
 ## Modes
 
@@ -137,6 +137,12 @@ Independent review records also state:
 
 `COMMIT_PREPARATION` records prove that no open finding or decision boundary
 remains and that the independent delta review is complete.
+
+Finding-free assignments satisfy `allFindingsClosed` with an empty finding set;
+they do not create placeholder findings, correction matrices, or regression
+matrices. The generic commit-preparation profile binds the external independent
+review directly to the reviewed paths and hashes. Finding-correction artifacts
+remain exclusive to the `FINDING_CORRECTION` profile.
 
 Focused delta records additionally bind the prior review package and hash,
 correction-start commit, `correction-only.patch` and its byte-exact SHA-256,

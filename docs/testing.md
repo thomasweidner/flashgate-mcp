@@ -13,11 +13,15 @@ first execution. Then run:
 & {
     .\scripts\Test-GovernanceConsistency.ps1
     .\scripts\Test-GovernanceConsistencyFixtures.ps1
+    .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
     .\scripts\Test-DocumentationConsistency.ps1
 }
 ```
 
-The complete governance fixture matrix currently contains 225 result cases.
+The historical governance fixture matrix contains 225 result cases. BL-336 adds
+a separate 52-case generic-handoff matrix, for 277 permanent governance cases
+across both harnesses. The legacy count remains unchanged for byte- and
+behavior-compatible BL-333/BL-334 regression evidence.
 Long local runs may pass `-ProgressPath <new-jsonl-path>` to record fixture ID,
 sequence, completion time, and result as JSONL. They may additionally pass
 `-ResultPath <new-json-path>` to atomically persist the typed terminal result,
@@ -103,9 +107,34 @@ paths, link/junction/reparse entries, unmanifested objects, incomplete
 `ClassicReviewReady=true`, and instructions to transfer package members
 separately.
 
-The current governance matrix contains 225 cases. The count is
-reported by the fixture runner and must change together with its permanent
-case inventory.
+The current governance matrix contains 225 legacy cases plus 52 generic-profile
+cases. Each count is reported by its owning fixture runner and must change
+together with that runner's permanent case inventory. Generic cases cover
+finding-free BL-230 commit preparation, a real finding, external independent
+review, both readiness states, successful Classic readiness with commit still
+unauthorized, narrative historical-ID and correction-artifact mentions,
+missing/unknown/mixed profiles, actual correction-only members and typed fields,
+complete repository/baseline/HEAD/branch/status/tracked/staged/mode/length/hash/
+inclusion scope binding, additional delta paths, classified canonical/example/
+synthetic host paths, private Windows/UNC/Linux/macOS/temp path leaks, undeclared
+absolute Windows and Unix paths, and the closed typed runtime factory for all
+seven negative host-path classes; review
+drift, unauthorized commit, unknown JSON fields, invalid UTF-8, and ZIP/
+inventory/manifest divergence. `-CaseName` selects focused cases without
+changing the fixed full-matrix count.
+
+The generic validator receives the schema repository and the authoritative
+isolated worktree as distinct roots. It verifies the trusted Origin, existence
+of the bound baseline commit, exact current HEAD and branch, and the complete
+Porcelain-v2 changed/untracked set. Each scope entry is then compared to the
+worktree for status class, tracked/staged state, Git mode, byte length, and
+SHA-256. INCLUDE entries must exactly match the patch paths; EXCLUDE entries
+must be relevant Git-status paths and absent from the patch. The semantic
+baseline, current-commit, branch, repository, staged, tracked, length, mode,
+and hash negatives regenerate every dependent scope hash, typed JSON record,
+embedded HANDOFF/report contract, package inventory, and manifest before
+asserting one named failure gate rather than accepting an arbitrary nonzero
+exit.
 
 PR #27 merged through `e42d57d57ea075640c9b123a533057bcac3861b8`.
 The merge has first parent `537ea1c1660cddfde5aace1888242d80a6be77bf`,

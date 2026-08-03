@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-assignment-record.schema.json",
+  "title": "FlashGate generic commit-preparation assignment record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "executionMode", "checkpoint", "profile", "transitionType", "changeTriggerReviewResult", "classicReviewReady", "findingIds", "commitAuthorized", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
+    "baselineCommit": { "$ref": "#/$defs/commit" },
+    "currentCommit": { "$ref": "#/$defs/commit" },
+    "branch": { "type": "string", "minLength": 1 },
+    "executionMode": { "const": "COMMIT_PREPARATION" },
+    "checkpoint": { "const": "PRE_COMMIT" },
+    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
+    "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
+    "changeTriggerReviewResult": { "enum": ["NO_TRIGGER", "EXISTING_GATES_REQUIRED", "EXISTING_BACKLOG_UPDATED", "NEW_BACKLOG_REGISTERED"] },
+    "classicReviewReady": { "type": "boolean" },
+    "findingIds": { "$ref": "#/$defs/findingIds" },
+    "commitAuthorized": { "const": false },
+    "scopeInventorySha256": { "$ref": "#/$defs/hash" },
+    "taskPatchSha256": { "$ref": "#/$defs/hash" },
+    "currentDeltaSha256": { "$ref": "#/$defs/hash" },
+    "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" }
+  },
+  "$defs": {
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
+    "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+    "findingIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" } }
+  }
+}

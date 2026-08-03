@@ -29,6 +29,25 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Registered BL-336 and added explicit task-neutral governance handoff profiles. `GENERIC_COMMIT_PREPARATION` supports finding-free commit-preparation evidence without correction-only artifacts, while the isolated `FINDING_CORRECTION` profile preserves the historical BL-333/BL-334 contracts and fail-closed gates.
+- Closed BL-336 independent-review findings `BL336-REV-001` through
+  `BL336-REV-003` by replacing narrative-token profile detection with typed
+  profile/member isolation, binding repository/baseline/HEAD/branch/status and
+  per-path scope metadata across all generic evidence, and enforcing exact
+  artifact-classified cross-platform host-path references. Private and
+  undeclared host-path negatives now use a closed seven-class factory that
+  assembles deterministic synthetic values only at fixture runtime; every
+  re-signed negative package still fails only the unchanged host-path gate.
+  The generic matrix now contains 52 cases while the 225-case legacy matrix
+  remains unchanged.
+- Addressed the repeated-review remainder `BL336-REV-002` by validating every
+  generic scope entry against the trusted isolated worktree's repository,
+  baseline object, HEAD, branch, complete Porcelain-v2 status, tracked/staged
+  state, mode, byte length, and SHA-256. INCLUDE paths must equal the patch
+  paths; every other relevant worktree path is an explicit EXCLUDE absent from
+  the patch. Nine semantic mismatch packages are fully re-signed and assert
+  their specific repository, staged-path, or authoritative-scope failure gate.
+
 - Implemented the BL-251 deterministic shell-validation foundation: dynamic
   tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,
   exact Git Bash and native `/usr/bin/bash` syntax gates, UTF-8/line-ending/

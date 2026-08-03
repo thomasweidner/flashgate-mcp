@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-scope-inventory.schema.json",
+  "title": "FlashGate generic scope and current-state inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskId", "profile", "repository", "baselineCommit", "currentCommit", "branch", "allowedDeltaPaths", "excludedDeltaPaths", "entries", "hostPathPolicy"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
+    "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
+    "baselineCommit": { "$ref": "#/$defs/commit" },
+    "currentCommit": { "$ref": "#/$defs/commit" },
+    "branch": { "type": "string", "minLength": 1 },
+    "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "gitStatus", "tracked", "staged", "mode", "length", "sha256", "inclusionDecision", "reason"],
+        "properties": {
+          "path": { "$ref": "#/$defs/path" },
+          "gitStatus": { "enum": ["TRACKED_MODIFIED", "TRACKED_ADDED", "TRACKED_DELETED", "TRACKED_RENAMED", "TRACKED_MODE_CHANGED", "UNTRACKED"] },
+          "tracked": { "type": "boolean" },
+          "staged": { "const": false },
+          "mode": { "type": "string", "pattern": "^[0-7]{6}$" },
+          "length": { "type": "integer", "minimum": 0 },
+          "sha256": { "$ref": "#/$defs/hash" },
+          "inclusionDecision": { "enum": ["INCLUDE", "EXCLUDE"] },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "hostPathPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostPathFreeArtifacts", "allowedReferences"],
+      "properties": {
+        "hostPathFreeArtifacts": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/scannedArtifact" } },
+        "allowedReferences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["artifact", "path", "classification", "reason"],
+            "properties": {
+              "artifact": { "$ref": "#/$defs/scannedArtifact" },
+              "path": { "type": "string", "pattern": "^(?:[A-Za-z]:\\\\|\\\\\\\\|/).+" },
+              "classification": { "enum": ["CANONICAL_INFRASTRUCTURE", "DOCUMENTED_EXAMPLE", "SYNTHETIC_FIXTURE"] },
+              "reason": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
+    "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+    "scannedArtifact": { "enum": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "current-delta.patch", "independent-review-evidence.json", "report.md", "task.patch", "validation-summary.json"] }
+  }
+}
