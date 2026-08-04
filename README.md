@@ -319,6 +319,7 @@ positive/negative fixtures with:
 & {
     .\scripts\Test-GovernanceConsistency.ps1
     .\scripts\Test-GovernanceConsistencyFixtures.ps1
+    .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
 }
 ```
 
@@ -329,7 +330,18 @@ source. The fixture runner defaults to this script-relative mirror, still
 accepts an explicit validator path, and fails closed on byte divergence whenever
 the external canonical validator is locally available.
 
-The full fixture runner currently expects 225 result cases. For long local
+The legacy fixture runner continues to expect 225 result cases. The BL-336
+generic-profile harness adds 85 positive and negative cases without replacing
+or weakening the historical matrix. Its private and undeclared host-path
+negatives use a closed typed factory that materializes seven deterministic
+synthetic path classes only at fixture runtime. Git-evidence regressions also
+prove temporary index/object-database isolation, real-object inventory parity,
+literal metacharacter paths, exact NUL-separated delta inventory, EXCLUDE
+prohibition, component-wise cross-platform object-database paths, and
+fail-closed cleanup. Changes to this helper require the complete generic matrix
+on Windows and native Linux under the project PowerShell version; a
+platform-gated result is not a substitute for that platform's end-to-end path.
+For long local
 runs, `-ProgressPath <new-jsonl-path>` records one deterministic completion
 record per case. `-ResultPath <new-json-path>` atomically persists the terminal
 typed result, including progress count and SHA-256, before normal process exit.
@@ -344,7 +356,32 @@ focused-delta, and report-contract schemas, byte-exact hashes for
 `correction-only.patch` and `current-delta.patch`, and exact
 assignment/report/scope/patch/finding/external-delta parity. A bundled
 correction remains `CORRECTED_PENDING_DELTA`; only a later successful
-independent focused delta review may close its findings.
+independent focused delta review may close its findings. Task-neutral commit
+preparation uses the explicit `GENERIC_COMMIT_PREPARATION` profile and accepts
+an empty real finding set; correction-only artifacts remain confined to
+`FINDING_CORRECTION`. Both profiles require a single manifest-complete package,
+and `commitAuthorized` remains false. The generic contract binds repository,
+baseline, current commit, branch, complete relevant Git status, tracked/staged
+state, mode, length, SHA-256, inclusion decisions, reasons, allowed and excluded
+paths across its typed evidence. Validation resolves the trusted isolated
+worktree directly and requires exact Origin, baseline-object, HEAD, branch, and
+Porcelain-v2 status parity. Every relevant changed or untracked path must occur
+exactly once in the scope inventory; INCLUDE paths equal the patch paths and
+EXCLUDE paths must be absent from the patch. Profile isolation uses discriminators, member
+names, and typed fields rather than narrative tokens. Host paths are checked per
+artifact against exact canonical, documented-example, or synthetic-fixture
+classifications; private or undeclared host paths fail closed.
+
+Scope entries are disjoint by `gitStatus`. Ordinary tracked postimages bind the
+Git worktree mode and current bytes; untracked regular files bind current bytes
+plus an explicit Windows `100644` normalization or the normalized Unix execute
+bits. Tracked deletions bind the baseline blob as a binary-safe preimage and
+assert `postimageAbsent=true`. Tracked renames bind `previousPath` to the
+baseline preimage and `path` to the current postimage. Rename discovery uses a
+temporary alternate index and `--name-status -z --find-renames`, while the real
+Porcelain-v2 status and `staged=false` remain separate mandatory evidence. The
+authoritative binary patch includes both rename sides and is byte-equal to both
+packaged patches.
 
 Run the documentation consistency gate with PowerShell 7.6.4:
 

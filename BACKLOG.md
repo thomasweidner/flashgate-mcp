@@ -69,7 +69,7 @@ The complete legacy mapping is recorded in
 | SPR-58 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
 | SPR-59 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
 | SPR-60 | Planned | BL-226–BL-231 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, and Variant A service-account execution |
-| SPR-61 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-335 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, and reference-bound legacy Temp cleanup |
+| SPR-61 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-336 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, and task-neutral governance handoffs |
 
 Version 1.0 is reached only after `SPR-61` and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
 
@@ -424,8 +424,8 @@ standard profile, the final native run, the runspace-free wrapper validation,
 and the terminally persisted 225-case fixture replacement all pass. INF-122
 and INF-129 are closed. BL-324 remains `Planned` and has not begun.
 
-Binding remaining queue after BL-251:
-`BL-324 -> final documentation convergence -> remove Local Work Register`.
+Binding remaining queue after BL-336 completion:
+`BL-230 Commit Preparation -> BL-324 -> final documentation convergence -> remove Local Work Register`.
 
 ### SPR-42 technical identity
 
@@ -550,6 +550,63 @@ These tasks originate in the final independent review of PR #21. They are accept
 | BL-334 | Done | Enforce change-trigger, finding-remediation, and handoff governance | **Completed:** fail-closed enforcement covers diff-derived triggers, checkpoints, immutable review modes, actual correction/current-delta bytes, exact finding and status parity, strict schemas, external path mappings, bounded handoff/readiness, commit preparation, and authoritative Hosted-CI provenance. PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8` with two-parent, tree, six-commit, and 26/26 path parity. REV-007, REV-008, REV-010, REV-013, and REV-015 remain `CLOSED_BY_INDEPENDENT_REVIEW`; RUN-007 remains `CORRECTED_AND_INDEPENDENTLY_REVIEWED`; `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` remain `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`. The finding and exact-review queues are empty. Post-merge Hosted CI passed with PowerShell 7.6.4, 1,051/0 governance, and 198/198 fixtures. Durable evidence is secured, controlled cleanup removed no sole-copy review package, and runtime/product logic remain unchanged. |
 | BL-335 | Done | Migrate FlashGate reference-bound legacy Temp objects to local Temp | **Completed:** `TMP-001`, `TMP-004`, `TMP-016`, and `TMP-059` were copied to `<CodexTempRoot>` and `REF-005` through `REF-007` were atomically rebound with a complete productive reference backup. Productive migration, focused function validation, and the concrete isolated rollback rehearsal passed. The four original source objects were then removed as one controlled source-removal assignment; final read-only evidence confirms `SourceObjectCountAfter=0`, four unchanged productive targets, three unchanged active target references, an unchanged productive backup, no quarantine remainder, parser/hash/manifest parity, and a clean repository before this governance convergence. `BL335-D-VAL-012` is `CLOSED_BY_INDEPENDENT_REVIEW_VALIDATION_CONTROL_INTERFERENCE`: the only failed post-removal activity gate observed the concurrently running plaintext Codex monitor, while the identical post-monitor diagnostic was processes/tasks/shortcuts/exclusive-probe failures `0/0/0/0`. No BL-335 finding remains open. Durable evidence is in the BL-335 Freigabe B, Freigabe C, VAL-008, and Freigabe D reports under `Codex-Work\Reports`. |
 
+### Governance handoff generalization follow-up
+
+| ID | Status | Task | Scope and acceptance notes |
+|---|---|---|---|
+| BL-336 | Done | Generalize governance handoff contracts and commit-preparation validation | **Completed:** explicit task-neutral `GENERIC_COMMIT_PREPARATION` and isolated `FINDING_CORRECTION` profiles now bind complete repository, scope, patch, inventory, manifest, validation, review, and report evidence while preserving the historical BL-333/BL-334 contracts and all fail-closed path, UTF-8, independence, and readiness gates. Windows and native Linux validation under PowerShell 7.6.4 passed, including 31/31 focused and 85/85 generic cases; the historical 225-case matrix remains compatible. The focused independent Exact-Head Delta Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b` passed with no new findings, warnings, or failures. `BL336-PR31-REV-001` through `BL336-PR31-REV-004` are `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`; `OpenFindingCount: 0`. The final status commit is documentation-only and introduces no MCP runtime or product behavior change. **Sequence:** BL-230 integration may resume before BL-324. |
+
+BL-336 PRE_COMMIT checkpoint: `BL336-VAL-001` and `BL336-VAL-002` remain
+`CLOSED_BY_IMPLEMENTATION_AND_FULL_REVALIDATION`; `BL336-REV-001`,
+`BL336-REV-002`, and `BL336-REV-003` remain
+`CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. The private and undeclared host-path
+negatives now use one closed seven-class factory and assemble deterministic
+synthetic values only at fixture runtime. All seven re-signed packages reach
+the unchanged `GENERIC-CLASSIFIED-HOST-PATH-POLICY` gate and fail there with
+the expected check exactly once. No complete private synthetic path literal
+remains in the reviewed delta. The generic matrix is 85/85 PASS, the historical
+matrix remains 225/225 PASS, and the complete static governance,
+documentation, schema, parser, deterministic-generation, BL-230,
+finding-bearing BL-336, full-text-patch, inventory, manifest, authoritative
+scope, internal-validator, and unchanged external-validator gates pass.
+
+The trusted repository, baseline object, current HEAD, branch, complete
+relevant Git status, tracked/staged state, mode, length, SHA-256, and
+INCLUDE/EXCLUDE decisions remain bound to the isolated worktree. The earlier
+BL-336 findings remain closed. PR #31 findings `BL336-PR31-REV-001`,
+`BL336-PR31-REV-002`, `BL336-PR31-REV-003`, and
+`BL336-PR31-REV-004` are
+`CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; therefore
+`OpenFindingCount: 0` and BL-336 is `Done`. The corrections add
+baseline-bound tracked deletions, source/target-bound tracked renames,
+platform-classified untracked modes, complete binary patch parity, isolated
+temporary object writes, real-object inventory parity, literal pathspecs,
+actual NUL-separated delta parity, EXCLUDE prohibition, and the corresponding
+positive and fail-closed negative packages. Alternate and fixture-divergence
+paths are assembled component by component with no compound backslash child
+literal. `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`. The
+PRE_COMMIT revalidation passes the 85/85 generic fixtures on Windows and
+natively on Linux under PowerShell 7.6.4, including the real Unix executable
+end-to-end case; the 31/31 focused matrix passes on both platforms. Historical
+fixtures remain 225/225 PASS, with complete static governance and documentation
+checks, zero parser, JSON, strict-UTF-8, diff,
+object-inventory, or parallel-worktree errors, and no warnings. The directly
+caused seven-case historical check-ID delta also passes 7/7. The PRE_COMMIT
+change-trigger result is `EXISTING_GATES_REQUIRED`; triggered domains are
+governance schema, handoff validation, fixtures, and documentation; existing
+backlog coverage is BL-336; no new backlog item or product/runtime decision is
+introduced. The independent technical review of exact head
+`8f29ee8e0b8c841b204506b32fbb617648f5bf4b` is `PASS`, with review warnings,
+review failures, new findings, and open findings all `0`. The current
+documentation/status closure changes no technical path or previously reviewed
+technical byte. Its resulting new Exact Head requires only the separately
+packaged final read-only review gate. Ready-for-Review, reviewer requests,
+other PR metadata changes, merge, rebase, and force-push remain prohibited;
+the persistent catalog keeps general remote actions closed.
+
+The highest assigned backlog identifier is `BL-336`; the next free identifier is
+`BL-337`. BL-333, BL-334, and BL-335 remain `Done`.
+
 PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8`.
 Its first parent is `537ea1c1660cddfde5aace1888242d80a6be77bf`;
 its second parent is `c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`.
@@ -565,7 +622,7 @@ terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
 three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
 The binding remaining queue is:
-`BL-324 → final documentation convergence → remove Local Work Register`.
+`BL-230 Commit Preparation → BL-324 → final documentation convergence → remove Local Work Register`.
 
 ## Cross-epic rules
 

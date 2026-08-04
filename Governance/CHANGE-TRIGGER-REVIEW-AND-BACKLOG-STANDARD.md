@@ -1,7 +1,7 @@
 # FlashGate Change-Trigger Review and Backlog Registration Standard
 
 **Status:** Binding
-**Tasks:** BL-333 foundation and BL-334 enforcement
+**Tasks:** BL-333 foundation, BL-334 enforcement, and BL-336 handoff-profile generalization
 **Machine-readable source:** [change-trigger-catalog.json](change-trigger-catalog.json)
 
 ## Purpose
@@ -135,6 +135,11 @@ trusted expected values supplied outside the data being validated.
 `ChangeTriggerReviewResult` is one of `NO_TRIGGER`,
 `EXISTING_GATES_REQUIRED`, `EXISTING_BACKLOG_UPDATED`,
 `NEW_BACKLOG_REGISTERED`, or `BLOCKED_PENDING_DECISION`.
+
+BL-336 is registered in the machine-readable catalog as the accepted follow-up
+for task-neutral handoff profiles. The pre-registration classification
+`NEW_BACKLOG_REQUIRED` becomes the canonical persisted result
+`NEW_BACKLOG_REGISTERED` once the backlog and catalog entries exist.
 
 ## Enforcement
 

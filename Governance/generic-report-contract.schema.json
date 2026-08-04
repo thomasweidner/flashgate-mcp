@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-report-contract.schema.json",
+  "title": "FlashGate generic report contract",
+  "type": "object",
+  "allOf": [
+    { "if": { "properties": { "classicReviewReady": { "const": true } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "CLASSIC_REVIEW_READY" }, "reviewStatus": { "const": "PASS" } } } },
+    { "if": { "properties": { "classicReviewReady": { "const": false } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "NOT_CLASSIC_REVIEW_READY" } } } }
+  ],
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "transitionType", "profile", "status", "classicReviewReady", "findingIds", "reviewStatus", "commitAuthorized", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths", "nextAction"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
+    "baselineCommit": { "$ref": "#/$defs/commit" },
+    "currentCommit": { "$ref": "#/$defs/commit" },
+    "branch": { "type": "string", "minLength": 1 },
+    "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
+    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
+    "status": { "enum": ["CLASSIC_REVIEW_READY", "NOT_CLASSIC_REVIEW_READY"] },
+    "classicReviewReady": { "type": "boolean" },
+    "findingIds": { "$ref": "#/$defs/findingIds" },
+    "reviewStatus": { "enum": ["PASS", "FAIL"] },
+    "commitAuthorized": { "const": false },
+    "scopeInventorySha256": { "$ref": "#/$defs/hash" },
+    "taskPatchSha256": { "$ref": "#/$defs/hash" },
+    "currentDeltaSha256": { "$ref": "#/$defs/hash" },
+    "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "nextAction": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
+    "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+    "findingIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" } }
+  }
+}

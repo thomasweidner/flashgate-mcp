@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-independent-review-evidence.schema.json",
+  "title": "FlashGate generic independent-review evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "profile", "reviewMode", "external", "result", "reviewerIndependencePreserved", "findingIds", "scopeInventorySha256", "allowedDeltaPaths", "excludedDeltaPaths", "reviewedArtifacts"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
+    "baselineCommit": { "$ref": "#/$defs/commit" },
+    "currentCommit": { "$ref": "#/$defs/commit" },
+    "branch": { "type": "string", "minLength": 1 },
+    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
+    "reviewMode": { "const": "INDEPENDENT_REVIEW" },
+    "external": { "const": true },
+    "result": { "enum": ["PASS", "FAIL"] },
+    "reviewerIndependencePreserved": { "const": true },
+    "findingIds": { "$ref": "#/$defs/findingIds" },
+    "scopeInventorySha256": { "$ref": "#/$defs/hash" },
+    "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "reviewedArtifacts": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": { "path": { "enum": ["task.patch", "current-delta.patch"] }, "sha256": { "$ref": "#/$defs/hash" } } } }
+  },
+  "$defs": {
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
+    "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+    "findingIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" } }
+  }
+}

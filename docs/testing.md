@@ -13,11 +13,15 @@ first execution. Then run:
 & {
     .\scripts\Test-GovernanceConsistency.ps1
     .\scripts\Test-GovernanceConsistencyFixtures.ps1
+    .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
     .\scripts\Test-DocumentationConsistency.ps1
 }
 ```
 
-The complete governance fixture matrix currently contains 225 result cases.
+The historical governance fixture matrix contains 225 result cases. BL-336 adds
+a separate 85-case generic-handoff matrix, for 310 permanent governance cases
+across both harnesses. The legacy count remains unchanged for byte- and
+behavior-compatible BL-333/BL-334 regression evidence.
 Long local runs may pass `-ProgressPath <new-jsonl-path>` to record fixture ID,
 sequence, completion time, and result as JSONL. They may additionally pass
 `-ResultPath <new-json-path>` to atomically persist the typed terminal result,
@@ -25,6 +29,33 @@ including the progress record count and SHA-256, before normal process exit.
 Full runs fail closed unless all 225 cases are present, none are skipped,
 cleanup succeeds, and repository status is unchanged. Historical 198-case results below remain evidence for the
 earlier committed governance state rather than the current working-tree count.
+
+The generic matrix includes positive end-to-end packages for tracked deletion,
+unchanged and content-modified renames, Windows-normalized and Unix-normalized
+untracked modes, and their closed negative matrix. Delete preimages come from
+the exact baseline blob; rename preimages bind `previousPath`, postimages bind
+`path`, and both rename paths participate in binary patch parity. Semantic
+negative packages regenerate every dependent contract, inventory, and manifest
+and must fail their named check exactly once. A restored deletion is rejected
+at `GENERIC-PATCH-SCOPE-PARITY` before later authoritative-scope binding.
+
+The Git-evidence matrix additionally proves that every temporary index that can
+write objects uses an isolated temporary object database with an exact
+read-only alternate to the real object directory. Canonical real-object
+inventories must remain identical before and after the operation, new fixture
+blobs must occur only in the temporary database, and all temporary index/object
+artifacts must be removed. Literal pathspec packages cover `docs/[a].md` and a
+leading `!` filename while similarly matching paths remain explicit EXCLUDE.
+The actual NUL-separated delta inventory and the package-patch inventory must
+equal INCLUDE exactly; EXCLUDE leaks, missing INCLUDE entries, invalid literal
+environment, bad alternates, leftover temp state, inventory divergence,
+unknown or duplicate status records, and CR/LF/NUL paths fail their named gate.
+The `info/alternates` and fixture-only object-divergence paths are constructed
+component by component so the same child hierarchy is exercised on Windows and
+Unix filesystems. A change to this shared Git-evidence helper requires the full
+generic fixture matrix under PowerShell 7.6.4 on Windows and on a native Linux
+copy below `/home`; the real Unix executable package must run on Linux, and a
+platform-gated synthetic result does not satisfy that end-to-end gate.
 
 `scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
 mirror of the external canonical Classic artifact validator. Its integration
@@ -103,9 +134,34 @@ paths, link/junction/reparse entries, unmanifested objects, incomplete
 `ClassicReviewReady=true`, and instructions to transfer package members
 separately.
 
-The current governance matrix contains 225 cases. The count is
-reported by the fixture runner and must change together with its permanent
-case inventory.
+The current governance matrix contains 225 legacy cases plus 52 generic-profile
+cases. Each count is reported by its owning fixture runner and must change
+together with that runner's permanent case inventory. Generic cases cover
+finding-free BL-230 commit preparation, a real finding, external independent
+review, both readiness states, successful Classic readiness with commit still
+unauthorized, narrative historical-ID and correction-artifact mentions,
+missing/unknown/mixed profiles, actual correction-only members and typed fields,
+complete repository/baseline/HEAD/branch/status/tracked/staged/mode/length/hash/
+inclusion scope binding, additional delta paths, classified canonical/example/
+synthetic host paths, private Windows/UNC/Linux/macOS/temp path leaks, undeclared
+absolute Windows and Unix paths, and the closed typed runtime factory for all
+seven negative host-path classes; review
+drift, unauthorized commit, unknown JSON fields, invalid UTF-8, and ZIP/
+inventory/manifest divergence. `-CaseName` selects focused cases without
+changing the fixed full-matrix count.
+
+The generic validator receives the schema repository and the authoritative
+isolated worktree as distinct roots. It verifies the trusted Origin, existence
+of the bound baseline commit, exact current HEAD and branch, and the complete
+Porcelain-v2 changed/untracked set. Each scope entry is then compared to the
+worktree for status class, tracked/staged state, Git mode, byte length, and
+SHA-256. INCLUDE entries must exactly match the patch paths; EXCLUDE entries
+must be relevant Git-status paths and absent from the patch. The semantic
+baseline, current-commit, branch, repository, staged, tracked, length, mode,
+and hash negatives regenerate every dependent scope hash, typed JSON record,
+embedded HANDOFF/report contract, package inventory, and manifest before
+asserting one named failure gate rather than accepting an arbitrary nonzero
+exit.
 
 PR #27 merged through `e42d57d57ea075640c9b123a533057bcac3861b8`.
 The merge has first parent `537ea1c1660cddfde5aace1888242d80a6be77bf`,

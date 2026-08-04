@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-completion-report.schema.json",
+  "title": "FlashGate generic commit-preparation completion report",
+  "type": "object",
+  "allOf": [
+    { "if": { "properties": { "classicReviewReady": { "const": true } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "CLASSIC_REVIEW_READY" }, "warningCount": { "const": 0 }, "failureCount": { "const": 0 } } } },
+    { "if": { "properties": { "classicReviewReady": { "const": false } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "NOT_CLASSIC_REVIEW_READY" } } } }
+  ],
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "profile", "transitionType", "status", "classicReviewReady", "findingIds", "commitAuthorized", "warningCount", "failureCount", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths", "nextAction"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
+    "baselineCommit": { "$ref": "#/$defs/commit" },
+    "currentCommit": { "$ref": "#/$defs/commit" },
+    "branch": { "type": "string", "minLength": 1 },
+    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
+    "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
+    "status": { "enum": ["CLASSIC_REVIEW_READY", "NOT_CLASSIC_REVIEW_READY"] },
+    "classicReviewReady": { "type": "boolean" },
+    "findingIds": { "$ref": "#/$defs/findingIds" },
+    "commitAuthorized": { "const": false },
+    "warningCount": { "type": "integer", "minimum": 0 },
+    "failureCount": { "type": "integer", "minimum": 0 },
+    "scopeInventorySha256": { "$ref": "#/$defs/hash" },
+    "taskPatchSha256": { "$ref": "#/$defs/hash" },
+    "currentDeltaSha256": { "$ref": "#/$defs/hash" },
+    "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "nextAction": { "type": "string", "minLength": 1 }
+  },
+  "$defs": {
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
+    "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
+    "findingIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" } }
+  }
+}

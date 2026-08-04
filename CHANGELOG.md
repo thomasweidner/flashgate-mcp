@@ -29,6 +29,71 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Closed BL-336 after a finding-free focused independent Exact-Head Delta
+  Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b`.
+  `BL336-PR31-REV-001` through `BL336-PR31-REV-004` are
+  `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`,
+  `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`, and
+  `OpenFindingCount` is zero. The final closure commit changes only
+  documentation and status sources; the independently reviewed technical bytes
+  remain unchanged and the new Exact Head receives a separate read-only gate.
+
+- Registered BL-336 and added explicit task-neutral governance handoff profiles. `GENERIC_COMMIT_PREPARATION` supports finding-free commit-preparation evidence without correction-only artifacts, while the isolated `FINDING_CORRECTION` profile preserves the historical BL-333/BL-334 contracts and fail-closed gates.
+- Closed BL-336 independent-review findings `BL336-REV-001` through
+  `BL336-REV-003` by replacing narrative-token profile detection with typed
+  profile/member isolation, binding repository/baseline/HEAD/branch/status and
+  per-path scope metadata across all generic evidence, and enforcing exact
+  artifact-classified cross-platform host-path references. Private and
+  undeclared host-path negatives now use a closed seven-class factory that
+  assembles deterministic synthetic values only at fixture runtime; every
+  re-signed negative package still fails only the unchanged host-path gate.
+  The generic matrix now contains 52 cases while the 225-case legacy matrix
+  remains unchanged.
+- Addressed the repeated-review remainder `BL336-REV-002` by validating every
+  generic scope entry against the trusted isolated worktree's repository,
+  baseline object, HEAD, branch, complete Porcelain-v2 status, tracked/staged
+  state, mode, byte length, and SHA-256. INCLUDE paths must equal the patch
+  paths; every other relevant worktree path is an explicit EXCLUDE absent from
+  the patch. Nine semantic mismatch packages are fully re-signed and assert
+  their specific repository, staged-path, or authoritative-scope failure gate.
+
+- Corrected PR #31 finding `BL336-PR31-REV-001` by replacing the flat generic
+  scope state with disjoint postimage, deletion, and rename forms. Baseline
+  preimages and current postimages are byte-bound, unstaged rename pairing uses
+  a temporary alternate index while complete Porcelain-v2 and `staged=false`
+  stay authoritative, binary patch parity includes both rename sides, and
+  untracked modes carry explicit Windows/Unix normalization sources. The
+  generic fixture matrix now passes 72/72 without changing MCP runtime or
+  product behavior. The finding is
+  `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW` on technical head
+  `8f29ee8e0b8c841b204506b32fbb617648f5bf4b`.
+
+- Corrected PR #31 findings `BL336-PR31-REV-002` and
+  `BL336-PR31-REV-003` in the shared generic Git-evidence path. Temporary
+  indices now write new objects only to a unique temporary object database
+  with a canonical alternate to the real database; complete real-object
+  inventories remain identical and cleanup fails closed. All repository paths
+  are validated and passed literally, while authoritative and package-patch
+  NUL-separated delta inventories must exactly equal INCLUDE and prohibit every
+  EXCLUDE path. The generic matrix increases to 85 cases. The three PR findings
+  are `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; the PR metadata
+  convergence completed without changing the Draft state.
+  PRE_COMMIT revalidation passes 85/85 generic fixtures, 225/225 historical
+  fixtures, 946/946 static governance checks, and 84/84 documentation checks
+  with zero warnings or errors; the seven directly affected historical
+  fail-closed check-ID cases also pass 7/7.
+
+- Corrected PR #31 finding `BL336-PR31-REV-004` by constructing the temporary
+  object database's `info/alternates` path and the fixture-only object-inventory
+  divergence marker component by component. The complete affected scripts no
+  longer contain a compound backslash child literal in `Join-Path`. Native
+  Linux PowerShell 7.6.4 validation now executes the real Unix executable path,
+  passes the focused object-isolation, literal-pathspec, delete, rename, and
+  untracked-mode matrix 31/31, and passes the full generic matrix 85/85. The
+  four PR findings are
+  `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`;
+  `BL336-PR31-WARN-001` remains closed by PR metadata convergence.
+
 - Implemented the BL-251 deterministic shell-validation foundation: dynamic
   tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,
   exact Git Bash and native `/usr/bin/bash` syntax gates, UTF-8/line-ending/

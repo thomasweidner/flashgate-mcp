@@ -39,6 +39,7 @@ Governance source changes additionally require:
 & {
     .\scripts\Test-GovernanceConsistency.ps1
     .\scripts\Test-GovernanceConsistencyFixtures.ps1
+    .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
 }
 ```
 
@@ -54,7 +55,11 @@ outside-block reserved control lines, complete typed visible-HANDOFF/JSON
 parity, actual-package handoff readiness, commit preparation, and trusted
 Git/Hosted CI provenance. Re-manifesting altered bytes or rewriting
 self-reported hashes cannot replace the separately supplied expected hashes.
-The authoritative handoff gate remains the canonical external
+BL-336 adds an explicit transition/profile discriminator: the generic
+commit-preparation path requires task, review, patch, scope, validation,
+inventory, manifest, and hash parity while accepting zero findings; the
+isolated correction profile retains all historical BL-333/BL-334 checks. Mixed
+profiles fail closed. The authoritative handoff gate remains the canonical external
 `Test-ClassicReviewArtifact.ps1` validator named by the handoff standard.
 Hosted CI executes the byte-bound repository mirror at
 `scripts/Test-ClassicReviewArtifact.ps1`; the mirror is an execution source,

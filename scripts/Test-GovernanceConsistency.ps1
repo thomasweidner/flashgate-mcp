@@ -27,6 +27,7 @@ param(
     [string]$ExpectedCurrentDeltaSha256,
     [string]$ExpectedCorrectionStartCommit,
     [string]$HandoffPackagePath,
+    [string]$GenericHandoffPackagePath,
     [string]$CanonicalArtifactValidatorPath,
     [string]$ExpectedCanonicalArtifactValidatorSha256,
     [string]$ReportPath
@@ -893,6 +894,16 @@ try {
     $focusedRecordSchemaPath = Join-Path $governanceRoot 'focused-delta-review-record.schema.json'
     $reportContractSchemaPath = Join-Path $governanceRoot 'governance-report-contract.schema.json'
     $handoffContractSchemaPath = Join-Path $governanceRoot 'governance-handoff-contract.schema.json'
+    $genericSchemaPaths = @(
+        'generic-assignment-record.schema.json',
+        'generic-completion-report.schema.json',
+        'generic-handoff-contract.schema.json',
+        'generic-independent-review-evidence.schema.json',
+        'generic-package-inventory.schema.json',
+        'generic-report-contract.schema.json',
+        'generic-scope-inventory.schema.json',
+        'generic-validation-summary.schema.json'
+    ) | ForEach-Object { Join-Path $governanceRoot $_ }
     $standardPaths = @(
         (Join-Path $governanceRoot 'CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md'),
         (Join-Path $governanceRoot 'FINDING-REMEDIATION-AND-REVIEW-MODE-STANDARD.md'),
@@ -907,7 +918,7 @@ try {
             $regressionMatrixSchemaPath,
             $focusedRecordSchemaPath,
             $reportContractSchemaPath
-        ) + $standardPaths) {
+        ) + $genericSchemaPaths + $standardPaths) {
         Add-GovernanceCheck -Id ('SOURCE-' + [System.IO.Path]::GetFileName($path)) -Passed (Test-Path -LiteralPath $path -PathType Leaf) -Message 'Required governance source exists.' -Evidence $path
     }
     if ($script:Errors.Count -gt 0) {
@@ -2573,6 +2584,28 @@ try {
         }
 
         $recordValidated = $true
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($GenericHandoffPackagePath)) {
+        $genericValidatorPath = Join-Path $PSScriptRoot 'Test-GenericGovernanceHandoff.ps1'
+        $genericValidatorExists = Test-Path -LiteralPath $genericValidatorPath -PathType Leaf
+        Add-GovernanceCheck -Id 'GENERIC-HANDOFF-VALIDATOR-EXISTS' `
+            -Passed $genericValidatorExists `
+            -Message 'The task-neutral generic handoff validator exists.' `
+            -Evidence $genericValidatorPath
+        if ($genericValidatorExists) {
+            $pwshPath = (Get-Command pwsh -ErrorAction Stop).Source
+            $genericOutput = @(
+                & $pwshPath -NoLogo -NoProfile -File $genericValidatorPath `
+                    -PackagePath $GenericHandoffPackagePath `
+                    -RepositoryRoot $resolvedRepositoryRoot
+            )
+            $genericExitCode = $LASTEXITCODE
+            Add-GovernanceCheck -Id 'GENERIC-HANDOFF-PACKAGE' `
+                -Passed ($genericExitCode -eq 0) `
+                -Message 'The explicit generic handoff package passes all profile-specific gates.' `
+                -Evidence ($genericOutput -join ' | ')
+        }
     }
 
     $status = if ($script:Errors.Count -eq 0) { 'PASS' } else { 'FAIL' }

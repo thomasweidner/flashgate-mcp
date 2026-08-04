@@ -1,6 +1,59 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "2026-07-31",
+  "catalogVersion": "2026-08-04",
+  "registeredGovernanceTasks": [
+    { "id": "BL-333", "status": "Done", "role": "FOUNDATION" },
+    { "id": "BL-334", "status": "Done", "role": "ENFORCEMENT" },
+    {
+      "id": "BL-336",
+      "status": "Done",
+      "role": "HANDOFF_PROFILE_GENERALIZATION",
+      "implementationStatus": "COMPLETE",
+      "validationStatus": "PASS",
+      "independentReviewStatus": "PASS",
+      "independentTechnicalReview": "PASS",
+      "reviewedTechnicalHead": "8f29ee8e0b8c841b204506b32fbb617648f5bf4b",
+      "reviewWarningCount": 0,
+      "reviewFailureCount": 0,
+      "openFindingCount": 0,
+      "findingStatuses": {
+        "BL336-PR31-REV-001": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-REV-002": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-REV-003": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-REV-004": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-WARN-001": "CLOSED_BY_PR_METADATA_CONVERGENCE"
+      },
+      "statusCommitType": "DOCUMENTATION_AND_STATUS_ONLY",
+      "finalExactHeadReviewRequired": true,
+      "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
+      "commitPreparationStatus": "PASS",
+      "commitPreparationBlocker": "NONE",
+      "gitStagingAuthorized": false,
+      "gitCommitAuthorized": false,
+      "remoteActionsAuthorized": false,
+      "nextAuthorization": "FINAL_INDEPENDENT_EXACT_HEAD_REVIEW"
+    }
+  ],
+  "handoffProfiles": [
+    {
+      "id": "GENERIC_COMMIT_PREPARATION",
+      "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
+      "explicitDiscriminatorRequired": true,
+      "narrativeTokensAreDiscriminators": false,
+      "findingCorrectionArtifactsAllowed": false,
+      "completeCurrentStateBindingRequired": true,
+      "classifiedHostPathPolicyRequired": true,
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "current-delta.patch", "independent-review-evidence.json", "MANIFEST.sha256", "package-inventory.json", "report.md", "scope-inventory.json", "task.patch", "validation-summary.json"]
+    },
+    {
+      "id": "FINDING_CORRECTION",
+      "transitionType": "BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW",
+      "explicitDiscriminatorRequired": true,
+      "historicalImplicitTaskIds": ["BL-333/BL-334"],
+      "findingCorrectionArtifactsAllowed": true,
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "correction-only.patch", "current-delta.patch", "external-governance-manifest.json", "finding-correction-matrix.json", "finding-regression-matrix.json", "focused-delta-review-record.json", "MANIFEST.sha256", "readiness-evidence.json", "report.md", "scope-inventory.json", "trusted-expected-hashes.json", "validation-summary.json"]
+    }
+  ],
   "modes": [
     {
       "id": "INDEPENDENT_REVIEW",
