@@ -29,6 +29,15 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Closed BL-336 after a finding-free focused independent Exact-Head Delta
+  Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b`.
+  `BL336-PR31-REV-001` through `BL336-PR31-REV-004` are
+  `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`,
+  `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`, and
+  `OpenFindingCount` is zero. The final closure commit changes only
+  documentation and status sources; the independently reviewed technical bytes
+  remain unchanged and the new Exact Head receives a separate read-only gate.
+
 - Registered BL-336 and added explicit task-neutral governance handoff profiles. `GENERIC_COMMIT_PREPARATION` supports finding-free commit-preparation evidence without correction-only artifacts, while the isolated `FINDING_CORRECTION` profile preserves the historical BL-333/BL-334 contracts and fail-closed gates.
 - Closed BL-336 independent-review findings `BL336-REV-001` through
   `BL336-REV-003` by replacing narrative-token profile detection with typed
@@ -55,8 +64,9 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   stay authoritative, binary patch parity includes both rename sides, and
   untracked modes carry explicit Windows/Unix normalization sources. The
   generic fixture matrix now passes 72/72 without changing MCP runtime or
-  product behavior. The finding remains pending a focused independent
-  Exact-Head Delta Review of the new PR commit.
+  product behavior. The finding is
+  `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW` on technical head
+  `8f29ee8e0b8c841b204506b32fbb617648f5bf4b`.
 
 - Corrected PR #31 findings `BL336-PR31-REV-002` and
   `BL336-PR31-REV-003` in the shared generic Git-evidence path. Temporary
@@ -66,9 +76,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   are validated and passed literally, while authoritative and package-patch
   NUL-separated delta inventories must exactly equal INCLUDE and prohibit every
   EXCLUDE path. The generic matrix increases to 85 cases. The three PR findings
-  remain technically corrected pending one focused independent Exact-Head
-  Delta Review; PR metadata convergence remains pending until the authorized
-  post-push, post-CI body update.
+  are `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; the PR metadata
+  convergence completed without changing the Draft state.
   PRE_COMMIT revalidation passes 85/85 generic fixtures, 225/225 historical
   fixtures, 946/946 static governance checks, and 84/84 documentation checks
   with zero warnings or errors; the seven directly affected historical
@@ -81,9 +90,9 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   Linux PowerShell 7.6.4 validation now executes the real Unix executable path,
   passes the focused object-isolation, literal-pathspec, delete, rename, and
   untracked-mode matrix 31/31, and passes the full generic matrix 85/85. The
-  four PR findings remain corrected pending one focused independent Exact-Head
-  Delta Review; `BL336-PR31-WARN-001` remains closed by PR metadata
-  convergence.
+  four PR findings are
+  `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`;
+  `BL336-PR31-WARN-001` remains closed by PR metadata convergence.
 
 - Implemented the BL-251 deterministic shell-validation foundation: dynamic
   tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,

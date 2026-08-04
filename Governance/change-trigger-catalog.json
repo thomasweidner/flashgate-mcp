@@ -6,19 +6,32 @@
     { "id": "BL-334", "status": "Done", "role": "ENFORCEMENT" },
     {
       "id": "BL-336",
-      "status": "In Progress",
+      "status": "Done",
       "role": "HANDOFF_PROFILE_GENERALIZATION",
-      "implementationStatus": "PR31_REV004_CORRECTION_COMPLETE_PENDING_INDEPENDENT_REVIEW",
+      "implementationStatus": "COMPLETE",
       "validationStatus": "PASS",
-      "independentReviewStatus": "FOCUSED_EXACT_HEAD_DELTA_REVIEW_REQUIRED",
-      "openFindingCount": 4,
+      "independentReviewStatus": "PASS",
+      "independentTechnicalReview": "PASS",
+      "reviewedTechnicalHead": "8f29ee8e0b8c841b204506b32fbb617648f5bf4b",
+      "reviewWarningCount": 0,
+      "reviewFailureCount": 0,
+      "openFindingCount": 0,
+      "findingStatuses": {
+        "BL336-PR31-REV-001": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-REV-002": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-REV-003": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-REV-004": "CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW",
+        "BL336-PR31-WARN-001": "CLOSED_BY_PR_METADATA_CONVERGENCE"
+      },
+      "statusCommitType": "DOCUMENTATION_AND_STATUS_ONLY",
+      "finalExactHeadReviewRequired": true,
       "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
       "commitPreparationStatus": "PASS",
       "commitPreparationBlocker": "NONE",
-      "gitStagingAuthorized": true,
-      "gitCommitAuthorized": true,
+      "gitStagingAuthorized": false,
+      "gitCommitAuthorized": false,
       "remoteActionsAuthorized": false,
-      "nextAuthorization": "FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW"
+      "nextAuthorization": "FINAL_INDEPENDENT_EXACT_HEAD_REVIEW"
     }
   ],
   "handoffProfiles": [
