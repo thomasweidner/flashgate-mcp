@@ -174,6 +174,33 @@ Version 1.0 components:
 - Windows Event Log or approved service-safe destination;
 - optional Windows Job Objects for child-process limits.
 
+#### Windows SCM identity contract
+
+| Identity | Binding value |
+|---|---|
+| User-facing SCM display name | `FlashGate MCP` |
+| Executable filename | `flashgate-mcp.exe` |
+| Canonical product name | `FlashGate MCP` |
+| Current canonical PE file description | `FlashGate MCP Server` |
+| MCP implementation name (`serverInfo.name`) | `flashgate` |
+
+The user-facing display name and the technical identities are separate
+contracts. The exact visible spelling is `FlashGate MCP`, with uppercase `F`
+and `G`, one space between `FlashGate` and `MCP`, and all-uppercase `MCP`.
+This requirement does not change the executable filename. During later
+implementation, validation must determine and document which identity each
+relevant Windows surface displays, including Services, PowerShell/SCM queries,
+and the applicable Task Manager views. A surface that technically displays the
+image filename may therefore show `flashgate-mcp.exe` without constituting an
+automatic failure. Where Windows supports a user-facing service or product
+name, it must display `FlashGate MCP`.
+
+Changing the accepted PE `FileDescription` value `FlashGate MCP Server` is not
+part of this documentation task. If implementation validation later proves
+that this field must change for a required surface, the implementation task
+must update the canonical metadata decision, tests, and documentation
+consistently.
+
 The service must not run as LocalSystem merely because it simplifies access.
 
 Shared-process caller impersonation is prohibited. Future user identity execution uses a separate worker process if implemented.
