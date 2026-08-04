@@ -74,6 +74,17 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   with zero warnings or errors; the seven directly affected historical
   fail-closed check-ID cases also pass 7/7.
 
+- Corrected PR #31 finding `BL336-PR31-REV-004` by constructing the temporary
+  object database's `info/alternates` path and the fixture-only object-inventory
+  divergence marker component by component. The complete affected scripts no
+  longer contain a compound backslash child literal in `Join-Path`. Native
+  Linux PowerShell 7.6.4 validation now executes the real Unix executable path,
+  passes the focused object-isolation, literal-pathspec, delete, rename, and
+  untracked-mode matrix 31/31, and passes the full generic matrix 85/85. The
+  four PR findings remain corrected pending one focused independent Exact-Head
+  Delta Review; `BL336-PR31-WARN-001` remains closed by PR metadata
+  convergence.
+
 - Implemented the BL-251 deterministic shell-validation foundation: dynamic
   tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,
   exact Git Bash and native `/usr/bin/bash` syntax gates, UTF-8/line-ending/

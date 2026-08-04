@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "2026-08-03",
+  "catalogVersion": "2026-08-04",
   "registeredGovernanceTasks": [
     { "id": "BL-333", "status": "Done", "role": "FOUNDATION" },
     { "id": "BL-334", "status": "Done", "role": "ENFORCEMENT" },
@@ -8,10 +8,10 @@
       "id": "BL-336",
       "status": "In Progress",
       "role": "HANDOFF_PROFILE_GENERALIZATION",
-      "implementationStatus": "PR31_CORRECTION_COMPLETE_PENDING_INDEPENDENT_REVIEW",
+      "implementationStatus": "PR31_REV004_CORRECTION_COMPLETE_PENDING_INDEPENDENT_REVIEW",
       "validationStatus": "PASS",
       "independentReviewStatus": "FOCUSED_EXACT_HEAD_DELTA_REVIEW_REQUIRED",
-      "openFindingCount": 3,
+      "openFindingCount": 4,
       "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
       "commitPreparationStatus": "PASS",
       "commitPreparationBlocker": "NONE",

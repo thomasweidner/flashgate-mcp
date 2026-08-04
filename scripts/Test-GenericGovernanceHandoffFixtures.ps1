@@ -587,7 +587,7 @@ function Invoke-DirectGitEvidenceCases {
     Invoke-ExpectedFailureCase -Name 'negative-repository-path-nul' -ExpectedCheck 'GENERIC-LITERAL-PATHSPEC-BINDING' -Operation {$null=Assert-GenericRepositoryPath -Path ('docs/bad'+[char]0+'path.md')}
     $divergenceName='negative-real-object-inventory-divergence'
     if(Test-CaseSelected -Name $divergenceName){
-        $realObjects=Get-GenericRealObjectDirectory -Root $Root;$before=Get-GenericRealObjectInventory -Root $Root;$marker=Join-Path $realObjects 'info\flashgate-fixture-divergence'
+        $realObjects=Get-GenericRealObjectDirectory -Root $Root;$before=Get-GenericRealObjectInventory -Root $Root;$marker=Join-Path (Join-Path $realObjects 'info') 'flashgate-fixture-divergence'
         $passed=$false;$message='Real object inventory divergence was not detected.'
         try{[System.IO.Directory]::CreateDirectory((Split-Path -Parent $marker))|Out-Null;[System.IO.File]::WriteAllText($marker,'fixture divergence',[System.Text.UTF8Encoding]::new($false));$after=Get-GenericRealObjectInventory -Root $Root;$passed=-not(Test-GenericObjectInventoryEqual -Before $before -After $after);$message='Synthetic fixture-only object write changed the canonical inventory and was removed.'}
         finally{if([System.IO.File]::Exists($marker)){[System.IO.File]::Delete($marker)}}

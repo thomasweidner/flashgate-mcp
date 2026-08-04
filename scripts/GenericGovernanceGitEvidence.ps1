@@ -187,7 +187,7 @@ function Assert-GenericIsolatedGitEnvironment {
     if ($temporaryObjects -ceq $realObjects) {
         throw '[GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY] Temporary and real object directories must differ.'
     }
-    $alternate = Join-Path $temporaryObjects 'info\alternates'
+    $alternate = Join-Path (Join-Path $temporaryObjects 'info') 'alternates'
     if (-not [System.IO.File]::Exists($alternate)) {
         throw '[GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY] The temporary object database has no alternate binding.'
     }

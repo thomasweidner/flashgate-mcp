@@ -50,6 +50,12 @@ The actual NUL-separated delta inventory and the package-patch inventory must
 equal INCLUDE exactly; EXCLUDE leaks, missing INCLUDE entries, invalid literal
 environment, bad alternates, leftover temp state, inventory divergence,
 unknown or duplicate status records, and CR/LF/NUL paths fail their named gate.
+The `info/alternates` and fixture-only object-divergence paths are constructed
+component by component so the same child hierarchy is exercised on Windows and
+Unix filesystems. A change to this shared Git-evidence helper requires the full
+generic fixture matrix under PowerShell 7.6.4 on Windows and on a native Linux
+copy below `/home`; the real Unix executable package must run on Linux, and a
+platform-gated synthetic result does not satisfy that end-to-end gate.
 
 `scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
 mirror of the external canonical Classic artifact validator. Its integration

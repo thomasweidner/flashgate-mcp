@@ -239,8 +239,11 @@ baseline-dependent plumbing command.
 Every temporary-index operation that can create Git objects also uses a unique
 temporary `GIT_OBJECT_DIRECTORY`. Its `info/alternates` contains exactly one
 canonical absolute binding to the real object directory resolved through the
-worktree's Git common directory. New blobs and trees are written only to that
-temporary database. A deterministic inventory of every real object-directory
+worktree's Git common directory. Every filesystem child below the object
+directory is constructed component by component; a compound child literal
+with a platform-specific separator is prohibited in both productive evidence
+and its fixtures. New blobs and trees are written only to that temporary
+database. A deterministic inventory of every real object-directory
 file and directory, including loose objects, pack/index files, commit graphs,
 multi-pack indexes, and `info` content when present, must be byte-identical
 before and after evidence generation. Temporary index and object directories
@@ -256,6 +259,11 @@ No actual or package-patch delta may contain an EXCLUDE path. These contracts
 are enforced by `GENERIC-LITERAL-PATHSPEC-BINDING`,
 `GENERIC-ACTUAL-DELTA-INVENTORY-PARITY`, and
 `GENERIC-EXCLUDED-DELTA-PATH-PROHIBITION`.
+
+Changes to this cross-platform Git-evidence helper require real end-to-end
+execution of the generic fixture matrix on Windows and native Linux under the
+project PowerShell version. A platform-gated synthetic result for the opposite
+operating system does not replace that platform's native run.
 
 False, absent, mistyped, or conflicting readiness is never promoted to true.
 An instruction to transfer individual members of a multi-file package also

@@ -337,7 +337,11 @@ negatives use a closed typed factory that materializes seven deterministic
 synthetic path classes only at fixture runtime. Git-evidence regressions also
 prove temporary index/object-database isolation, real-object inventory parity,
 literal metacharacter paths, exact NUL-separated delta inventory, EXCLUDE
-prohibition, and fail-closed cleanup. For long local
+prohibition, component-wise cross-platform object-database paths, and
+fail-closed cleanup. Changes to this helper require the complete generic matrix
+on Windows and native Linux under the project PowerShell version; a
+platform-gated result is not a substitute for that platform's end-to-end path.
+For long local
 runs, `-ProgressPath <new-jsonl-path>` records one deterministic completion
 record per case. `-ResultPath <new-json-path>` atomically persists the terminal
 typed result, including progress count and SHA-256, before normal process exit.
