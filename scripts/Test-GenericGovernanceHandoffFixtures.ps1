@@ -27,7 +27,7 @@ $authoritativeRoot = $null
 $fixtureAllowedDeltaPaths = @()
 $fixtureIncludedPaths = @()
 $results = [System.Collections.Generic.List[object]]::new()
-$expectedFixtureCount = 85
+$expectedFixtureCount = 98
 
 . (Join-Path $PSScriptRoot 'GenericGovernanceGitEvidence.ps1')
 
@@ -239,6 +239,11 @@ function New-GenericSource {
         executionMode = 'COMMIT_PREPARATION'; checkpoint = 'PRE_COMMIT'
         profile = $profile; transitionType = $transition
         changeTriggerReviewResult = 'NEW_BACKLOG_REGISTERED'
+        currentStateGate = [ordered]@{
+            result = 'PASS'; repositoryIdentityBound = $true
+            commitAndBranchBound = $true; completeStatusBound = $true
+            scopeAndIdsBound = $true; parallelWorktreesBound = $true
+        }
         classicReviewReady = $ClassicReviewReady; findingIds = @($FindingIds)
         commitAuthorized = $false; scopeInventorySha256 = $scopeHash
         taskPatchSha256 = $taskHash; currentDeltaSha256 = $deltaHash
@@ -248,11 +253,18 @@ function New-GenericSource {
         schemaVersion = 1; taskId = $TaskId; repository = $repository
         baselineCommit = $baselineCommit; currentCommit = $currentCommit; branch = $branch; profile = $profile
         transitionType = $transition; status = $readinessStatus
+        currentStateGate = $assignment.currentStateGate
         classicReviewReady = $ClassicReviewReady; findingIds = @($FindingIds)
-        commitAuthorized = $false; warningCount = $warningCount
+        commitAuthorized = $false
+        materialCorrectionCycleCount = 0; validationExecutionCount = 1
+        infrastructureOrInvocationFailureCount = 0
+        observedWarningCount = $warningCount; resolvedWarningCount = 0
+        openWarningCount = $warningCount; warningCount = $warningCount
         failureCount = $failureCount; scopeInventorySha256 = $scopeHash
         taskPatchSha256 = $taskHash; currentDeltaSha256 = $deltaHash
         allowedDeltaPaths = $allowedDeltaPaths; excludedDeltaPaths = $excludedDeltaPaths
+        zipFreeReadinessPassed = $ClassicReviewReady
+        packageGeneration = [ordered]@{ freshStaging = $true; finalZipWriteCount = 1; inPlaceRepairPerformed = $false }
         nextAction = 'Obtain explicit commit approval after independent Classic review.'
     }
     $review = [ordered]@{
@@ -271,7 +283,28 @@ function New-GenericSource {
         schemaVersion = 1; taskId = $TaskId; profile = $profile
         result = $reviewResult
         checks = @([ordered]@{ id = 'fixture-validation'; result = $reviewResult })
-        warningCount = $warningCount; failureCount = $failureCount
+        progress = [ordered]@{
+            completed = 1; selected = 1; unit = 'checks'; phase = 'fixture-validation'
+            heartbeatIntervalMilliseconds = 30000
+            statusCounts = [ordered]@{
+                PASS = $(if ($reviewResult -ceq 'PASS') { 1 } else { 0 })
+                FAIL = $(if ($reviewResult -ceq 'FAIL') { 1 } else { 0 })
+                SKIPPED = 0; BLOCKED = 0; CANCELLED = 0; PENDING = 0; NOT_RUN = 0
+            }
+            message = '1/1 checks completed - Phase: fixture-validation'
+        }
+        progressEvents = @(
+            [ordered]@{
+                sequence = 1; caseId = 'fixture-validation'; eventType = 'STATUS_CHANGE'
+                status = $reviewResult; completed = 1; selected = 1; unit = 'checks'
+                phase = 'fixture-validation'; elapsedMilliseconds = 0
+            }
+        )
+        materialCorrectionCycleCount = 0; validationExecutionCount = 1
+        infrastructureOrInvocationFailureCount = 0
+        observedWarningCount = $warningCount; resolvedWarningCount = 0
+        openWarningCount = $warningCount; warningCount = $warningCount
+        failureCount = $failureCount
     }
     $reportContract = [ordered]@{
         schemaVersion = 1; taskId = $TaskId; repository = $repository
@@ -280,6 +313,10 @@ function New-GenericSource {
         profile = $profile; status = $readinessStatus
         classicReviewReady = $ClassicReviewReady; findingIds = @($FindingIds)
         reviewStatus = $reviewResult; commitAuthorized = $false
+        materialCorrectionCycleCount = 0; validationExecutionCount = 1
+        infrastructureOrInvocationFailureCount = 0
+        observedWarningCount = $warningCount; resolvedWarningCount = 0
+        openWarningCount = $warningCount; zipFreeReadinessPassed = $ClassicReviewReady
         scopeInventorySha256 = $scopeHash; taskPatchSha256 = $taskHash
         currentDeltaSha256 = $deltaHash; allowedDeltaPaths = $allowedDeltaPaths
         excludedDeltaPaths = $excludedDeltaPaths
@@ -624,6 +661,67 @@ try {
     Invoke-Generator -Source $baseSource -Package $baseZip
     Invoke-ValidationCase -Name 'positive-finding-free-bl230' -Package $baseZip -ExpectedExit 0
 
+    $focusedTelemetryCaseNames = @(
+        'positive-status-blocked',
+        'negative-blocked-increments-failure',
+        'negative-identical-progress-event'
+    )
+    $isFocusedTelemetryRun = (
+        @($CaseName).Count -gt 0 -and
+        @($CaseName | Where-Object { $_ -notin $focusedTelemetryCaseNames }).Count -eq 0
+    )
+    if ($isFocusedTelemetryRun) {
+        $focusedNotReadySource = Join-Path $temporaryRoot 'source-focused-not-ready'
+        New-GenericSource -Path $focusedNotReadySource -ClassicReviewReady $false
+        $focusedNotReadyZip = Join-Path $temporaryRoot 'focused-not-ready.zip'
+        Invoke-Generator -Source $focusedNotReadySource -Package $focusedNotReadyZip
+
+        $blockedMutation = {
+            param($directory)
+            $path = Join-Path $directory 'validation-summary.json'
+            $json = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            $json.result = 'BLOCKED'
+            $json.checks[0].result = 'BLOCKED'
+            $json.progressEvents[0].status = 'BLOCKED'
+            foreach ($name in @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
+                $json.progress.statusCounts.$name = $(if ($name -ceq 'BLOCKED') { 1 } else { 0 })
+            }
+            $json.failureCount = 0
+            Write-Utf8 -Path $path -Text ($json | ConvertTo-Json -Depth 30)
+        }
+        $blockedZip = New-MutatedZip -Name 'positive-status-blocked' -BaselineZip $focusedNotReadyZip -Mutation $blockedMutation -Resign
+        Invoke-ValidationCase -Name 'positive-status-blocked' -Package $blockedZip -ExpectedExit 0
+
+        $blockedFailureMutation = {
+            param($directory)
+            & $blockedMutation $directory
+            $path = Join-Path $directory 'validation-summary.json'
+            $json = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            $json.failureCount = 1
+            Write-Utf8 -Path $path -Text ($json | ConvertTo-Json -Depth 30)
+        }
+        $blockedFailureZip = New-MutatedZip -Name 'negative-blocked-increments-failure' -BaselineZip $focusedNotReadyZip -Mutation $blockedFailureMutation -Resign
+        Invoke-ValidationCase -Name 'negative-blocked-increments-failure' -Package $blockedFailureZip -ExpectedExit 1
+
+        $duplicateEventMutation = {
+            param($directory)
+            $path = Join-Path $directory 'validation-summary.json'
+            $json = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            $event = [ordered]@{
+                sequence = 2; caseId = 'fixture-validation'; eventType = 'HEARTBEAT'
+                status = 'PASS'; completed = 1; selected = 1; unit = 'checks'
+                phase = 'fixture-validation'; elapsedMilliseconds = 30000
+            }
+            $duplicate = [ordered]@{}
+            foreach ($property in $event.Keys) { $duplicate[$property] = $event[$property] }
+            $duplicate.sequence = 3
+            $json.progressEvents = @($json.progressEvents) + @([pscustomobject]$event, [pscustomobject]$duplicate)
+            Write-Utf8 -Path $path -Text ($json | ConvertTo-Json -Depth 30)
+        }
+        $duplicateEventZip = New-MutatedZip -Name 'negative-identical-progress-event' -BaselineZip $baseZip -Mutation $duplicateEventMutation -Resign
+        Invoke-ValidationCase -Name 'negative-identical-progress-event' -Package $duplicateEventZip -ExpectedExit 1 -ExpectedFailedCheckId 'GENERIC-PROGRESS-EVENT-INVARIANT'
+    }
+    else {
     $findingSource = Join-Path $temporaryRoot 'source-finding'
     New-GenericSource -Path $findingSource -TaskId 'BL-336' -FindingIds @('BL336-REAL-001')
     $findingZip = Join-Path $temporaryRoot 'positive-real-finding.zip'
@@ -722,6 +820,25 @@ try {
     Invoke-ValidationCase -Name 'positive-classic-readiness-false' -Package $falseZip -ExpectedExit 0
     Invoke-ValidationCase -Name 'positive-classic-ready-commit-unauthorized' -Package $baseZip -ExpectedExit 0
 
+    foreach ($statusClass in @('SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
+        $statusName = 'positive-status-' + $statusClass.ToLowerInvariant().Replace('_', '-')
+        $statusMutation = {
+            param($directory, $status)
+            $path = Join-Path $directory 'validation-summary.json'
+            $json = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            $json.result = $status
+            $json.checks[0].result = $status
+            $json.progressEvents[0].status = $status
+            $json.failureCount = $(if ($status -ceq 'FAIL') { 1 } else { 0 })
+            foreach ($name in @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
+                $json.progress.statusCounts.$name = $(if ($name -ceq $status) { 1 } else { 0 })
+            }
+            Write-Utf8 -Path $path -Text ($json | ConvertTo-Json -Depth 30)
+        }
+        $statusZip = New-MutatedZip -Name $statusName -BaselineZip $falseZip -Mutation $statusMutation -MutationArgument @($statusClass) -Resign
+        Invoke-ValidationCase -Name $statusName -Package $statusZip -ExpectedExit 0
+    }
+
     $authoritativeRoot = $baseFixture.Root
     $negativeCases = @(
         @{ Name='negative-missing-profile'; Mutation={param($d) $j=Get-Content (Join-Path $d 'assignment-record.json') -Raw|ConvertFrom-Json; $j.PSObject.Properties.Remove('profile'); Write-Utf8 (Join-Path $d 'assignment-record.json') ($j|ConvertTo-Json -Depth 20)}},
@@ -746,6 +863,14 @@ try {
         @{ Name='negative-zip-inventory-manifest-divergence'; Mutation={param($d) Write-Utf8 (Join-Path $d 'unexpected.txt') 'unexpected'} },
         @{ Name='negative-actual-finding-regression-matrix'; Mutation={param($d) Write-Utf8 (Join-Path $d 'finding-regression-matrix.json') '{}'} },
         @{ Name='negative-mixed-profile-discriminator'; Mutation={param($d) $j=Get-Content (Join-Path $d 'assignment-record.json') -Raw|ConvertFrom-Json; $j.profile='FINDING_CORRECTION'; Write-Utf8 (Join-Path $d 'assignment-record.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-warning-invariant'; Semantic=$true; ExpectedCheck='GENERIC-WARNING-INVARIANT'; Mutation={param($d) $j=Get-Content (Join-Path $d 'validation-summary.json') -Raw|ConvertFrom-Json; $j.observedWarningCount=1; Write-Utf8 (Join-Path $d 'validation-summary.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-blocked-increments-failure'; Semantic=$true; Mutation={param($d) $j=Get-Content (Join-Path $d 'validation-summary.json') -Raw|ConvertFrom-Json; $j.result='BLOCKED'; $j.checks[0].result='BLOCKED'; $j.progressEvents[0].status='BLOCKED'; foreach($n in @('PASS','FAIL','SKIPPED','BLOCKED','CANCELLED','PENDING','NOT_RUN')){$j.progress.statusCounts.$n=$(if($n -ceq 'BLOCKED'){1}else{0})}; $j.failureCount=1; Write-Utf8 (Join-Path $d 'validation-summary.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-identical-progress-event'; Semantic=$true; ExpectedCheck='GENERIC-PROGRESS-EVENT-INVARIANT'; Mutation={param($d) $j=Get-Content (Join-Path $d 'validation-summary.json') -Raw|ConvertFrom-Json; $event=[ordered]@{sequence=2;caseId='fixture-validation';eventType='HEARTBEAT';status='PASS';completed=1;selected=1;unit='checks';phase='fixture-validation';elapsedMilliseconds=30000}; $duplicate=[ordered]@{}; foreach($p in $event.Keys){$duplicate[$p]=$event[$p]}; $duplicate.sequence=3; $j.progressEvents=@($j.progressEvents)+@([pscustomobject]$event,[pscustomobject]$duplicate); Write-Utf8 (Join-Path $d 'validation-summary.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-progress-completed-count'; Semantic=$true; ExpectedCheck='GENERIC-PROGRESS-INVARIANT'; Mutation={param($d) $j=Get-Content (Join-Path $d 'validation-summary.json') -Raw|ConvertFrom-Json; $j.progress.completed=0; Write-Utf8 (Join-Path $d 'validation-summary.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-progress-unit-message'; Semantic=$true; ExpectedCheck='GENERIC-PROGRESS-INVARIANT'; Mutation={param($d) $j=Get-Content (Join-Path $d 'validation-summary.json') -Raw|ConvertFrom-Json; $j.progress.unit='tests'; Write-Utf8 (Join-Path $d 'validation-summary.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-execution-counter-parity'; Semantic=$true; ExpectedCheck='GENERIC-EXECUTION-COUNTER-PARITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'completion-report.json') -Raw|ConvertFrom-Json; $j.validationExecutionCount=2; Write-Utf8 (Join-Path $d 'completion-report.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-zip-free-readiness'; Semantic=$true; Mutation={param($d) $j=Get-Content (Join-Path $d 'completion-report.json') -Raw|ConvertFrom-Json; $j.zipFreeReadinessPassed=$false; Write-Utf8 (Join-Path $d 'completion-report.json') ($j|ConvertTo-Json -Depth 30)} },
+        @{ Name='negative-in-place-zip-repair'; Semantic=$true; Mutation={param($d) $j=Get-Content (Join-Path $d 'completion-report.json') -Raw|ConvertFrom-Json; $j.packageGeneration.inPlaceRepairPerformed=$true; Write-Utf8 (Join-Path $d 'completion-report.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-baseline-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-REPOSITORY-IDENTITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.baselineCommit='a'*40; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-current-commit-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-REPOSITORY-IDENTITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.currentCommit='a'*40; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-branch-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-REPOSITORY-IDENTITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.branch='codex/wrong-branch'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
@@ -831,6 +956,7 @@ try {
         }
         $zip = New-MutatedZip -Name $hostPathCase.Name -BaselineZip $baseZip -Mutation $mutation -MutationArgument @($label, $syntheticHostPath) -Resign
         Invoke-ValidationCase -Name $hostPathCase.Name -Package $zip -ExpectedExit 1 -ExpectedFailedCheckId 'GENERIC-CLASSIFIED-HOST-PATH-POLICY'
+    }
     }
 
     $expectedObservedCount = if (@($CaseName).Count -eq 0) { $expectedFixtureCount } else { @($CaseName | Sort-Object -Unique).Count }

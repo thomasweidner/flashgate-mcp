@@ -494,6 +494,43 @@ function Get-CanonicalOperatingPolicies {
             monitoredPlaintextPathsAndObjectNamesForbiddenInConcurrentControlState = $true
             timeVaryingChecksAllowedBetweenFinalGateAndWrite = $false
         }
+        validationExecutionPolicy = [ordered]@{
+            resultStatuses = @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')
+            progressSemantics = 'completed/selected unit - Phase: phase'
+            warningInvariant = 'observedWarningCount = resolvedWarningCount + openWarningCount; warningCount = openWarningCount'
+            counterFields = @('materialCorrectionCycleCount', 'validationExecutionCount', 'infrastructureOrInvocationFailureCount')
+            requiredPreflightBindings = @('repositoryIdentity', 'commitAndBranch', 'completeStatus', 'scopeAndIds', 'parallelWorktrees')
+            finalFullValidationRunLimit = 1
+            resumeRequiresHashBoundState = $true
+            failureStatuses = @('FAIL')
+            blockedIncrementsFailureCount = $false
+            terminalProgressEventPerCaseRequired = $true
+            minimumProgressEventFields = @('sequence', 'caseId', 'eventType', 'status', 'completed', 'selected', 'unit', 'phase', 'elapsedMilliseconds')
+            identicalEventSuppressionRequired = $true
+            heartbeatIntervalRequired = $true
+            heartbeatExplicitlyTyped = $true
+            allowedProgressEmissionReasons = @('PROGRESS', 'PHASE_CHANGE', 'STATUS_CHANGE', 'HEARTBEAT')
+            missingProgressInstrumentationCreatesFinding = $true
+            selectionResolvedBeforeRunnerStart = $true
+            selectorResolutionCardinality = 1
+            unknownDuplicateAmbiguousSelectionFailsClosed = $true
+            canonicalCaseInventoryFormat = 'MACHINE_READABLE_NON_SHELL'
+            singleCaseMetadataSourceRequired = $true
+            structuredSelectionDiagnosticIdsRequired = $true
+            explicitSourceAndWorktreeParametersRequired = $true
+            hardcodedMainWorktreeAllowed = $false
+            requiredSourceBindings = @('branch', 'commit', 'tree', 'fileHashes')
+            nativeEvidenceMustMatchDeltaWorktree = $true
+            standardProbeClasses = @('GIT', 'POWERSHELL')
+            helperCommandShadowingAllowed = $false
+            detachedHeadDetection = 'SYMBOLIC_REF_EXIT_CODE'
+            directExitCodeEvaluationRequired = $true
+            timeoutBudgetFromProbeCountAndMeasuredRuntimeRequired = $true
+            knownNormalUserContextSkipsSandboxAttempt = $true
+            blockedAndFailSemanticallyDistinct = $true
+            historicalAndCurrentContractVersionsSeparated = $true
+            scopeOverrunFailsClosed = $true
+        }
         classicHandoffPolicy = [ordered]@{
             singleRequiredFileDirectTransferAllowed = $true
             multipleRequiredFilesRequireExactlyOneZip = $true
@@ -504,6 +541,10 @@ function Get-CanonicalOperatingPolicies {
             rejectUnsafeDuplicateOrCaseCollidingPaths = $true
             rejectLinkJunctionOrReparseTargets = $true
             classicReviewReadyRequiresCompletePackage = $true
+            zipFreeReadinessRequired = $true
+            inPlaceFinalZipRepairAllowed = $false
+            invalidFinalZipDisposition = 'DISCARD'
+            correctedPackageRequiresFreshStaging = $true
         }
     }
 }
@@ -1069,10 +1110,10 @@ try {
         -Evidence "max=$maxBacklogId; duplicates=$(@($duplicateBacklogIds | ForEach-Object Name) -join ','); missing=$($missingBacklogNumbers -join ',')"
     Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
         -Passed $backlogText.Contains(
-            'BL-324 -> final documentation convergence -> remove Local Work Register',
+            'correct current registration delta -> separately authorize task-local native PowerShell bootstrap -> focused native validation -> exactly one full completion run -> one fresh review ZIP -> independent review and later Git integration -> implement INF-133 -> implement BL-339 Phase A -> continue BL-324 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
             [System.StringComparison]::Ordinal
         ) `
-        -Message 'Backlog records the exact remaining queue after BL-251.'
+        -Message 'Backlog records the exact post-correction queue through separate Local Work Register removal.'
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedBaselineCommit)) {
         $baselineBacklog = @(& git -C $resolvedRepositoryRoot show "${ExpectedBaselineCommit}:BACKLOG.md")
@@ -1151,6 +1192,46 @@ try {
         Add-GovernanceCheck -Id 'RECORD-MODE' -Passed ([string]$record.executionMode -in $modeIds) -Message 'Execution mode is cataloged.' -Evidence ([string]$record.executionMode)
         Add-GovernanceCheck -Id 'RECORD-CHECKPOINT' -Passed ([string]$record.checkpoint -in $checkpointIds) -Message 'Checkpoint is cataloged.' -Evidence ([string]$record.checkpoint)
         Add-GovernanceCheck -Id 'RECORD-RESULT' -Passed ([string]$record.changeTriggerReviewResult -in $resultIds) -Message 'Change-trigger result is cataloged.' -Evidence ([string]$record.changeTriggerReviewResult)
+
+        $hasCurrentStateGate = 'currentStateGate' -in $recordProperties
+        $currentStateReadinessClaimed = (
+            [string]$record.documentationConsistencyResult -in @('PASS', 'PASS_WITH_WARNINGS') -or
+            [string]$record.review.focusedValidationResult -ceq 'PASS' -or
+            [bool]$record.handoff.required -or
+            [bool]$record.handoff.classicReviewReady -or
+            [bool]$record.commitPreparation.allFindingsClosed -or
+            [bool]$record.commitPreparation.independentDeltaReviewComplete -or
+            [bool]$record.commitPreparation.scopeVerified -or
+            [bool]$record.commitPreparation.validationPassed -or
+            [bool]$record.commitPreparation.commitAuthorized
+        )
+        Add-GovernanceCheck -Id 'RECORD-CURRENT-STATE-GATE-PRESENCE' `
+            -Passed (-not $currentStateReadinessClaimed -or $hasCurrentStateGate) `
+            -Message (
+                'Current-state, validation, handoff, or commit-readiness claims require the ' +
+                'typed current-state gate; pending workflow-generated schema-version-1 records remain compatible.'
+            )
+        if ($hasCurrentStateGate) {
+            Test-RequiredProperties -Value $record.currentStateGate -Required @(
+                'result',
+                'repositoryIdentityBound',
+                'commitAndBranchBound',
+                'completeStatusBound',
+                'scopeAndIdsBound',
+                'parallelWorktreesBound'
+            ) -Prefix 'RECORD-CURRENT-STATE-GATE'
+            $currentStateGatePassed = (
+                [string]$record.currentStateGate.result -ceq 'PASS' -and
+                [bool]$record.currentStateGate.repositoryIdentityBound -and
+                [bool]$record.currentStateGate.commitAndBranchBound -and
+                [bool]$record.currentStateGate.completeStatusBound -and
+                [bool]$record.currentStateGate.scopeAndIdsBound -and
+                [bool]$record.currentStateGate.parallelWorktreesBound
+            )
+            Add-GovernanceCheck -Id 'RECORD-CURRENT-STATE-GATE' `
+                -Passed $currentStateGatePassed `
+                -Message 'The supplied current-state gate is a complete fail-closed PASS binding.'
+        }
 
         $trustedProvenanceProvided = (
             -not [string]::IsNullOrWhiteSpace($ExpectedRepository) -and
@@ -2538,6 +2619,29 @@ try {
                     -Passed $completionConsistencyPass `
                     -Message 'Completion report agrees with assignment identity, provenance, mode, checkpoint, and readiness.'
 
+                $completionTelemetryPass = (
+                    [int]$completionReport.observedWarningCount -eq
+                        ([int]$completionReport.resolvedWarningCount + [int]$completionReport.openWarningCount) -and
+                    [int]$completionReport.warningCount -eq [int]$completionReport.openWarningCount -and
+                    [int]$completionReport.validationExecutionCount -ge 1
+                )
+                Add-GovernanceCheck -Id 'COMPLETION-REPORT-TELEMETRY' `
+                    -Passed $completionTelemetryPass `
+                    -Message 'Completion report warning and execution counters satisfy the canonical invariants.'
+                $completionPackagePass = (
+                    [bool]$completionReport.packageGeneration.freshStaging -and
+                    [int]$completionReport.packageGeneration.finalZipWriteCount -eq 1 -and
+                    -not [bool]$completionReport.packageGeneration.inPlaceRepairPerformed -and
+                    (-not [bool]$completionReport.handoff.classicReviewReady -or (
+                        [bool]$completionReport.zipFreeReadinessPassed -and
+                        [int]$completionReport.openWarningCount -eq 0 -and
+                        [int]$completionReport.failureCount -eq 0
+                    ))
+                )
+                Add-GovernanceCheck -Id 'COMPLETION-REPORT-ZIP-FREE-READINESS' `
+                    -Passed $completionPackagePass `
+                    -Message 'Completion report proves ZIP-free readiness and exactly one fresh final package write.'
+
                 $assignmentHash = (Get-FileHash -LiteralPath $resolvedRecordPath -Algorithm SHA256).Hash.ToLowerInvariant()
                 Add-GovernanceCheck -Id 'COMPLETION-REPORT-ASSIGNMENT-HASH' `
                     -Passed ([string]$completionReport.assignmentRecordSha256 -ceq $assignmentHash) `
@@ -2575,7 +2679,8 @@ try {
                     Add-GovernanceCheck -Id 'SCOPE-INVENTORY-REQUIRED' -Passed $false `
                         -Message 'Classic-ready validation requires a scope inventory.'
                 }
-                $completionReportValidated = $completionSchemaValid -and $completionConsistencyPass
+                $completionReportValidated = $completionSchemaValid -and $completionConsistencyPass -and
+                    $completionTelemetryPass -and $completionPackagePass
             }
         }
         elseif ([bool]$record.handoff.classicReviewReady) {

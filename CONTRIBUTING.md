@@ -29,6 +29,21 @@ directly; multiple required files must be rebuilt and validated as one ZIP,
 never as separately uploaded package members. See
 [the handoff standard](Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md).
 
+Before architecture, backlog, or implementation decisions, bind the current
+repository identity, baseline/current commits, branch, complete relevant status,
+scope, IDs, and parallel-worktree state. New or materially rebuilt validators
+require a failure-mode matrix before implementation and cheap parser, parameter,
+Temp, sandbox, and harness gates before expensive matrices.
+
+Validation follows one funnel: root-cause checks, directly affected components,
+documentation convergence, and exactly one complete final run. Long runs report
+`completed/selected` with a named unit and phase. They separately report
+`PASS`, `FAIL`, `SKIPPED`, `BLOCKED`, `CANCELLED`, `PENDING`, and `NOT_RUN`;
+`X/Y` never means pass/fail. Observed, resolved, and open warnings plus material
+correction cycles, validation executions, and infrastructure/invocation failures
+are separate counters. Recurring long runs without numeric progress are
+instrumentation findings.
+
 ## Scope
 
 FlashGate is a native, local-first MCP server optimized for low latency, low token use, low RAM/CPU consumption, and strict server-side security. Contributions must preserve those objectives and must not silently introduce an interpreter, remote listener, broad shell, unbounded operation, or security bypass.

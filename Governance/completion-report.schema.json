@@ -15,6 +15,7 @@
     "executionMode",
     "checkpoint",
     "changeTriggerReviewResult",
+    "currentStateGate",
     "triggeredDomains",
     "observedTriggers",
     "affectedContinuousGates",
@@ -44,8 +45,16 @@
     "scopeInventorySha256",
     "assignmentRecordSha256",
     "findingStatus",
+    "materialCorrectionCycleCount",
+    "validationExecutionCount",
+    "infrastructureOrInvocationFailureCount",
+    "observedWarningCount",
+    "resolvedWarningCount",
+    "openWarningCount",
     "warningCount",
     "failureCount",
+    "zipFreeReadinessPassed",
+    "packageGeneration",
     "nextAction"
   ],
   "properties": {
@@ -83,6 +92,7 @@
         "BLOCKED_PENDING_DECISION"
       ]
     },
+    "currentStateGate": { "$ref": "#/$defs/currentStateGate" },
     "triggeredDomains": { "$ref": "#/$defs/stringArray" },
     "observedTriggers": { "$ref": "#/$defs/stringArray" },
     "affectedContinuousGates": { "$ref": "#/$defs/stringArray" },
@@ -142,11 +152,42 @@
         }
       }
     },
+    "materialCorrectionCycleCount": { "type": "integer", "minimum": 0, "maximum": 12 },
+    "validationExecutionCount": { "type": "integer", "minimum": 1 },
+    "infrastructureOrInvocationFailureCount": { "type": "integer", "minimum": 0 },
+    "observedWarningCount": { "type": "integer", "minimum": 0 },
+    "resolvedWarningCount": { "type": "integer", "minimum": 0 },
+    "openWarningCount": { "type": "integer", "minimum": 0 },
+    "zipFreeReadinessPassed": { "type": "boolean" },
+    "packageGeneration": { "$ref": "#/$defs/packageGeneration" },
     "warningCount": { "type": "integer", "minimum": 0 },
     "failureCount": { "type": "integer", "minimum": 0 },
     "nextAction": { "type": "string", "minLength": 1 }
   },
   "$defs": {
+    "currentStateGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "repositoryIdentityBound", "commitAndBranchBound", "completeStatusBound", "scopeAndIdsBound", "parallelWorktreesBound"],
+      "properties": {
+        "result": { "const": "PASS" },
+        "repositoryIdentityBound": { "const": true },
+        "commitAndBranchBound": { "const": true },
+        "completeStatusBound": { "const": true },
+        "scopeAndIdsBound": { "const": true },
+        "parallelWorktreesBound": { "const": true }
+      }
+    },
+    "packageGeneration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["freshStaging", "finalZipWriteCount", "inPlaceRepairPerformed"],
+      "properties": {
+        "freshStaging": { "const": true },
+        "finalZipWriteCount": { "const": 1 },
+        "inPlaceRepairPerformed": { "const": false }
+      }
+    },
     "stringArray": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },

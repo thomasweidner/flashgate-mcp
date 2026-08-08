@@ -29,6 +29,17 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Registered BL-337 through BL-340. ADR-0016 binds governance fixture-harness
+  process isolation, canonical case metadata, progress, and reusable validation
+  orchestration; ADR-0017 binds direct STDIO, proxy-edge, and service host
+  process ownership and bounded lifecycle behavior.
+- Documented `BL-341` as an intentional non-registration because shared hosting,
+  proxy/discovery, per-client isolation, fairness, resource sharing, lifecycle
+  tests, efficiency gates, and host ownership are already assigned to ADR-0014,
+  BL-092, BL-221 through BL-244, BL-340, and ADR-0017.
+- Added canonical validation telemetry, warning accounting, ZIP-free readiness,
+  and fresh-package generation contracts for governance handoffs.
+
 - Closed BL-336 after a finding-free focused independent Exact-Head Delta
   Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b`.
   `BL336-PR31-REV-001` through `BL336-PR31-REV-004` are

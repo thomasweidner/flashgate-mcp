@@ -585,3 +585,4 @@ Remote access or a product/binary split requires a separate ADR and threat model
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
 - [ADR-0014](adr/0014-native-multi-mode-runtime-and-local-service-deployment.md)
 - [ADR-0015](adr/0015-hybrid-service-execution-identity.md)
+- [ADR-0017](adr/0017-host-process-ownership-and-lifecycle.md)

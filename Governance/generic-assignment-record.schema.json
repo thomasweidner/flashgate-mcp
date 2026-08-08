@@ -4,7 +4,7 @@
   "title": "FlashGate generic commit-preparation assignment record",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "executionMode", "checkpoint", "profile", "transitionType", "changeTriggerReviewResult", "classicReviewReady", "findingIds", "commitAuthorized", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths"],
+  "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "executionMode", "checkpoint", "profile", "transitionType", "changeTriggerReviewResult", "currentStateGate", "classicReviewReady", "findingIds", "commitAuthorized", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
@@ -17,6 +17,7 @@
     "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
     "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
     "changeTriggerReviewResult": { "enum": ["NO_TRIGGER", "EXISTING_GATES_REQUIRED", "EXISTING_BACKLOG_UPDATED", "NEW_BACKLOG_REGISTERED"] },
+    "currentStateGate": { "$ref": "#/$defs/currentStateGate" },
     "classicReviewReady": { "type": "boolean" },
     "findingIds": { "$ref": "#/$defs/findingIds" },
     "commitAuthorized": { "const": false },
@@ -31,6 +32,19 @@
     "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
     "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
-    "findingIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" } }
+    "findingIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" } },
+    "currentStateGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "repositoryIdentityBound", "commitAndBranchBound", "completeStatusBound", "scopeAndIdsBound", "parallelWorktreesBound"],
+      "properties": {
+        "result": { "const": "PASS" },
+        "repositoryIdentityBound": { "const": true },
+        "commitAndBranchBound": { "const": true },
+        "completeStatusBound": { "const": true },
+        "scopeAndIdsBound": { "const": true },
+        "parallelWorktreesBound": { "const": true }
+      }
+    }
   }
 }

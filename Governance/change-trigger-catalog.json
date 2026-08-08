@@ -32,7 +32,10 @@
       "gitCommitAuthorized": false,
       "remoteActionsAuthorized": false,
       "nextAuthorization": "FINAL_INDEPENDENT_EXACT_HEAD_REVIEW"
-    }
+    },
+    { "id": "BL-337", "status": "Planned", "role": "FIXTURE_RUNNER_PROCESS_AND_TIMEOUT_ISOLATION", "targetSprint": "SPR-61", "adr": "ADR-0016" },
+    { "id": "BL-338", "status": "Planned", "role": "FIXTURE_GROUPS_RESUME_AND_PROGRESS_TELEMETRY", "targetSprint": "SPR-61", "adr": "ADR-0016" },
+    { "id": "BL-339", "status": "Planned", "role": "GOVERNANCE_CURRENT_STATE_AND_EXECUTION_TELEMETRY_CONTRACT", "targetSprint": "SPR-61", "adr": "ADR-0016" }
   ],
   "handoffProfiles": [
     {
@@ -146,6 +149,43 @@
     ],
     "classicReturnRequiredOnlyAtDecisionAuthorizationScopeOrBudgetBoundary": true
   },
+  "validationExecutionPolicy": {
+    "resultStatuses": ["PASS", "FAIL", "SKIPPED", "BLOCKED", "CANCELLED", "PENDING", "NOT_RUN"],
+    "progressSemantics": "completed/selected unit - Phase: phase",
+    "warningInvariant": "observedWarningCount = resolvedWarningCount + openWarningCount; warningCount = openWarningCount",
+    "counterFields": ["materialCorrectionCycleCount", "validationExecutionCount", "infrastructureOrInvocationFailureCount"],
+    "requiredPreflightBindings": ["repositoryIdentity", "commitAndBranch", "completeStatus", "scopeAndIds", "parallelWorktrees"],
+    "finalFullValidationRunLimit": 1,
+    "resumeRequiresHashBoundState": true,
+    "failureStatuses": ["FAIL"],
+    "blockedIncrementsFailureCount": false,
+    "terminalProgressEventPerCaseRequired": true,
+    "minimumProgressEventFields": ["sequence", "caseId", "eventType", "status", "completed", "selected", "unit", "phase", "elapsedMilliseconds"],
+    "identicalEventSuppressionRequired": true,
+    "heartbeatIntervalRequired": true,
+    "heartbeatExplicitlyTyped": true,
+    "allowedProgressEmissionReasons": ["PROGRESS", "PHASE_CHANGE", "STATUS_CHANGE", "HEARTBEAT"],
+    "missingProgressInstrumentationCreatesFinding": true,
+    "selectionResolvedBeforeRunnerStart": true,
+    "selectorResolutionCardinality": 1,
+    "unknownDuplicateAmbiguousSelectionFailsClosed": true,
+    "canonicalCaseInventoryFormat": "MACHINE_READABLE_NON_SHELL",
+    "singleCaseMetadataSourceRequired": true,
+    "structuredSelectionDiagnosticIdsRequired": true,
+    "explicitSourceAndWorktreeParametersRequired": true,
+    "hardcodedMainWorktreeAllowed": false,
+    "requiredSourceBindings": ["branch", "commit", "tree", "fileHashes"],
+    "nativeEvidenceMustMatchDeltaWorktree": true,
+    "standardProbeClasses": ["GIT", "POWERSHELL"],
+    "helperCommandShadowingAllowed": false,
+    "detachedHeadDetection": "SYMBOLIC_REF_EXIT_CODE",
+    "directExitCodeEvaluationRequired": true,
+    "timeoutBudgetFromProbeCountAndMeasuredRuntimeRequired": true,
+    "knownNormalUserContextSkipsSandboxAttempt": true,
+    "blockedAndFailSemanticallyDistinct": true,
+    "historicalAndCurrentContractVersionsSeparated": true,
+    "scopeOverrunFailsClosed": true
+  },
   "activityGatePolicy": {
     "finalGateRequiredImmediatelyBeforeFirstProductiveWrite": true,
     "externalMonitorMustBeStoppedOrPlaintextRedacted": true,
@@ -161,7 +201,11 @@
     "sha256ValidationRequired": true,
     "rejectUnsafeDuplicateOrCaseCollidingPaths": true,
     "rejectLinkJunctionOrReparseTargets": true,
-    "classicReviewReadyRequiresCompletePackage": true
+    "classicReviewReadyRequiresCompletePackage": true,
+    "zipFreeReadinessRequired": true,
+    "inPlaceFinalZipRepairAllowed": false,
+    "invalidFinalZipDisposition": "DISCARD",
+    "correctedPackageRequiresFreshStaging": true
   },
   "triggers": [
     {
@@ -272,6 +316,7 @@
     "ExecutionMode",
     "Checkpoint",
     "ChangeTriggerReviewResult",
+    "CurrentStateGate",
     "TriggeredDomains",
     "ObservedTriggers",
     "AffectedContinuousGates",
@@ -303,5 +348,12 @@
     "HostedCISourceVerification",
     "MissingHandoffArtifacts",
     "ClassicReviewReady"
+    ,"MaterialCorrectionCycleCount"
+    ,"ValidationExecutionCount"
+    ,"InfrastructureOrInvocationFailureCount"
+    ,"ObservedWarningCount"
+    ,"ResolvedWarningCount"
+    ,"OpenWarningCount"
+    ,"ZipFreeReadinessPassed"
   ]
 }

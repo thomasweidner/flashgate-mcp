@@ -3,6 +3,9 @@ param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$CanonicalArtifactValidatorPath = (Join-Path $PSScriptRoot 'Test-ClassicReviewArtifact.ps1'),
     [string[]]$CaseName = @(),
+    [string[]]$Tag = @(),
+    [string]$TargetPlatform,
+    [string[]]$AvailableCapability = @(),
     [string]$ProgressPath,
     [string]$ResultPath
 )
@@ -70,6 +73,14 @@ function New-BaseRecord {
         executionMode = $Mode
         checkpoint = $Checkpoint
         changeTriggerReviewResult = if ($ObservedTriggers.Count -eq 0) { 'NO_TRIGGER' } else { 'EXISTING_GATES_REQUIRED' }
+        currentStateGate = [ordered]@{
+            result = 'PASS'
+            repositoryIdentityBound = $true
+            commitAndBranchBound = $true
+            completeStatusBound = $true
+            scopeAndIdsBound = $true
+            parallelWorktreesBound = $true
+        }
         triggeredDomains = @($TriggeredDomains)
         observedTriggers = @($ObservedTriggers)
         affectedContinuousGates = @($AffectedGates)
@@ -635,8 +646,20 @@ BL-335 remains blocked.
             }
         }
     )
+    $completionReport | Add-Member -NotePropertyName materialCorrectionCycleCount -NotePropertyValue 1
+    $completionReport | Add-Member -NotePropertyName validationExecutionCount -NotePropertyValue 1
+    $completionReport | Add-Member -NotePropertyName infrastructureOrInvocationFailureCount -NotePropertyValue 0
+    $completionReport | Add-Member -NotePropertyName observedWarningCount -NotePropertyValue 0
+    $completionReport | Add-Member -NotePropertyName resolvedWarningCount -NotePropertyValue 0
+    $completionReport | Add-Member -NotePropertyName openWarningCount -NotePropertyValue 0
     $completionReport | Add-Member -NotePropertyName warningCount -NotePropertyValue 0
     $completionReport | Add-Member -NotePropertyName failureCount -NotePropertyValue 0
+    $completionReport | Add-Member -NotePropertyName zipFreeReadinessPassed -NotePropertyValue $true
+    $completionReport | Add-Member -NotePropertyName packageGeneration -NotePropertyValue ([ordered]@{
+        freshStaging = $true
+        finalZipWriteCount = 1
+        inPlaceRepairPerformed = $false
+    })
     $completionReport | Add-Member -NotePropertyName nextAction -NotePropertyValue $nextAction
     [System.IO.File]::WriteAllText(
         (Join-Path $staging 'completion-report.json'),
@@ -1872,8 +1895,20 @@ function New-CompletionFixture {
             evidenceReferences = @('fixture:evidence')
         }
     )
+    $report | Add-Member -NotePropertyName materialCorrectionCycleCount -NotePropertyValue 1
+    $report | Add-Member -NotePropertyName validationExecutionCount -NotePropertyValue 1
+    $report | Add-Member -NotePropertyName infrastructureOrInvocationFailureCount -NotePropertyValue 0
+    $report | Add-Member -NotePropertyName observedWarningCount -NotePropertyValue 0
+    $report | Add-Member -NotePropertyName resolvedWarningCount -NotePropertyValue 0
+    $report | Add-Member -NotePropertyName openWarningCount -NotePropertyValue 0
     $report | Add-Member -NotePropertyName warningCount -NotePropertyValue 0
     $report | Add-Member -NotePropertyName failureCount -NotePropertyValue 0
+    $report | Add-Member -NotePropertyName zipFreeReadinessPassed -NotePropertyValue $true
+    $report | Add-Member -NotePropertyName packageGeneration -NotePropertyValue ([ordered]@{
+        freshStaging = $true
+        finalZipWriteCount = 1
+        inPlaceRepairPerformed = $false
+    })
     $report | Add-Member -NotePropertyName nextAction -NotePropertyValue 'Run the next authorized governance checkpoint.'
 
     switch ($Mutation) {
@@ -1898,11 +1933,73 @@ function New-CompletionFixture {
     }
 }
 
+function New-CanonicalFixtureDescriptor {
+    param(
+        [Parameter(Mandatory)][string]$CaseId,
+        [string]$Group,
+        [string[]]$Tags = @(),
+        [string[]]$SupportedPlatforms = @('windows', 'linux'),
+        [string[]]$RequiredCapabilities = @('git', 'powershell-7.6.4'),
+        [string[]]$WindowsOnlyDependencies = @()
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Group)) {
+        $Group = switch -Regex ($CaseId) {
+            'workflow-binding' { 'workflow-binding'; break }
+            '^report-contract-' { 'completion-report'; break }
+            'package-' { 'handoff-package'; break }
+            'tracked-path|scope-' { 'scope-inventory'; break }
+            'runtime-hosted-ci' { 'runtime-contract'; break }
+            default { 'governance-record' }
+        }
+    }
+
+    $polarityTag = if ($CaseId.StartsWith('positive-', [StringComparison]::Ordinal)) {
+        'positive'
+    }
+    elseif ($CaseId.StartsWith('negative-', [StringComparison]::Ordinal)) {
+        'negative'
+    }
+    else {
+        'contract'
+    }
+    $normalizedTags = @(@($polarityTag) + @($Tags) | Sort-Object -Unique -CaseSensitive)
+
+    return [pscustomobject][ordered]@{
+        CaseId = $CaseId
+        Group = $Group
+        Tags = $normalizedTags
+        SupportedPlatforms = @($SupportedPlatforms | Sort-Object -Unique -CaseSensitive)
+        RequiredCapabilities = @($RequiredCapabilities | Sort-Object -Unique -CaseSensitive)
+        WindowsOnlyDependencies = @($WindowsOnlyDependencies | Sort-Object -Unique -CaseSensitive)
+    }
+}
+
+function Get-CaseStringArrayProperty {
+    param(
+        [Parameter(Mandatory)][object]$Case,
+        [Parameter(Mandatory)][string]$PropertyName,
+        [string[]]$Default = @()
+    )
+
+    if ($PropertyName -in @($Case.PSObject.Properties.Name)) {
+        return [string[]]@($Case.$PropertyName)
+    }
+    return [string[]]@($Default)
+}
+
 $status = 'FAIL'
 $failureMessage = $null
 $results = [System.Collections.Generic.List[object]]::new()
 $startedAt = [DateTimeOffset]::Now
-$expectedFullFixtureCount = 225
+$canonicalFixtureCount = 0
+$fixtureInventorySHA256 = $null
+$canonicalFixtureNames = @()
+$canonicalFixtureInventory = @()
+$selectedFixtureNames = @()
+$selectedFixtureMetadata = @()
+$selectionIsFullInventory = $false
+$selectionResolved = $false
 $cleanupErrors = [System.Collections.Generic.List[string]]::new()
 $cleanupStatus = 'NOT_RUN'
 $repositoryMutationDetected = $false
@@ -2011,7 +2108,16 @@ try {
     $cases = [System.Collections.Generic.List[object]]::new()
 
     $bundled = New-BaseRecord -Mode BUNDLED_CORRECTION -Checkpoint ASSIGNMENT_START -ObservedTriggers DOCUMENTATION_GOVERNANCE_LIFECYCLE -TriggeredDomains documentation-governance -AffectedGates $documentationGates
-    [void]$cases.Add([pscustomobject]@{ Name = 'positive-bundled-start'; ExpectedExit = 0; ChangedPaths = @('Governance/change-trigger-catalog.json'); Record = $bundled })
+    [void]$cases.Add([pscustomobject]@{ Name = 'positive-bundled-start'; ExpectedExit = 0; ChangedPaths = @('Governance/change-trigger-catalog.json'); Record = $bundled; Tags = @('post-bl230-native', 'legacy-compatibility') })
+
+    $currentStateGatePositive = Copy-Record -Record $bundled
+    [void]$cases.Add([pscustomobject]@{
+            Name = 'positive-current-state-gate'
+            ExpectedExit = 0
+            ChangedPaths = @('Governance/change-trigger-catalog.json')
+            Record = $currentStateGatePositive
+            Tags = @('post-bl230-native', 'current-state-gate')
+        })
 
     $independent = New-BaseRecord -Mode INDEPENDENT_REVIEW -Checkpoint SPRINT_CLOSE -ObservedTriggers REVIEW_FINDING -TriggeredDomains finding -AffectedGates $findingGates
     [void]$cases.Add([pscustomobject]@{ Name = 'positive-independent-review'; ExpectedExit = 0; ChangedPaths = @(); Record = $independent })
@@ -2069,6 +2175,19 @@ try {
             ExpectedCanonicalArtifactValidatorSha256 = $classicFixture.ValidatorHash
             ExpectedCorrectionPatchSha256 = $classicFixture.CorrectionPatchHash
             ExpectedCurrentDeltaSha256 = $classicFixture.CurrentDeltaHash
+            SupportedPlatforms = @('windows')
+            RequiredCapabilities = @('git', 'powershell-7.6.4', 'external-windows-governance-backups')
+            WindowsOnlyDependencies = @('external-governance-backup-paths')
+        })
+
+    $missingRequiredCurrentStateGate = Copy-Record -Record $preCommit
+    $missingRequiredCurrentStateGate.PSObject.Properties.Remove('currentStateGate')
+    [void]$cases.Add([pscustomobject]@{
+            Name = 'negative-required-current-state-gate-missing'
+            ExpectedExit = 1
+            ChangedPaths = @('BACKLOG.md')
+            Record = $missingRequiredCurrentStateGate
+            Tags = @('post-bl230-native', 'current-state-gate')
         })
 
     $release = New-BaseRecord -Mode INDEPENDENT_REVIEW -Checkpoint RELEASE_CANDIDATE -ObservedTriggers WORKFLOW_CI -TriggeredDomains workflow-ci -AffectedGates $workflowGates
@@ -2385,6 +2504,7 @@ try {
                 ChangedPaths = @('Governance/change-trigger-catalog.json')
                 Record = $bundled
                 CompletionMutation = $reportMutation
+                Tags = if ($reportMutation -ceq 'VALID') { @('post-bl230-native', 'completion-contract') } else { @('completion-contract') }
             })
     }
 
@@ -2627,7 +2747,7 @@ try {
         }
     }
 
-    foreach ($policyName in @('remediationPolicy', 'activityGatePolicy', 'classicHandoffPolicy')) {
+    foreach ($policyName in @('remediationPolicy', 'activityGatePolicy', 'validationExecutionPolicy', 'classicHandoffPolicy')) {
         foreach ($propertyName in @($catalog.$policyName.PSObject.Properties.Name)) {
             $mutatedCatalog = $catalog | ConvertTo-Json -Depth 100 |
                 ConvertFrom-Json -Depth 100 -DateKind String
@@ -2664,12 +2784,181 @@ try {
         }
     }
 
-    $selectedCases = if (@($CaseName).Count -gt 0) {
-        @($cases | Where-Object { $_.Name -in $CaseName })
+    $coveragePolicyCases = @(
+        [pscustomobject]@{ Name = 'negative-selection-error-before-fixture-start'; Property = 'selectionResolvedBeforeRunnerStart'; Unsafe = $false },
+        [pscustomobject]@{ Name = 'negative-explicit-source-worktree-binding'; Property = 'explicitSourceAndWorktreeParametersRequired'; Unsafe = $false },
+        [pscustomobject]@{ Name = 'negative-helper-command-shadowing'; Property = 'helperCommandShadowingAllowed'; Unsafe = $true },
+        [pscustomobject]@{ Name = 'negative-detached-head-detection'; Property = 'detachedHeadDetection'; Unsafe = 'AMBIGUOUS_BRANCH_TEXT' },
+        [pscustomobject]@{ Name = 'negative-direct-exitcode-evaluation'; Property = 'directExitCodeEvaluationRequired'; Unsafe = $false },
+        [pscustomobject]@{ Name = 'negative-scope-overrun-fails-closed'; Property = 'scopeOverrunFailsClosed'; Unsafe = $false }
+    )
+    foreach ($coverageCase in $coveragePolicyCases) {
+        $mutatedCatalog = $catalog | ConvertTo-Json -Depth 100 |
+            ConvertFrom-Json -Depth 100 -DateKind String
+        $mutatedCatalog.validationExecutionPolicy.($coverageCase.Property) = $coverageCase.Unsafe
+        $mutatedCatalogPath = Join-Path $temporaryRoot ('catalog-' + $coverageCase.Name + '.json')
+        [System.IO.File]::WriteAllText(
+            $mutatedCatalogPath,
+            ($mutatedCatalog | ConvertTo-Json -Depth 100),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        [void]$cases.Add([pscustomobject]@{
+                Name = $coverageCase.Name
+                ExpectedExit = 1
+                ExpectedFailedCheck = 'CATALOG-POLICY-validationExecutionPolicy-' + $coverageCase.Property
+                ChangedPaths = @('Governance/change-trigger-catalog.json')
+                Record = $bundled
+                CatalogPath = $mutatedCatalogPath
+            })
+    }
+
+    $caseFixtureDescriptors = @(
+        foreach ($case in $cases) {
+            $caseGroup = if ('Group' -in @($case.PSObject.Properties.Name)) {
+                [string]$case.Group
+            }
+            else {
+                $null
+            }
+            New-CanonicalFixtureDescriptor -CaseId ([string]$case.Name) -Group $caseGroup `
+                -Tags (Get-CaseStringArrayProperty -Case $case -PropertyName 'Tags') `
+                -SupportedPlatforms (Get-CaseStringArrayProperty -Case $case -PropertyName 'SupportedPlatforms' -Default @('windows', 'linux')) `
+                -RequiredCapabilities (Get-CaseStringArrayProperty -Case $case -PropertyName 'RequiredCapabilities' -Default @('git', 'powershell-7.6.4')) `
+                -WindowsOnlyDependencies (Get-CaseStringArrayProperty -Case $case -PropertyName 'WindowsOnlyDependencies')
+        }
+    )
+    $artifactPolicyFixtureDescriptors = @(
+        New-CanonicalFixtureDescriptor -CaseId 'positive-package-single-file-direct' -Group 'handoff-package'
+        New-CanonicalFixtureDescriptor -CaseId 'positive-package-full-rebuild-after-change' -Group 'handoff-package'
+        New-CanonicalFixtureDescriptor -CaseId 'negative-package-duplicate-zip-path' -Group 'handoff-package'
+        New-CanonicalFixtureDescriptor -CaseId 'negative-package-case-colliding-zip-path' -Group 'handoff-package'
+        New-CanonicalFixtureDescriptor -CaseId 'negative-package-absolute-zip-path' -Group 'handoff-package'
+        New-CanonicalFixtureDescriptor -CaseId 'negative-package-traversal-zip-path' -Group 'handoff-package'
+        New-CanonicalFixtureDescriptor -CaseId 'negative-package-link-junction-reparse-entry' -Group 'handoff-package'
+        New-CanonicalFixtureDescriptor -CaseId 'negative-package-separate-member-transfer' -Group 'handoff-package'
+    )
+    $workflowFixtureDescriptors = @(
+        New-CanonicalFixtureDescriptor -CaseId 'positive-real-ci-workflow-binding' -Group 'workflow-binding' -Tags @('post-bl230-native', 'workflow-binding')
+        New-CanonicalFixtureDescriptor -CaseId 'positive-real-release-workflow-binding' -Group 'workflow-binding' -Tags @('post-bl230-native', 'workflow-binding')
+    )
+    $supplementalFixtureDescriptors = @(
+        @($artifactPolicyFixtureDescriptors)
+        New-CanonicalFixtureDescriptor -CaseId 'positive-runtime-hosted-ci-array' -Group 'runtime-contract'
+        New-CanonicalFixtureDescriptor -CaseId 'positive-complete-tracked-path-coverage' -Group 'scope-inventory' -Tags @('post-bl230-native', 'inventory-contract')
+        New-CanonicalFixtureDescriptor -CaseId 'negative-unclassified-tracked-path' -Group 'scope-inventory'
+        @($workflowFixtureDescriptors)
+    )
+    $artifactPolicyFixtureNames = @($artifactPolicyFixtureDescriptors | ForEach-Object { [string]$_.CaseId })
+    $workflowFixtureNames = @($workflowFixtureDescriptors | ForEach-Object { [string]$_.CaseId })
+    $canonicalFixtureInventory = @($caseFixtureDescriptors) + @($supplementalFixtureDescriptors)
+    $canonicalFixtureNames = @($canonicalFixtureInventory | ForEach-Object { [string]$_.CaseId })
+    $duplicateInventoryNames = @(
+        $canonicalFixtureNames |
+            Group-Object -CaseSensitive |
+            Where-Object Count -gt 1 |
+            ForEach-Object { [string]$_.Name }
+    )
+    if ($canonicalFixtureNames.Count -eq 0 -or $duplicateInventoryNames.Count -gt 0) {
+        throw (
+            'Canonical fixture inventory must be non-empty and contain unique case IDs. ' +
+            "duplicates=$($duplicateInventoryNames -join ', ')"
+        )
+    }
+    $fixtureInventoryBytes = [System.Text.UTF8Encoding]::new($false).GetBytes(
+        (($canonicalFixtureInventory | ConvertTo-Json -Depth 8 -Compress) + "`n")
+    )
+    $fixtureInventorySHA256 = [Convert]::ToHexString(
+        [System.Security.Cryptography.SHA256]::HashData($fixtureInventoryBytes)
+    ).ToLowerInvariant()
+    $canonicalFixtureCount = $canonicalFixtureNames.Count
+
+    $duplicateSelectedNames = @(
+        @($CaseName) |
+            Group-Object -CaseSensitive |
+            Where-Object Count -gt 1 |
+            ForEach-Object { [string]$_.Name }
+    )
+    $duplicateSelectedTags = @(
+        @($Tag) |
+            Group-Object -CaseSensitive |
+            Where-Object Count -gt 1 |
+            ForEach-Object { [string]$_.Name }
+    )
+    $unknownSelectedNames = @(
+        @($CaseName) | Where-Object { $_ -cnotin $canonicalFixtureNames }
+    )
+    $canonicalTags = @($canonicalFixtureInventory.Tags | Sort-Object -Unique -CaseSensitive)
+    $unknownSelectedTags = @(
+        @($Tag) | Where-Object { $_ -cnotin $canonicalTags }
+    )
+    $ambiguousSelectors = @(
+        if (@($CaseName).Count -gt 0 -and @($Tag).Count -gt 0) {
+            'CaseName+Tag'
+        }
+    )
+    if (
+        $duplicateSelectedNames.Count -gt 0 -or
+        $duplicateSelectedTags.Count -gt 0 -or
+        $unknownSelectedNames.Count -gt 0 -or
+        $unknownSelectedTags.Count -gt 0 -or
+        $ambiguousSelectors.Count -gt 0
+    ) {
+        throw (
+            'Fixture selection must resolve exactly once against the canonical inventory. ' +
+            "duplicates=$($duplicateSelectedNames -join ', '); " +
+            "duplicateTags=$($duplicateSelectedTags -join ', '); " +
+            "unknown=$($unknownSelectedNames -join ', '); " +
+            "unknownTags=$($unknownSelectedTags -join ', '); " +
+            "ambiguous=$($ambiguousSelectors -join ', ')"
+        )
+    }
+    $selectionIsFullInventory = @($CaseName).Count -eq 0 -and @($Tag).Count -eq 0
+    $selectedFixtureMetadata = if (@($CaseName).Count -gt 0) {
+        @($canonicalFixtureInventory | Where-Object { $_.CaseId -cin @($CaseName) })
+    }
+    elseif (@($Tag).Count -gt 0) {
+        @($canonicalFixtureInventory | Where-Object {
+                $fixtureTags = @($_.Tags)
+                @($Tag | Where-Object { $_ -cnotin $fixtureTags }).Count -eq 0
+            })
     }
     else {
-        @($cases)
+        @($canonicalFixtureInventory)
     }
+    if ($selectedFixtureMetadata.Count -eq 0) {
+        throw 'Fixture selection resolved to zero canonical cases.'
+    }
+    $selectedFixtureNames = @($selectedFixtureMetadata | ForEach-Object { [string]$_.CaseId })
+
+    if (-not [string]::IsNullOrWhiteSpace($TargetPlatform)) {
+        $normalizedTargetPlatform = $TargetPlatform.ToLowerInvariant()
+        if ($normalizedTargetPlatform -cnotin @('windows', 'linux')) {
+            throw "Unsupported target platform selector: $TargetPlatform"
+        }
+        $platformIncompatible = @($selectedFixtureMetadata | Where-Object {
+                $normalizedTargetPlatform -cnotin @($_.SupportedPlatforms) -or
+                ($normalizedTargetPlatform -ceq 'linux' -and @($_.WindowsOnlyDependencies).Count -gt 0)
+            } | ForEach-Object { [string]$_.CaseId })
+        $missingCapabilities = @(
+            foreach ($fixture in $selectedFixtureMetadata) {
+                $missingForFixture = @($fixture.RequiredCapabilities | Where-Object { $_ -cnotin @($AvailableCapability) })
+                if ($missingForFixture.Count -gt 0) {
+                    "$($fixture.CaseId):$($missingForFixture -join '+')"
+                }
+            }
+        )
+        if ($platformIncompatible.Count -gt 0 -or $missingCapabilities.Count -gt 0) {
+            throw (
+                'Fixture selection is not valid for the requested platform and capabilities. ' +
+                "platform=$normalizedTargetPlatform; incompatible=$($platformIncompatible -join ', '); " +
+                "missingCapabilities=$($missingCapabilities -join ', ')"
+            )
+        }
+        $TargetPlatform = $normalizedTargetPlatform
+    }
+    $selectionResolved = $true
+
+    $selectedCases = @($cases | Where-Object { $_.Name -cin $selectedFixtureNames })
     foreach ($case in $selectedCases) {
         $recordPath = if ('RecordPath' -in @($case.PSObject.Properties.Name)) {
             [string]$case.RecordPath
@@ -2825,18 +3114,8 @@ try {
         }
     }
 
-    $artifactPolicyFixtureNames = @(
-        'positive-package-single-file-direct',
-        'positive-package-full-rebuild-after-change',
-        'negative-package-duplicate-zip-path',
-        'negative-package-case-colliding-zip-path',
-        'negative-package-absolute-zip-path',
-        'negative-package-traversal-zip-path',
-        'negative-package-link-junction-reparse-entry',
-        'negative-package-separate-member-transfer'
-    )
     foreach ($fixtureName in $artifactPolicyFixtureNames) {
-        if (@($CaseName).Count -gt 0 -and $fixtureName -notin $CaseName) {
+        if ($fixtureName -cnotin $selectedFixtureNames) {
             continue
         }
 
@@ -2943,7 +3222,7 @@ try {
         }
     }
 
-    if (@($CaseName).Count -eq 0 -or 'positive-runtime-hosted-ci-array' -in $CaseName) {
+    if ('positive-runtime-hosted-ci-array' -cin $selectedFixtureNames) {
         $runtimeRecordPath = Join-Path $temporaryRoot 'runtime-release-record.json'
         $runtimePackagePath = Join-Path $temporaryRoot 'PowerShell-7.6.4-win-x64.zip'
         [System.IO.File]::WriteAllText(
@@ -3078,7 +3357,7 @@ try {
         }
     }
 
-    if (@($CaseName).Count -eq 0 -or 'positive-complete-tracked-path-coverage' -in $CaseName) {
+    if ('positive-complete-tracked-path-coverage' -cin $selectedFixtureNames) {
     $coverageOutput = @(
         & $pwsh -NoLogo -NoProfile -File $validatorPath `
             -RepositoryRoot $resolvedRepositoryRoot 2>&1
@@ -3106,7 +3385,7 @@ try {
     }
     }
 
-    if (@($CaseName).Count -eq 0 -or 'negative-unclassified-tracked-path' -in $CaseName) {
+    if ('negative-unclassified-tracked-path' -cin $selectedFixtureNames) {
         $unknownCoverageOutput = @(
             & $pwsh -NoLogo -NoProfile -File $validatorPath `
                 -RepositoryRoot $resolvedRepositoryRoot `
@@ -3135,8 +3414,7 @@ try {
         }
     }
 
-    $workflowFixtureNames = @('positive-real-ci-workflow-binding', 'positive-real-release-workflow-binding')
-    if (@($CaseName).Count -eq 0 -or @($workflowFixtureNames | Where-Object { $_ -in $CaseName }).Count -gt 0) {
+    if (@($workflowFixtureNames | Where-Object { $_ -cin $selectedFixtureNames }).Count -gt 0) {
         $generatorPath = Join-Path $resolvedRepositoryRoot 'scripts/New-GovernanceWorkflowRecord.ps1'
         $workflowDefinitions = @(
             [pscustomobject]@{
@@ -3157,7 +3435,7 @@ try {
             }
         )
         foreach ($workflowDefinition in $workflowDefinitions) {
-            if (@($CaseName).Count -gt 0 -and $workflowDefinition.Name -notin $CaseName) {
+            if ($workflowDefinition.Name -cnotin $selectedFixtureNames) {
                 continue
             }
             $workflowText = Get-Content -LiteralPath $workflowDefinition.WorkflowPath -Raw -Encoding UTF8
@@ -3338,24 +3616,29 @@ try {
                         [AllowEmptyString()][string]$ActualPath
                     )
 
+                    $absoluteWindowsPathPattern = (
+                        '^[A-Za-z]:\\[^\\/:*?"<>|\r\n]+' +
+                        '(?:\\[^\\/:*?"<>|\r\n]+)*$'
+                    )
                     if ([string]::IsNullOrWhiteSpace($ExpectedPath) -or
                         [string]::IsNullOrWhiteSpace($ActualPath) -or
-                        -not [System.IO.Path]::IsPathFullyQualified($ExpectedPath) -or
-                        -not [System.IO.Path]::IsPathFullyQualified($ActualPath)) {
+                        -not [regex]::IsMatch($ExpectedPath, $absoluteWindowsPathPattern) -or
+                        -not [regex]::IsMatch($ActualPath, $absoluteWindowsPathPattern)) {
                         return $false
                     }
-                    try {
-                        $normalizedExpectedPath = [System.IO.Path]::GetFullPath($ExpectedPath)
-                        $normalizedActualPath = [System.IO.Path]::GetFullPath($ActualPath)
-                        return [string]::Equals(
-                            $normalizedActualPath,
-                            $normalizedExpectedPath,
-                            [System.StringComparison]::OrdinalIgnoreCase
-                        )
-                    }
-                    catch {
+                    $expectedSegments = @($ExpectedPath.Substring(3).Split('\'))
+                    $actualSegments = @($ActualPath.Substring(3).Split('\'))
+                    if (
+                        @($expectedSegments | Where-Object { $_ -in @('.', '..') }).Count -gt 0 -or
+                        @($actualSegments | Where-Object { $_ -in @('.', '..') }).Count -gt 0
+                    ) {
                         return $false
                     }
+                    return [string]::Equals(
+                        $ActualPath,
+                        $ExpectedPath,
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    )
                 }
 
                 $positiveWorkflowContract = & $testCIWorkflowContract -Text $workflowText
@@ -3534,8 +3817,19 @@ try {
         }
     }
 
-    if (@($CaseName).Count -eq 0 -and $results.Count -ne $expectedFullFixtureCount) {
-        throw "Full fixture matrix produced $($results.Count) results; expected $expectedFullFixtureCount."
+    $completedFixtureNames = @($results | ForEach-Object { [string]$_.Name })
+    if (($completedFixtureNames -join "`n") -cne ($selectedFixtureNames -join "`n")) {
+        throw (
+            'Completed fixture IDs do not match the canonical resolved selection. ' +
+            "selected=$($selectedFixtureNames.Count); completed=$($completedFixtureNames.Count); " +
+            "inventorySHA256=$fixtureInventorySHA256"
+        )
+    }
+    if ($selectionIsFullInventory -and $results.Count -ne $canonicalFixtureCount) {
+        throw (
+            "Full fixture matrix produced $($results.Count) results; canonical inventory contains " +
+            "$canonicalFixtureCount cases with SHA-256 $fixtureInventorySHA256."
+        )
     }
     $status = if (@($results | Where-Object Result -eq 'FAIL').Count -eq 0) { 'PASS' } else { 'FAIL' }
 }
@@ -3591,7 +3885,7 @@ $resultFailureCount = @($results | Where-Object Result -eq 'FAIL').Count
 $structuralFailureCount = if ([string]::IsNullOrWhiteSpace($failureMessage)) { 0 } else { 1 }
 $warningCount = 0
 $failureCount = $resultFailureCount + $structuralFailureCount + $cleanupErrors.Count + [int]$repositoryMutationDetected
-$skippedCount = if (@($CaseName).Count -eq 0) { [Math]::Max(0, $expectedFullFixtureCount - $results.Count) } else { 0 }
+$skippedCount = if ($selectionIsFullInventory) { [Math]::Max(0, $canonicalFixtureCount - $results.Count) } else { 0 }
 $progressRecordCount = 0
 $progressSHA256 = $null
 if (-not [string]::IsNullOrWhiteSpace($ProgressPath) -and
@@ -3605,7 +3899,18 @@ $finalResult = [pscustomobject]@{
     StartedAt    = $startedAt.ToString('o')
     CompletedAt  = $completedAt.ToString('o')
     DurationSeconds = [Math]::Round(($completedAt - $startedAt).TotalSeconds, 3)
-    ExpectedFixtureCount = if (@($CaseName).Count -eq 0) { $expectedFullFixtureCount } else { $results.Count }
+    CanonicalFixtureCount = $canonicalFixtureCount
+    FixtureInventorySHA256 = $fixtureInventorySHA256
+    FixtureInventory = @($canonicalFixtureNames)
+    FixtureInventoryMetadata = @($canonicalFixtureInventory)
+    SelectedFixtureCount = @($selectedFixtureNames).Count
+    SelectedFixtureNames = @($selectedFixtureNames)
+    SelectedFixtureMetadata = @($selectedFixtureMetadata)
+    SelectionResolved = $selectionResolved
+    FixtureProcessStarted = ($results.Count -gt 0)
+    TargetPlatform = $TargetPlatform
+    AvailableCapabilities = @($AvailableCapability | Sort-Object -Unique -CaseSensitive)
+    ExpectedFixtureCount = @($selectedFixtureNames).Count
     ExecutedFixtureCount = $results.Count
     FixtureCount = $results.Count
     PassedCount  = @($results | Where-Object Result -eq 'PASS').Count

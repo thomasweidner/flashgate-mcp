@@ -61,6 +61,29 @@ while budget and scope remain. They are not returned individually to Classic.
 Classic or the owner is required only for a binding decision, authorization,
 scope expansion, exhausted budget, or an independently required review.
 
+Material correction cycles, validation executions, and infrastructure or
+invocation failures are different counters. Parser reruns, read-only diagnosis,
+and unchanged focused checks do not become material correction cycles. Reports
+also separate observed, resolved, and open warnings and enforce
+`ObservedWarningCount = ResolvedWarningCount + OpenWarningCount`.
+
+`FailureCount` counts only factual or technical `FAIL` results. `BLOCKED`
+records an unavailable prerequisite or authorization boundary in `Status` and
+does not increment `FailureCount`. Infrastructure and invocation failures use
+only `InfrastructureOrInvocationFailureCount`; no redundant blocker or
+open/resolved invocation summary fields are added.
+
+Validation uses a funnel: root-cause evidence, directly affected components,
+documentation convergence, and exactly one final complete run. A repeated full
+run needs a documented new technical cause. The first independent review covers
+the complete approved risk space; after a stable core, findings are triaged and
+corrections receive only a focused independent delta review unless a documented
+full-review trigger applies.
+
+For recurring long runs, missing numeric completed/selected progress with a
+named unit and phase is an instrumentation finding. Status updates occur only
+when phase, progress, warning, or result changes.
+
 ### Productive mutation-attempt boundary
 
 The productive mutation attempt begins immediately before invoking the first

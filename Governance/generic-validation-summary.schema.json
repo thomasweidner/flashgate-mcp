@@ -4,14 +4,74 @@
   "title": "FlashGate generic validation summary",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "taskId", "profile", "result", "checks", "warningCount", "failureCount"],
+  "allOf": [
+    {
+      "if": { "properties": { "result": { "const": "BLOCKED" } }, "required": ["result"] },
+      "then": { "properties": { "failureCount": { "const": 0 } } }
+    }
+  ],
+  "required": ["schemaVersion", "taskId", "profile", "result", "checks", "progress", "progressEvents", "materialCorrectionCycleCount", "validationExecutionCount", "infrastructureOrInvocationFailureCount", "observedWarningCount", "resolvedWarningCount", "openWarningCount", "warningCount", "failureCount"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
     "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
-    "result": { "enum": ["PASS", "FAIL"] },
-    "checks": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["id", "result"], "properties": { "id": { "type": "string", "minLength": 1 }, "result": { "enum": ["PASS", "FAIL"] } } } },
+    "result": { "$ref": "#/$defs/status" },
+    "checks": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["id", "result"], "properties": { "id": { "type": "string", "minLength": 1 }, "result": { "$ref": "#/$defs/status" } } } },
+    "progress": { "$ref": "#/$defs/progress" },
+    "progressEvents": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/progressEvent" } },
+    "materialCorrectionCycleCount": { "type": "integer", "minimum": 0 },
+    "validationExecutionCount": { "type": "integer", "minimum": 1 },
+    "infrastructureOrInvocationFailureCount": { "type": "integer", "minimum": 0 },
+    "observedWarningCount": { "type": "integer", "minimum": 0 },
+    "resolvedWarningCount": { "type": "integer", "minimum": 0 },
+    "openWarningCount": { "type": "integer", "minimum": 0 },
     "warningCount": { "type": "integer", "minimum": 0 },
     "failureCount": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "status": { "enum": ["PASS", "FAIL", "SKIPPED", "BLOCKED", "CANCELLED", "PENDING", "NOT_RUN"] },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed", "selected", "unit", "phase", "heartbeatIntervalMilliseconds", "statusCounts", "message"],
+      "properties": {
+        "completed": { "type": "integer", "minimum": 0 },
+        "selected": { "type": "integer", "minimum": 1 },
+        "unit": { "type": "string", "minLength": 1 },
+        "phase": { "type": "string", "minLength": 1 },
+        "heartbeatIntervalMilliseconds": { "type": "integer", "minimum": 1 },
+        "statusCounts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["PASS", "FAIL", "SKIPPED", "BLOCKED", "CANCELLED", "PENDING", "NOT_RUN"],
+          "properties": {
+            "PASS": { "type": "integer", "minimum": 0 },
+            "FAIL": { "type": "integer", "minimum": 0 },
+            "SKIPPED": { "type": "integer", "minimum": 0 },
+            "BLOCKED": { "type": "integer", "minimum": 0 },
+            "CANCELLED": { "type": "integer", "minimum": 0 },
+            "PENDING": { "type": "integer", "minimum": 0 },
+            "NOT_RUN": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "progressEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "caseId", "eventType", "status", "completed", "selected", "unit", "phase", "elapsedMilliseconds"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
+        "eventType": { "enum": ["PROGRESS", "PHASE_CHANGE", "STATUS_CHANGE", "HEARTBEAT"] },
+        "status": { "$ref": "#/$defs/status" },
+        "completed": { "type": "integer", "minimum": 0 },
+        "selected": { "type": "integer", "minimum": 1 },
+        "unit": { "type": "string", "minLength": 1 },
+        "phase": { "type": "string", "minLength": 1 },
+        "elapsedMilliseconds": { "type": "integer", "minimum": 0 }
+      }
+    }
   }
 }
