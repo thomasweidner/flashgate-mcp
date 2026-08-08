@@ -67,9 +67,9 @@ The complete legacy mapping is recorded in
 | SPR-56 | Planned | BL-119–BL-126, BL-130–BL-135, BL-252–BL-254 | Managed process execution, output cursors, resource control, race tests, and CI jobs |
 | SPR-57 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170 | Typed allowlisted command execution, OS isolation, redaction, and security tests |
 | SPR-58 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
-| SPR-59 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
+| SPR-59 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166, BL-340 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, host-process ownership/lifecycle, and Variant A security |
 | SPR-60 | Planned | BL-226–BL-231 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, and Variant A service-account execution |
-| SPR-61 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-336 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, and task-neutral governance handoffs |
+| SPR-61 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-339 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, task-neutral governance handoffs, and reusable fixture/validation orchestration |
 
 Version 1.0 is reached only after `SPR-61` and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
 
@@ -424,8 +424,8 @@ standard profile, the final native run, the runspace-free wrapper validation,
 and the terminally persisted 225-case fixture replacement all pass. INF-122
 and INF-129 are closed. BL-324 remains `Planned` and has not begun.
 
-Binding remaining queue after BL-336 completion:
-`BL-230 Commit Preparation -> BL-324 -> final documentation convergence -> remove Local Work Register`.
+Binding remaining queue after the BL-230 merge:
+`correct current registration delta -> separately authorize task-local native PowerShell bootstrap -> focused native validation -> exactly one full completion run -> one fresh review ZIP -> independent review and later Git integration -> implement INF-133 -> implement BL-339 Phase A -> continue BL-324 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal`.
 
 ### SPR-42 technical identity
 
@@ -556,6 +556,35 @@ These tasks originate in the final independent review of PR #21. They are accept
 |---|---|---|---|
 | BL-336 | Done | Generalize governance handoff contracts and commit-preparation validation | **Completed:** explicit task-neutral `GENERIC_COMMIT_PREPARATION` and isolated `FINDING_CORRECTION` profiles now bind complete repository, scope, patch, inventory, manifest, validation, review, and report evidence while preserving the historical BL-333/BL-334 contracts and all fail-closed path, UTF-8, independence, and readiness gates. Windows and native Linux validation under PowerShell 7.6.4 passed, including 31/31 focused and 85/85 generic cases; the historical 225-case matrix remains compatible. The focused independent Exact-Head Delta Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b` passed with no new findings, warnings, or failures. `BL336-PR31-REV-001` through `BL336-PR31-REV-004` are `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`; `OpenFindingCount: 0`. The final status commit is documentation-only and introduces no MCP runtime or product behavior change. **Sequence:** BL-230 integration may resume before BL-324. |
 
+### Post-BL-230 governance and host-lifecycle follow-up
+
+| ID | Status | Task | Scope and acceptance notes |
+|---|---|---|---|
+| BL-337 | Planned | Isolate governance fixture execution in one controlled runner process | Each fixture run owns exactly one controlled runner process identified by PID and start identity; deterministic timeouts use bounded kill, wait, and stream drain; terminal evidence proves cleanup, no surviving fixture/validator process, and unchanged repository state. Every terminal case emits one machine-readable per-case ProgressEvent with only technically required fields. Identical events are suppressed; a heartbeat is explicitly typed, emitted only after the configured interval, and never duplicated for the same interval/state. Output occurs only for progress, phase change, status change, or heartbeat. Missing progress instrumentation on a recurring long run is a finding. |
+| BL-338 | Planned | Add canonical governance case metadata and deterministic selection | One machine-readable leading inventory owns every case ID, group, tag, supported platform, required capability, and Windows-only dependency marker; no Shell/PowerShell array or second maintained list is canonical. `-ListGroups`, `-ListTags`, `-ListCases`, group/tag selection, and the compatible `-CaseName` path derive from that source. All selectors resolve completely before runner-process start and each selected token resolves to exactly one canonical case. Unknown, duplicate, ambiguous, platform-incompatible, or capability-incomplete selections stop fail-closed with structured diagnostics containing the affected IDs and no redundant summary fields. The deterministic metadata inventory and resolved selection are SHA-256-bound. The Post-BL-230 bridge may use this canonical metadata for its focused native subset without claiming BL-338 complete; the remaining list/group/tag interface migration stays Planned. |
+| BL-339 | Planned | Provide reusable focused and full governance validation orchestration | A standard orchestrator performs current-state, toolchain, platform, execution-context, parameter, Temp, sandbox, selection, and harness preflights before its first mutation. Source repository and worktree are explicit parameters; a main worktree may not be hard-coded. Branch, commit, tree, and selected file hashes bind the exact source, and isolated native evidence must validate the later delta worktree. A hash-verified task-local native toolchain is retained and reused across directly caused correction/full-run cycles until the assignment reaches a terminal handoff or external boundary; a relevant source-hash change invalidates earlier native evidence without authorizing another download. External local documents use a bound hash and optimistic-concurrency gate that preserves non-overlapping foreign deltas and blocks before an overlapping write. Standard Git/PowerShell probes use non-shadowing helper names, deterministic detached-HEAD detection, direct exit-code evaluation, and a timeout budget derived from probe count and measured runtime. A known required normal-user context is selected directly rather than preceded by an expected sandbox failure. `BLOCKED` and `FAIL` remain distinct; `FailureCount` counts only technical/factual `FAIL`, while infrastructure/invocation failures use one total counter. Historical/current contracts remain separately versioned, scope overruns fail closed, resume remains hash-bound, and the validation funnel ends in exactly one full run. |
+| BL-340 | Planned | Define cross-mode host-process ownership and lifecycle | ADR-0017 binds direct STDIO, proxy-edge, and persistent service process owners; connection ownership; owner/transport loss; PID plus start identity; bounded shutdown; orphan classification; instance diagnostics; service persistence; separation from Managed Process and Operations/Jobs; and Windows/Linux lifecycle-test ownership. BL-241 retains integrated multi-client/lifecycle tests and BL-129 retains managed-child cleanup. |
+
+The Post-BL-230 compatibility correction is not BL-338 or BL-339 completion.
+It removes the current runner's fixed leading count in favor of its derived
+ordered inventory and SHA-256, and keeps pending schema-version-1 records from
+the unchanged workflow generator compatible. Any current readiness claim and
+the versioned `GENERIC_COMMIT_PREPARATION` profile still require a valid
+`currentStateGate`. Full generator/profile migration remains BL-339 Phase A;
+group/tag metadata and reusable selection remain BL-338.
+
+BL-339 Phase A is the required enabler before BL-324 resumes. It is limited to
+explicit isolated source/worktree selection; exact HEAD, tree, and file-hash
+binding; toolchain/platform, execution-context, and selector preflights; and
+standardized Git/PowerShell probes. It uses BL-339 and creates no new ID.
+
+`BL-341` is intentionally not registered. Shared multi-client hosting is already
+bound by ADR-0014 and BL-221, BL-222, BL-230, and BL-231; the edge proxy by
+BL-228; discovery/fallback by BL-223 and BL-229; authorization/isolation by
+BL-234 and BL-239; fairness/backpressure by BL-092 and BL-234; resource sharing
+by BL-239; parallel/lifecycle tests by BL-241; efficiency comparison by BL-244;
+and host-process ownership/lifecycle by BL-340 and ADR-0017.
+
 BL-336 PRE_COMMIT checkpoint: `BL336-VAL-001` and `BL336-VAL-002` remain
 `CLOSED_BY_IMPLEMENTATION_AND_FULL_REVALIDATION`; `BL336-REV-001`,
 `BL336-REV-002`, and `BL336-REV-003` remain
@@ -604,8 +633,9 @@ packaged final read-only review gate. Ready-for-Review, reviewer requests,
 other PR metadata changes, merge, rebase, and force-push remain prohibited;
 the persistent catalog keeps general remote actions closed.
 
-The highest assigned backlog identifier is `BL-336`; the next free identifier is
-`BL-337`. BL-333, BL-334, and BL-335 remain `Done`.
+The highest assigned backlog identifier is `BL-340`; `BL-341` remains
+intentionally unassigned because its proposed scope is fully mapped above.
+BL-333, BL-334, BL-335, and BL-336 remain `Done`.
 
 PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8`.
 Its first parent is `537ea1c1660cddfde5aace1888242d80a6be77bf`;
@@ -622,7 +652,7 @@ terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
 three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
 The binding remaining queue is:
-`BL-230 Commit Preparation → BL-324 → final documentation convergence → remove Local Work Register`.
+`correct current registration delta → separately authorize task-local native PowerShell bootstrap → focused native validation → exactly one full completion run → one fresh review ZIP → independent review and later Git integration → implement INF-133 → implement BL-339 Phase A → continue BL-324 → final documentation convergence → Local Work Register dissolution audit → separately authorized Local Work Register removal`.
 
 ## Cross-epic rules
 

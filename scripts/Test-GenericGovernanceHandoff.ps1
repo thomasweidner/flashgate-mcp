@@ -843,6 +843,123 @@ try {
             $reportJson = Get-SingleContract -Text $entryText['report.md'] -Kind 'REPORT'
             Assert-Schema -Text $reportJson -SchemaPath (Join-Path $governanceRoot 'generic-report-contract.schema.json') -Name 'report contract'
             $report = $reportJson | ConvertFrom-Json -Depth 100 -DateKind String
+            $warningInvariantPass = (
+                [int]$validation.observedWarningCount -eq ([int]$validation.resolvedWarningCount + [int]$validation.openWarningCount) -and
+                [int]$completion.observedWarningCount -eq ([int]$completion.resolvedWarningCount + [int]$completion.openWarningCount) -and
+                [int]$validation.warningCount -eq [int]$validation.openWarningCount -and
+                [int]$completion.warningCount -eq [int]$completion.openWarningCount -and
+                [int]$report.observedWarningCount -eq [int]$completion.observedWarningCount -and
+                [int]$report.resolvedWarningCount -eq [int]$completion.resolvedWarningCount -and
+                [int]$report.openWarningCount -eq [int]$completion.openWarningCount
+            )
+            $executionCounterParityPass = (
+                [int]$validation.materialCorrectionCycleCount -eq [int]$completion.materialCorrectionCycleCount -and
+                [int]$report.materialCorrectionCycleCount -eq [int]$completion.materialCorrectionCycleCount -and
+                [int]$validation.validationExecutionCount -eq [int]$completion.validationExecutionCount -and
+                [int]$report.validationExecutionCount -eq [int]$completion.validationExecutionCount -and
+                [int]$validation.infrastructureOrInvocationFailureCount -eq [int]$completion.infrastructureOrInvocationFailureCount -and
+                [int]$report.infrastructureOrInvocationFailureCount -eq [int]$completion.infrastructureOrInvocationFailureCount
+            )
+            $progressStatusTotal = @(
+                'PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN' |
+                    ForEach-Object { [int]$validation.progress.statusCounts.$_ }
+            ) | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+            $progressCheckCounts = @{}
+            foreach ($statusName in @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
+                $progressCheckCounts[$statusName] = @($validation.checks | Where-Object { [string]$_.result -ceq $statusName }).Count
+            }
+            $progressInvariantPass = (
+                [int]$validation.progress.completed -le [int]$validation.progress.selected -and
+                [int]$validation.progress.completed -eq [int]$progressStatusTotal -and
+                @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN' | Where-Object {
+                    [int]$validation.progress.statusCounts.$_ -ne [int]$progressCheckCounts[$_]
+                }).Count -eq 0 -and
+                [string]$validation.progress.message -clike "$($validation.progress.completed)/$($validation.progress.selected) $($validation.progress.unit)*"
+            )
+            $failedCheckCount = @($validation.checks | Where-Object { [string]$_.result -ceq 'FAIL' }).Count
+            $failureCountInvariantPass = (
+                [int]$validation.failureCount -eq $failedCheckCount -and
+                ([string]$validation.result -cne 'BLOCKED' -or [int]$validation.failureCount -eq 0)
+            )
+            $progressEvents = @($validation.progressEvents)
+            $progressEventInvariantPass = $progressEvents.Count -gt 0
+            $terminalStatuses = @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED')
+            for ($eventIndex = 0; $eventIndex -lt $progressEvents.Count; $eventIndex++) {
+                $event = $progressEvents[$eventIndex]
+                $progressEventInvariantPass = $progressEventInvariantPass -and
+                    [int]$event.sequence -eq ($eventIndex + 1) -and
+                    [int]$event.completed -le [int]$event.selected -and
+                    [int]$event.selected -eq [int]$validation.progress.selected -and
+                    [string]$event.unit -ceq [string]$validation.progress.unit
+                if ($eventIndex -gt 0) {
+                    $previousEvent = $progressEvents[$eventIndex - 1]
+                    $currentSignature = @(
+                        $event.caseId, $event.eventType, $event.status, $event.completed,
+                        $event.selected, $event.unit, $event.phase, $event.elapsedMilliseconds
+                    ) -join "`n"
+                    $previousSignature = @(
+                        $previousEvent.caseId, $previousEvent.eventType, $previousEvent.status, $previousEvent.completed,
+                        $previousEvent.selected, $previousEvent.unit, $previousEvent.phase, $previousEvent.elapsedMilliseconds
+                    ) -join "`n"
+                    $progressEventInvariantPass = $progressEventInvariantPass -and $currentSignature -cne $previousSignature
+                    switch ([string]$event.eventType) {
+                        'PROGRESS' {
+                            $progressEventInvariantPass = $progressEventInvariantPass -and [int]$event.completed -gt [int]$previousEvent.completed
+                        }
+                        'PHASE_CHANGE' {
+                            $progressEventInvariantPass = $progressEventInvariantPass -and [string]$event.phase -cne [string]$previousEvent.phase
+                        }
+                        'STATUS_CHANGE' {
+                            $progressEventInvariantPass = $progressEventInvariantPass -and (
+                                [string]$event.status -cne [string]$previousEvent.status -or
+                                [string]$event.caseId -cne [string]$previousEvent.caseId
+                            )
+                        }
+                        'HEARTBEAT' {
+                            $progressEventInvariantPass = $progressEventInvariantPass -and
+                                ([int64]$event.elapsedMilliseconds - [int64]$previousEvent.elapsedMilliseconds) -ge
+                                    [int64]$validation.progress.heartbeatIntervalMilliseconds
+                        }
+                        default { $progressEventInvariantPass = $false }
+                    }
+                }
+            }
+            foreach ($validationCheck in @($validation.checks)) {
+                $terminalEventCount = @($progressEvents | Where-Object {
+                    [string]$_.caseId -ceq [string]$validationCheck.id -and
+                    [string]$_.eventType -ceq 'STATUS_CHANGE' -and
+                    [string]$_.status -in $terminalStatuses
+                }).Count
+                if ([string]$validationCheck.result -in $terminalStatuses) {
+                    $progressEventInvariantPass = $progressEventInvariantPass -and
+                        $terminalEventCount -eq 1 -and
+                        @($progressEvents | Where-Object {
+                            [string]$_.caseId -ceq [string]$validationCheck.id -and
+                            [string]$_.eventType -ceq 'STATUS_CHANGE' -and
+                            [string]$_.status -ceq [string]$validationCheck.result
+                        }).Count -eq 1
+                }
+                else {
+                    $progressEventInvariantPass = $progressEventInvariantPass -and $terminalEventCount -eq 0
+                }
+            }
+            $zipFreeReadinessPass = (
+                [bool]$completion.packageGeneration.freshStaging -and
+                [int]$completion.packageGeneration.finalZipWriteCount -eq 1 -and
+                -not [bool]$completion.packageGeneration.inPlaceRepairPerformed -and
+                [bool]$report.zipFreeReadinessPassed -eq [bool]$completion.zipFreeReadinessPassed -and
+                (-not [bool]$completion.classicReviewReady -or [bool]$completion.zipFreeReadinessPassed)
+            )
+            Add-Check -Id 'GENERIC-WARNING-INVARIANT' -Passed $warningInvariantPass
+            Add-Check -Id 'GENERIC-EXECUTION-COUNTER-PARITY' -Passed $executionCounterParityPass
+            Add-Check -Id 'GENERIC-PROGRESS-INVARIANT' -Passed $progressInvariantPass
+            Add-Check -Id 'GENERIC-FAILURE-COUNT-INVARIANT' -Passed $failureCountInvariantPass
+            Add-Check -Id 'GENERIC-PROGRESS-EVENT-INVARIANT' -Passed $progressEventInvariantPass
+            Add-Check -Id 'GENERIC-ZIP-FREE-READINESS' -Passed $zipFreeReadinessPass
+            if (-not $warningInvariantPass -or -not $executionCounterParityPass -or -not $progressInvariantPass -or
+                -not $failureCountInvariantPass -or -not $progressEventInvariantPass -or -not $zipFreeReadinessPass) {
+                throw 'Telemetry, progress, warning, or ZIP-free readiness invariants failed.'
+            }
             $contractParityPass = (
                 [string]$handoff.taskId -ceq [string]$assignment.taskId -and
                 [string]$report.taskId -ceq [string]$assignment.taskId -and
@@ -860,6 +977,9 @@ try {
                 [bool]$report.classicReviewReady -eq [bool]$completion.classicReviewReady -and
                 [string]$handoff.reviewStatus -ceq [string]$review.result -and
                 [string]$report.reviewStatus -ceq [string]$review.result -and
+                [int]$report.materialCorrectionCycleCount -eq [int]$completion.materialCorrectionCycleCount -and
+                [int]$report.validationExecutionCount -eq [int]$completion.validationExecutionCount -and
+                [int]$report.infrastructureOrInvocationFailureCount -eq [int]$completion.infrastructureOrInvocationFailureCount -and
                 [string]$handoff.scopeInventorySha256 -ceq $scopeInventoryHash -and
                 [string]$report.scopeInventorySha256 -ceq $scopeInventoryHash -and
                 [string]$handoff.taskPatchSha256 -ceq $taskPatchHash -and
@@ -875,6 +995,10 @@ try {
             $readinessPass = if ([bool]$completion.classicReviewReady) {
                 [string]$review.result -ceq 'PASS' -and
                 [string]$validation.result -ceq 'PASS' -and
+                [bool]$completion.zipFreeReadinessPassed -and
+                [bool]$report.zipFreeReadinessPassed -and
+                [int]$completion.openWarningCount -eq 0 -and
+                [int]$validation.openWarningCount -eq 0 -and
                 [int]$completion.warningCount -eq 0 -and [int]$completion.failureCount -eq 0 -and
                 [int]$validation.warningCount -eq 0 -and [int]$validation.failureCount -eq 0
             }

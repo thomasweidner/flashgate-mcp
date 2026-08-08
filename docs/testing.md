@@ -18,17 +18,83 @@ first execution. Then run:
 }
 ```
 
-The historical governance fixture matrix contains 225 result cases. BL-336 adds
-a separate 85-case generic-handoff matrix, for 310 permanent governance cases
-across both harnesses. The legacy count remains unchanged for byte- and
-behavior-compatible BL-333/BL-334 regression evidence.
+ADR-0016 and BL-337 through BL-339 define the next governance-harness layer.
+Their pre-execution contract resolves all selectors before process start,
+binds an explicit source/worktree by branch, commit, tree, and file hashes, and
+selects toolchain, platform, and execution context before mutation. Progress is
+per-case and event-based: terminal cases have a terminal event, identical
+events are suppressed, and explicitly typed heartbeats respect their interval.
+`BLOCKED` is not a failure and does not increment `FailureCount`.
+Before mutation, a current-state gate binds repository, baseline/current commit,
+branch, complete relevant status, authorized scope, IDs, and parallel worktrees.
+Toolchain, parser, parameter, Temp, sandbox, and harness preflights run before
+expensive fixtures. A new or materially rebuilt validator starts from a written
+failure-mode matrix covering success, rejection, timeout, process cleanup,
+platform behavior, malformed evidence, and repository-mutation detection.
+
+Validation is a funnel: reproduce/root-cause, validate directly affected
+components, converge documentation, and perform exactly one complete final
+governance/documentation run. A second full run requires a documented new root
+cause. Resume/checkpoint data is valid only when immutable inputs, case
+inventory, completed cases, outputs, and repository state are hash-bound.
+
+### Progress, result, warning, and execution telemetry
+
+`X/Y` means `X` completed units from `Y` selected units and always names the
+unit. It never represents successful and failed results. Long-run events include
+the phase, `ProgressUnit`, and separate counts for `PASS`, `FAIL`, `SKIPPED`,
+`BLOCKED`, `CANCELLED`, `PENDING`, and `NOT_RUN`. Terminal completed states are
+PASS, FAIL, SKIPPED, BLOCKED, and CANCELLED. PENDING and NOT_RUN are not
+completed. While no terminal failure is known, intermediate text uses
+“Bisher keine Fehler; Gesamtergebnis noch offen” rather than a success claim.
+Status is emitted only for a phase, progress, warning, or result change.
+
+Every governed validation summary and completion report separately records:
+
+- `ObservedWarningCount`;
+- `ResolvedWarningCount`;
+- `OpenWarningCount`;
+- `MaterialCorrectionCycleCount`;
+- `ValidationExecutionCount`;
+- `InfrastructureOrInvocationFailureCount`.
+
+The invariant is `ObservedWarningCount = ResolvedWarningCount +
+OpenWarningCount`. A recurring long run without numeric progress is an
+instrumentation finding. The generic JSON contracts use lower-camel-case field
+names with the same semantics.
+
+The historical governance fixture matrix contains 225 result cases, and the
+accepted BL-336 evidence contains 85 generic-handoff cases. Those values remain
+unchanged historical evidence; neither is the leading count for a current full
+run.
 Long local runs may pass `-ProgressPath <new-jsonl-path>` to record fixture ID,
 sequence, completion time, and result as JSONL. They may additionally pass
 `-ResultPath <new-json-path>` to atomically persist the typed terminal result,
-including the progress record count and SHA-256, before normal process exit.
-Full runs fail closed unless all 225 cases are present, none are skipped,
-cleanup succeeds, and repository status is unchanged. Historical 198-case results below remain evidence for the
-earlier committed governance state rather than the current working-tree count.
+including the canonical fixture count, ordered metadata inventory, inventory
+SHA-256, resolved selection and its metadata, progress record count, and
+progress SHA-256 before normal process exit. Every canonical descriptor binds
+its case ID, group, tags, supported platforms, required capabilities, and
+Windows-only dependencies. The current governance runner derives its full
+count and focused platform subset only from that source. `-Tag`,
+`-TargetPlatform`, and `-AvailableCapability` resolve before the first fixture
+process; unknown, duplicate, ambiguous, platform-incompatible, or
+capability-incomplete selections execute zero cases. Full and focused runs fail
+closed unless the resolved selection and completed IDs match that inventory
+exactly, none are unexpectedly skipped, cleanup succeeds, and repository status
+is unchanged.
+Historical 198- and 225-case results below remain evidence for their earlier
+committed governance states rather than the current working-tree count.
+
+Assignment-schema version 1 retains a compatibility bridge for pending records
+emitted by the unchanged `New-GovernanceWorkflowRecord.ps1`: those records may
+omit `currentStateGate` while every readiness field remains pending or false.
+The gate remains typed and becomes mandatory when the record claims current
+documentation/validation readiness, a required or ready handoff, or any
+commit-preparation readiness transition. The explicit
+`GENERIC_COMMIT_PREPARATION` profile continues to require the gate without an
+exception. Positive completion fixtures receive all current telemetry, warning
+invariant, ZIP-free readiness, and package-generation defaults from
+`New-CompletionFixture`.
 
 The generic matrix includes positive end-to-end packages for tracked deletion,
 unchanged and content-modified renames, Windows-normalized and Unix-normalized
@@ -134,9 +200,11 @@ paths, link/junction/reparse entries, unmanifested objects, incomplete
 `ClassicReviewReady=true`, and instructions to transfer package members
 separately.
 
-The current governance matrix contains 225 legacy cases plus 52 generic-profile
-cases. Each count is reported by its owning fixture runner and must change
-together with that runner's permanent case inventory. Generic cases cover
+Current fixture counts are reported by their owning runner and current evidence;
+the primary governance runner also reports the canonical ordered inventory and
+its SHA-256. No separately maintained numeric constant is authoritative.
+Historical 225-case BL-333/BL-334 and 85-case BL-336 evidence remains unchanged.
+Generic cases cover
 finding-free BL-230 commit preparation, a real finding, external independent
 review, both readiness states, successful Classic readiness with commit still
 unauthorized, narrative historical-ID and correction-artifact mentions,
@@ -147,8 +215,9 @@ synthetic host paths, private Windows/UNC/Linux/macOS/temp path leaks, undeclare
 absolute Windows and Unix paths, and the closed typed runtime factory for all
 seven negative host-path classes; review
 drift, unauthorized commit, unknown JSON fields, invalid UTF-8, and ZIP/
-inventory/manifest divergence. `-CaseName` selects focused cases without
-changing the fixed full-matrix count.
+inventory/manifest divergence. `-CaseName` resolves against the same canonical
+primary inventory, rejects unknown or duplicate IDs before execution, and does
+not redefine the full inventory.
 
 The generic validator receives the schema repository and the authoritative
 isolated worktree as distinct roots. It verifies the trusted Origin, existence

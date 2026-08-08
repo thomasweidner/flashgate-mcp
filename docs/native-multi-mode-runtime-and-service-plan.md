@@ -4,7 +4,7 @@
 
 **Accepted Version 1.0 target architecture; implementation not started.**
 
-The authoritative service tasks are `BL-221` through `BL-244` in [BACKLOG.md](../BACKLOG.md), with post-Version-1.0 tasks `BL-232` and `BL-240`. ADR-0014 defines the multi-mode runtime. ADR-0015 defines the hybrid execution-identity architecture.
+The authoritative service tasks are `BL-221` through `BL-244` plus BL-340 in [BACKLOG.md](../BACKLOG.md), with post-Version-1.0 tasks `BL-232` and `BL-240`. ADR-0014 defines the multi-mode runtime, ADR-0015 defines the hybrid execution-identity architecture, and ADR-0017 defines host-process ownership and lifecycle.
 
 Version 1.0 delivers direct STDIO and system-service operation with Variant A service-account roots. It includes the interfaces and threat model for Variant B but does not implement user workers or persistent user-scoped hosts.
 
@@ -514,7 +514,7 @@ Version 1.0 also includes the pinned cross-project filesystem benchmark.
 
 ### SPR-59 — architecture, contracts, identity, and security
 
-Backlog: `BL-221`–`BL-225`, `BL-233`–`BL-239`, and `BL-166`.
+Backlog: `BL-221`–`BL-225`, `BL-233`–`BL-239`, `BL-166`, and `BL-340`.
 
 Deliverables:
 
@@ -527,6 +527,7 @@ Deliverables:
 - Variant B contract and threat model;
 - identity-bound state model;
 - audit lifecycle and correlation.
+- cross-mode host-process ownership, instance identity, bounded shutdown, and orphan classification.
 
 ### SPR-60 — transports and Version 1.0 system hosts
 
@@ -598,6 +599,7 @@ Any remote transport, product split, or broader provider-isolation mechanism req
 
 - [ADR-0014](adr/0014-native-multi-mode-runtime-and-local-service-deployment.md)
 - [ADR-0015](adr/0015-hybrid-service-execution-identity.md)
+- [ADR-0017](adr/0017-host-process-ownership-and-lifecycle.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)

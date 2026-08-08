@@ -17,6 +17,18 @@ file is required, the handoff is exactly one ZIP archive. Package members are
 never requested, uploaded, or transferred separately. Task-related names
 begin with the identifier confirmed in the leading Local Work Register.
 
+Before any ZIP is created, a ZIP-free machine-readable readiness gate must pass
+against the converged fachliche, documentation, Windows/Linux (when required),
+scope, patch, inventory, review, and warning state. Package generation is not a
+substitute for readiness.
+
+A final ZIP is immutable. It is never opened for in-place correction, member
+replacement, manifest repair, or re-signing. A defective final ZIP is discarded
+as a complete package; corrected content is assembled in a wholly fresh staging
+root, the full manifest is regenerated, and a new ZIP is written and reopened.
+Classic receives exactly that one new complete manifest- and SHA-256-validated
+ZIP, never repaired or separately transferred members.
+
 ## Required payload by transition
 
 | Transition | Required payload |

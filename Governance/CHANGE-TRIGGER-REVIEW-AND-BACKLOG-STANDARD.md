@@ -28,6 +28,20 @@ An assignment record conforming to
 is mandatory at each applicable checkpoint. A material scope change creates a
 new record; it does not rewrite the earlier checkpoint record.
 
+### Current-state gate and assignment separation
+
+Before architecture, backlog, ADR, or implementation decisions, the assignment
+records a current-state gate. It binds repository identity, baseline/current
+commit, branch, complete relevant index/working/untracked state, authorized
+scope, ID inventory, and parallel-worktree state. A stale or incomplete binding
+blocks dependent decisions instead of being filled by an implementation
+assumption.
+
+The main assignment and a reusable generic enabler are separate records when
+they have different acceptance criteria, owners, schedules, or review evidence.
+The main assignment may depend on an existing enabler; it does not silently
+absorb or mark that enabler complete.
+
 ## Trigger handling
 
 The catalog is exhaustive for the current governance contract. A trigger may

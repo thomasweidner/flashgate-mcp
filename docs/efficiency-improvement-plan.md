@@ -259,6 +259,14 @@ Version 1.0 implementation preference:
 
 PowerShell or shell scripts may remain development, installation, smoke, or administrator tooling. They are not runtime dependencies of the FlashGate core/service.
 
+Governance validation follows ADR-0016. Reusable orchestration performs cheap
+current-state, toolchain, parser, parameter, Temp, sandbox, and harness
+preflights before expensive matrices. It converges with focused root-cause and
+component checks, completes documentation, and then performs exactly one full
+final run. Progress always means completed selected units, never a pass/fail
+pair, and repeated long runs without numeric progress are instrumentation
+findings.
+
 ## Conditional reads
 
 Conditional read/not-modified behavior is accepted post-Version 1.0 because it is an optimization rather than a functional prerequisite.

@@ -34,6 +34,78 @@
     "commitPreparation",
     "focusedDelta"
   ],
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          {
+            "properties": {
+              "documentationConsistencyResult": {
+                "enum": ["PASS", "PASS_WITH_WARNINGS"]
+              }
+            },
+            "required": ["documentationConsistencyResult"]
+          },
+          {
+            "properties": {
+              "review": {
+                "properties": { "focusedValidationResult": { "const": "PASS" } },
+                "required": ["focusedValidationResult"]
+              }
+            },
+            "required": ["review"]
+          },
+          {
+            "properties": {
+              "handoff": {
+                "anyOf": [
+                  {
+                    "properties": { "required": { "const": true } },
+                    "required": ["required"]
+                  },
+                  {
+                    "properties": { "classicReviewReady": { "const": true } },
+                    "required": ["classicReviewReady"]
+                  }
+                ]
+              }
+            },
+            "required": ["handoff"]
+          },
+          {
+            "properties": {
+              "commitPreparation": {
+                "anyOf": [
+                  {
+                    "properties": { "allFindingsClosed": { "const": true } },
+                    "required": ["allFindingsClosed"]
+                  },
+                  {
+                    "properties": { "independentDeltaReviewComplete": { "const": true } },
+                    "required": ["independentDeltaReviewComplete"]
+                  },
+                  {
+                    "properties": { "scopeVerified": { "const": true } },
+                    "required": ["scopeVerified"]
+                  },
+                  {
+                    "properties": { "validationPassed": { "const": true } },
+                    "required": ["validationPassed"]
+                  },
+                  {
+                    "properties": { "commitAuthorized": { "const": true } },
+                    "required": ["commitAuthorized"]
+                  }
+                ]
+              }
+            },
+            "required": ["commitPreparation"]
+          }
+        ]
+      },
+      "then": { "required": ["currentStateGate"] }
+    }
+  ],
   "properties": {
     "schemaVersion": { "const": 1 },
     "recordedAt": { "type": "string", "format": "date-time" },
@@ -69,6 +141,7 @@
         "BLOCKED_PENDING_DECISION"
       ]
     },
+    "currentStateGate": { "$ref": "#/$defs/currentStateGate" },
     "triggeredDomains": { "$ref": "#/$defs/stringArray" },
     "observedTriggers": {
       "type": "array",
@@ -122,6 +195,19 @@
     "focusedDelta": { "$ref": "#/$defs/focusedDelta" }
   },
   "$defs": {
+    "currentStateGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "repositoryIdentityBound", "commitAndBranchBound", "completeStatusBound", "scopeAndIdsBound", "parallelWorktreesBound"],
+      "properties": {
+        "result": { "const": "PASS" },
+        "repositoryIdentityBound": { "const": true },
+        "commitAndBranchBound": { "const": true },
+        "completeStatusBound": { "const": true },
+        "scopeAndIdsBound": { "const": true },
+        "parallelWorktreesBound": { "const": true }
+      }
+    },
     "stringArray": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
