@@ -26,14 +26,41 @@
     "finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "regressionTests"],
+      "required": ["id", "severity", "previousStatus", "status", "disposition", "correction", "affectedPaths", "evidenceReferences", "regressionTests"],
       "properties": {
-        "id": { "type": "string", "pattern": "^BL333-BL334-REV-[0-9]{3}$" },
+        "id": { "$ref": "#/$defs/findingId" },
+        "severity": { "enum": ["BLOCKER", "MAJOR", "MINOR", "NOTE"] },
+        "previousStatus": { "enum": ["OPEN", "PARTIALLY_CLOSED", "PARTIALLY_CLOSED_CORRECTION_REQUIRED"] },
+        "status": { "const": "CORRECTED_PENDING_DELTA" },
+        "disposition": { "const": "CORRECTED" },
+        "correction": { "type": "string", "minLength": 1 },
+        "affectedPaths": { "$ref": "#/$defs/strings" },
+        "evidenceReferences": { "$ref": "#/$defs/strings" },
+        "publicationRegressionEvidence": { "$ref": "#/$defs/publicationEvidenceBinding" },
         "regressionTests": {
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/regressionTest" }
         }
+      }
+    },
+    "findingId": {
+      "type": "string",
+      "pattern": "^BL[0-9]{3}(?:-BL[0-9]{3})?(?:-[A-Z][A-Z0-9]*)*-REV-[0-9]{3}$"
+    },
+    "strings": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "publicationEvidenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact", "sha256", "matrixId", "caseIds"],
+      "properties": {
+        "artifact": { "const": "publication-regression-evidence.json" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "matrixId": { "type": "string", "minLength": 1 },
+        "caseIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^GHP-[A-Z0-9_-]+$" } }
       }
     },
     "regressionTest": {

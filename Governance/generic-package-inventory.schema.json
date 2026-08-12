@@ -3,13 +3,17 @@
   "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-package-inventory.schema.json",
   "title": "FlashGate generic package inventory",
   "type": "object",
+  "allOf": [
+    { "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" } } } },
+    { "if": { "properties": { "profile": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } } } }
+  ],
   "additionalProperties": false,
   "required": ["schemaVersion", "taskId", "profile", "transitionType", "entries"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
-    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
-    "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
+    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
     "entries": { "type": "array", "minItems": 9, "maxItems": 9, "items": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "length"], "properties": { "path": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "length": { "type": "integer", "minimum": 1 } } } }
   }
 }

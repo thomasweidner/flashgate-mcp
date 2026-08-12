@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/governance-validation-result.schema.json",
+  "title": "FlashGate governance validation orchestration result",
+  "type": "object",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "BLOCKED" } }, "required": ["status"] },
+      "then": { "properties": { "failureCount": { "const": 0 } } }
+    }
+  ],
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "profile",
+    "status",
+    "bindings",
+    "stageResults",
+    "evidenceReuse",
+    "validationExecutionCount",
+    "infrastructureOrInvocationFailureCount",
+    "fullMatrixRunCount",
+    "packageWriteAttemptCount",
+    "generatedTaskControllerFileCount",
+    "generatedTaskControllerLineCount",
+    "readOnlyProbeCount",
+    "observedWarningCount",
+    "resolvedWarningCount",
+    "openWarningCount",
+    "warningCount",
+    "failureCount"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "profile": {
+      "enum": [
+        "documentation-registration",
+        "governance-schema-change",
+        "fixture-harness-change",
+        "finding-correction",
+        "commit-preparation",
+        "focused-revalidation",
+        "full-completion"
+      ]
+    },
+    "status": { "enum": ["PASS", "FAIL", "BLOCKED", "CANCELLED"] },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "sourceRepositoryRoot", "worktreeRoot", "baselineCommit", "currentCommit", "expectedTree", "expectedStatusSha256", "actualStatusSha256", "protectedWorktrees", "selectorInventorySha256"],
+      "properties": {
+        "repository": { "type": "string", "format": "uri" },
+        "sourceRepositoryRoot": { "type": "string", "minLength": 3 },
+        "worktreeRoot": { "type": "string", "minLength": 3 },
+        "baselineCommit": { "$ref": "#/$defs/commit" },
+        "currentCommit": { "$ref": "#/$defs/commit" },
+        "expectedTree": { "$ref": "#/$defs/commit" },
+        "expectedStatusSha256": { "$ref": "#/$defs/hash" },
+        "actualStatusSha256": {
+          "oneOf": [
+            { "$ref": "#/$defs/hash" },
+            { "type": "null" }
+          ]
+        },
+        "protectedWorktrees": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "root", "expectedStatusSha256", "actualStatusSha256", "status"],
+            "properties": {
+              "id": { "$ref": "#/$defs/id" },
+              "root": { "type": "string", "minLength": 3 },
+              "expectedStatusSha256": { "$ref": "#/$defs/hash" },
+              "actualStatusSha256": {
+                "oneOf": [
+                  { "$ref": "#/$defs/hash" },
+                  { "type": "null" }
+                ]
+              },
+              "status": { "enum": ["PASS", "FAIL", "NOT_RUN"] }
+            }
+          }
+        },
+        "selectorInventorySha256": { "$ref": "#/$defs/hash" }
+      }
+    },
+    "stageResults": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["Id", "Phase", "Status", "Diagnostics"],
+        "properties": {
+          "Id": { "type": "string", "minLength": 1 },
+          "Phase": { "enum": ["CHEAP", "SUBORDINATE"] },
+          "Status": { "enum": ["PASS", "FAIL", "BLOCKED", "CANCELLED", "NOT_RUN"] },
+          "Diagnostics": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "evidenceReuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reusedIds", "invalidated"],
+      "properties": {
+        "reusedIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "invalidated": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["Id", "Reasons"],
+            "properties": {
+              "Id": { "$ref": "#/$defs/id" },
+              "Reasons": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        }
+      }
+    },
+    "validationExecutionCount": { "type": "integer", "minimum": 1 },
+    "infrastructureOrInvocationFailureCount": { "type": "integer", "minimum": 0 },
+    "fullMatrixRunCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+    "packageWriteAttemptCount": { "type": "integer", "minimum": 0, "maximum": 1 },
+    "generatedTaskControllerFileCount": { "type": "integer", "minimum": 0 },
+    "generatedTaskControllerLineCount": { "type": "integer", "minimum": 0 },
+    "readOnlyProbeCount": { "type": "integer", "minimum": 0 },
+    "observedWarningCount": { "type": "integer", "minimum": 0 },
+    "resolvedWarningCount": { "type": "integer", "minimum": 0 },
+    "openWarningCount": { "type": "integer", "minimum": 0 },
+    "warningCount": { "type": "integer", "minimum": 0 },
+    "failureCount": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" }
+  }
+}

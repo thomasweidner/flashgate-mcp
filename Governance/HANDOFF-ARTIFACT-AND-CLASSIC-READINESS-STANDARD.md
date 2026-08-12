@@ -22,10 +22,43 @@ against the converged fachliche, documentation, Windows/Linux (when required),
 scope, patch, inventory, review, and warning state. Package generation is not a
 substitute for readiness.
 
-A final ZIP is immutable. It is never opened for in-place correction, member
-replacement, manifest repair, or re-signing. A defective final ZIP is discarded
-as a complete package; corrected content is assembled in a wholly fresh staging
-root, the full manifest is regenerated, and a new ZIP is written and reopened.
+The sole generic package producer is `scripts/New-GovernanceHandoff.ps1`. It
+assembles fresh staging, generates the complete inventory and manifest, and
+passes the same semantic validator against that directory before any package
+write. Only then may it create one fresh same-parent candidate with `CreateNew`.
+The producer serializes the candidate exactly once, closes it, binds its
+SHA-256/length identity, and product-validates those bytes. After validation it
+reopens the candidate with a write/delete-excluding read lease, rejects identity
+drift, and atomically creates the no-overwrite final hard link to that same
+validated filesystem object. A pre-publication failure or interruption never
+exposes a partial final ZIP; the diagnostic candidate may remain. A second
+manifest or package generator is prohibited.
+
+Historical immutable-package scope `pathCount` is the canonical entry count.
+Rename source and target paths form a separately expanded canonical path set and
+are compared with the reconstructed historical patch inventory.
+`previousReviewedPathCount` retains the historical entry-count meaning.
+
+`PackageWriteAttemptCount` is set to `1` immediately before the first
+write-capable `FileStream(CreateNew, Write)` call on the candidate path. It
+remains `1` when that call fails because the target exists, is locked, is a
+directory, is denied, races, or returns another I/O error. Failures before that
+boundary remain `0`; no automatic second final-package attempt is permitted.
+
+The current-state request binds the raw stdout bytes from exactly
+`git status --porcelain=v2 --untracked-files=all` with an explicit
+`expectedStatusSha256`. Validation recollects and hashes those bytes without
+text, newline, culture, or object-serialization conversion and compares
+expected with actual. `scopePaths` and `fileHashes.path` are duplicate-free,
+free of Windows case collisions, and equal as exact canonical sets. Every
+legitimate foreign or protected worktree exception is separately and
+explicitly bound by root, commit, tree, branch/detached state, and its own raw
+status hash; there is no implicit status exception.
+
+A final ZIP is immutable and already product-valid when atomically published.
+It is never opened for in-place correction, member replacement, manifest repair,
+or re-signing. A rejected candidate is never published; corrected content is
+assembled in a wholly fresh staging root and the manifest is regenerated.
 Classic receives exactly that one new complete manifest- and SHA-256-validated
 ZIP, never repaired or separately transferred members.
 
@@ -50,8 +83,63 @@ package member. The supported pairs are:
 
 | Transition type | Profile | Purpose |
 |---|---|---|
+| `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` | `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` | Complete implementation and reused full-completion evidence for the first independent full review; no prior independent-review evidence exists or is required. |
 | `COMMIT_PREPARATION_TO_COMMIT_APPROVAL` | `GENERIC_COMMIT_PREPARATION` | Task-neutral commit preparation, including finding-free work. |
 | `BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW` | `FINDING_CORRECTION` | Strict finding correction and focused delta review. |
+
+`FINDING_CORRECTION` supports a ZIP-free `PreflightOnly` execution of the sole
+productive generator. It materializes a fresh flat directory containing the
+complete correction payload, package inventory, and manifest, then runs the
+productive semantic validator. `ReadyToExecute=true` means only that the
+separately authorized final package write remains. The generator must not open,
+probe, create, or replace the final ZIP path in this mode, and
+`PackageWriteAttemptCount` remains zero. `ClassicReviewReady` remains false
+until the one final package exists and passes reopen validation.
+
+Before that separately authorized write, `-FinalPackageContentOnly` builds a
+second fresh flat directory from the same canonical source. Its internal
+contract is already `ArtifactLifecycleState=FINAL_REVIEW_PACKAGE`,
+`ReadyToExecute=false`, `ClassicReviewReady=true`, contractual
+`PackageWriteAttemptCount=1`, and `NextAction=FOCUSED_INDEPENDENT_DELTA_REVIEW`.
+The generator runtime attempt counter remains zero because no final path is
+opened. Both directories pass the same productive validator. The later package
+write serializes final-content bytes once; no preflight-state ZIP and no
+in-place metadata repair are permitted.
+
+The correction `report.md` is not a lifecycle summary. It contains exactly one
+machine-readable contract between
+`BEGIN/END FINDING-CORRECTION-REPORT-CONTRACT` markers and conforms to
+`finding-correction-report-contract.schema.json`. It binds task, profile,
+transition, lifecycle, previous-review state and SHA-256, the previous-binding
+artifact and SHA-256, byte-exact current/correction patch hashes and path
+counts, exact findings and dispositions, correction/direct-interface/
+reference-only semantics, permanent regression evidence, focused validation,
+the required independent delta review, Classic readiness, package attempt
+count, and next action. Final-content generation preserves every subject field
+and changes only `artifactLifecycleState`, `status`, `readyToExecute`,
+`classicReviewReady`, `packageWriteAttemptCount`, and `nextAction`.
+
+When a finding declares a separate publication regression matrix, the
+correction payload additionally contains both
+`publication-regression-result.json` and
+`publication-regression-evidence.json`. The calling process derives a canonical
+Expected Execution Input Binding from the catalog before it starts the matrix
+runner and binds the expected-binding artifact itself by SHA-256. Using only
+independent .NET file, UTF-8, JSON, and hashing primitives, the runner verifies
+that binding before each module import and again immediately before Case 1.
+Every later case-record operation rechecks it, so changed runner or dependency
+bytes cannot become PASS evidence. Result V2 contains exactly that parent-bound
+pre-execution binding. Evidence V2 binds the result bytes and independently
+rebinds those same inputs. The catalog owns the fixed case set, runner, result schema, and complete
+source/dependency path sets. The productive validator derives result counts and
+case IDs from `results[]`, requires exact Result/Evidence/catalog/current-byte
+and leading-contract parity, and verifies every current source/dependency
+SHA-256. It rejects a
+missing or fabricated result, consistently reduced case sets, incomplete
+provenance, a stale PASS result reattached to fresh evidence, stale bytes,
+non-PASS results, and cross-contract drift. Corrections
+without a declared publication matrix omit both optional artifacts and remain
+compatible.
 
 Historical BL-333/BL-334 packages without explicit discriminators remain valid
 only through the isolated legacy compatibility path. New correction packages
@@ -61,7 +149,7 @@ backlog, changelog, or documentation text may name historical findings or
 correction artifacts without changing the profile; narrative tokens are never
 used as profile discriminators.
 
-The generic profile contains exactly `HANDOFF.md`, `assignment-record.json`,
+The generic commit-preparation profile contains exactly `HANDOFF.md`, `assignment-record.json`,
 `completion-report.json`, `current-delta.patch`,
 `independent-review-evidence.json`, `package-inventory.json`, `report.md`,
 `scope-inventory.json`, `task.patch`, `validation-summary.json`, and the root
@@ -71,7 +159,11 @@ BL-333/BL-334-specific status or path assumptions.
 
 The correction profile retains the existing correction/current-delta,
 finding-matrix, regression-matrix, focused-record, external-delta, trusted-hash,
-readiness, status, queue, and parity gates without weakening them.
+readiness, status, queue, and parity gates without weakening them. Its
+productive validator parses the embedded report contract and requires parity
+with assignment, completion, correction matrix, regression matrix, focused
+record, ledger, previous-review binding, readiness, HANDOFF, actual patch
+bytes, and Git-derived scope/patch inventories.
 
 ## Patch and scope requirements
 
@@ -168,6 +260,15 @@ ordered visible keys `TaskId`, `TransitionType`, `Profile`, `Status`,
 `AllowedDeltaPaths`, and `NextAction`; every value must equal the strict JSON
 contract generated from the same typed source.
 
+For `FINDING_CORRECTION`, every finding-bearing package contract is also
+validated per finding rather than only by overall finding or regression sets.
+Severity, previous/current status, disposition, correction text,
+affected/correction paths, permanent regression IDs, evidence references, and
+direct producer/reviewer disposition mappings must remain exactly equal across
+the correction matrix, regression matrix, ledger, and embedded report. A
+union-preserving reassignment of evidence or regression IDs between findings is
+invalid.
+
 The JSON contract is validated by
 `Governance/governance-handoff-contract.schema.json` and must agree with the
 assignment, completion report, correction and regression matrices, focused
@@ -205,12 +306,26 @@ and defines the task-neutral generic contract separately.
 
 The finding-, external-governance-, correction-patch-, focused-record-, queue-,
 and correction-status bullets apply only to `FINDING_CORRECTION`. For
+`IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW`, readiness requires exact parity
+among the assignment, completion report, `pre-review-validation-evidence.json`,
+task and current-delta patches, scope inventory, validation summary, package
+inventory, manifest, and generic HANDOFF/report contracts. The pre-review
+evidence must state `independentReviewStatus=NOT_PERFORMED`, must package every
+required review input without a mutable external dependency, and may reuse only
+hash-bound passing full-completion evidence without reexecution. For
 `GENERIC_COMMIT_PREPARATION`, readiness instead requires exact parity among the
 assignment, completion report, external independent-review evidence, task and
 current-delta patches, scope inventory, validation summary, package inventory,
 manifest, and generic HANDOFF/report contracts. The generic profile always
 requires `commitAuthorized=false` and never treats Classic readiness as commit
 authorization.
+
+The generic implementation-to-review and commit-preparation payloads each have
+exactly eleven members. They differ by one evidence member:
+`pre-review-validation-evidence.json` is mandatory and
+`independent-review-evidence.json` is forbidden for the pre-review profile; the
+inverse applies to commit preparation. Profile and transition are explicit
+discriminators and are never inferred from missing fields or narrative text.
 
 The generic scope inventory is not self-authenticating. Before readiness, the
 validator must resolve the trusted isolated worktree and verify its repository

@@ -28,12 +28,52 @@ Classic receives exactly one handoff file. One required file may be transferred
 directly; multiple required files must be rebuilt and validated as one ZIP,
 never as separately uploaded package members. See
 [the handoff standard](Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md).
+The reusable `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` profile carries a
+complete implementation patch, scope and hash-bound passing full-completion
+evidence into the first independent full review. It requires no prior review
+artifact. `GENERIC_COMMIT_PREPARATION` remains a later transition and still
+requires independent-review evidence.
+
+`FINDING_CORRECTION` is the separate correction-to-focused-review profile. It
+requires the explicit `BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW` transition,
+exact finding parity, a commit or immutable-package previous-review state, and
+directory-first validation. Use `-PreflightOnly` with a fresh staging directory
+to prove `ReadyToExecute` while keeping `PackageWriteAttemptCount=0`; this state
+does not make the payload Classic-review-ready. Use
+`-FinalPackageContentOnly` to materialize and validate a second fresh directory
+whose bytes already carry `FINAL_REVIEW_PACKAGE`, `ClassicReviewReady=true`,
+and contractual attempt count `1`. That mode still performs no real package
+write; a later separately authorized call serializes one candidate with
+`CreateNew`, binds and product-validates its identity, rejects later drift, and
+atomically publishes the same object by no-overwrite hard link. It never repairs
+the ZIP in place. `report.md` must retain the
+complete correction evidence and exactly one embedded contract conforming to
+`Governance/finding-correction-report-contract.schema.json`. The sole producer
+may change only its lifecycle/status/readiness/Classic/attempt/next-action
+fields for final content; finding, disposition, previous-review, patch, scope,
+and evidence bindings remain byte-value equivalent and are reparsed by the
+productive validator.
+If a finding declares a separate publication regression matrix, include both
+optional artifacts: the runner-written `publication-regression-result.json`
+and Evidence V2. Evidence binds the result SHA-256 and canonical matrix-catalog
+SHA-256; the catalog owns the exact case/source/dependency sets. Bind the
+evidence SHA-256, matrix ID, finding ID, and result-derived case IDs in the
+ledger, finding regression matrix, focused record, and embedded report
+contract. Do not substitute narrative, global counts, or self-authored result
+claims for the persisted runner result.
 
 Before architecture, backlog, or implementation decisions, bind the current
 repository identity, baseline/current commits, branch, complete relevant status,
 scope, IDs, and parallel-worktree state. New or materially rebuilt validators
 require a failure-mode matrix before implementation and cheap parser, parameter,
 Temp, sandbox, and harness gates before expensive matrices.
+
+The complete status binding is the SHA-256 of the unmodified bytes from exactly
+`git status --porcelain=v2 --untracked-files=all`. Scope and file-hash paths are
+equal, duplicate-free, and Windows-case-safe sets. Protected foreign worktrees
+require separate explicit status bindings. A final ZIP attempt is counted
+immediately before its first write-capable candidate open, even if that open
+fails, and is never retried automatically.
 
 Validation follows one funnel: root-cause checks, directly affected components,
 documentation convergence, and exactly one complete final run. Long runs report
@@ -43,6 +83,18 @@ documentation convergence, and exactly one complete final run. Long runs report
 correction cycles, validation executions, and infrastructure/invocation failures
 are separate counters. Recurring long runs without numeric progress are
 instrumentation findings.
+
+Governance work uses `scripts/Invoke-GovernanceValidation.ps1` with a task-data
+request conforming to
+`Governance/governance-validation-request.schema.json`. The permanent profiles
+are `documentation-registration`, `governance-schema-change`,
+`fixture-harness-change`, `finding-correction`, `commit-preparation`,
+`focused-revalidation`, and `full-completion`. Do not generate a task-specific
+controller when the request and an existing permanent helper can express the
+work. Every profile runs parser/syntax, repository text policy,
+`git diff --check`, external/ignored-input hashes, toolchain/context binding,
+and source/worktree/selector binding in that order before consuming an
+expensive subordinate result.
 
 ## Scope
 

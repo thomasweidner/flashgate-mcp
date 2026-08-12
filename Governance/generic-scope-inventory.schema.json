@@ -3,16 +3,20 @@
   "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-scope-inventory.schema.json",
   "title": "FlashGate generic scope and current-state inventory",
   "type": "object",
+  "allOf": [
+    { "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] }, "then": { "properties": { "branch": { "type": "string", "minLength": 1 } } } },
+    { "if": { "properties": { "profile": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } }, "required": ["profile"] }, "then": { "properties": { "branch": { "type": "string" } } } }
+  ],
   "additionalProperties": false,
   "required": ["schemaVersion", "taskId", "profile", "repository", "baselineCommit", "currentCommit", "branch", "allowedDeltaPaths", "excludedDeltaPaths", "entries", "hostPathPolicy"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
-    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },
-    "branch": { "type": "string", "minLength": 1 },
+    "branch": { "type": "string" },
     "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
     "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
     "entries": {
@@ -149,6 +153,6 @@
         "reason": { "type": "string", "minLength": 1 }
       }
     },
-    "scannedArtifact": { "enum": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "current-delta.patch", "independent-review-evidence.json", "report.md", "task.patch", "validation-summary.json"] }
+    "scannedArtifact": { "enum": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "current-delta.patch", "independent-review-evidence.json", "pre-review-validation-evidence.json", "report.md", "task.patch", "validation-summary.json"] }
   }
 }

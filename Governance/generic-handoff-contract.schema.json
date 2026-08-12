@@ -4,8 +4,11 @@
   "title": "FlashGate generic handoff contract",
   "type": "object",
   "allOf": [
-    { "if": { "properties": { "classicReviewReady": { "const": true } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "CLASSIC_REVIEW_READY" }, "reviewStatus": { "const": "PASS" } } } },
-    { "if": { "properties": { "classicReviewReady": { "const": false } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "NOT_CLASSIC_REVIEW_READY" } } } }
+    { "if": { "properties": { "classicReviewReady": { "const": true } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "CLASSIC_REVIEW_READY" } } } },
+    { "if": { "properties": { "classicReviewReady": { "const": false } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "NOT_CLASSIC_REVIEW_READY" } } } },
+    { "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" }, "classicReviewReady": { "const": true } }, "required": ["profile", "classicReviewReady"] }, "then": { "properties": { "reviewStatus": { "const": "PASS" } } } },
+    { "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" }, "reviewStatus": { "enum": ["PASS", "FAIL"] }, "branch": { "type": "string", "minLength": 1 } }, "not": { "anyOf": [{ "required": ["fullCompletionEvidenceSha256"] }, { "required": ["fullCompletionResultSha256"] }, { "required": ["executionEnvelopeSha256"] }] } } },
+    { "if": { "properties": { "profile": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } }, "required": ["profile"] }, "then": { "required": ["fullCompletionEvidenceSha256", "fullCompletionResultSha256", "executionEnvelopeSha256"], "properties": { "transitionType": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" }, "reviewStatus": { "const": "NOT_PERFORMED" }, "branch": { "type": "string" } } } }
   ],
   "additionalProperties": false,
   "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "transitionType", "profile", "status", "classicReviewReady", "findingIds", "reviewStatus", "commitAuthorized", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths", "nextAction"],
@@ -15,20 +18,23 @@
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },
-    "branch": { "type": "string", "minLength": 1 },
-    "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
-    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
+    "branch": { "type": "string" },
+    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
     "status": { "enum": ["CLASSIC_REVIEW_READY", "NOT_CLASSIC_REVIEW_READY"] },
     "classicReviewReady": { "type": "boolean" },
     "findingIds": { "$ref": "#/$defs/findingIds" },
-    "reviewStatus": { "enum": ["PASS", "FAIL"] },
+    "reviewStatus": { "enum": ["PASS", "FAIL", "NOT_PERFORMED"] },
     "commitAuthorized": { "const": false },
     "scopeInventorySha256": { "$ref": "#/$defs/hash" },
     "taskPatchSha256": { "$ref": "#/$defs/hash" },
     "currentDeltaSha256": { "$ref": "#/$defs/hash" },
     "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
     "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
-    "nextAction": { "type": "string", "minLength": 1 }
+    "nextAction": { "type": "string", "minLength": 1 },
+    "fullCompletionEvidenceSha256": { "$ref": "#/$defs/hash" },
+    "fullCompletionResultSha256": { "$ref": "#/$defs/hash" },
+    "executionEnvelopeSha256": { "$ref": "#/$defs/hash" }
   },
   "$defs": {
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },

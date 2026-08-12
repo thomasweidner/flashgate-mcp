@@ -1,4 +1,17 @@
+* text=auto
+
+*.go text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.mod text eol=lf
+*.ps1 text eol=lf
+*.psm1 text eol=lf
 *.sh text eol=lf
+*.sum text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+.editorconfig text eol=lf
+.gitattributes text eol=lf
 
 # Preserve the vendored upstream license bytes while treating CRLF as a valid line ending.
 vendor/github.com/akavel/rsrc/LICENSE.txt -text whitespace=cr-at-eol

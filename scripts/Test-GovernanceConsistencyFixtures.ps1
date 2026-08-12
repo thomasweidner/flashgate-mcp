@@ -2812,6 +2812,74 @@ try {
             })
     }
 
+    $orchestrationCatalogCases = @(
+        [pscustomobject]@{
+            Name = 'negative-orchestration-profile-duplicate'
+            FailedCheck = 'CATALOG-ORCHESTRATION-PROFILES'
+            Mutate = {
+                param($candidate)
+                $candidate.orchestrationPolicy.profiles = @(
+                    @($candidate.orchestrationPolicy.profiles) +
+                    @($candidate.orchestrationPolicy.profiles[0])
+                )
+            }
+        },
+        [pscustomobject]@{
+            Name = 'negative-cheap-gate-order'
+            FailedCheck = 'CATALOG-CHEAP-GATE-ORDER'
+            Mutate = {
+                param($candidate)
+                $candidate.orchestrationPolicy.cheapGateOrder = @(
+                    'text-policy',
+                    'parser-syntax',
+                    'git-diff-check',
+                    'external-input-binding',
+                    'toolchain-context-binding',
+                    'source-worktree-selector-binding'
+                )
+            }
+        },
+        [pscustomobject]@{
+            Name = 'negative-efficiency-counter-omitted'
+            FailedCheck = 'CATALOG-EFFICIENCY-COUNTERS'
+            Mutate = {
+                param($candidate)
+                $candidate.orchestrationPolicy.counterFields = @(
+                    $candidate.orchestrationPolicy.counterFields |
+                        Where-Object { [string]$_ -cne 'readOnlyProbeCount' }
+                )
+            }
+        },
+        [pscustomobject]@{
+            Name = 'negative-full-completion-owner-duplicate'
+            FailedCheck = 'CATALOG-FULL-COMPLETION-UNIQUE'
+            Mutate = {
+                param($candidate)
+                $candidate.orchestrationPolicy.profiles[0].fullMatrix = $true
+            }
+        }
+    )
+    foreach ($orchestrationCase in $orchestrationCatalogCases) {
+        $mutatedCatalog = $catalog | ConvertTo-Json -Depth 100 |
+            ConvertFrom-Json -Depth 100 -DateKind String
+        & $orchestrationCase.Mutate $mutatedCatalog
+        $mutatedCatalogPath = Join-Path $temporaryRoot ('catalog-' + $orchestrationCase.Name + '.json')
+        [System.IO.File]::WriteAllText(
+            $mutatedCatalogPath,
+            ($mutatedCatalog | ConvertTo-Json -Depth 100),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        [void]$cases.Add([pscustomobject]@{
+                Name = $orchestrationCase.Name
+                ExpectedExit = 1
+                ExpectedFailedCheck = $orchestrationCase.FailedCheck
+                ChangedPaths = @('Governance/change-trigger-catalog.json')
+                Record = $bundled
+                CatalogPath = $mutatedCatalogPath
+                Tags = @('bl-339-phase-a', 'orchestration-policy')
+            })
+    }
+
     $caseFixtureDescriptors = @(
         foreach ($case in $cases) {
             $caseGroup = if ('Group' -in @($case.PSObject.Properties.Name)) {
@@ -2840,6 +2908,7 @@ try {
     $workflowFixtureDescriptors = @(
         New-CanonicalFixtureDescriptor -CaseId 'positive-real-ci-workflow-binding' -Group 'workflow-binding' -Tags @('post-bl230-native', 'workflow-binding')
         New-CanonicalFixtureDescriptor -CaseId 'positive-real-release-workflow-binding' -Group 'workflow-binding' -Tags @('post-bl230-native', 'workflow-binding')
+        New-CanonicalFixtureDescriptor -CaseId 'negative-real-workflow-semantic-diagnostic' -Group 'workflow-binding' -Tags @('post-bl230-native', 'workflow-binding', 'diagnostic-contract')
     )
     $supplementalFixtureDescriptors = @(
         @($artifactPolicyFixtureDescriptors)
@@ -3424,6 +3493,9 @@ try {
                 Checkpoint = 'SPRINT_CLOSE'
                 Event = 'pull_request'
                 Ref = 'refs/pull/1/merge'
+                IsCI = $true
+                ExpectedExit = 0
+                InjectInvalidRepeatedChecks = $false
             },
             [pscustomobject]@{
                 Name = 'positive-real-release-workflow-binding'
@@ -3432,6 +3504,20 @@ try {
                 Checkpoint = 'RELEASE_CANDIDATE'
                 Event = 'workflow_dispatch'
                 Ref = 'refs/tags/v1.0.0'
+                IsCI = $false
+                ExpectedExit = 0
+                InjectInvalidRepeatedChecks = $false
+            },
+            [pscustomobject]@{
+                Name = 'negative-real-workflow-semantic-diagnostic'
+                WorkflowPath = Join-Path $resolvedRepositoryRoot '.github/workflows/ci.yml'
+                ChangedPath = '.github/workflows/ci.yml'
+                Checkpoint = 'SPRINT_CLOSE'
+                Event = 'pull_request'
+                Ref = 'refs/pull/1/merge'
+                IsCI = $true
+                ExpectedExit = 1
+                InjectInvalidRepeatedChecks = $true
             }
         )
         foreach ($workflowDefinition in $workflowDefinitions) {
@@ -3445,7 +3531,7 @@ try {
                 '-ChangedPath $changedPaths',
                 "-RuntimeCheckpoint $($workflowDefinition.Checkpoint)"
             )
-            if ($workflowDefinition.Name -ceq 'positive-real-ci-workflow-binding') {
+            if ([bool]$workflowDefinition.IsCI) {
                 $requiredWorkflowTokens += @(
                     'name: Governance (exact PR head)',
                     'PULL_REQUEST_HEAD: ${{ github.event.pull_request.head.sha }}',
@@ -3498,7 +3584,7 @@ try {
                 )
             }
             $workflowContractFailures = @()
-            if ($workflowDefinition.Name -ceq 'positive-real-ci-workflow-binding') {
+            if ([bool]$workflowDefinition.IsCI) {
                 $getNamedWorkflowStep = {
                     param(
                         [Parameter(Mandatory)][string]$Text,
@@ -3733,14 +3819,24 @@ try {
                     -not $workflowText.Contains($_, [System.StringComparison]::Ordinal)
                 })
             $workflowRecordPath = Join-Path $temporaryRoot ($workflowDefinition.Name + '.json')
+            $workflowValidatorReportPath = Join-Path $temporaryRoot ($workflowDefinition.Name + '-validator-report.json')
+            $generatorStderrPath = Join-Path $temporaryRoot ($workflowDefinition.Name + '-generator-stderr.log')
+            $validatorStderrPath = Join-Path $temporaryRoot ($workflowDefinition.Name + '-validator-stderr.log')
             $hostedSources = @(
                 "thomasweidner/flashgate-mcp@$actualHead",
                 'github-actions-run:123'
             )
-            $workflowOutput = @()
+            $generatorOutput = @()
+            $generatorStderr = ''
+            $generatorExit = 1
+            $validatorOutput = @()
+            $validatorStderr = ''
+            $validatorReport = $null
+            $validatorReportReadFailure = $null
+            $failedCheckDiagnostics = @()
             $workflowExit = 1
             if ($missingWorkflowTokens.Count -eq 0 -and $workflowContractFailures.Count -eq 0) {
-                $workflowOutput += @(
+                $generatorOutput = @(
                     & $generatorPath `
                         -OutputPath $workflowRecordPath `
                         -Checkpoint $workflowDefinition.Checkpoint `
@@ -3753,10 +3849,25 @@ try {
                         -RunAttempt 1 `
                         -Event $workflowDefinition.Event `
                         -Ref $workflowDefinition.Ref `
-                        -HeadSha $actualHead 2>&1
+                        -HeadSha $actualHead 2> $generatorStderrPath |
+                        Out-String -Stream
                 )
-                if ($LASTEXITCODE -eq 0) {
-                    $workflowOutput += @(
+                $generatorExit = $LASTEXITCODE
+                if (Test-Path -LiteralPath $generatorStderrPath -PathType Leaf) {
+                    $generatorStderr = [System.IO.File]::ReadAllText($generatorStderrPath)
+                }
+                if ($generatorExit -eq 0) {
+                    if ([bool]$workflowDefinition.InjectInvalidRepeatedChecks) {
+                        $invalidRecord = Get-Content -LiteralPath $workflowRecordPath -Raw -Encoding UTF8 |
+                            ConvertFrom-Json -Depth 100 -DateKind String
+                        $invalidRecord.repeatedChecks = $null
+                        [System.IO.File]::WriteAllText(
+                            $workflowRecordPath,
+                            ($invalidRecord | ConvertTo-Json -Depth 100),
+                            [System.Text.UTF8Encoding]::new($false)
+                        )
+                    }
+                    $validatorOutput = @(
                         & $validatorPath `
                             -RepositoryRoot $resolvedRepositoryRoot `
                             -AssignmentRecordPath $workflowRecordPath `
@@ -3772,33 +3883,98 @@ try {
                             -ExpectedRunAttempt 1 `
                             -ExpectedEvent $workflowDefinition.Event `
                             -ExpectedRef $workflowDefinition.Ref `
-                            -ExpectedHeadSha $actualHead 2>&1
+                            -ExpectedHeadSha $actualHead `
+                            -ReportPath $workflowValidatorReportPath 2> $validatorStderrPath |
+                            Out-String -Stream
                     )
                     $workflowExit = $LASTEXITCODE
+                    if (Test-Path -LiteralPath $validatorStderrPath -PathType Leaf) {
+                        $validatorStderr = [System.IO.File]::ReadAllText($validatorStderrPath)
+                    }
+                    if (Test-Path -LiteralPath $workflowValidatorReportPath -PathType Leaf) {
+                        try {
+                            $validatorReport = Get-Content -LiteralPath $workflowValidatorReportPath -Raw -Encoding UTF8 |
+                                ConvertFrom-Json -Depth 100 -DateKind String
+                            $failedCheckDiagnostics = @(
+                                $validatorReport.checks |
+                                    Where-Object Result -CEQ 'FAIL' |
+                                    ForEach-Object {
+                                        [ordered]@{
+                                            CheckId = [string]$_.Id
+                                            Condition = [string]$_.Message
+                                            Evidence = [string]$_.Evidence
+                                        }
+                                    }
+                            )
+                        }
+                        catch {
+                            $validatorReportReadFailure = $_.Exception.Message
+                        }
+                    }
                 }
+            }
+            $formatDataTypeNamePresent = (
+                (($generatorOutput -join [Environment]::NewLine) -match 'Microsoft\.PowerShell\.Commands\.Internal\.Format') -or
+                (($validatorOutput -join [Environment]::NewLine) -match 'Microsoft\.PowerShell\.Commands\.Internal\.Format')
+            )
+            $positiveSemanticResult = (
+                [int]$workflowDefinition.ExpectedExit -eq 0 -and
+                $generatorExit -eq 0 -and
+                $workflowExit -eq 0 -and
+                $null -ne $validatorReport -and
+                [string]$validatorReport.status -ceq 'PASS' -and
+                [int]$validatorReport.errorCount -eq 0 -and
+                $failedCheckDiagnostics.Count -eq 0 -and
+                -not $formatDataTypeNamePresent
+            )
+            $negativeDiagnosticResult = (
+                [int]$workflowDefinition.ExpectedExit -eq 1 -and
+                $generatorExit -eq 0 -and
+                $workflowExit -eq 1 -and
+                $null -ne $validatorReport -and
+                [string]$validatorReport.status -ceq 'FAIL' -and
+                [int]$validatorReport.errorCount -gt 0 -and
+                'RECORD-JSON-SCHEMA' -cin @($failedCheckDiagnostics | ForEach-Object { [string]$_.CheckId }) -and
+                'RECORD-repeatedChecks' -cin @($failedCheckDiagnostics | ForEach-Object { [string]$_.CheckId }) -and
+                @($failedCheckDiagnostics | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.Condition) }).Count -eq 0 -and
+                @($failedCheckDiagnostics | Where-Object {
+                        [string]$_.CheckId -ceq 'RECORD-JSON-SCHEMA' -and
+                        [string]$_.Evidence -match '/repeatedChecks'
+                    }).Count -eq 1 -and
+                -not $formatDataTypeNamePresent
+            )
+            $workflowCasePassed = (
+                $missingWorkflowTokens.Count -eq 0 -and
+                $workflowContractFailures.Count -eq 0 -and
+                [string]::IsNullOrWhiteSpace($validatorReportReadFailure) -and
+                ($positiveSemanticResult -or $negativeDiagnosticResult)
+            )
+            $semanticDiagnosticPayload = [ordered]@{
+                ExpectedExit = [int]$workflowDefinition.ExpectedExit
+                ActualExit = $workflowExit
+                GeneratorExit = $generatorExit
+                ValidatorStatus = if ($null -ne $validatorReport) { [string]$validatorReport.status } else { $null }
+                ValidatorErrorCount = if ($null -ne $validatorReport) { [int]$validatorReport.errorCount } else { $null }
+                FailedChecks = @($failedCheckDiagnostics)
+                GeneratorStdout = @($generatorOutput)
+                GeneratorStderr = $generatorStderr
+                ValidatorStdout = @($validatorOutput)
+                ValidatorStderr = $validatorStderr
+                ValidatorReportReadFailure = $validatorReportReadFailure
+                FormatDataTypeNamePresent = $formatDataTypeNamePresent
+                MissingTokens = @($missingWorkflowTokens)
+                ContractFailures = @($workflowContractFailures)
             }
             [void]$results.Add([pscustomobject]@{
                 Name = $workflowDefinition.Name
-                ExpectedExit = 0
+                ExpectedExit = [int]$workflowDefinition.ExpectedExit
                 ActualExit = $workflowExit
-                Result = if (
-                    $workflowExit -eq 0 -and
-                    $missingWorkflowTokens.Count -eq 0 -and
-                    $workflowContractFailures.Count -eq 0
-                ) { 'PASS' } else { 'FAIL' }
-                Diagnostic = if (
-                    $workflowExit -eq 0 -and
-                    $missingWorkflowTokens.Count -eq 0 -and
-                    $workflowContractFailures.Count -eq 0
-                ) {
+                Result = if ($workflowCasePassed) { 'PASS' } else { 'FAIL' }
+                Diagnostic = if ($workflowCasePassed -and [int]$workflowDefinition.ExpectedExit -eq 0) {
                     ''
                 }
                 else {
-                    (
-                        "missingTokens=$($missingWorkflowTokens -join ', '); " +
-                        "contractFailures=$($workflowContractFailures -join ', '); " +
-                        "output=$($workflowOutput -join [Environment]::NewLine)"
-                    )
+                    $semanticDiagnosticPayload | ConvertTo-Json -Depth 10 -Compress
                 }
             })
             $lastCompletedFixture = $workflowDefinition.Name
@@ -3918,6 +4094,13 @@ $finalResult = [pscustomobject]@{
     SkippedCount = $skippedCount
     WarningCount = $warningCount
     FailureCount = $failureCount
+    ValidationExecutionCount = 1
+    InfrastructureOrInvocationFailureCount = $structuralFailureCount
+    FullMatrixRunCount = 0
+    PackageWriteAttemptCount = 0
+    GeneratedTaskControllerFileCount = 0
+    GeneratedTaskControllerLineCount = 0
+    ReadOnlyProbeCount = 0
     CleanupStatus = $cleanupStatus
     CleanupErrors = $cleanupErrors -join [Environment]::NewLine
     RepositoryMutationDetected = $repositoryMutationDetected

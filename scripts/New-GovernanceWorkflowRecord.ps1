@@ -18,7 +18,9 @@ param(
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Event,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Ref,
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string]$HeadSha,
-    [string]$TaskId = 'BL-334'
+    [string]$TaskId = 'BL-334',
+    [string]$OrchestrationRequestPath,
+    [string]$OrchestrationResultPath
 )
 
 Set-StrictMode -Version Latest
@@ -67,6 +69,7 @@ $failureMessage = $null
 $resolvedOutputPath = $null
 $recordHash = $null
 $changedPathCount = 0
+$orchestrationResultHash = $null
 
 try {
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
@@ -80,6 +83,39 @@ try {
 
     $catalog = Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8 |
         ConvertFrom-Json -Depth 100 -DateKind String
+    $orchestrationRequested = (
+        -not [string]::IsNullOrWhiteSpace($OrchestrationRequestPath) -or
+        -not [string]::IsNullOrWhiteSpace($OrchestrationResultPath)
+    )
+    if ($orchestrationRequested -and (
+            [string]::IsNullOrWhiteSpace($OrchestrationRequestPath) -or
+            [string]::IsNullOrWhiteSpace($OrchestrationResultPath)
+        )) {
+        throw 'Orchestration request and result paths must be supplied together.'
+    }
+    $orchestrationRequest = $null
+    $orchestrationResult = $null
+    if ($orchestrationRequested) {
+        Import-Module (Join-Path $PSScriptRoot 'GovernanceValidationOrchestration.psm1') -Force
+        $orchestrationRequest = Read-GovernanceJsonContract `
+            -LiteralPath $OrchestrationRequestPath `
+            -SchemaPath (Join-Path $resolvedRepositoryRoot 'Governance/governance-validation-request.schema.json')
+        $orchestrationResult = Read-GovernanceTypedResult `
+            -LiteralPath $OrchestrationResultPath `
+            -SchemaPath (Join-Path $resolvedRepositoryRoot 'Governance/governance-validation-result.schema.json') `
+            -ExpectedProfile ([string]$orchestrationRequest.profile)
+        $orchestrationResultHash = (
+            Get-FileHash -LiteralPath $OrchestrationResultPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        if ([string]$orchestrationRequest.taskId -cne $TaskId -or
+            [string]$orchestrationResult.taskId -cne $TaskId -or
+            [string]$orchestrationRequest.repository -cne $Repository -or
+            [string]$orchestrationRequest.baselineCommit -cne $BaselineCommit -or
+            [string]$orchestrationRequest.currentCommit -cne $CurrentCommit -or
+            [string]$orchestrationResult.bindings.currentCommit -cne $CurrentCommit) {
+            throw 'Orchestration request/result binding does not match the workflow record.'
+        }
+    }
     $observedTriggers = [System.Collections.Generic.List[string]]::new()
     foreach ($path in @($ChangedPath)) {
         foreach ($trigger in @($catalog.triggers)) {
@@ -114,10 +150,24 @@ try {
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) {
         throw 'Unable to resolve the checked-out branch.'
     }
+    $statusBinding = @(& git -C $resolvedRepositoryRoot status --porcelain=v2 --untracked-files=all)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Unable to bind complete repository status.'
+    }
+    $worktreeBinding = @(& git -C $resolvedRepositoryRoot worktree list --porcelain)
+    if ($LASTEXITCODE -ne 0 -or $worktreeBinding.Count -eq 0) {
+        throw 'Unable to bind the parallel-worktree inventory.'
+    }
 
     $repositorySlug = $Repository -replace '^https://github\.com/', '' -replace '\.git$', ''
     $mutationAllowed = $ExecutionMode -ceq 'BUNDLED_CORRECTION'
     $independent = $ExecutionMode -in @('INDEPENDENT_REVIEW', 'FOCUSED_INDEPENDENT_DELTA_REVIEW')
+    [string[]]$repeatedChecks = @()
+    if ($null -ne $orchestrationResult) {
+        $repeatedChecks = @(
+            "orchestration:$($orchestrationResult.profile):$orchestrationResultHash"
+        )
+    }
     $record = [ordered]@{
         schemaVersion = 1
         recordedAt = [datetimeoffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -129,10 +179,18 @@ try {
         executionMode = $ExecutionMode
         checkpoint = $Checkpoint
         changeTriggerReviewResult = if ($observed.Count -eq 0) { 'NO_TRIGGER' } else { 'EXISTING_GATES_REQUIRED' }
+        currentStateGate = [ordered]@{
+            result = if ($null -eq $orchestrationResult -or [string]$orchestrationResult.status -ceq 'PASS') { 'PASS' } else { 'FAIL' }
+            repositoryIdentityBound = $true
+            commitAndBranchBound = $true
+            completeStatusBound = $true
+            scopeAndIdsBound = $true
+            parallelWorktreesBound = $true
+        }
         triggeredDomains = $triggeredDomains
         observedTriggers = $observed
         affectedContinuousGates = $affectedGates
-        existingBacklogCoverage = @('BL-333', 'BL-334')
+        existingBacklogCoverage = if ($TaskId -ceq 'BL-334') { @('BL-333', 'BL-334') } else { @($TaskId) }
         duplicateSearch = [ordered]@{
             performed = $observed.Count -gt 0
             sources = if ($observed.Count -gt 0) {
@@ -143,7 +201,7 @@ try {
             }
             result = if ($observed.Count -gt 0) { 'EXISTING_ITEM_REUSED' } else { 'NOT_REQUIRED' }
         }
-        repeatedChecks = @()
+        repeatedChecks = @($repeatedChecks)
         checksNotRequired = @('performance baseline')
         newBacklogItems = @()
         updatedBacklogOrRegisterEntries = @()

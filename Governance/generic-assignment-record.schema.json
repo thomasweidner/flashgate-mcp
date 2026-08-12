@@ -3,6 +3,36 @@
   "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-assignment-record.schema.json",
   "title": "FlashGate generic commit-preparation assignment record",
   "type": "object",
+  "allOf": [
+    {
+      "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] },
+      "then": {
+        "properties": {
+          "executionMode": { "const": "COMMIT_PREPARATION" },
+          "checkpoint": { "const": "PRE_COMMIT" },
+          "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
+          "branch": { "type": "string", "minLength": 1 }
+        },
+        "not": { "anyOf": [
+          { "required": ["fullCompletionEvidenceSha256"] },
+          { "required": ["fullCompletionResultSha256"] },
+          { "required": ["executionEnvelopeSha256"] }
+        ] }
+      }
+    },
+    {
+      "if": { "properties": { "profile": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } }, "required": ["profile"] },
+      "then": {
+        "required": ["fullCompletionEvidenceSha256", "fullCompletionResultSha256", "executionEnvelopeSha256"],
+        "properties": {
+          "executionMode": { "const": "BUNDLED_CORRECTION" },
+          "checkpoint": { "const": "SPRINT_CLOSE" },
+          "transitionType": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" },
+          "branch": { "type": "string" }
+        }
+      }
+    }
+  ],
   "additionalProperties": false,
   "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "executionMode", "checkpoint", "profile", "transitionType", "changeTriggerReviewResult", "currentStateGate", "classicReviewReady", "findingIds", "commitAuthorized", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths"],
   "properties": {
@@ -11,11 +41,11 @@
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },
-    "branch": { "type": "string", "minLength": 1 },
-    "executionMode": { "const": "COMMIT_PREPARATION" },
-    "checkpoint": { "const": "PRE_COMMIT" },
-    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
-    "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
+    "branch": { "type": "string" },
+    "executionMode": { "enum": ["COMMIT_PREPARATION", "BUNDLED_CORRECTION"] },
+    "checkpoint": { "enum": ["PRE_COMMIT", "SPRINT_CLOSE"] },
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
+    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
     "changeTriggerReviewResult": { "enum": ["NO_TRIGGER", "EXISTING_GATES_REQUIRED", "EXISTING_BACKLOG_UPDATED", "NEW_BACKLOG_REGISTERED"] },
     "currentStateGate": { "$ref": "#/$defs/currentStateGate" },
     "classicReviewReady": { "type": "boolean" },
@@ -25,7 +55,10 @@
     "taskPatchSha256": { "$ref": "#/$defs/hash" },
     "currentDeltaSha256": { "$ref": "#/$defs/hash" },
     "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
-    "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" }
+    "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
+    "fullCompletionEvidenceSha256": { "$ref": "#/$defs/hash" },
+    "fullCompletionResultSha256": { "$ref": "#/$defs/hash" },
+    "executionEnvelopeSha256": { "$ref": "#/$defs/hash" }
   },
   "$defs": {
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },

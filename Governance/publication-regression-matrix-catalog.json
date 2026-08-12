@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "matrices": [
+    {
+      "matrixId": "GOVERNANCE_HANDOFF_PUBLICATION_FIXTURES",
+      "runner": "scripts/Test-GovernanceHandoffPublicationFixtures.ps1",
+      "resultSchema": "Governance/publication-regression-result.schema.json",
+      "requiredCaseIds": [
+        "GHP-AUTOMATIC-PACKAGE-RETRY-COUNT-ZERO",
+        "GHP-CANDIDATE_VALIDATED-FINAL-ABSENT",
+        "GHP-CANDIDATE_VALIDATED-HANDSHAKE",
+        "GHP-CANDIDATE_VALIDATED-POST-TERMINATION",
+        "GHP-CANDIDATE_VALIDATION_STARTED-FINAL-ABSENT",
+        "GHP-CANDIDATE_VALIDATION_STARTED-HANDSHAKE",
+        "GHP-CANDIDATE_VALIDATION_STARTED-POST-TERMINATION",
+        "GHP-CANDIDATE-DRIFT-AFTER-IDENTITY-BINDING-REJECTED",
+        "GHP-CANDIDATE-MUTATE-AFTER-VALIDATION-REJECTED",
+        "GHP-CANDIDATE-REPLACE-AFTER-VALIDATION-REJECTED",
+        "GHP-CREATENEW-FAILURE-COUNTED-ONCE",
+        "GHP-FINAL-PATH-RACE-NO-OVERWRITE",
+        "GHP-NORMAL-PUBLICATION-PASS",
+        "GHP-PUBLICATION-IO-FAILURE-NO-RETRY",
+        "GHP-PUBLISHED-FINAL-VALID",
+        "GHP-PUBLISHED-HANDSHAKE",
+        "GHP-PUBLISHED-POST-TERMINATION",
+        "GHP-VALIDATOR-FAILURE-FINAL-ABSENT",
+        "GHP-WRITE-FAILURE-FINAL-ABSENT",
+        "GHP-WRONG-CANDIDATE-DIRECTORY-PREWRITE-REJECTED"
+      ],
+      "sourcePaths": [
+        "scripts/Test-GovernanceHandoffPublicationFixtures.ps1"
+      ],
+      "dependencyPaths": [
+        "scripts/GovernanceValidationOrchestration.psm1",
+        "scripts/GovernanceHandoffPublication.psm1",
+        "scripts/testdata/Invoke-GovernanceHandoffCandidateDrift.ps1",
+        "scripts/testdata/Invoke-GovernanceHandoffPublicationFixtureChild.ps1"
+      ]
+    }
+  ]
+}
