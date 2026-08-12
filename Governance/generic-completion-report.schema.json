@@ -5,7 +5,30 @@
   "type": "object",
   "allOf": [
     { "if": { "properties": { "classicReviewReady": { "const": true } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "CLASSIC_REVIEW_READY" }, "zipFreeReadinessPassed": { "const": true }, "openWarningCount": { "const": 0 }, "warningCount": { "const": 0 }, "failureCount": { "const": 0 } } } },
-    { "if": { "properties": { "classicReviewReady": { "const": false } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "NOT_CLASSIC_REVIEW_READY" } } } }
+    { "if": { "properties": { "classicReviewReady": { "const": false } }, "required": ["classicReviewReady"] }, "then": { "properties": { "status": { "const": "NOT_CLASSIC_REVIEW_READY" } } } },
+    {
+      "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] },
+      "then": {
+        "properties": { "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" }, "branch": { "type": "string", "minLength": 1 } },
+        "not": { "anyOf": [
+          { "required": ["independentReviewStatus"] },
+          { "required": ["fullCompletionEvidenceSha256"] },
+          { "required": ["fullCompletionResultSha256"] },
+          { "required": ["executionEnvelopeSha256"] }
+        ] }
+      }
+    },
+    {
+      "if": { "properties": { "profile": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } }, "required": ["profile"] },
+      "then": {
+        "required": ["independentReviewStatus", "fullCompletionEvidenceSha256", "fullCompletionResultSha256", "executionEnvelopeSha256"],
+        "properties": {
+          "transitionType": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" },
+          "independentReviewStatus": { "const": "NOT_PERFORMED" },
+          "branch": { "type": "string" }
+        }
+      }
+    }
   ],
   "additionalProperties": false,
   "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "profile", "transitionType", "status", "currentStateGate", "classicReviewReady", "findingIds", "commitAuthorized", "materialCorrectionCycleCount", "validationExecutionCount", "infrastructureOrInvocationFailureCount", "observedWarningCount", "resolvedWarningCount", "openWarningCount", "warningCount", "failureCount", "zipFreeReadinessPassed", "packageGeneration", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths", "nextAction"],
@@ -15,9 +38,9 @@
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },
-    "branch": { "type": "string", "minLength": 1 },
-    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
-    "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
+    "branch": { "type": "string" },
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
+    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
     "status": { "enum": ["CLASSIC_REVIEW_READY", "NOT_CLASSIC_REVIEW_READY"] },
     "currentStateGate": { "$ref": "#/$defs/currentStateGate" },
     "classicReviewReady": { "type": "boolean" },
@@ -38,7 +61,11 @@
     "currentDeltaSha256": { "$ref": "#/$defs/hash" },
     "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
     "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
-    "nextAction": { "type": "string", "minLength": 1 }
+    "nextAction": { "type": "string", "minLength": 1 },
+    "independentReviewStatus": { "const": "NOT_PERFORMED" },
+    "fullCompletionEvidenceSha256": { "$ref": "#/$defs/hash" },
+    "fullCompletionResultSha256": { "$ref": "#/$defs/hash" },
+    "executionEnvelopeSha256": { "$ref": "#/$defs/hash" }
   },
   "$defs": {
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },

@@ -138,6 +138,10 @@ The machine-readable completion report conforms to
 handoffs additionally conform to
 [finding-correction-matrix.schema.json](finding-correction-matrix.schema.json),
 [finding-regression-matrix.schema.json](finding-regression-matrix.schema.json),
+[publication-regression-evidence.schema.json](publication-regression-evidence.schema.json),
+[publication-regression-expected-execution-input-binding.schema.json](publication-regression-expected-execution-input-binding.schema.json),
+[publication-regression-result.schema.json](publication-regression-result.schema.json),
+[publication-regression-matrix-catalog.schema.json](publication-regression-matrix-catalog.schema.json),
 [focused-delta-review-record.schema.json](focused-delta-review-record.schema.json),
 and [governance-report-contract.schema.json](governance-report-contract.schema.json).
 A narrative Markdown report contains exactly one bounded strict JSON contract;

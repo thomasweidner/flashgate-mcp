@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$PackagePath,
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$AuthoritativeRepositoryRoot = $RepositoryRoot,
-    [string]$ReportPath
+    [string]$ReportPath,
+    [switch]$ReturnInsteadOfExit
 )
 
 Set-StrictMode -Version Latest
@@ -409,11 +410,14 @@ function Get-AuthoritativeDeltaBytes {
 }
 
 try {
+    Import-Module (Join-Path $PSScriptRoot 'GovernanceValidationOrchestration.psm1') -Force
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot).TrimEnd('\', '/')
     $resolvedAuthoritativeRepositoryRoot = [System.IO.Path]::GetFullPath($AuthoritativeRepositoryRoot).TrimEnd('\', '/')
     $resolvedPackagePath = [System.IO.Path]::GetFullPath($PackagePath)
-    if (-not (Test-Path -LiteralPath $resolvedPackagePath -PathType Leaf)) {
-        throw "Package does not exist: $resolvedPackagePath"
+    $artifactIsDirectory = Test-Path -LiteralPath $resolvedPackagePath -PathType Container
+    $artifactIsZip = Test-Path -LiteralPath $resolvedPackagePath -PathType Leaf
+    if (-not $artifactIsDirectory -and -not $artifactIsZip) {
+        throw "Package or staging directory does not exist: $resolvedPackagePath"
     }
     $outsideRepository = -not $resolvedPackagePath.StartsWith(
         $resolvedRepositoryRoot + [System.IO.Path]::DirectorySeparatorChar,
@@ -424,32 +428,36 @@ try {
 
     Add-Type -AssemblyName System.IO.Compression
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    $stream = [System.IO.File]::OpenRead($resolvedPackagePath)
-    try {
-        $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
+    $requiredNames = @()
+    $entryBytes = @{}
+    $entryText = @{}
+    if ($artifactIsDirectory) {
+        $rootItem = Get-Item -LiteralPath $resolvedPackagePath -Force
+        if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw 'Staging directory must not be a reparse point.'
+        }
+        $files = @(Get-ChildItem -LiteralPath $resolvedPackagePath -File -Force)
+        $directories = @(Get-ChildItem -LiteralPath $resolvedPackagePath -Directory -Force)
+        if ($directories.Count -ne 0) {
+            throw 'Staging directory must contain only canonical root files.'
+        }
+        $names = @($files | ForEach-Object Name)
+        foreach ($file in $files) {
+            if (($file.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Staging member is a reparse point: $($file.Name)"
+            }
+            $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+            if ($bytes.Length -eq 0) { throw "Empty staging member: $($file.Name)" }
+            $entryBytes[$file.Name] = $bytes
+            $entryText[$file.Name] = Get-StrictText -Bytes $bytes -Name $file.Name
+        }
+    }
+    else {
+        $stream = [System.IO.File]::OpenRead($resolvedPackagePath)
         try {
-            $requiredNames = @(
-                'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
-                'current-delta.patch', 'independent-review-evidence.json',
-                'MANIFEST.sha256', 'package-inventory.json', 'report.md',
-                'scope-inventory.json', 'task.patch', 'validation-summary.json'
-            )
+            $archive = [System.IO.Compression.ZipArchive]::new($stream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
+            try {
             $names = @($archive.Entries | ForEach-Object FullName)
-            $safeNames = @($names | Where-Object {
-                    $_ -match '^[A-Za-z0-9][A-Za-z0-9._-]*$' -and
-                    -not $_.Contains('/') -and -not $_.Contains('\')
-                })
-            $shapePass = (
-                $names.Count -eq $requiredNames.Count -and
-                ($names | Sort-Object -Unique).Count -eq $names.Count -and
-                (($names | Sort-Object) -join "`n") -ceq (($requiredNames | Sort-Object) -join "`n") -and
-                $safeNames.Count -eq $names.Count
-            )
-            Add-Check -Id 'GENERIC-PACKAGE-SHAPE' -Passed $shapePass -Evidence ($names -join ',')
-            if (-not $shapePass) { throw 'ZIP entries are missing, extra, duplicated, or unsafe.' }
-
-            $entryBytes = @{}
-            $entryText = @{}
             foreach ($entry in $archive.Entries) {
                 $entryStream = $entry.Open()
                 try {
@@ -465,6 +473,53 @@ try {
                 $entryBytes[$entry.FullName] = $bytes
                 $entryText[$entry.FullName] = Get-StrictText -Bytes $bytes -Name $entry.FullName
             }
+            }
+            finally { $archive.Dispose() }
+        }
+        finally { $stream.Dispose() }
+    }
+
+    if (@($names | Where-Object { $_ -ceq 'assignment-record.json' }).Count -ne 1) {
+        throw 'Artifact must contain exactly one assignment-record.json discriminator.'
+    }
+    $assignmentDiscriminator = $entryText['assignment-record.json'] |
+        ConvertFrom-Json -Depth 20 -DateKind String
+    $profile = [string]$assignmentDiscriminator.profile
+    $transitionType = [string]$assignmentDiscriminator.transitionType
+    $isImplementationReview = $profile -ceq 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
+    if ($profile -ceq 'GENERIC_COMMIT_PREPARATION' -and
+        $transitionType -ceq 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL') {
+        $evidenceName = 'independent-review-evidence.json'
+        $evidenceSchemaName = 'generic-independent-review-evidence.schema.json'
+    }
+    elseif ($isImplementationReview -and
+        $transitionType -ceq 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW') {
+        $evidenceName = 'pre-review-validation-evidence.json'
+        $evidenceSchemaName = 'generic-pre-review-validation-evidence.schema.json'
+    }
+    else {
+        throw 'Unknown or mismatched explicit handoff profile and transition type.'
+    }
+    $requiredNames = @(
+        'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
+        'current-delta.patch', $evidenceName,
+        'MANIFEST.sha256', 'package-inventory.json', 'report.md',
+        'scope-inventory.json', 'task.patch', 'validation-summary.json'
+    )
+
+    $safeNames = @($names | Where-Object {
+            $_ -match '^[A-Za-z0-9][A-Za-z0-9._-]*$' -and
+            -not $_.Contains('/') -and -not $_.Contains('\')
+        })
+    $shapePass = (
+        $names.Count -eq $requiredNames.Count -and
+        ($names | Sort-Object -Unique).Count -eq $names.Count -and
+        (($names | Sort-Object) -join "`n") -ceq (($requiredNames | Sort-Object) -join "`n") -and
+        $safeNames.Count -eq $names.Count
+    )
+    Add-Check -Id 'GENERIC-PACKAGE-SHAPE' -Passed $shapePass -Evidence ($names -join ',')
+    if (-not $shapePass) { throw 'Artifact entries are missing, extra, duplicated, or unsafe.' }
+    Add-Check -Id 'GENERIC-ARTIFACT-KIND' -Passed $true -Evidence $(if ($artifactIsDirectory) { 'DIRECTORY' } else { 'ZIP' })
 
             $correctionOnlyMembers = @(
                 'correction-only.patch', 'finding-correction-matrix.json',
@@ -477,12 +532,36 @@ try {
             }
 
             $governanceRoot = Join-Path $resolvedRepositoryRoot 'Governance'
-            $assignment = $entryText['assignment-record.json'] | ConvertFrom-Json -Depth 100 -DateKind String
-            $completion = $entryText['completion-report.json'] | ConvertFrom-Json -Depth 100 -DateKind String
-            $review = $entryText['independent-review-evidence.json'] | ConvertFrom-Json -Depth 100 -DateKind String
-            $validation = $entryText['validation-summary.json'] | ConvertFrom-Json -Depth 100 -DateKind String
-            $scope = $entryText['scope-inventory.json'] | ConvertFrom-Json -Depth 100 -DateKind String
-            $inventory = $entryText['package-inventory.json'] | ConvertFrom-Json -Depth 100 -DateKind String
+            $assignment = Read-GovernanceJsonContract `
+                -Bytes ([byte[]]$entryBytes['assignment-record.json']) `
+                -Label 'assignment-record.json' `
+                -SchemaPath (Join-Path $governanceRoot 'generic-assignment-record.schema.json') `
+                -ExpectedProfile $profile
+            $completion = Read-GovernanceJsonContract `
+                -Bytes ([byte[]]$entryBytes['completion-report.json']) `
+                -Label 'completion-report.json' `
+                -SchemaPath (Join-Path $governanceRoot 'generic-completion-report.schema.json') `
+                -ExpectedProfile $profile
+            $review = Read-GovernanceJsonContract `
+                -Bytes ([byte[]]$entryBytes[$evidenceName]) `
+                -Label $evidenceName `
+                -SchemaPath (Join-Path $governanceRoot $evidenceSchemaName) `
+                -ExpectedProfile $profile
+            $validation = Read-GovernanceTypedResult `
+                -Bytes ([byte[]]$entryBytes['validation-summary.json']) `
+                -Label 'validation-summary.json' `
+                -SchemaPath (Join-Path $governanceRoot 'generic-validation-summary.schema.json') `
+                -ExpectedProfile $profile
+            $scope = Read-GovernanceJsonContract `
+                -Bytes ([byte[]]$entryBytes['scope-inventory.json']) `
+                -Label 'scope-inventory.json' `
+                -SchemaPath (Join-Path $governanceRoot 'generic-scope-inventory.schema.json') `
+                -ExpectedProfile $profile
+            $inventory = Read-GovernanceJsonContract `
+                -Bytes ([byte[]]$entryBytes['package-inventory.json']) `
+                -Label 'package-inventory.json' `
+                -SchemaPath (Join-Path $governanceRoot 'generic-package-inventory.schema.json') `
+                -ExpectedProfile $profile
 
             $trustedRepository = 'https://github.com/thomasweidner/flashgate-mcp.git'
             $trustedRepositoryPass = @($assignment, $completion, $review, $scope | Where-Object {
@@ -501,7 +580,7 @@ try {
             $schemaMap = [ordered]@{
                 'assignment-record.json' = 'generic-assignment-record.schema.json'
                 'completion-report.json' = 'generic-completion-report.schema.json'
-                'independent-review-evidence.json' = 'generic-independent-review-evidence.schema.json'
+                $evidenceName = $evidenceSchemaName
                 'scope-inventory.json' = 'generic-scope-inventory.schema.json'
                 'validation-summary.json' = 'generic-validation-summary.schema.json'
                 'package-inventory.json' = 'generic-package-inventory.schema.json'
@@ -518,8 +597,10 @@ try {
                 'focusedDeltaReviewRecord'
             )
             $profileTypedIsolationPass = (
-                [string]$assignment.profile -ceq 'GENERIC_COMMIT_PREPARATION' -and
-                [string]$assignment.transitionType -ceq 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL'
+                [string]$assignment.profile -ceq $profile -and
+                [string]$assignment.transitionType -ceq $transitionType -and
+                [string]$completion.profile -ceq $profile -and
+                [string]$completion.transitionType -ceq $transitionType
             )
             foreach ($typedContract in @($assignment, $completion, $review, $scope, $validation, $inventory)) {
                 $profileTypedIsolationPass = $profileTypedIsolationPass -and
@@ -532,7 +613,7 @@ try {
 
             $scannedArtifacts = @(
                 'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
-                'current-delta.patch', 'independent-review-evidence.json',
+                'current-delta.patch', $evidenceName,
                 'report.md', 'task.patch', 'validation-summary.json'
             )
             $hostPathFreeArtifacts = @($scope.hostPathPolicy.hostPathFreeArtifacts | ForEach-Object { [string]$_ })
@@ -590,8 +671,8 @@ try {
                 [string]$assignment.taskId -ceq [string]$validation.taskId -and
                 [string]$assignment.taskId -ceq [string]$scope.taskId -and
                 [string]$assignment.taskId -ceq [string]$inventory.taskId -and
-                [string]$assignment.profile -ceq 'GENERIC_COMMIT_PREPARATION' -and
-                [string]$assignment.transitionType -ceq 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL'
+                [string]$assignment.profile -ceq $profile -and
+                [string]$assignment.transitionType -ceq $transitionType
             )
             $currentStatePass = $true
             foreach ($binding in @($assignment, $completion, $review)) {
@@ -793,17 +874,40 @@ try {
                 throw 'Authoritative Git isolation, literal path, patch scope, actual delta inventory, or worktree binding failed.'
             }
 
-            $reviewedNames = @($review.reviewedArtifacts | ForEach-Object { [string]$_.path })
-            $reviewHashPass = (
-                ($reviewedNames | Sort-Object -Unique).Count -eq 2 -and
-                'task.patch' -in $reviewedNames -and 'current-delta.patch' -in $reviewedNames
-            )
-            foreach ($reviewed in @($review.reviewedArtifacts)) {
-                $reviewHashPass = $reviewHashPass -and
-                    [string]$reviewed.sha256 -ceq (Get-ByteSha256 -Bytes $entryBytes[[string]$reviewed.path])
+            if ($isImplementationReview) {
+                $fullCompletionEvidenceHash = Get-ByteSha256 -Bytes $entryBytes[$evidenceName]
+                $reviewHashPass = (
+                    [string]$review.independentReviewStatus -ceq 'NOT_PERFORMED' -and
+                    [string]$review.fullCompletionStatus -ceq 'PASS' -and
+                    [bool]$review.fullCompletionEvidenceReused -and
+                    -not [bool]$review.fullCompletionReexecuted -and
+                    -not [bool]$review.externalArtifactRequired -and
+                    [int]$review.stagePassed -eq [int]$review.stageSelected -and
+                    [int]$review.stageSelected -gt 0 -and
+                    [int]$review.packageWriteAttemptCountBeforeHandoff -eq 0 -and
+                    [string]$assignment.fullCompletionEvidenceSha256 -ceq $fullCompletionEvidenceHash -and
+                    [string]$completion.fullCompletionEvidenceSha256 -ceq $fullCompletionEvidenceHash -and
+                    [string]$assignment.fullCompletionResultSha256 -ceq [string]$review.fullCompletionResultSha256 -and
+                    [string]$completion.fullCompletionResultSha256 -ceq [string]$review.fullCompletionResultSha256 -and
+                    [string]$assignment.executionEnvelopeSha256 -ceq [string]$review.executionEnvelopeSha256 -and
+                    [string]$completion.executionEnvelopeSha256 -ceq [string]$review.executionEnvelopeSha256
+                )
+                Add-Check -Id 'GENERIC-PRE-REVIEW-VALIDATION-EVIDENCE' -Passed $reviewHashPass
+                if (-not $reviewHashPass) { throw 'Pre-review validation evidence parity failed.' }
             }
-            Add-Check -Id 'GENERIC-INDEPENDENT-REVIEW-HASHES' -Passed $reviewHashPass
-            if (-not $reviewHashPass) { throw 'Independent-review path or hash parity failed.' }
+            else {
+                $reviewedNames = @($review.reviewedArtifacts | ForEach-Object { [string]$_.path })
+                $reviewHashPass = (
+                    ($reviewedNames | Sort-Object -Unique).Count -eq 2 -and
+                    'task.patch' -in $reviewedNames -and 'current-delta.patch' -in $reviewedNames
+                )
+                foreach ($reviewed in @($review.reviewedArtifacts)) {
+                    $reviewHashPass = $reviewHashPass -and
+                        [string]$reviewed.sha256 -ceq (Get-ByteSha256 -Bytes $entryBytes[[string]$reviewed.path])
+                }
+                Add-Check -Id 'GENERIC-INDEPENDENT-REVIEW-HASHES' -Passed $reviewHashPass
+                if (-not $reviewHashPass) { throw 'Independent-review path or hash parity failed.' }
+            }
 
             $inventoryExpectedNames = @($requiredNames | Where-Object { $_ -notin @('package-inventory.json', 'MANIFEST.sha256') } | Sort-Object)
             $inventoryNames = @($inventory.entries | ForEach-Object { [string]$_.path } | Sort-Object)
@@ -843,6 +947,12 @@ try {
             $reportJson = Get-SingleContract -Text $entryText['report.md'] -Kind 'REPORT'
             Assert-Schema -Text $reportJson -SchemaPath (Join-Path $governanceRoot 'generic-report-contract.schema.json') -Name 'report contract'
             $report = $reportJson | ConvertFrom-Json -Depth 100 -DateKind String
+            $reviewStatus = if ($isImplementationReview) {
+                [string]$review.independentReviewStatus
+            }
+            else {
+                [string]$review.result
+            }
             $warningInvariantPass = (
                 [int]$validation.observedWarningCount -eq ([int]$validation.resolvedWarningCount + [int]$validation.openWarningCount) -and
                 [int]$completion.observedWarningCount -eq ([int]$completion.resolvedWarningCount + [int]$completion.openWarningCount) -and
@@ -975,8 +1085,8 @@ try {
                 [string]$report.status -ceq [string]$completion.status -and
                 [bool]$handoff.classicReviewReady -eq [bool]$completion.classicReviewReady -and
                 [bool]$report.classicReviewReady -eq [bool]$completion.classicReviewReady -and
-                [string]$handoff.reviewStatus -ceq [string]$review.result -and
-                [string]$report.reviewStatus -ceq [string]$review.result -and
+                [string]$handoff.reviewStatus -ceq $reviewStatus -and
+                [string]$report.reviewStatus -ceq $reviewStatus -and
                 [int]$report.materialCorrectionCycleCount -eq [int]$completion.materialCorrectionCycleCount -and
                 [int]$report.validationExecutionCount -eq [int]$completion.validationExecutionCount -and
                 [int]$report.infrastructureOrInvocationFailureCount -eq [int]$completion.infrastructureOrInvocationFailureCount -and
@@ -992,8 +1102,23 @@ try {
                 ((@($report.excludedDeltaPaths | Sort-Object) -join "`n") -ceq (@($scope.excludedDeltaPaths | Sort-Object) -join "`n")) -and
                 -not [bool]$handoff.commitAuthorized -and -not [bool]$report.commitAuthorized
             )
+            if ($isImplementationReview) {
+                $contractParityPass = $contractParityPass -and
+                    [string]$handoff.fullCompletionEvidenceSha256 -ceq $fullCompletionEvidenceHash -and
+                    [string]$report.fullCompletionEvidenceSha256 -ceq $fullCompletionEvidenceHash -and
+                    [string]$handoff.fullCompletionResultSha256 -ceq [string]$review.fullCompletionResultSha256 -and
+                    [string]$report.fullCompletionResultSha256 -ceq [string]$review.fullCompletionResultSha256 -and
+                    [string]$handoff.executionEnvelopeSha256 -ceq [string]$review.executionEnvelopeSha256 -and
+                    [string]$report.executionEnvelopeSha256 -ceq [string]$review.executionEnvelopeSha256
+            }
             $readinessPass = if ([bool]$completion.classicReviewReady) {
-                [string]$review.result -ceq 'PASS' -and
+                ($isImplementationReview -or [string]$review.result -ceq 'PASS') -and
+                (-not $isImplementationReview -or (
+                    [string]$review.independentReviewStatus -ceq 'NOT_PERFORMED' -and
+                    [string]$review.fullCompletionStatus -ceq 'PASS' -and
+                    [bool]$review.fullCompletionEvidenceReused -and
+                    -not [bool]$review.fullCompletionReexecuted
+                )) -and
                 [string]$validation.result -ceq 'PASS' -and
                 [bool]$completion.zipFreeReadinessPassed -and
                 [bool]$report.zipFreeReadinessPassed -and
@@ -1034,10 +1159,6 @@ try {
             if (-not $visiblePass) { throw 'Visible HANDOFF parity failed.' }
 
             $status = 'PASS'
-        }
-        finally { $archive.Dispose() }
-    }
-    finally { $stream.Dispose() }
 }
 catch {
     $failureMessage = $_.Exception.Message
@@ -1052,7 +1173,21 @@ finally {
             }
             [System.IO.File]::WriteAllText(
                 $resolvedReportPath,
-                ([ordered]@{ schemaVersion = 1; status = $status; packagePath = $resolvedPackagePath; packageSha256 = if (Test-Path -LiteralPath $resolvedPackagePath -PathType Leaf) { (Get-FileHash -LiteralPath $resolvedPackagePath -Algorithm SHA256).Hash.ToLowerInvariant() } else { $null }; checks = @($checks); failureMessage = $failureMessage } | ConvertTo-Json -Depth 20),
+                ([ordered]@{
+                        schemaVersion = 1
+                        status = $status
+                        packagePath = $resolvedPackagePath
+                        packageSha256 = if (Test-Path -LiteralPath $resolvedPackagePath -PathType Leaf) { (Get-FileHash -LiteralPath $resolvedPackagePath -Algorithm SHA256).Hash.ToLowerInvariant() } else { $null }
+                        validationExecutionCount = 1
+                        infrastructureOrInvocationFailureCount = [int](-not [string]::IsNullOrWhiteSpace($failureMessage))
+                        fullMatrixRunCount = 0
+                        packageWriteAttemptCount = 0
+                        generatedTaskControllerFileCount = 0
+                        generatedTaskControllerLineCount = 0
+                        readOnlyProbeCount = $checks.Count
+                        checks = @($checks)
+                        failureMessage = $failureMessage
+                    } | ConvertTo-Json -Depth 20),
                 [System.Text.UTF8Encoding]::new($false)
             )
         }
@@ -1066,11 +1201,25 @@ finally {
         PackagePath = $resolvedPackagePath
         CheckCount = $checks.Count
         FailureCount = @($checks | Where-Object Result -ceq 'FAIL').Count
+        FailedChecks = @($checks | Where-Object Result -ceq 'FAIL' | ForEach-Object {
+                "$($_.Id): $($_.Evidence)"
+            }) -join '; '
+        ValidationExecutionCount = 1
+        InfrastructureOrInvocationFailureCount = [int](-not [string]::IsNullOrWhiteSpace($failureMessage))
+        FullMatrixRunCount = 0
+        PackageWriteAttemptCount = 0
+        GeneratedTaskControllerFileCount = 0
+        GeneratedTaskControllerLineCount = 0
+        ReadOnlyProbeCount = $checks.Count
         ReportPath = $resolvedReportPath
         FailureMessage = $failureMessage
         NextAction = if ($status -ceq 'PASS') { 'Use the validated package at the authorized next checkpoint.' } else { 'Correct the failed generic handoff gate and generate a fresh package.' }
     } | Format-List
 }
 
-if ($status -ceq 'PASS') { exit 0 }
-exit 1
+$terminalExitCode = if ($status -ceq 'PASS') { 0 } else { 1 }
+if ($ReturnInsteadOfExit) {
+    $global:LASTEXITCODE = $terminalExitCode
+    return
+}
+exit $terminalExitCode

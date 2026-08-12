@@ -57,6 +57,84 @@ one final full run. Resume/checkpoint evidence is accepted only when the
 orchestrator binds immutable inputs, selection inventory, completed cases,
 outputs, and repository state; otherwise the run starts fresh.
 
+BL-339 realizes that decision as one strict request/result pair, one
+permanent PowerShell module, and one thin runner. The catalog owns exactly seven
+orchestration profiles. Their common cheap-gate prefix is parser/syntax, leading
+`.gitattributes`/`.editorconfig` text policy, `git diff --check`, complete
+external/ignored-input existence and hashes, toolchain/platform/execution
+context, and repository/source/worktree/HEAD/tree/file-hash/selector binding.
+The first failed cheap gate marks later cheap gates `NOT_RUN` and prevents typed
+subordinate evidence from being consumed.
+
+The BL-339 correction handoff uses the same sole producer with the explicit
+`FINDING_CORRECTION` discriminator. Its previous-review state is either a
+commit or an immutable review package; package mode reconstructs the reviewed
+tree and binds every relevant previous postimage before a correction patch may
+be accepted. Directory-first preflight is a validation state, not a second
+producer and not authorization to write a ZIP.
+
+The same producer also creates a fresh ZIP-free final-content staging directory
+whose internal bytes already describe the immutable review package. The
+preflight and final-content states are discriminated and independently
+validated; only a later authorization may perform the single `CreateNew`.
+Product validation derives correction inventory from isolated Git plumbing,
+binds rename source and target, rejects actual/reference-only overlap, and
+task-binds every finding set. Commit and immutable-package previous-review modes
+are both executed by the permanent functional fixture matrix.
+
+The same report survives both directory states as a complete correction
+artifact. A canonical embedded JSON contract binds findings/dispositions,
+previous review, original patch bytes and path counts, scope semantics,
+regression evidence, and focused validation. Final-content derivation changes
+only its six lifecycle/package fields; the productive validator reparses and
+cross-checks all subject fields instead of accepting narrative token presence.
+
+The complete source working-tree state is an immutable request binding. The
+orchestrator hashes the unmodified stdout bytes of exactly
+`git status --porcelain=v2 --untracked-files=all`, compares the actual SHA-256
+with `expectedStatusSha256`, and reports both values. Scope and file-hash paths
+must be equal canonical sets with no exact duplicates or Windows case
+collisions. A protected foreign worktree is never an implicit exception: it is
+modeled independently with root, HEAD, tree, branch/detached state, and its own
+raw-status hash.
+
+For a separately declared publication matrix, the controller also owns an
+Expected Execution Input Binding created before runner start from the canonical
+catalog, runner, and dependency bytes. It passes both the strict binding
+artifact and its SHA-256 to the child. The runner uses independent .NET
+primitives to verify that contract before every module import and immediately
+before the first case, then rechecks it before recording any case result.
+Result V2 preserves exactly the controller's binding. Runner or dependency
+drift in either pre-start or post-import window therefore terminates with zero
+accepted cases rather than evidence from an unbound loaded code version.
+
+Task assignments are data. Existing fixture selectors remain the only dynamic
+case inventory and are bound by inventory and selection hashes; Phase A does
+not add case, group, tag, platform, or capability metadata. One canonical
+reader rejects invalid UTF-8, BOMs, duplicate properties, schema/version/profile
+mismatches, non-terminal status, trailing JSON, counter violations, and
+`BLOCKED`/failure-count contradictions. Unchanged PASS evidence is reusable only
+when its own hash and every dependency hash still match. Relevant changes
+invalidate only dependent evidence.
+
+`New-GovernanceHandoff.ps1` remains the sole package/manifest generator. It
+validates fresh staging as a directory after inventory/manifest generation,
+writes the final ZIP once with `CreateNew`, and reopens the archive through the
+same validator. Directory failure writes no ZIP; any invalid attempted ZIP is
+discarded. The package-attempt counter changes from `0` to `1` immediately
+before the first write-capable open of the final path, including a failed open;
+there is no automatic retry. This decision does not change BL-337 process-control ownership or
+BL-338 dynamic listing/selection ownership.
+
+The same producer supports two explicitly discriminated generic transitions.
+`IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` packages the complete implementation
+and hash-bound reusable full-completion evidence before any independent review;
+its review status is `NOT_PERFORMED` and it cannot contain or depend on an
+independent-review artifact. `GENERIC_COMMIT_PREPARATION` remains the later
+review-dependent transition. Both use directory-first validation and the same
+exactly-once final ZIP boundary; their evidence members and schema fields are
+mutually exclusive.
+
 A hash-verified task-local native toolchain is assignment-scoped rather than
 attempt-scoped. It is retained and reused through directly caused fixture,
 parser, schema, or full-run corrections and is removed only at a terminal
@@ -88,16 +166,19 @@ and no redundant blocker or invocation summary fields are introduced.
 - BL-337 implements process isolation and bounded cleanup.
 - BL-338 implements canonical metadata, listing, and selection.
 - BL-339 implements reusable focused/full orchestration and telemetry.
+- BL-340 completes the remaining workflow-generator and reusable-profile
+  migration onto the BL-339 contract, including current `currentStateGate`
+  generation and explicit schema-version-1 historical-read compatibility.
 - Until BL-338 supplies the complete reusable metadata layer, the current
   governance runner derives its active count, ordered metadata-inventory
   SHA-256, platform/capability-valid resolved selection, and completion parity
   from one runtime inventory assembled from its canonical case definitions; no
   fixed current count or separately maintained native case list is
   authoritative.
-- Until BL-339 Phase A updates the workflow generator, schema-version-1 workflow
-  records whose readiness fields remain pending or false may omit
-  `currentStateGate`. Current readiness claims and the versioned
-  `GENERIC_COMMIT_PREPARATION` profile continue to require the typed gate.
+- The currently migrated path accepts a hash-bound BL-339 orchestration request
+  and result. BL-340 owns complete workflow-generator/profile migration: new
+  generated records bind `currentStateGate`, while historical stored
+  schema-version-1 records remain governed by their versioned schema.
 - Existing historical fixture results remain evidence; their runners migrate
   without silently changing case identity or count semantics.
 - This ADR changes governance tooling only, not FlashGate runtime behavior.

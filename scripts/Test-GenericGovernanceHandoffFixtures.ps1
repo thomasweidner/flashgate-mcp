@@ -4,7 +4,9 @@ param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
     [string]$ValidatorPath = (Join-Path $PSScriptRoot 'Test-GenericGovernanceHandoff.ps1'),
     [string]$ResultPath,
-    [string[]]$CaseName = @()
+    [string[]]$CaseName = @(),
+    [switch]$ArgumentBindingRegression,
+    [switch]$SixMatrixFindingRegression
 )
 
 enum SyntheticHostPathClass {
@@ -27,7 +29,156 @@ $authoritativeRoot = $null
 $fixtureAllowedDeltaPaths = @()
 $fixtureIncludedPaths = @()
 $results = [System.Collections.Generic.List[object]]::new()
-$expectedFixtureCount = 98
+$canonicalFixtureInventory = @(
+    'positive-typed-synthetic-host-path-factory',
+    'positive-finding-free-bl230',
+    'positive-directory-first-validation',
+    'positive-one-package-write-telemetry',
+    'negative-directory-error-no-zip-write',
+    'positive-allowed-delta-empty',
+    'positive-allowed-delta-single',
+    'positive-allowed-delta-two',
+    'positive-allowed-delta-three',
+    'positive-allowed-delta-space-special',
+    'positive-generator-child-exit-code',
+    'positive-real-finding',
+    'positive-historical-correction-text-mentions',
+    'positive-canonical-windows-path',
+    'positive-canonical-unix-path',
+    'positive-synthetic-fixture-path',
+    'positive-documented-example-path',
+    'positive-tracked-deletion',
+    'positive-tracked-rename-unchanged',
+    'positive-tracked-rename-modified',
+    'positive-untracked-nonexecutable',
+    'positive-untracked-windows-normalization',
+    'positive-untracked-unix-executable',
+    'positive-literal-pathspec-metacharacters',
+    'negative-literal-pathspec-environment-disabled',
+    'negative-temporary-object-alternate-missing',
+    'negative-temporary-object-alternate-wrong',
+    'negative-temporary-object-directory-left-behind',
+    'negative-unknown-name-status-code',
+    'negative-duplicate-delta-inventory-entry',
+    'negative-rename-delta-target-missing',
+    'negative-repository-path-crlf',
+    'negative-repository-path-nul',
+    'negative-real-object-inventory-divergence',
+    'positive-legacy-correction-generator',
+    'positive-external-independent-review',
+    'positive-classic-readiness-false',
+    'positive-classic-ready-commit-unauthorized',
+    'positive-status-skipped',
+    'positive-status-blocked',
+    'positive-status-cancelled',
+    'positive-status-pending',
+    'positive-status-not-run',
+    'negative-missing-profile',
+    'negative-unknown-profile',
+    'negative-mixed-profile-artifact',
+    'negative-fabricated-correction-matrix',
+    'negative-missing-patch',
+    'negative-extra-delta-path',
+    'negative-missing-completion-report',
+    'negative-missing-validation-evidence',
+    'negative-missing-manifest',
+    'negative-wrong-sha256',
+    'negative-absolute-scope-path',
+    'negative-review-path-drift',
+    'negative-classic-ready-without-external-review',
+    'negative-unauthorized-commit',
+    'negative-legacy-under-generic-profile',
+    'negative-fixed-legacy-finding-id',
+    'negative-empty-correction-matrix',
+    'negative-unknown-json-property',
+    'negative-invalid-utf8',
+    'negative-zip-inventory-manifest-divergence',
+    'negative-actual-finding-regression-matrix',
+    'negative-mixed-profile-discriminator',
+    'negative-warning-invariant',
+    'negative-blocked-increments-failure',
+    'negative-identical-progress-event',
+    'negative-progress-completed-count',
+    'negative-progress-unit-message',
+    'negative-execution-counter-parity',
+    'negative-zip-free-readiness',
+    'negative-in-place-zip-repair',
+    'negative-baseline-mismatch',
+    'negative-current-commit-mismatch',
+    'negative-branch-mismatch',
+    'negative-repository-mismatch',
+    'negative-staged-target-path',
+    'negative-tracked-status-mismatch',
+    'negative-scope-length-mismatch',
+    'negative-scope-mode-mismatch',
+    'negative-scope-hash-mismatch',
+    'negative-inclusion-decision-mismatch',
+    'negative-missing-inclusion-reason',
+    'negative-delete-preimage-hash',
+    'negative-delete-preimage-length',
+    'negative-delete-preimage-mode',
+    'negative-rename-source-path',
+    'negative-rename-target-path',
+    'negative-rename-paths-swapped',
+    'negative-rename-preimage-hash',
+    'negative-rename-postimage-hash',
+    'negative-untracked-mode',
+    'negative-untracked-mode-source',
+    'negative-platform-mode-classification',
+    'negative-rename-single-side-patch',
+    'negative-deleted-path-still-present',
+    'negative-extra-excluded-path-in-patch',
+    'negative-literal-pathspec-excluded-leak',
+    'negative-include-path-missing-from-actual-delta',
+    'negative-private-windows-user-path',
+    'negative-private-unc-path',
+    'negative-private-linux-home-path',
+    'negative-private-macos-user-path',
+    'negative-private-unix-temp-path',
+    'negative-undeclared-windows-absolute-host-path',
+    'negative-undeclared-absolute-host-path'
+)
+$canonicalFixtureNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($fixtureName in $canonicalFixtureInventory) {
+    if (-not $canonicalFixtureNames.Add($fixtureName)) {
+        throw "Canonical fixture inventory contains a duplicate name: $fixtureName"
+    }
+}
+$generatorChildAdapterPath = Join-Path $PSScriptRoot 'Invoke-GenericGovernanceHandoffGeneratorChild.ps1'
+$argumentBindingCaseNames = @(
+    'positive-allowed-delta-empty',
+    'positive-allowed-delta-single',
+    'positive-allowed-delta-two',
+    'positive-allowed-delta-three',
+    'positive-allowed-delta-space-special',
+    'positive-generator-child-exit-code'
+)
+$sixMatrixFindingCaseNames = @(
+    'positive-one-package-write-telemetry',
+    'positive-status-skipped',
+    'positive-status-pending',
+    'positive-status-not-run',
+    'negative-repository-mismatch',
+    'negative-staged-target-path'
+)
+if ($ArgumentBindingRegression) {
+    if (@($CaseName).Count -ne 0 -or $SixMatrixFindingRegression) {
+        throw 'ArgumentBindingRegression cannot be combined with CaseName.'
+    }
+    $CaseName = @($argumentBindingCaseNames)
+}
+if ($SixMatrixFindingRegression) {
+    if (@($CaseName).Count -ne 0) {
+        throw 'SixMatrixFindingRegression cannot be combined with CaseName.'
+    }
+    $CaseName = @($sixMatrixFindingCaseNames)
+}
+if (@($CaseName | Where-Object { -not $canonicalFixtureNames.Contains([string]$_) }).Count -ne 0) {
+    throw 'CaseName contains a value outside the canonical fixture inventory.'
+}
+$selectedFixtureCount = if (@($CaseName).Count -eq 0) { $null } else { @($CaseName | Sort-Object -Unique).Count }
+$canonicalFixtureInventoryCount = 0
+$expectedObservedCount = $selectedFixtureCount
 
 . (Join-Path $PSScriptRoot 'GenericGovernanceGitEvidence.ps1')
 
@@ -41,8 +192,125 @@ function Get-LowerHash {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+function Test-OrderedStringArrayEqual {
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Expected,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$Actual
+    )
+
+    if ($Expected.Count -ne $Actual.Count) { return $false }
+    for ($index = 0; $index -lt $Expected.Count; $index++) {
+        if ($Expected[$index] -cne $Actual[$index]) { return $false }
+    }
+    return $true
+}
+
+function Assert-GeneratorChildArgumentList {
+    param([Parameter(Mandatory)][string[]]$ArgumentList)
+
+    $prefix = @('-NoLogo', '-NoProfile', '-NonInteractive', '-File')
+    $namedParameters = @(
+        '-GeneratorPath', '-Profile', '-TransitionType', '-TaskId',
+        '-SourceDirectory', '-AllowedDeltaPathBindingPath', '-PackagePath',
+        '-AuthoritativeRepositoryRoot'
+    )
+    $expectedCount = $prefix.Count + 1 + (2 * $namedParameters.Count)
+    if ($ArgumentList.Count -ne $expectedCount) {
+        throw "Generator child argv count differs: expected=$expectedCount actual=$($ArgumentList.Count)"
+    }
+    for ($index = 0; $index -lt $prefix.Count; $index++) {
+        if ($ArgumentList[$index] -cne $prefix[$index]) {
+            throw "Generator child argv prefix differs at index $index."
+        }
+    }
+    $offset = $prefix.Count + 1
+    for ($index = 0; $index -lt $namedParameters.Count; $index++) {
+        $argumentIndex = $offset + (2 * $index)
+        if ($ArgumentList[$argumentIndex] -cne $namedParameters[$index]) {
+            throw "Generator child named parameter differs at index $argumentIndex."
+        }
+        if ([string]::IsNullOrWhiteSpace($ArgumentList[$argumentIndex + 1])) {
+            throw "Generator child named parameter has an empty scalar value: $($namedParameters[$index])"
+        }
+    }
+}
+
+function Invoke-StructuredGeneratorChild {
+    param(
+        [Parameter(Mandatory)][string]$GeneratorPath,
+        [Parameter(Mandatory)][string]$Source,
+        [Parameter(Mandatory)][string]$Package,
+        [Parameter(Mandatory)][string]$TaskId,
+        [Parameter(Mandatory)][AllowEmptyCollection()][string[]]$AllowedDeltaPath,
+        [Parameter(Mandatory)][string]$GeneratorAuthoritativeRoot
+    )
+
+    $bindingPath = Join-Path $temporaryRoot ('allowed-delta-path-' + [guid]::NewGuid().ToString('N') + '.json')
+    $process = $null
+    try {
+        $binding = [ordered]@{
+            schemaVersion = 1
+            allowedDeltaPath = @($AllowedDeltaPath)
+        }
+        Write-Utf8 -Path $bindingPath -Text ($binding | ConvertTo-Json -Depth 8)
+
+        $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
+        $arguments = @(
+            '-NoLogo', '-NoProfile', '-NonInteractive', '-File', $generatorChildAdapterPath,
+            '-GeneratorPath', $GeneratorPath,
+            '-Profile', 'GENERIC_COMMIT_PREPARATION',
+            '-TransitionType', 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL',
+            '-TaskId', $TaskId,
+            '-SourceDirectory', $Source,
+            '-AllowedDeltaPathBindingPath', $bindingPath,
+            '-PackagePath', $Package,
+            '-AuthoritativeRepositoryRoot', $GeneratorAuthoritativeRoot
+        )
+        Assert-GeneratorChildArgumentList -ArgumentList $arguments
+
+        $startInfo = [Diagnostics.ProcessStartInfo]::new()
+        $startInfo.FileName = $pwsh
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        foreach ($argument in $arguments) {
+            [void]$startInfo.ArgumentList.Add($argument)
+        }
+        $process = [Diagnostics.Process]::new()
+        $process.StartInfo = $startInfo
+        if (-not $process.Start()) { throw 'Structured generator child did not start.' }
+        $childProcessId = $process.Id
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.WaitForExit()
+        $standardOutput = $stdoutTask.GetAwaiter().GetResult()
+        $standardError = $stderrTask.GetAwaiter().GetResult()
+        return [pscustomobject]@{
+            ExitCode = $process.ExitCode
+            ChildProcessId = $childProcessId
+            ArgumentList = @($arguments)
+            StandardOutput = $standardOutput
+            StandardError = $standardError
+        }
+    }
+    finally {
+        if ($null -ne $process) { $process.Dispose() }
+        if (Test-Path -LiteralPath $bindingPath -PathType Leaf) {
+            Remove-Item -LiteralPath $bindingPath -Force
+        }
+    }
+}
+
 function Test-CaseSelected {
     param([string]$Name)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        throw 'Fixture case name must not be empty.'
+    }
+    if (-not $canonicalFixtureNames.Contains($Name)) {
+        throw "Fixture case is missing from the canonical inventory: $Name"
+    }
     return @($CaseName).Count -eq 0 -or $Name -in $CaseName
 }
 
@@ -338,18 +606,31 @@ $($reportContract | ConvertTo-Json -Depth 20)
 }
 
 function Invoke-Generator {
-    param([string]$Source, [string]$Package, [string]$TaskId = 'BL-230')
-    $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
-    $quote = { param([string]$Value) "'" + $Value.Replace("'", "''") + "'" }
-    $scriptLiteral = & $quote (Join-Path $PSScriptRoot 'New-GovernanceHandoff.ps1')
-    $taskLiteral = & $quote $TaskId
-    $sourceLiteral = & $quote $Source
-    $packageLiteral = & $quote $Package
-    $allowedLiteral = '@(' + (@($fixtureAllowedDeltaPaths | ForEach-Object { & $quote ([string]$_) }) -join ',') + ')'
-    $command = "& $scriptLiteral -Profile GENERIC_COMMIT_PREPARATION -TransitionType COMMIT_PREPARATION_TO_COMMIT_APPROVAL -TaskId $taskLiteral -SourceDirectory $sourceLiteral -AllowedDeltaPath $allowedLiteral -PackagePath $packageLiteral"
-    $encodedCommand = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($command))
-    $output = @(& $pwsh -NoLogo -NoProfile -EncodedCommand $encodedCommand)
-    if ($LASTEXITCODE -ne 0) { throw "Generator failed: $($output -join ' | ')" }
+    param(
+        [string]$Source,
+        [string]$Package,
+        [string]$TaskId = 'BL-230',
+        [string]$GeneratorAuthoritativeRoot = $authoritativeRoot,
+        [switch]$ExpectFailure
+    )
+    $invocation = Invoke-StructuredGeneratorChild `
+        -GeneratorPath (Join-Path $PSScriptRoot 'New-GovernanceHandoff.ps1') `
+        -Source $Source `
+        -Package $Package `
+        -TaskId $TaskId `
+        -AllowedDeltaPath @($fixtureAllowedDeltaPaths) `
+        -GeneratorAuthoritativeRoot $GeneratorAuthoritativeRoot
+    $output = @($invocation.StandardOutput -split '\r?\n' | Where-Object { $_.Length -gt 0 })
+    $script:LastGeneratorOutput = @($output)
+    if ($ExpectFailure) {
+        if ($invocation.ExitCode -eq 0 -or (Test-Path -LiteralPath $Package)) {
+            throw 'Generator was expected to fail before a package write.'
+        }
+        return
+    }
+    if ($invocation.ExitCode -ne 0) {
+        throw "Generator failed with exit code $($invocation.ExitCode): $($output -join ' | ') | $($invocation.StandardError.Trim())"
+    }
 }
 
 function Invoke-ValidationCase {
@@ -510,6 +791,63 @@ function Repair-SemanticPackageSignatures {
     Write-Utf8 -Path (Join-Path $Directory 'MANIFEST.sha256') -Text (($manifestLines -join "`n") + "`n")
 }
 
+function Invoke-StatusClassFixtureCases {
+    param([Parameter(Mandatory)][string]$BaselineZip)
+
+    foreach ($statusClass in @('SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
+        $statusName = 'positive-status-' + $statusClass.ToLowerInvariant().Replace('_', '-')
+        $statusMutation = {
+            param($directory, $status)
+            $path = Join-Path $directory 'validation-summary.json'
+            $json = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+            $json.result = $status
+            $json.checks[0].result = $status
+            $json.progressEvents[0].status = $status
+            $json.failureCount = $(if ($status -ceq 'FAIL') { 1 } else { 0 })
+            foreach ($name in @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
+                $json.progress.statusCounts.$name = $(if ($name -ceq $status) { 1 } else { 0 })
+            }
+            Write-Utf8 -Path $path -Text ($json | ConvertTo-Json -Depth 30)
+        }
+        $statusZip = New-MutatedZip `
+            -Name $statusName `
+            -BaselineZip $BaselineZip `
+            -Mutation $statusMutation `
+            -MutationArgument @($statusClass) `
+            -Resign
+        Invoke-ValidationCase -Name $statusName -Package $statusZip -ExpectedExit 0
+    }
+}
+
+function Invoke-SchemaFirstNegativeFixtureCases {
+    param([Parameter(Mandatory)][string]$BaselineZip)
+
+    $cases = @(
+        @{
+            Name = 'negative-repository-mismatch'
+            Mutation = {
+                param($directory)
+                $json = Get-Content -LiteralPath (Join-Path $directory 'scope-inventory.json') -Raw | ConvertFrom-Json
+                $json.repository = 'https://github.com/example/other.git'
+                Write-Utf8 -Path (Join-Path $directory 'scope-inventory.json') -Text ($json | ConvertTo-Json -Depth 30)
+            }
+        },
+        @{
+            Name = 'negative-staged-target-path'
+            Mutation = {
+                param($directory)
+                $json = Get-Content -LiteralPath (Join-Path $directory 'scope-inventory.json') -Raw | ConvertFrom-Json
+                $json.entries[0].staged = $true
+                Write-Utf8 -Path (Join-Path $directory 'scope-inventory.json') -Text ($json | ConvertTo-Json -Depth 30)
+            }
+        }
+    )
+    foreach ($case in $cases) {
+        $zip = New-MutatedZip -Name $case.Name -BaselineZip $BaselineZip -Mutation $case.Mutation -Resign
+        Invoke-ValidationCase -Name $case.Name -Package $zip -ExpectedExit 1
+    }
+}
+
 function Invoke-TemporaryGit {
     param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string[]]$Argument)
     $output = @(& git -C $Root @Argument 2>&1)
@@ -642,6 +980,62 @@ function New-StatePackage {
     return $zip
 }
 
+function Invoke-ArgumentBindingRegressionCases {
+    $captureScript = Join-Path $PSScriptRoot 'testdata\Capture-GenericGovernanceHandoffGeneratorBinding.ps1'
+    $cases = @(
+        [pscustomobject]@{ Name='positive-allowed-delta-empty'; Values=[string[]]@(); TaskId='BL-999'; ExpectedExit=0 },
+        [pscustomobject]@{ Name='positive-allowed-delta-single'; Values=[string[]]@('one.txt'); TaskId='BL-999'; ExpectedExit=0 },
+        [pscustomobject]@{ Name='positive-allowed-delta-two'; Values=[string[]]@('current.txt','previous.txt'); TaskId='BL-999'; ExpectedExit=0 },
+        [pscustomobject]@{ Name='positive-allowed-delta-three'; Values=[string[]]@('one.txt','two.txt','three.txt'); TaskId='BL-999'; ExpectedExit=0 },
+        [pscustomobject]@{ Name='positive-allowed-delta-space-special'; Values=[string[]]@('docs/path with spaces/[one]&two.txt'); TaskId='BL-999'; ExpectedExit=0 },
+        [pscustomobject]@{ Name='positive-generator-child-exit-code'; Values=[string[]]@('exit-code.txt'); TaskId='BL-998'; ExpectedExit=7 }
+    )
+
+    foreach ($case in $cases) {
+        if (-not (Test-CaseSelected -Name $case.Name)) { continue }
+        $capturePath = Join-Path $temporaryRoot ($case.Name + '.json')
+        $passed = $false
+        $evidence = $null
+        $actualExit = -1
+        try {
+            $invocation = Invoke-StructuredGeneratorChild `
+                -GeneratorPath $captureScript `
+                -Source 'synthetic source directory' `
+                -Package $capturePath `
+                -TaskId $case.TaskId `
+                -AllowedDeltaPath ([string[]]$case.Values) `
+                -GeneratorAuthoritativeRoot 'synthetic authoritative repository root'
+            $actualExit = $invocation.ExitCode
+            if (-not (Test-Path -LiteralPath $capturePath -PathType Leaf)) {
+                throw 'Binding capture child did not persist its result.'
+            }
+            $capture = Get-Content -LiteralPath $capturePath -Raw | ConvertFrom-Json -Depth 10
+            $observedValues = [string[]]@($capture.allowedDeltaPath)
+            $rawPreviousArgumentCount = @($invocation.ArgumentList | Where-Object { $_ -ceq 'previous.txt' }).Count
+            $passed = (
+                $actualExit -eq $case.ExpectedExit -and
+                (Test-OrderedStringArrayEqual -Expected ([string[]]$case.Values) -Actual $observedValues) -and
+                [string]$capture.packagePath -ceq $capturePath -and
+                [string]$capture.sourceDirectory -ceq 'synthetic source directory' -and
+                [string]$capture.authoritativeRepositoryRoot -ceq 'synthetic authoritative repository root' -and
+                $rawPreviousArgumentCount -eq 0
+            )
+            $evidence = "count=$($observedValues.Count); exit=$actualExit; previousRawArgCount=$rawPreviousArgumentCount"
+        }
+        catch {
+            $evidence = $_.Exception.Message
+        }
+        [void]$results.Add([pscustomobject]@{
+            name = $case.Name
+            result = if ($passed) { 'PASS' } else { 'FAIL' }
+            expectedExit = $case.ExpectedExit
+            actualExit = $actualExit
+            expectedFailedCheckId = ''
+            evidence = $evidence
+        })
+    }
+}
+
 try {
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
     $authoritativeRoot = $resolvedRepositoryRoot
@@ -660,7 +1054,76 @@ try {
     $baseZip = Join-Path $temporaryRoot 'positive-finding-free.zip'
     Invoke-Generator -Source $baseSource -Package $baseZip
     Invoke-ValidationCase -Name 'positive-finding-free-bl230' -Package $baseZip -ExpectedExit 0
+    if (Test-CaseSelected -Name 'positive-directory-first-validation') {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $baseDirectory = Join-Path $temporaryRoot 'positive-directory-first'
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($baseZip, $baseDirectory)
+        Invoke-ValidationCase `
+            -Name 'positive-directory-first-validation' `
+            -Package $baseDirectory `
+            -ExpectedExit 0
+    }
+    if (Test-CaseSelected -Name 'positive-one-package-write-telemetry') {
+        $ansiEscapePattern = "$([char]0x1B)\[[0-9;?]*[ -/]*[@-~]"
+        $plainGeneratorOutput = @($script:LastGeneratorOutput | ForEach-Object {
+                [regex]::Replace([string]$_, $ansiEscapePattern, '')
+            })
+        $writeCountMatches = [regex]::Matches(
+            ($plainGeneratorOutput -join [Environment]::NewLine),
+            '(?m)^\s*PackageWriteAttemptCount\s*:\s*1\s*$'
+        ).Count
+        $writeCountPass = $writeCountMatches -eq 1
+        [void]$results.Add([pscustomobject]@{
+            name = 'positive-one-package-write-telemetry'
+            result = if ($writeCountPass) { 'PASS' } else { 'FAIL' }
+            expectedExit = 0
+            actualExit = if ($writeCountPass) { 0 } else { 1 }
+            expectedFailedCheckId = ''
+            evidence = "PackageWriteAttemptCountMatchCount=$writeCountMatches | $($plainGeneratorOutput -join ' | ')"
+        })
+    }
+    if (Test-CaseSelected -Name 'negative-directory-error-no-zip-write') {
+        $blockedZip = Join-Path $temporaryRoot 'negative-directory-error-no-zip-write.zip'
+        try {
+            Invoke-Generator `
+                -Source $baseSource `
+                -Package $blockedZip `
+                -GeneratorAuthoritativeRoot $resolvedRepositoryRoot `
+                -ExpectFailure
+            [void]$results.Add([pscustomobject]@{
+                name = 'negative-directory-error-no-zip-write'
+                result = 'PASS'
+                expectedExit = 1
+                actualExit = 1
+                expectedFailedCheckId = 'GENERIC-CURRENT-STATE'
+                evidence = 'Directory validation failed before PackagePath was created.'
+            })
+        }
+        catch {
+            [void]$results.Add([pscustomobject]@{
+                name = 'negative-directory-error-no-zip-write'
+                result = 'FAIL'
+                expectedExit = 1
+                actualExit = 0
+                expectedFailedCheckId = 'GENERIC-CURRENT-STATE'
+                evidence = $_.Exception.Message
+            })
+        }
+    }
 
+    Invoke-ArgumentBindingRegressionCases
+    $isFocusedArgumentBindingRun = (
+        @($CaseName).Count -gt 0 -and
+        @($CaseName | Where-Object { $_ -notin $argumentBindingCaseNames }).Count -eq 0
+    )
+    $isFocusedArgumentBindingReproducer = (
+        @($CaseName).Count -eq 1 -and
+        [string]$CaseName[0] -ceq 'positive-tracked-rename-unchanged'
+    )
+    $isFocusedSixMatrixFindingRun = (
+        @($CaseName).Count -gt 0 -and
+        @($CaseName | Where-Object { $_ -notin $sixMatrixFindingCaseNames }).Count -eq 0
+    )
     $focusedTelemetryCaseNames = @(
         'positive-status-blocked',
         'negative-blocked-increments-failure',
@@ -670,7 +1133,27 @@ try {
         @($CaseName).Count -gt 0 -and
         @($CaseName | Where-Object { $_ -notin $focusedTelemetryCaseNames }).Count -eq 0
     )
-    if ($isFocusedTelemetryRun) {
+    if ($isFocusedArgumentBindingRun) {
+        # The selected structured-binding cases are complete; skip unrelated fixtures.
+    }
+    elseif ($isFocusedArgumentBindingReproducer) {
+        $renameFixture = New-StateFixtureRepository -Name 'rename-unchanged-focused' -State RENAMED
+        $renameZip = New-StatePackage -Name 'positive-tracked-rename-unchanged-focused' -Fixture $renameFixture
+        Invoke-ValidationCase `
+            -Name 'positive-tracked-rename-unchanged' `
+            -Package $renameZip `
+            -ExpectedExit 0 `
+            -CaseAuthoritativeRoot $renameFixture.Root
+    }
+    elseif ($isFocusedSixMatrixFindingRun) {
+        $focusedNotReadySource = Join-Path $temporaryRoot 'source-six-findings-not-ready'
+        New-GenericSource -Path $focusedNotReadySource -ClassicReviewReady $false
+        $focusedNotReadyZip = Join-Path $temporaryRoot 'six-findings-not-ready.zip'
+        Invoke-Generator -Source $focusedNotReadySource -Package $focusedNotReadyZip
+        Invoke-StatusClassFixtureCases -BaselineZip $focusedNotReadyZip
+        Invoke-SchemaFirstNegativeFixtureCases -BaselineZip $baseZip
+    }
+    elseif ($isFocusedTelemetryRun) {
         $focusedNotReadySource = Join-Path $temporaryRoot 'source-focused-not-ready'
         New-GenericSource -Path $focusedNotReadySource -ClassicReviewReady $false
         $focusedNotReadyZip = Join-Path $temporaryRoot 'focused-not-ready.zip'
@@ -820,26 +1303,10 @@ try {
     Invoke-ValidationCase -Name 'positive-classic-readiness-false' -Package $falseZip -ExpectedExit 0
     Invoke-ValidationCase -Name 'positive-classic-ready-commit-unauthorized' -Package $baseZip -ExpectedExit 0
 
-    foreach ($statusClass in @('SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
-        $statusName = 'positive-status-' + $statusClass.ToLowerInvariant().Replace('_', '-')
-        $statusMutation = {
-            param($directory, $status)
-            $path = Join-Path $directory 'validation-summary.json'
-            $json = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
-            $json.result = $status
-            $json.checks[0].result = $status
-            $json.progressEvents[0].status = $status
-            $json.failureCount = $(if ($status -ceq 'FAIL') { 1 } else { 0 })
-            foreach ($name in @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')) {
-                $json.progress.statusCounts.$name = $(if ($name -ceq $status) { 1 } else { 0 })
-            }
-            Write-Utf8 -Path $path -Text ($json | ConvertTo-Json -Depth 30)
-        }
-        $statusZip = New-MutatedZip -Name $statusName -BaselineZip $falseZip -Mutation $statusMutation -MutationArgument @($statusClass) -Resign
-        Invoke-ValidationCase -Name $statusName -Package $statusZip -ExpectedExit 0
-    }
+    Invoke-StatusClassFixtureCases -BaselineZip $falseZip
 
     $authoritativeRoot = $baseFixture.Root
+    Invoke-SchemaFirstNegativeFixtureCases -BaselineZip $baseZip
     $negativeCases = @(
         @{ Name='negative-missing-profile'; Mutation={param($d) $j=Get-Content (Join-Path $d 'assignment-record.json') -Raw|ConvertFrom-Json; $j.PSObject.Properties.Remove('profile'); Write-Utf8 (Join-Path $d 'assignment-record.json') ($j|ConvertTo-Json -Depth 20)}},
         @{ Name='negative-unknown-profile'; Mutation={param($d) $j=Get-Content (Join-Path $d 'assignment-record.json') -Raw|ConvertFrom-Json; $j.profile='UNKNOWN'; Write-Utf8 (Join-Path $d 'assignment-record.json') ($j|ConvertTo-Json -Depth 20)}},
@@ -874,8 +1341,6 @@ try {
         @{ Name='negative-baseline-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-REPOSITORY-IDENTITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.baselineCommit='a'*40; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-current-commit-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-REPOSITORY-IDENTITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.currentCommit='a'*40; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-branch-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-REPOSITORY-IDENTITY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.branch='codex/wrong-branch'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
-        @{ Name='negative-repository-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-TRUSTED-REPOSITORY'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.repository='https://github.com/example/other.git'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
-        @{ Name='negative-staged-target-path'; Semantic=$true; ExpectedCheck='GENERIC-STAGED-SCOPE-PROHIBITION'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].staged=$true; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-tracked-status-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].gitStatus='TRACKED_MODE_CHANGED'; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-scope-length-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.length=[int64]$j.entries[0].postimage.length+1; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
         @{ Name='negative-scope-mode-mismatch'; Semantic=$true; ExpectedCheck='GENERIC-AUTHORITATIVE-SCOPE-BINDING'; Mutation={param($d) $j=Get-Content (Join-Path $d 'scope-inventory.json') -Raw|ConvertFrom-Json; $j.entries[0].postimage.mode=if([string]$j.entries[0].postimage.mode -ceq '100755'){'100644'}else{'100755'}; Write-Utf8 (Join-Path $d 'scope-inventory.json') ($j|ConvertTo-Json -Depth 30)} },
@@ -959,7 +1424,20 @@ try {
     }
     }
 
-    $expectedObservedCount = if (@($CaseName).Count -eq 0) { $expectedFixtureCount } else { @($CaseName | Sort-Object -Unique).Count }
+    $canonicalFixtureInventoryCount = $canonicalFixtureNames.Count
+    $expectedObservedCount = if (@($CaseName).Count -eq 0) {
+        $canonicalFixtureInventoryCount
+    }
+    else {
+        $selectedFixtureCount
+    }
+    $observedFixtureNames = @($results | ForEach-Object { [string]$_.name })
+    if (@($observedFixtureNames | Sort-Object -Unique).Count -ne $observedFixtureNames.Count) {
+        throw 'Observed fixture result names are not unique.'
+    }
+    if (@($observedFixtureNames | Where-Object { -not $canonicalFixtureNames.Contains($_) }).Count -ne 0) {
+        throw 'Observed fixture results contain a name outside the canonical fixture inventory.'
+    }
     if ($results.Count -ne $expectedObservedCount) { throw "Expected $expectedObservedCount fixtures, observed $($results.Count)." }
     if (@($results | Where-Object result -ceq 'FAIL').Count -gt 0) { throw 'One or more generic handoff fixtures failed.' }
     $status = 'PASS'
@@ -968,18 +1446,47 @@ catch {
     $failureMessage = $_.Exception.Message
 }
 finally {
+    $canonicalFixtureInventoryCount = $canonicalFixtureNames.Count
+    if ($null -eq $expectedObservedCount) {
+        $expectedObservedCount = $canonicalFixtureInventoryCount
+    }
     if ($null -ne $temporaryRoot -and (Test-Path -LiteralPath $temporaryRoot -PathType Container)) {
         Remove-Item -LiteralPath $temporaryRoot -Recurse -Force
     }
     if (-not [string]::IsNullOrWhiteSpace($ResultPath)) {
         $resolvedResultPath = [System.IO.Path]::GetFullPath($ResultPath)
         [void][System.IO.Directory]::CreateDirectory((Split-Path -Parent $resolvedResultPath))
-        Write-Utf8 -Path $resolvedResultPath -Text ([ordered]@{ schemaVersion=1; status=$status; fixtureCount=$results.Count; expectedFixtureCount=$expectedFixtureCount; failureMessage=$failureMessage; results=@($results) } | ConvertTo-Json -Depth 20)
+        Write-Utf8 -Path $resolvedResultPath -Text ([ordered]@{
+                schemaVersion = 1
+                status = $status
+                fixtureCount = $results.Count
+                expectedFixtureCount = $expectedObservedCount
+                observedFixtureCaseCount = $results.Count
+                canonicalFixtureInventoryCount = $canonicalFixtureInventoryCount
+                validationExecutionCount = 1
+                infrastructureOrInvocationFailureCount = [int](-not [string]::IsNullOrWhiteSpace($failureMessage))
+                fullMatrixRunCount = 0
+                packageWriteAttemptCount = 0
+                generatedTaskControllerFileCount = 0
+                generatedTaskControllerLineCount = 0
+                readOnlyProbeCount = 0
+                failureMessage = $failureMessage
+                results = @($results)
+            } | ConvertTo-Json -Depth 20)
     }
     [pscustomobject]@{
         Status = $status; FixtureCount = $results.Count
+        ExpectedFixtureCount = $expectedObservedCount
+        CanonicalFixtureInventoryCount = $canonicalFixtureInventoryCount
         PassedCount = @($results | Where-Object result -ceq 'PASS').Count
         FailureCount = @($results | Where-Object result -ceq 'FAIL').Count
+        ValidationExecutionCount = 1
+        InfrastructureOrInvocationFailureCount = [int](-not [string]::IsNullOrWhiteSpace($failureMessage))
+        FullMatrixRunCount = 0
+        PackageWriteAttemptCount = 0
+        GeneratedTaskControllerFileCount = 0
+        GeneratedTaskControllerLineCount = 0
+        ReadOnlyProbeCount = 0
         FailureMessage = $failureMessage; ResultPath = $ResultPath
         NextAction = if($status -ceq 'PASS'){'Run the complete governance and documentation gates.'}else{'Correct the failing fixture and rerun the matrix.'}
     } | Format-List

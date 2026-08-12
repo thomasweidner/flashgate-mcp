@@ -52,7 +52,7 @@
         "evidenceReferences"
       ],
       "properties": {
-        "id": { "type": "string", "pattern": "^BL333-BL334-REV-[0-9]{3}$" },
+        "id": { "$ref": "#/$defs/findingId" },
         "severity": { "enum": ["BLOCKER", "MAJOR", "MINOR", "NOTE"] },
         "previousStatus": {
           "enum": ["OPEN", "PARTIALLY_CLOSED", "PARTIALLY_CLOSED_CORRECTION_REQUIRED"]
@@ -64,6 +64,10 @@
         "regressionTestIds": { "$ref": "#/$defs/nonEmptyStringArray" },
         "evidenceReferences": { "$ref": "#/$defs/nonEmptyStringArray" }
       }
+    },
+    "findingId": {
+      "type": "string",
+      "pattern": "^BL[0-9]{3}(?:-BL[0-9]{3})?(?:-[A-Z][A-Z0-9]*)*-REV-[0-9]{3}$"
     }
   }
 }

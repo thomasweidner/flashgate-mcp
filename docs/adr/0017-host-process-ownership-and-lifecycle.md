@@ -61,6 +61,8 @@ unclassified process remnants.
 
 ## Related documents
 
+- Canonical implementation task: `BL-341` (renumbered from BL-340 by the
+  2026-08-12 residual-scope extraction; historical evidence retains BL-340).
 - [ADR-0014](0014-native-multi-mode-runtime-and-local-service-deployment.md)
 - [ADR-0015](0015-hybrid-service-execution-identity.md)
 - [Native runtime and service plan](../native-multi-mode-runtime-and-service-plan.md)

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/finding-ledger.schema.json",
+  "title": "FlashGate finding-correction ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "taskId", "findingCount", "findings"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "findingCount": { "type": "integer", "minimum": 1 },
+    "findings": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/finding" } }
+  },
+  "$defs": {
+    "strings": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "finding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "severity", "previousStatus", "status", "disposition", "correction", "correctionPaths", "permanentRegressions", "evidenceReferences", "producerStatus", "reviewerStatus"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^BL[0-9]{3}(?:-BL[0-9]{3})?(?:-[A-Z][A-Z0-9]*)*-REV-[0-9]{3}$" },
+        "severity": { "enum": ["BLOCKER", "MAJOR", "MINOR", "NOTE"] },
+        "previousStatus": { "enum": ["OPEN", "PARTIALLY_CLOSED", "PARTIALLY_CLOSED_CORRECTION_REQUIRED"] },
+        "status": { "const": "CORRECTED_PENDING_DELTA" },
+        "disposition": { "const": "CORRECTED" },
+        "correction": { "type": "string", "minLength": 1 },
+        "correctionPaths": { "$ref": "#/$defs/strings" },
+        "permanentRegressions": { "$ref": "#/$defs/strings" },
+        "evidenceReferences": { "$ref": "#/$defs/strings" },
+        "publicationRegressionEvidence": { "$ref": "#/$defs/publicationEvidenceBinding" },
+        "producerStatus": { "const": "CORRECTED_PENDING_DELTA_REVIEW" },
+        "reviewerStatus": { "const": "OPEN_PENDING_FOCUSED_INDEPENDENT_DELTA_REVIEW" }
+      }
+    },
+    "publicationEvidenceBinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact", "sha256", "matrixId", "caseIds"],
+      "properties": {
+        "artifact": { "const": "publication-regression-evidence.json" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "matrixId": { "type": "string", "minLength": 1 },
+        "caseIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^GHP-[A-Z0-9_-]+$" } }
+      }
+    }
+  }
+}

@@ -14,11 +14,149 @@ first execution. Then run:
     .\scripts\Test-GovernanceConsistency.ps1
     .\scripts\Test-GovernanceConsistencyFixtures.ps1
     .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
+    .\scripts\Test-ImplementationReviewHandoffFixtures.ps1
     .\scripts\Test-DocumentationConsistency.ps1
 }
 ```
 
-ADR-0016 and BL-337 through BL-339 define the next governance-harness layer.
+ADR-0016 and BL-337 through BL-340 define the governance-harness layer.
+
+### Governance validation orchestration profiles
+
+BL-339 uses `scripts/Invoke-GovernanceValidation.ps1` and the strict
+request/result schemas in `Governance/governance-validation-*.schema.json`.
+Exactly seven permanent profiles are cataloged:
+
+1. `documentation-registration`;
+2. `governance-schema-change`;
+3. `fixture-harness-change`;
+4. `finding-correction`;
+5. `commit-preparation`;
+6. `focused-revalidation`;
+7. `full-completion`.
+
+Every profile runs the same fail-fast cheap sequence before any subordinate
+matrix result is read: PowerShell parser/syntax; `.gitattributes` and
+`.editorconfig` EOL/UTF-8/trailing-whitespace/single-final-newline rules;
+`git diff --check`; required external and ignored input existence/hash binding;
+PowerShell/Git/platform/execution-context binding; then explicit source
+repository, isolated worktree, HEAD, tree, file-hash and dynamic selector
+binding. A failed gate stops the sequence and later expensive stages remain
+`NOT_RUN`.
+
+Source binding hashes the raw bytes produced by exactly
+`git status --porcelain=v2 --untracked-files=all` and compares them with the
+request's `expectedStatusSha256`. The result records expected and actual hashes.
+The scope and file-hash path sets must be exactly equal and reject duplicates or
+Windows case collisions. Explicit protected-worktree bindings independently
+verify root, HEAD, tree, branch/detached state, and raw status hash.
+
+The request carries task data, not generated controller code. Subordinate
+results are strict UTF-8 and schema/version/profile/hash bound before use.
+Unchanged PASS evidence is reused only when every declared dependency hash
+matches; changed source, toolchain, selector, or other dependency invalidates
+only its dependants. The result reports `validationExecutionCount`,
+`infrastructureOrInvocationFailureCount`, `fullMatrixRunCount`,
+`packageWriteAttemptCount`, `generatedTaskControllerFileCount`,
+`generatedTaskControllerLineCount`, and `readOnlyProbeCount`. `BLOCKED` is not a
+technical failure, and only `full-completion` may record one full-matrix PASS.
+
+Generic handoff tests validate the staging directory before one same-parent
+candidate write, product-validate the closed candidate, and atomically publish
+the same identity-bound object by hard link without overwrite. Directory,
+serialization, validation, candidate mutation/replacement, race, publication,
+and pre-publication interruption failures leave the final path absent. The
+write-attempt counter is set before the first write-capable candidate open; no
+second attempt occurs. Post-publication interruption preserves the valid ZIP. BL-338 remains the
+exclusive owner of dynamic case/group/tag/platform/capability listing and
+selection; the BL-339 request only binds that interface and its hashes. BL-340
+owns complete workflow-generator/profile migration, including current
+`currentStateGate` generation and explicit historical schema-version-1 reads.
+
+`Test-ImplementationReviewHandoffFixtures.ps1` is the focused permanent matrix
+for the pre-review profile. It covers a valid directory and ZIP, absent prior
+review evidence, full-completion reuse, explicit discriminator failures,
+patch/scope failures, directory-first no-write behavior, exactly one write,
+failed first opens against an existing file and a directory target, no retry,
+reopen/manifest/SHA parity, readiness, and positive/negative compatibility with
+`GENERIC_COMMIT_PREPARATION`. The profile requires
+`pre-review-validation-evidence.json`; commit preparation still requires
+`independent-review-evidence.json`.
+
+`Test-FindingCorrectionHandoffFixtures.ps1` is the focused permanent matrix for
+the productive correction-to-focused-review contract. It covers task-neutral
+BL-339 and historical BL-333/BL-334 finding IDs, commit and immutable-package
+previous states, mutual exclusion and incomplete snapshot negatives, exact
+finding/path parity, generator discriminators, ZIP-free preflight semantics,
+the complete embedded report contract, and compatibility with both generic
+profiles. The productive
+`Test-FindingCorrectionHandoff.ps1` additionally reconstructs the historical
+tree, verifies per-path postimages, applies both patches in isolated Git object
+and index storage, parses the report JSON against
+`finding-correction-report-contract.schema.json`, and validates report parity,
+
+The focused matrix additionally includes a valid two-finding contract and an
+adversarial union-preserving regression-ID swap. Product validation must reject
+that swap even though the aggregate test-ID union is unchanged. Independent
+negative cases cover per-finding severity, previous/current status,
+disposition, correction text, affected paths, evidence references, and
+producer/reviewer status so that cross-contract parity is functional evidence,
+not schema-presence or substring coverage.
+directory inventory, and manifest coverage.
+The matrix is execution-based rather than source-presence-based: it runs the
+productive generator and validator for preflight, final-content directory,
+synthetic final ZIP and reopen, commit and immutable-package previous states,
+historical composite task IDs, unchanged reference-only paths, foreign-task
+finding mutation across all seven finding-bearing contracts, and modification/add/delete/mode/
+unchanged-rename/modified-rename inventory. Targeted negatives cover lifecycle,
+mixed/missing previous state, reference duplicates/case collisions/overlap,
+foreign correction paths, historical declared entry counts, historical rename
+source/target patch-inventory parity, and rename/preimage/postimage binding. Case count is
+derived from the executed result and is not fixed in governance. Permanent
+report cases cover complete preflight and final reports, missing contract,
+wrong current/correction patch hashes, missing/foreign report findings, wrong
+previous binding, cross-lifecycle report substitution, subject-data
+preservation, and synthetic final-ZIP reopen with the full contract.
+
+`Test-GovernanceHandoffPublicationFixtures.ps1` covers all producer profiles
+through the shared publication primitive. Explicit cross-process handshakes
+cover interruption during validation, after validation, and after publication;
+separate drift processes actually mutate and replace a validated candidate.
+CreateNew, serialization, validator, wrong-parent, race, and publication-I/O
+failures remain deterministic product cases.
+
+For a finding that declares this separate matrix, the calling process captures
+a canonical Expected Execution Input Binding before child/runner start. It
+contains the exact catalog, runner, and complete dependency SHA-256 values, and
+the parent also supplies the SHA-256 of the binding artifact. Before every
+module import, and again immediately before Case 1, the runner uses independent
+.NET primitives to compare all current bytes with that parent binding. Each
+case-record operation rechecks the same contract. Deterministic separate-process
+handshakes mutate the runner and a loaded dependency both between parent binding
+and runner start and between import and Case 1; each path fails with zero
+executed or accepted PASS cases. The runner persists
+`publication-regression-result.json`; its `results[]` is the leading source for
+executed `GHP-*` IDs and PASS counts. Result V2 carries exactly the parent-bound
+`executionInputBinding`.
+Evidence V2 binds those exact result bytes and independently binds
+`publication-regression-matrix-catalog.json`, whose fixed matrix definition
+owns the complete required case, source, and dependency sets.
+`Test-FindingCorrectionHandoffFixtures.ps1 -PublicationEvidenceOnly` exercises
+the productive 21-member contract without rerunning the unchanged complete
+finding-correction matrix. It rejects result absence/hash/JSON/count failures,
+missing/foreign/consistently reduced cases, incomplete/extra/stale provenance,
+matrix-definition drift, stale PASS results paired with fresh evidence after
+source/dependency/catalog mutation, and leading-contract mismatch. Synthetic positive
+result data is labelled as contract-fixture data and is never BL-339 execution
+evidence. A correction without a declared publication matrix remains a
+positive compatibility case.
+
+The BL339-REV-001 focused source-binding matrix has 21 cases and covers exact
+and empty status PASS, added tracked/untracked state, missing and status-changed
+paths, content-hash drift, duplicate/case-colliding paths, scope/hash-set
+mismatch, and an independently protected foreign worktree. The BL339-REV-002
+handoff matrix has 19 cases and preserves the existing implementation-review
+and commit-preparation compatibility coverage.
 Their pre-execution contract resolves all selectors before process start,
 binds an explicit source/worktree by branch, commit, tree, and file hashes, and
 selects toolchain, platform, and execution context before mutation. Progress is

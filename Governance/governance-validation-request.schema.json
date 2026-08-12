@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/governance-validation-request.schema.json",
+  "title": "FlashGate governance validation orchestration request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "repository",
+    "sourceRepositoryRoot",
+    "worktreeRoot",
+    "baselineCommit",
+    "currentCommit",
+    "expectedTree",
+    "expectedBranch",
+    "detachedHead",
+    "expectedStatusSha256",
+    "scopePaths",
+    "profile",
+    "fileHashes",
+    "protectedWorktrees",
+    "externalInputs",
+    "toolchain",
+    "selectors",
+    "currentDependencies",
+    "priorEvidence",
+    "subordinateResults"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "repository": { "type": "string", "format": "uri", "pattern": "^https://github\\.com/.+\\.git$" },
+    "sourceRepositoryRoot": { "$ref": "#/$defs/absolutePath" },
+    "worktreeRoot": { "$ref": "#/$defs/absolutePath" },
+    "baselineCommit": { "$ref": "#/$defs/commit" },
+    "currentCommit": { "$ref": "#/$defs/commit" },
+    "expectedTree": { "$ref": "#/$defs/commit" },
+    "expectedBranch": { "type": "string" },
+    "detachedHead": { "type": "boolean" },
+    "expectedStatusSha256": { "$ref": "#/$defs/hash" },
+    "scopePaths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/repositoryPath" }
+    },
+    "profile": {
+      "enum": [
+        "documentation-registration",
+        "governance-schema-change",
+        "fixture-harness-change",
+        "finding-correction",
+        "commit-preparation",
+        "focused-revalidation",
+        "full-completion"
+      ]
+    },
+    "fileHashes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "$ref": "#/$defs/repositoryPath" },
+          "sha256": { "$ref": "#/$defs/hash" }
+        }
+      }
+    },
+    "protectedWorktrees": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "root", "currentCommit", "expectedTree", "expectedBranch", "detachedHead", "expectedStatusSha256"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "root": { "$ref": "#/$defs/absolutePath" },
+          "currentCommit": { "$ref": "#/$defs/commit" },
+          "expectedTree": { "$ref": "#/$defs/commit" },
+          "expectedBranch": { "type": "string" },
+          "detachedHead": { "type": "boolean" },
+          "expectedStatusSha256": { "$ref": "#/$defs/hash" }
+        }
+      }
+    },
+    "externalInputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "purpose", "kind", "sha256"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "path": { "$ref": "#/$defs/absolutePath" },
+          "purpose": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["EXTERNAL", "IGNORED"] },
+          "sha256": { "$ref": "#/$defs/hash" }
+        }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["powerShellPath", "powerShellVersion", "powerShellSha256", "gitPath", "gitSha256", "executionContext"],
+      "properties": {
+        "powerShellPath": { "$ref": "#/$defs/absolutePath" },
+        "powerShellVersion": { "const": "7.6.4" },
+        "powerShellSha256": { "$ref": "#/$defs/hash" },
+        "gitPath": { "$ref": "#/$defs/absolutePath" },
+        "gitSha256": { "$ref": "#/$defs/hash" },
+        "executionContext": { "enum": ["CURRENT_PROCESS", "KNOWN_NORMAL_USER", "NATIVE_LINUX_LOGIN"] }
+      }
+    },
+    "selectors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interface", "inventorySha256", "caseNames", "tags", "targetPlatform", "availableCapabilities"],
+      "properties": {
+        "interface": { "const": "scripts/Test-GovernanceConsistencyFixtures.ps1" },
+        "inventorySha256": { "$ref": "#/$defs/hash" },
+        "caseNames": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "tags": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "targetPlatform": { "enum": ["windows", "linux"] },
+        "availableCapabilities": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "currentDependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dependency" }
+    },
+    "priorEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "path", "sha256", "dependencies"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "status": { "const": "PASS" },
+          "path": { "$ref": "#/$defs/absolutePath" },
+          "sha256": { "$ref": "#/$defs/hash" },
+          "dependencies": { "type": "array", "items": { "$ref": "#/$defs/dependency" } }
+        }
+      }
+    },
+    "subordinateResults": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "schemaPath", "expectedProfile", "sha256"],
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "path": { "$ref": "#/$defs/absolutePath" },
+          "schemaPath": { "$ref": "#/$defs/absolutePath" },
+          "expectedProfile": { "type": "string" },
+          "sha256": { "$ref": "#/$defs/hash" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "absolutePath": { "type": "string", "minLength": 3 },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
+    "repositoryPath": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "sha256": { "$ref": "#/$defs/hash" }
+      }
+    }
+  }
+}

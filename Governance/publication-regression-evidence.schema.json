@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/publication-regression-evidence.schema.json",
+  "title": "FlashGate finding-specific publication regression evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "matrixId",
+    "resultArtifact",
+    "resultSha256",
+    "matrixDefinitionArtifact",
+    "matrixDefinitionSha256",
+    "findingAssignments",
+    "sourceBindings",
+    "dependencyBindings"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "matrixId": { "type": "string", "minLength": 1 },
+    "resultArtifact": { "const": "publication-regression-result.json" },
+    "resultSha256": { "$ref": "#/$defs/sha256" },
+    "matrixDefinitionArtifact": { "const": "Governance/publication-regression-matrix-catalog.json" },
+    "matrixDefinitionSha256": { "$ref": "#/$defs/sha256" },
+    "findingAssignments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["findingId", "caseIds"],
+        "properties": {
+          "findingId": { "$ref": "#/$defs/findingId" },
+          "caseIds": { "$ref": "#/$defs/caseIds" }
+        }
+      }
+    },
+    "sourceBindings": { "$ref": "#/$defs/fileBindings" },
+    "dependencyBindings": { "$ref": "#/$defs/fileBindings" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "findingId": {
+      "type": "string",
+      "pattern": "^BL[0-9]{3}(?:-BL[0-9]{3})?(?:-[A-Z][A-Z0-9]*)*-REV-[0-9]{3}$"
+    },
+    "path": {
+      "type": "string",
+      "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$"
+    },
+    "caseIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^GHP-[A-Z0-9_-]+$" }
+    },
+    "fileBindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": { "$ref": "#/$defs/path" },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "2026-08-04",
+  "catalogVersion": "2026-08-12",
   "registeredGovernanceTasks": [
     { "id": "BL-333", "status": "Done", "role": "FOUNDATION" },
     { "id": "BL-334", "status": "Done", "role": "ENFORCEMENT" },
@@ -35,9 +35,23 @@
     },
     { "id": "BL-337", "status": "Planned", "role": "FIXTURE_RUNNER_PROCESS_AND_TIMEOUT_ISOLATION", "targetSprint": "SPR-61", "adr": "ADR-0016" },
     { "id": "BL-338", "status": "Planned", "role": "FIXTURE_GROUPS_RESUME_AND_PROGRESS_TELEMETRY", "targetSprint": "SPR-61", "adr": "ADR-0016" },
-    { "id": "BL-339", "status": "Planned", "role": "GOVERNANCE_CURRENT_STATE_AND_EXECUTION_TELEMETRY_CONTRACT", "targetSprint": "SPR-61", "adr": "ADR-0016" }
+    { "id": "BL-339", "status": "Done", "role": "GOVERNANCE_CURRENT_STATE_AND_EXECUTION_TELEMETRY_CONTRACT", "targetSprint": "SPR-61", "adr": "ADR-0016", "blockingInfrastructureIds": [], "openInfrastructureFindingCount": 0, "fullCompletionStatus": "PASS", "independentReviewStatus": "PASS", "openFindingCount": 0, "findingStatuses": { "BL339-REV-001": "CLOSED_BY_PRIOR_INDEPENDENT_DELTA_REVIEW", "BL339-REV-002": "CLOSED_BY_PRIOR_INDEPENDENT_DELTA_REVIEW", "BL339-REV-003": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-004": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-005": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-006": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-007": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-008": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-009": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-010": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-011": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-012": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-013": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "BL339-REV-014": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW" }, "nextMandatoryGate": "READY_FOR_BL339_REMOTE_PR_AUTHORIZATION" },
+    { "id": "BL-340", "status": "Planned", "role": "GOVERNANCE_GENERATOR_AND_PROFILE_MIGRATION", "targetSprint": "SPR-61", "adr": "ADR-0016" },
+    { "id": "BL-341", "status": "Planned", "role": "CROSS_MODE_HOST_PROCESS_OWNERSHIP_AND_LIFECYCLE", "targetSprint": "SPR-59", "adr": "ADR-0017" }
   ],
   "handoffProfiles": [
+    {
+      "id": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW",
+      "transitionType": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW",
+      "explicitDiscriminatorRequired": true,
+      "narrativeTokensAreDiscriminators": false,
+      "findingCorrectionArtifactsAllowed": false,
+      "completeCurrentStateBindingRequired": true,
+      "classifiedHostPathPolicyRequired": true,
+      "priorIndependentReviewRequired": false,
+      "fullCompletionEvidenceReuseAllowed": true,
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "current-delta.patch", "MANIFEST.sha256", "package-inventory.json", "pre-review-validation-evidence.json", "report.md", "scope-inventory.json", "task.patch", "validation-summary.json"]
+    },
     {
       "id": "GENERIC_COMMIT_PREPARATION",
       "transitionType": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL",
@@ -46,6 +60,8 @@
       "findingCorrectionArtifactsAllowed": false,
       "completeCurrentStateBindingRequired": true,
       "classifiedHostPathPolicyRequired": true,
+      "priorIndependentReviewRequired": true,
+      "fullCompletionEvidenceReuseAllowed": false,
       "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "current-delta.patch", "independent-review-evidence.json", "MANIFEST.sha256", "package-inventory.json", "report.md", "scope-inventory.json", "task.patch", "validation-summary.json"]
     },
     {
@@ -54,7 +70,13 @@
       "explicitDiscriminatorRequired": true,
       "historicalImplicitTaskIds": ["BL-333/BL-334"],
       "findingCorrectionArtifactsAllowed": true,
-      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "correction-only.patch", "current-delta.patch", "external-governance-manifest.json", "finding-correction-matrix.json", "finding-regression-matrix.json", "focused-delta-review-record.json", "MANIFEST.sha256", "readiness-evidence.json", "report.md", "scope-inventory.json", "trusted-expected-hashes.json", "validation-summary.json"]
+      "previousReviewStateTypes": ["COMMIT", "IMMUTABLE_REVIEW_PACKAGE"],
+      "directoryFirstPreflightSupported": true,
+      "finalPackageContentStagingSupported": true,
+      "artifactLifecycleStates": ["ZIP_FREE_READY_TO_EXECUTE", "FINAL_REVIEW_PACKAGE"],
+      "embeddedReportContractSchema": "finding-correction-report-contract.schema.json",
+      "optionalArtifacts": ["publication-regression-evidence.json", "publication-regression-result.json"],
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "correction-only.patch", "correction-scope-inventory.json", "current-delta.patch", "external-governance-manifest.json", "finding-correction-matrix.json", "finding-ledger.json", "finding-regression-matrix.json", "focused-delta-review-record.json", "MANIFEST.sha256", "package-inventory.json", "previous-review-binding.json", "readiness-evidence.json", "report.md", "scope-inventory.json", "trusted-expected-hashes.json", "validation-summary.json"]
     }
   ],
   "modes": [
@@ -153,7 +175,7 @@
     "resultStatuses": ["PASS", "FAIL", "SKIPPED", "BLOCKED", "CANCELLED", "PENDING", "NOT_RUN"],
     "progressSemantics": "completed/selected unit - Phase: phase",
     "warningInvariant": "observedWarningCount = resolvedWarningCount + openWarningCount; warningCount = openWarningCount",
-    "counterFields": ["materialCorrectionCycleCount", "validationExecutionCount", "infrastructureOrInvocationFailureCount"],
+    "counterFields": ["materialCorrectionCycleCount", "validationExecutionCount", "infrastructureOrInvocationFailureCount", "fullMatrixRunCount", "packageWriteAttemptCount", "generatedTaskControllerFileCount", "generatedTaskControllerLineCount", "readOnlyProbeCount"],
     "requiredPreflightBindings": ["repositoryIdentity", "commitAndBranch", "completeStatus", "scopeAndIds", "parallelWorktrees"],
     "finalFullValidationRunLimit": 1,
     "resumeRequiresHashBoundState": true,
@@ -174,7 +196,7 @@
     "structuredSelectionDiagnosticIdsRequired": true,
     "explicitSourceAndWorktreeParametersRequired": true,
     "hardcodedMainWorktreeAllowed": false,
-    "requiredSourceBindings": ["branch", "commit", "tree", "fileHashes"],
+    "requiredSourceBindings": ["branch", "commit", "tree", "expectedStatusSha256", "scopePaths", "fileHashes", "protectedWorktrees"],
     "nativeEvidenceMustMatchDeltaWorktree": true,
     "standardProbeClasses": ["GIT", "POWERSHELL"],
     "helperCommandShadowingAllowed": false,
@@ -185,6 +207,52 @@
     "blockedAndFailSemanticallyDistinct": true,
     "historicalAndCurrentContractVersionsSeparated": true,
     "scopeOverrunFailsClosed": true
+  },
+  "orchestrationPolicy": {
+    "requestSchema": "Governance/governance-validation-request.schema.json",
+    "resultSchema": "Governance/governance-validation-result.schema.json",
+    "runner": "scripts/Invoke-GovernanceValidation.ps1",
+    "module": "scripts/GovernanceValidationOrchestration.psm1",
+    "typedResultReader": "Read-GovernanceTypedResult",
+    "cheapGateOrder": [
+      "parser-syntax",
+      "text-policy",
+      "git-diff-check",
+      "external-input-binding",
+      "toolchain-context-binding",
+      "source-worktree-selector-binding"
+    ],
+    "taskDefinitionMode": "DATA_FIRST",
+    "generatedControllerPolicy": "EXCEPTION_ONLY_AND_TELEMETRY_REQUIRED",
+    "externalInputBindingRequiredBeforeFixtureStart": true,
+    "knownValidExecutionContextSelectedDirectly": true,
+    "evidenceReuseRequiresExactPassAndDependencyHashes": true,
+    "dependentEvidenceInvalidationRequired": true,
+    "packageSequence": [
+      "FRESH_STAGING",
+      "DIRECTORY_VALIDATION",
+      "INVENTORY_MANIFEST_PASS",
+      "ONE_FINAL_ZIP_WRITE",
+      "ZIP_REOPEN_SHA_PATH_INVENTORY_VALIDATION"
+    ],
+    "profiles": [
+      { "id": "documentation-registration", "requiredSubordinateStages": ["documentation-consistency"], "fullMatrix": false },
+      { "id": "governance-schema-change", "requiredSubordinateStages": ["governance-consistency", "documentation-consistency"], "fullMatrix": false },
+      { "id": "fixture-harness-change", "requiredSubordinateStages": ["orchestration-focused", "governance-fixtures", "documentation-consistency"], "fullMatrix": false },
+      { "id": "finding-correction", "requiredSubordinateStages": ["focused-revalidation", "regression-evidence"], "fullMatrix": false },
+      { "id": "commit-preparation", "requiredSubordinateStages": ["scope-patch-handoff"], "fullMatrix": false },
+      { "id": "focused-revalidation", "requiredSubordinateStages": ["focused-revalidation"], "fullMatrix": false },
+      { "id": "full-completion", "requiredSubordinateStages": ["orchestration-focused", "generic-handoff", "governance-consistency", "documentation-consistency", "shell-validation", "native-linux-standard", "full-completion"], "fullMatrix": true }
+    ],
+    "counterFields": [
+      "validationExecutionCount",
+      "infrastructureOrInvocationFailureCount",
+      "fullMatrixRunCount",
+      "packageWriteAttemptCount",
+      "generatedTaskControllerFileCount",
+      "generatedTaskControllerLineCount",
+      "readOnlyProbeCount"
+    ]
   },
   "activityGatePolicy": {
     "finalGateRequiredImmediatelyBeforeFirstProductiveWrite": true,
@@ -254,7 +322,7 @@
       "id": "DEPENDENCY_TOOLCHAIN",
       "domain": "dependency-toolchain",
       "sources": ["DIFF", "EVENT"],
-      "pathPatterns": [".gitattributes", ".gitignore", "go.mod", "go.sum", "vendor/**", ".golangci.yml", "scripts/**"],
+      "pathPatterns": [".editorconfig", ".gitattributes", ".gitignore", "go.mod", "go.sum", "vendor/**", ".golangci.yml", "scripts/**"],
       "continuousGates": ["dependency", "build", "lint", "supply-chain", "reproducibility"]
     },
     {

@@ -29,6 +29,114 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Closed BL-339 after Full Completion and the final independent review, with
+  REV-001 through REV-014 closed and immutable review-package SHA-256
+  `425A8B4E3D5497C40119E58291E773B25CF02675084653A4C73E685F6ABFB119`
+  preserved. Extracted the still-planned workflow-generator/profile migration
+  as BL-340 and renumbered the unchanged ADR-0017 host-process ownership and
+  lifecycle task from BL-340 to BL-341. This planning migration changes no
+  product behavior and leaves historical reports, evidence, and package names
+  unchanged.
+
+- Corrected BL-339 REV-012/REV-014 without writing a package. Finding-bearing
+  correction contracts now enforce exact per-finding parity for severity,
+  previous/current status, disposition, correction text, affected paths,
+  evidence references, producer/reviewer status, and permanent regression IDs.
+  A valid two-finding product case and a union-preserving regression-ID swap
+  prove that aggregate-set equality cannot hide cross-finding attribution
+  drift. REV-013 remains closed.
+
+- Corrected BL-339 REV-012/REV-013 without writing a package. The publication
+  controller now captures and hash-binds the canonical catalog/runner/dependency
+  execution inputs before child start. The runner independently verifies the
+  binding before every module import and immediately before Case 1, while
+  Result V2 preserves exactly that pre-execution binding. Separate-process
+  handshake regressions prove that runner or dependency drift in either the
+  pre-start or post-import window fails with zero accepted cases.
+
+- Corrected BL-339 REV-011/REV-012 without writing a package. Publication Result
+  V2 now captures the exact canonical catalog, source, and dependency bytes
+  before the first case executes. The product validator enforces exact
+  Result/Evidence/catalog/current-byte parity and focused product cases reject
+  stale PASS results paired with freshly regenerated evidence after source,
+  dependency, or catalog mutation. The immutable Result V1 schema remains only
+  for explicit historical-package reads.
+
+- Corrected BL-339 REV-010/REV-011 by making the existing publication runner's
+  persisted result a separate handoff member. Evidence V2 binds its byte-exact
+  SHA-256 and a canonical fixed matrix catalog; the product validator derives
+  counts/cases from result rows and enforces exact catalog case, source, and
+  dependency sets. Focused product cases reject result-free/fabricated
+  evidence, consistently reduced matrices, incomplete provenance, stale bytes,
+  and strict-JSON violations without expanding into BL-338 selection work.
+
+- Added task-neutral, finding-specific publication regression evidence to the
+  `FINDING_CORRECTION` handoff. The optional machine-readable artifact binds
+  executed `GHP-*` cases, PASS counts, finding assignments, and current
+  source/dependency hashes; four leading contracts bind its exact SHA-256 and
+  the productive validator rejects missing, foreign, stale, or inconsistent
+  evidence while preserving corrections that do not declare this matrix.
+
+- Corrected BL-339 REV-004, REV-008, and REV-009 against immutable review package
+  `E8EAA4B...FB61`: historical scope counts are intrinsically bound; all package
+  and embedded JSON use the duplicate-rejecting canonical reader; and one
+  product-valid same-parent candidate is atomically published without overwrite.
+  Rename-capable historical scopes keep entry count separate from the expanded
+  source/target path set. Candidate bytes are identity-bound before validation
+  and published as the same leased object by atomic no-overwrite hard link,
+  rejecting real concurrent mutation and replacement.
+
+- Corrected the BL-339 finding-correction handoff after the independent focused
+  delta review. ZIP-free preflight and final-package-content bytes now have
+  distinct lifecycle states before the sole `CreateNew`; the productive
+  validator executes both commit and immutable-package previous-review modes,
+  rejects changed reference-only paths and foreign-task findings, and derives
+  mode/rename inventory through canonical Git plumbing. `report.md` now retains
+  its full correction evidence and embeds a canonical schema-validated contract
+  whose findings, dispositions, previous review, unmodified patch hashes, path
+  counts, scope semantics, regression evidence, focused result, and lifecycle
+  fields are checked fail-closed. The 47-case focused product matrix includes
+  complete preflight/final reports, synthetic final-ZIP/reopen, historical
+  composite-ID, lifecycle-preservation, and report-contract negative runs.
+  REV-003 through REV-008 remain
+  `CORRECTED_PENDING_DELTA_REVIEW`; no productive BL-339 ZIP was written.
+
+- Completed the productive `FINDING_CORRECTION` handoff path for
+  `BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW`. The sole handoff producer now
+  supports directory-first `PreflightOnly`, immutable review-package snapshots
+  with complete per-path postimage binding, task-neutral exact finding parity,
+  and `ReadyToExecute` without opening the final ZIP path. Historical
+  commit-based correction records and both generic handoff profiles remain
+  compatible.
+
+- Corrected the BL-339 Phase-A current-state contract to bind the complete raw
+  porcelain-v2 working-tree status, exact case-safe scope/file-hash sets, and
+  separately protected worktrees fail-closed. Corrected final ZIP attempt
+  telemetry so the first write-capable open counts even when it fails and is
+  never retried automatically. Independent findings `BL339-REV-001` and
+  `BL339-REV-002` were `CORRECTED_PENDING_DELTA_REVIEW` at that checkpoint and
+  are now closed by the prior independent delta review; no replacement review
+  package was created in that correction.
+
+- Added the reusable `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` governance
+  handoff profile. It packages the complete implementation delta, exact scope,
+  current-state contracts, and hash-bound reused full-completion evidence for
+  the first independent full review without inventing or requiring prior review
+  evidence. The existing `GENERIC_COMMIT_PREPARATION` contract remains strictly
+  review-dependent, and focused permanent fixtures cover discriminator,
+  patch/scope, manifest, exactly-once ZIP, and compatibility boundaries.
+
+- Added the BL-339 Phase-A governance orchestration implementation, pending
+  completion of the fixture, isolated native, and linked-worktree VCS-bound
+  validation blocked by INF-149 through INF-151: seven
+  data-driven profiles, ordered cheap gates, leading repository text/EOL rules,
+  complete external/ignored-input and source/toolchain/selector binding, a
+  canonical typed result reader, hash-bound evidence reuse/invalidation,
+  optimistic external-document concurrency, and the seven efficiency counters.
+  The existing handoff generator now validates a complete directory before one
+  final ZIP write and reopens or discards the immutable result. BL-337, BL-338,
+  and the remaining BL-339 scope stay planned.
+
 - Registered BL-337 through BL-340. ADR-0016 binds governance fixture-harness
   process isolation, canonical case metadata, progress, and reusable validation
   orchestration; ADR-0017 binds direct STDIO, proxy-edge, and service host

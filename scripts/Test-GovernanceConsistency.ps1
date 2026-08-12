@@ -498,7 +498,16 @@ function Get-CanonicalOperatingPolicies {
             resultStatuses = @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')
             progressSemantics = 'completed/selected unit - Phase: phase'
             warningInvariant = 'observedWarningCount = resolvedWarningCount + openWarningCount; warningCount = openWarningCount'
-            counterFields = @('materialCorrectionCycleCount', 'validationExecutionCount', 'infrastructureOrInvocationFailureCount')
+            counterFields = @(
+                'materialCorrectionCycleCount',
+                'validationExecutionCount',
+                'infrastructureOrInvocationFailureCount',
+                'fullMatrixRunCount',
+                'packageWriteAttemptCount',
+                'generatedTaskControllerFileCount',
+                'generatedTaskControllerLineCount',
+                'readOnlyProbeCount'
+            )
             requiredPreflightBindings = @('repositoryIdentity', 'commitAndBranch', 'completeStatus', 'scopeAndIds', 'parallelWorktrees')
             finalFullValidationRunLimit = 1
             resumeRequiresHashBoundState = $true
@@ -519,7 +528,15 @@ function Get-CanonicalOperatingPolicies {
             structuredSelectionDiagnosticIdsRequired = $true
             explicitSourceAndWorktreeParametersRequired = $true
             hardcodedMainWorktreeAllowed = $false
-            requiredSourceBindings = @('branch', 'commit', 'tree', 'fileHashes')
+            requiredSourceBindings = @(
+                'branch',
+                'commit',
+                'tree',
+                'expectedStatusSha256',
+                'scopePaths',
+                'fileHashes',
+                'protectedWorktrees'
+            )
             nativeEvidenceMustMatchDeltaWorktree = $true
             standardProbeClasses = @('GIT', 'POWERSHELL')
             helperCommandShadowingAllowed = $false
@@ -941,10 +958,20 @@ try {
         'generic-handoff-contract.schema.json',
         'generic-independent-review-evidence.schema.json',
         'generic-package-inventory.schema.json',
+        'generic-pre-review-validation-evidence.schema.json',
         'generic-report-contract.schema.json',
         'generic-scope-inventory.schema.json',
         'generic-validation-summary.schema.json'
     ) | ForEach-Object { Join-Path $governanceRoot $_ }
+    $orchestrationSchemaPaths = @(
+        'governance-validation-request.schema.json',
+        'governance-validation-result.schema.json'
+    ) | ForEach-Object { Join-Path $governanceRoot $_ }
+    $orchestrationImplementationPaths = @(
+        (Join-Path $resolvedRepositoryRoot 'scripts/GovernanceValidationOrchestration.psm1'),
+        (Join-Path $resolvedRepositoryRoot 'scripts/Invoke-GovernanceValidation.ps1'),
+        (Join-Path $resolvedRepositoryRoot 'scripts/Test-GovernanceValidationOrchestration.ps1')
+    )
     $standardPaths = @(
         (Join-Path $governanceRoot 'CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md'),
         (Join-Path $governanceRoot 'FINDING-REMEDIATION-AND-REVIEW-MODE-STANDARD.md'),
@@ -959,7 +986,7 @@ try {
             $regressionMatrixSchemaPath,
             $focusedRecordSchemaPath,
             $reportContractSchemaPath
-        ) + $genericSchemaPaths + $standardPaths) {
+        ) + $genericSchemaPaths + $orchestrationSchemaPaths + $orchestrationImplementationPaths + $standardPaths) {
         Add-GovernanceCheck -Id ('SOURCE-' + [System.IO.Path]::GetFileName($path)) -Passed (Test-Path -LiteralPath $path -PathType Leaf) -Message 'Required governance source exists.' -Evidence $path
     }
     if ($script:Errors.Count -gt 0) {
@@ -978,6 +1005,7 @@ try {
     $boundaryIds = @($catalog.decisionBoundaries | ForEach-Object { [string]$_ })
     $resultIds = @($catalog.changeTriggerResults | ForEach-Object { [string]$_ })
     $findingDispositions = @($catalog.findingDispositions | ForEach-Object { [string]$_ })
+    $orchestrationProfileIds = @($catalog.orchestrationPolicy.profiles | ForEach-Object { [string]$_.id })
 
     Test-UniqueScalarArray -Value $modeIds -Id 'CATALOG-MODES'
     Test-UniqueScalarArray -Value $triggerIds -Id 'CATALOG-TRIGGERS'
@@ -985,8 +1013,82 @@ try {
     Test-UniqueScalarArray -Value $boundaryIds -Id 'CATALOG-BOUNDARIES'
     Test-UniqueScalarArray -Value $resultIds -Id 'CATALOG-RESULTS'
     Test-UniqueScalarArray -Value $findingDispositions -Id 'CATALOG-FINDINGS'
+    Test-UniqueScalarArray -Value $orchestrationProfileIds -Id 'CATALOG-ORCHESTRATION-PROFILES'
     Add-GovernanceCheck -Id 'CATALOG-MODE-COUNT' -Passed (@($catalog.modes).Count -eq 4) `
         -Message 'Catalog contains exactly the four canonical modes.'
+    $expectedOrchestrationProfiles = @(
+        'documentation-registration',
+        'governance-schema-change',
+        'fixture-harness-change',
+        'finding-correction',
+        'commit-preparation',
+        'focused-revalidation',
+        'full-completion'
+    )
+    $expectedCheapGateOrder = @(
+        'parser-syntax',
+        'text-policy',
+        'git-diff-check',
+        'external-input-binding',
+        'toolchain-context-binding',
+        'source-worktree-selector-binding'
+    )
+    $expectedEfficiencyCounters = @(
+        'validationExecutionCount',
+        'infrastructureOrInvocationFailureCount',
+        'fullMatrixRunCount',
+        'packageWriteAttemptCount',
+        'generatedTaskControllerFileCount',
+        'generatedTaskControllerLineCount',
+        'readOnlyProbeCount'
+    )
+    Add-GovernanceCheck -Id 'CATALOG-ORCHESTRATION-PROFILE-COUNT' `
+        -Passed (@($catalog.orchestrationPolicy.profiles).Count -eq 7) `
+        -Message 'Catalog contains exactly seven permanent orchestration profiles.'
+    Add-GovernanceCheck -Id 'CATALOG-ORCHESTRATION-PROFILE-IDS' `
+        -Passed (Test-OrdinalSequenceEqual -Left $orchestrationProfileIds -Right $expectedOrchestrationProfiles) `
+        -Message 'Orchestration profile IDs and order are canonical.'
+    Add-GovernanceCheck -Id 'CATALOG-CHEAP-GATE-ORDER' `
+        -Passed (Test-OrdinalSequenceEqual -Left @($catalog.orchestrationPolicy.cheapGateOrder) -Right $expectedCheapGateOrder) `
+        -Message 'Cheap gates have the canonical fail-fast order.'
+    Add-GovernanceCheck -Id 'CATALOG-EFFICIENCY-COUNTERS' `
+        -Passed (Test-OrdinalSequenceEqual -Left @($catalog.orchestrationPolicy.counterFields) -Right $expectedEfficiencyCounters) `
+        -Message 'Orchestration policy contains the seven canonical efficiency counters.'
+    Add-GovernanceCheck -Id 'CATALOG-DATA-FIRST-TASKS' `
+        -Passed (
+            [string]$catalog.orchestrationPolicy.taskDefinitionMode -ceq 'DATA_FIRST' -and
+            [string]$catalog.orchestrationPolicy.generatedControllerPolicy -ceq 'EXCEPTION_ONLY_AND_TELEMETRY_REQUIRED'
+        ) `
+        -Message 'Task-specific workflow definitions are data-first and generated controllers are exceptional.'
+    Add-GovernanceCheck -Id 'CATALOG-ORCHESTRATION-SOURCE-PATHS' `
+        -Passed (
+            [string]$catalog.orchestrationPolicy.requestSchema -ceq 'Governance/governance-validation-request.schema.json' -and
+            [string]$catalog.orchestrationPolicy.resultSchema -ceq 'Governance/governance-validation-result.schema.json' -and
+            [string]$catalog.orchestrationPolicy.runner -ceq 'scripts/Invoke-GovernanceValidation.ps1' -and
+            [string]$catalog.orchestrationPolicy.module -ceq 'scripts/GovernanceValidationOrchestration.psm1' -and
+            [string]$catalog.orchestrationPolicy.typedResultReader -ceq 'Read-GovernanceTypedResult'
+        ) `
+        -Message 'Catalog binds the canonical request, result, runner, module, and typed result reader.'
+    Add-GovernanceCheck -Id 'CATALOG-DIRECTORY-BEFORE-ZIP' `
+        -Passed (Test-OrdinalSequenceEqual -Left @($catalog.orchestrationPolicy.packageSequence) -Right @(
+                'FRESH_STAGING',
+                'DIRECTORY_VALIDATION',
+                'INVENTORY_MANIFEST_PASS',
+                'ONE_FINAL_ZIP_WRITE',
+                'ZIP_REOPEN_SHA_PATH_INVENTORY_VALIDATION'
+            )) `
+        -Message 'Directory validation and manifest/inventory PASS precede one final ZIP write.'
+    foreach ($profile in @($catalog.orchestrationPolicy.profiles)) {
+        Add-GovernanceCheck -Id "CATALOG-ORCHESTRATION-$($profile.id)-STAGES" `
+            -Passed (@($profile.requiredSubordinateStages).Count -gt 0) `
+            -Message 'Every orchestration profile composes at least one permanent subordinate stage.'
+    }
+    Add-GovernanceCheck -Id 'CATALOG-FULL-COMPLETION-UNIQUE' `
+        -Passed (
+            @($catalog.orchestrationPolicy.profiles | Where-Object { [bool]$_.fullMatrix }).Count -eq 1 -and
+            [bool](@($catalog.orchestrationPolicy.profiles | Where-Object id -ceq 'full-completion')[0].fullMatrix)
+        ) `
+        -Message 'Exactly one profile owns the final full matrix.'
 
     foreach ($modeName in @($canonicalModes.Keys)) {
         $catalogMode = @($catalog.modes | Where-Object id -ceq $modeName)
@@ -1110,7 +1212,7 @@ try {
         -Evidence "max=$maxBacklogId; duplicates=$(@($duplicateBacklogIds | ForEach-Object Name) -join ','); missing=$($missingBacklogNumbers -join ',')"
     Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
         -Passed $backlogText.Contains(
-            'correct current registration delta -> separately authorize task-local native PowerShell bootstrap -> focused native validation -> exactly one full completion run -> one fresh review ZIP -> independent review and later Git integration -> implement INF-133 -> implement BL-339 Phase A -> continue BL-324 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
+            'separately authorize BL-339 remote/PR integration -> continue BL-324 -> schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
             [System.StringComparison]::Ordinal
         ) `
         -Message 'Backlog records the exact post-correction queue through separate Local Work Register removal.'
@@ -2744,6 +2846,13 @@ finally {
                 derivedTriggers = @($derivedTriggers)
                 checkCount     = $script:Checks.Count
                 errorCount     = $script:Errors.Count
+                validationExecutionCount = 1
+                infrastructureOrInvocationFailureCount = [int]($exitCode -eq 2)
+                fullMatrixRunCount = 0
+                packageWriteAttemptCount = 0
+                generatedTaskControllerFileCount = 0
+                generatedTaskControllerLineCount = 0
+                readOnlyProbeCount = $script:Checks.Count
                 failureMessage = $failureMessage
                 checks         = @($script:Checks)
             }
@@ -2768,6 +2877,13 @@ finally {
     DerivedTriggers = @($derivedTriggers) -join ', '
     CheckCount      = $script:Checks.Count
     ErrorCount      = $script:Errors.Count
+    ValidationExecutionCount = 1
+    InfrastructureOrInvocationFailureCount = [int]($exitCode -eq 2)
+    FullMatrixRunCount = 0
+    PackageWriteAttemptCount = 0
+    GeneratedTaskControllerFileCount = 0
+    GeneratedTaskControllerLineCount = 0
+    ReadOnlyProbeCount = $script:Checks.Count
     FailedChecks    = @($script:Errors | ForEach-Object { "$($_.Id): $($_.Evidence)" }) -join '; '
     ReportPath      = $resolvedReportPath
     FailureMessage  = $failureMessage

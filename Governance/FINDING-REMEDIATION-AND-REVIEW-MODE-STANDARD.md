@@ -168,7 +168,7 @@ review directly to the reviewed paths and hashes. Finding-correction artifacts
 remain exclusive to the `FINDING_CORRECTION` profile.
 
 Focused delta records additionally bind the prior review package and hash,
-correction-start commit, `correction-only.patch` and its byte-exact SHA-256,
+the explicitly discriminated previous-review state, `correction-only.patch` and its byte-exact SHA-256,
 `current-delta.patch` and its byte-exact SHA-256, correction-only paths, direct
 interface paths, reviewed finding IDs, regression evidence IDs, allowed delta
 paths, and reference-only paths. The productive validator calculates both
@@ -178,9 +178,63 @@ completion, and report declaration. Changed paths must be a subset of
 correction plus direct-interface paths and must not contain reference-only or
 unrelated paths.
 
-For a finding correction, the strict correction matrix, regression matrix,
-focused-delta record, completion report, and bounded machine-readable report
-contract contain exactly the same finding IDs. Severity, pending-delta status,
+Finding-specific publication regressions are not inferred from a global test
+summary or from self-declared evidence counts. When declared, the runner's
+persisted Result V2 conforms to `publication-regression-result.schema.json`.
+
+Every active finding in a `FINDING_CORRECTION` handoff has one canonical
+per-finding semantic record. The correction matrix, finding regression matrix,
+finding ledger, and embedded report contract must agree exactly for that
+finding on severity, previous status, current status, disposition, correction
+description, affected/correction paths, evidence references, and directly
+mapped producer/reviewer status. In particular, correction-matrix
+`regressionTestIds`, regression-matrix `regressionTests[].id`, ledger
+`permanentRegressions`, and report `regressionTestIds` are equal sets for each
+finding. Equality of only their combined union is insufficient and fails
+closed.
+Before the first case executes, that result binds the exact canonical matrix
+catalog, source, and dependency bytes in `executionInputBinding`; Evidence V2
+independently binds the result bytes plus the same canonical
+`publication-regression-matrix-catalog.json`. The catalog is the single fixed
+source for required cases and complete source/dependency paths; the ledger,
+finding regression matrix, focused delta record, and embedded report contract
+bind the result-derived case set through the evidence SHA-256. This proves
+artifact and source-state parity, not the identity of the test executor. New
+payloads require Result V2; `publication-regression-result-v1.schema.json`
+exists only for explicit reads of already immutable historical packages.
+
+The previous-review state is either `COMMIT` or
+`IMMUTABLE_REVIEW_PACKAGE`. Commit mode preserves the historical
+`correctionStartCommit` semantics. Immutable-package mode binds the package,
+manifest, historical patch, historical scope inventory, reconstructed tree,
+historical reviewed path count, and every relevant previous postimage by path,
+presence, mode, length, and SHA-256. The validator reconstructs the snapshot
+from the bound baseline and historical patch, applies the correction-only patch
+forward, and requires the result to equal the current full-feature state.
+Missing, mixed, incomplete, duplicate, case-colliding, or extra state fails
+closed.
+
+Commit mode verifies the bound commit object and tree in the authoritative
+repository and proves `previous commit + correction-only patch = current
+feature tree`; package-only historical fields are forbidden there. Package mode
+retains the immutable package/member/postimage reconstruction. Actual patch
+inventory comes from isolated Git apply and name-status plumbing, including
+both rename paths and mode changes. Every finding ID in assignment, completion,
+correction matrix, regression matrix, focused record, ledger, and the embedded
+report contract must contain
+the normalized active task component; composite historical IDs remain valid.
+`referenceOnlyPaths` are duplicate- and case-collision-free and strictly
+disjoint from the actual correction delta.
+
+For a finding correction, assignment, completion, the strict correction
+matrix, regression matrix, focused-delta record, ledger, and the bounded
+machine-readable report contract contain exactly the same finding IDs. The
+report additionally binds ledger dispositions, previous-review state/hash and
+binding hash, the unmodified current/correction patch hashes and Git-derived
+path counts, correction/direct-interface/reference-only path sets, permanent
+regression evidence, focused validation, lifecycle and package fields. Its
+subject fields do not change between preflight and final content. Severity,
+pending-delta status,
 disposition, correction evidence, affected paths, regression tests, and
 evidence references agree per finding. `CORRECTED_PENDING_DELTA` is the only
 correction-run terminal status; `CLOSED` requires the later independent delta
