@@ -425,7 +425,7 @@ and the terminally persisted 225-case fixture replacement all pass. INF-122
 and INF-129 are closed. BL-324 remains `Planned` and has not begun.
 
 Binding remaining queue after the BL-230 merge:
-`separately authorize BL-339 remote/PR integration -> continue BL-324 -> schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal`.
+`continue BL-324 -> schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal`.
 
 ### SPR-42 technical identity
 
@@ -562,7 +562,7 @@ These tasks originate in the final independent review of PR #21. They are accept
 |---|---|---|---|
 | BL-337 | Planned | Isolate governance fixture execution in one controlled runner process | Each fixture run owns exactly one controlled runner process identified by PID and start identity; deterministic timeouts use bounded kill, wait, and stream drain; terminal evidence proves cleanup, no surviving fixture/validator process, and unchanged repository state. Every terminal case emits one machine-readable per-case ProgressEvent with only technically required fields. Identical events are suppressed; a heartbeat is explicitly typed, emitted only after the configured interval, and never duplicated for the same interval/state. Output occurs only for progress, phase change, status change, or heartbeat. Missing progress instrumentation on a recurring long run is a finding. |
 | BL-338 | Planned | Add canonical governance case metadata and deterministic selection | One machine-readable leading inventory owns every case ID, group, tag, supported platform, required capability, and Windows-only dependency marker; no Shell/PowerShell array or second maintained list is canonical. `-ListGroups`, `-ListTags`, `-ListCases`, group/tag selection, and the compatible `-CaseName` path derive from that source. All selectors resolve completely before runner-process start and each selected token resolves to exactly one canonical case. Unknown, duplicate, ambiguous, platform-incompatible, or capability-incomplete selections stop fail-closed with structured diagnostics containing the affected IDs and no redundant summary fields. The deterministic metadata inventory and resolved selection are SHA-256-bound. The Post-BL-230 bridge may use this canonical metadata for its focused native subset without claiming BL-338 complete; the remaining list/group/tag interface migration stays Planned. |
-| BL-339 | Done | Provide reusable focused and full governance validation orchestration | **Completed:** implementation and Full Completion passed, and the final independent closure review passed against immutable 19-member package SHA-256 `425A8B4E3D5497C40119E58291E773B25CF02675084653A4C73E685F6ABFB119` (154308 bytes) with no new finding. REV-001 through REV-014 are closed; REV-001/002 retain their prior independent-delta closure and REV-003..014 are `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. `OpenFindingCount=0`; no further BL-339 correction or review cycle is required. Local branch/stage/commit integration is authorized; remote and PR actions remain separate. **Next authorization:** `READY_FOR_BL339_REMOTE_PR_AUTHORIZATION`. |
+| BL-339 | Done | Provide reusable focused and full governance validation orchestration | **Completed:** implementation and Full Completion passed, and the final independent closure review passed against immutable 19-member package SHA-256 `425A8B4E3D5497C40119E58291E773B25CF02675084653A4C73E685F6ABFB119` (154308 bytes) with no new finding. REV-001 through REV-014 are closed; REV-001/002 retain their prior independent-delta closure and REV-003..014 are `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. `OpenFindingCount=0`; no further BL-339 correction or review cycle is required. PR #34 merged through `26734c333341455a63f79c0f1a956309e54177e0`, and all post-merge CI, Metadata Regression, and CodeQL checks passed. BL-339 has no remaining gate or work. |
 | BL-340 | Planned | Complete governance generator/profile migration | Migrate the unchanged workflow generator and all current reusable governance profiles to the complete BL-339 orchestration contract. New generated records must bind a valid `currentStateGate`; stored schema-version-1 records remain explicitly readable under their historical schema without becoming current readiness evidence. Reuse BL-339 orchestration rather than duplicating its implementation or reopening any BL339-REV finding. **Acceptance:** generator, profile, schema/catalog, transition, compatibility, and documentation triggers are identified; focused positive and fail-closed fixtures cover current-record generation, absent/stale state binding, profile parity, and historical-v1 reads; directly affected governance and documentation gates pass; the task is independently implementable and reviewable. BL-340 is an independent SPR-61 task and is not a new prerequisite for resuming BL-324. |
 | BL-341 | Planned | Define cross-mode host-process ownership and lifecycle | ADR-0017 binds direct STDIO, proxy-edge, and persistent service process owners; connection ownership; owner/transport loss; PID plus start identity; bounded shutdown; orphan classification; instance diagnostics; service persistence; separation from Managed Process and Operations/Jobs; and Windows/Linux lifecycle-test ownership. BL-241 retains integrated multi-client/lifecycle tests and BL-129 retains managed-child cleanup. |
 
@@ -572,8 +572,9 @@ All REV-001..014 findings are closed and `OpenFindingCount=0`. Its productive
 `FINDING_CORRECTION` / `BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW` contract,
 per-finding parity gates, permanent focused evidence, full-completion evidence,
 and immutable final package remain authoritative. No further BL-339 correction
-or review cycle is required. The next separately authorized boundary is
-`READY_FOR_BL339_REMOTE_PR_AUTHORIZATION`.
+or review cycle is required. PR #34 merged through
+`26734c333341455a63f79c0f1a956309e54177e0`; its post-merge workflows passed.
+BL-339 has no remaining gate.
 
 The Post-BL-230 compatibility correction did not itself complete BL-338 or the
 residual migration now registered as BL-340.
@@ -662,7 +663,7 @@ terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
 three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
 The binding remaining queue is:
-`separately authorize BL-339 remote/PR integration → continue BL-324 → schedule BL-340 independently in SPR-61 → final documentation convergence → Local Work Register dissolution audit → separately authorized Local Work Register removal`.
+`continue BL-324 → schedule BL-340 independently in SPR-61 → final documentation convergence → Local Work Register dissolution audit → separately authorized Local Work Register removal`.
 
 ## Cross-epic rules
 

@@ -2,8 +2,10 @@
 
 ## Status
 
-Current canonical planning migration pending separately authorized Git
-integration.
+Canonical planning migration fully integrated. PR #34 merged through
+`26734c333341455a63f79c0f1a956309e54177e0`, and all post-merge CI, Metadata
+Regression, and CodeQL checks passed. BL-339 is `Done`; BL-340 and BL-341 remain
+`Planned`.
 
 ## Reason
 

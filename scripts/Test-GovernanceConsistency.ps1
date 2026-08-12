@@ -1212,10 +1212,10 @@ try {
         -Evidence "max=$maxBacklogId; duplicates=$(@($duplicateBacklogIds | ForEach-Object Name) -join ','); missing=$($missingBacklogNumbers -join ',')"
     Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
         -Passed $backlogText.Contains(
-            'separately authorize BL-339 remote/PR integration -> continue BL-324 -> schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
+            'continue BL-324 -> schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
             [System.StringComparison]::Ordinal
         ) `
-        -Message 'Backlog records the exact post-correction queue through separate Local Work Register removal.'
+        -Message 'Backlog records the exact post-BL-339 queue through separate Local Work Register removal.'
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedBaselineCommit)) {
         $baselineBacklog = @(& git -C $resolvedRepositoryRoot show "${ExpectedBaselineCommit}:BACKLOG.md")
