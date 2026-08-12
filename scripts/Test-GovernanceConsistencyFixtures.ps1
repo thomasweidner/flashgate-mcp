@@ -701,11 +701,18 @@ BL-335 remains blocked.
         fixtureResult = 'PASS'
         validatorPath = 'scripts/Test-GovernanceConsistency.ps1'
         findings = @(
-            foreach ($finding in $findingRecords) {
+            foreach ($correctionFinding in $correctionMatrix.findings) {
                 [ordered]@{
-                    id = $finding.id
+                    id = $correctionFinding.id
+                    severity = $correctionFinding.severity
+                    previousStatus = $correctionFinding.previousStatus
+                    status = $correctionFinding.status
+                    disposition = $correctionFinding.disposition
+                    correction = $correctionFinding.correction
+                    affectedPaths = @($correctionFinding.affectedPaths)
+                    evidenceReferences = @($correctionFinding.evidenceReferences)
                     regressionTests = @(
-                        foreach ($testId in $finding.regressionEvidenceIds) {
+                        foreach ($testId in $correctionFinding.regressionTestIds) {
                             [ordered]@{
                                 id = $testId
                                 status = 'PASS'
