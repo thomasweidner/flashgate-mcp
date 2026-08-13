@@ -67,7 +67,7 @@ function New-BaseRecord {
         recordedAt = '2026-07-29T00:00:00+02:00'
         taskId = 'BL-333/BL-334'
         repository = 'https://github.com/thomasweidner/flashgate-mcp.git'
-        baselineCommit = '537ea1c1660cddfde5aace1888242d80a6be77bf'
+        baselineCommit = $actualHead
         currentCommit = $actualHead
         branch = 'docs/bl-333-bl-334-change-trigger-governance'
         executionMode = $Mode
@@ -3094,7 +3094,7 @@ try {
             [string]$case.ExpectedBaselineCommit
         }
         else {
-            '537ea1c1660cddfde5aace1888242d80a6be77bf'
+            $actualHead
         }
         $expectedCurrentCommit = if ('ExpectedCurrentCommit' -in @($case.PSObject.Properties.Name)) {
             [string]$case.ExpectedCurrentCommit
@@ -3325,7 +3325,7 @@ try {
                     'github-actions-run:123'
                 )),
             '-ExpectedRepository ' + (ConvertTo-PowerShellSingleQuotedLiteral -Value 'https://github.com/thomasweidner/flashgate-mcp.git'),
-            '-ExpectedBaselineCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
+            "-ExpectedBaselineCommit $actualHead",
             "-ExpectedCurrentCommit $actualHead",
             '-ExpectedWorkflowCommit 537ea1c1660cddfde5aace1888242d80a6be77bf',
             '-ExpectedRunId 123',

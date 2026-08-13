@@ -29,6 +29,15 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Completed BL-324 through PR #36. Weekly Dependabot version updates for Go
+  modules and GitHub Actions now use bounded grouped update policies, and the
+  governance trigger catalog recognizes `.github/dependabot.yml`. Exact-scope
+  independent review, pre-merge checks, post-merge CI #116, Metadata
+  Regression #45, CodeQL, and the initial `gomod` and `github-actions`
+  Dependabot runs passed. Dependabot Alerts and unpaused Security Updates are
+  enabled, automatic merging remains disabled, and no BL-324 finding or task
+  work remains.
+
 - Closed BL-339 after Full Completion and the final independent review, with
   REV-001 through REV-014 closed and immutable review-package SHA-256
   `425A8B4E3D5497C40119E58291E773B25CF02675084653A4C73E685F6ABFB119`
