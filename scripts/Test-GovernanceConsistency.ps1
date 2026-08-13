@@ -1212,15 +1212,15 @@ try {
         -Evidence "max=$maxBacklogId; duplicates=$(@($duplicateBacklogIds | ForEach-Object Name) -join ','); missing=$($missingBacklogNumbers -join ',')"
     Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
         -Passed $backlogText.Contains(
-            'continue BL-324 -> schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
+            'schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
             [System.StringComparison]::Ordinal
         ) `
-        -Message 'Backlog records the exact post-BL-339 queue through separate Local Work Register removal.'
+        -Message 'Backlog records the exact post-BL-324 queue through separate Local Work Register removal.'
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedBaselineCommit)) {
         $baselineBacklog = @(& git -C $resolvedRepositoryRoot show "${ExpectedBaselineCommit}:BACKLOG.md")
         $baselineBacklogExit = $LASTEXITCODE
-        foreach ($protectedId in @('BL-324')) {
+        foreach ($protectedId in @('BL-340')) {
             $currentLine = @($backlogText -split '\r?\n' | Where-Object { $_ -match "^\| $protectedId \|" })
             $baselineLine = @($baselineBacklog | Where-Object { $_ -match "^\| $protectedId \|" })
             Add-GovernanceCheck -Id "BACKLOG-PROTECTED-$protectedId" `

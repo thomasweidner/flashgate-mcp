@@ -422,10 +422,10 @@ available number only and is not an assigned sprint.
 BL-333/BL-334, BL-335, and BL-251 are complete. The twelve-command native
 standard profile, the final native run, the runspace-free wrapper validation,
 and the terminally persisted 225-case fixture replacement all pass. INF-122
-and INF-129 are closed. BL-324 remains `Planned` and has not begun.
+and INF-129 are closed. BL-324 is `Done` with no remaining task work.
 
-Binding remaining queue after the BL-230 merge:
-`continue BL-324 -> schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal`.
+Binding remaining queue after BL-324 completion:
+`schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal`.
 
 ### SPR-42 technical identity
 
@@ -518,7 +518,7 @@ These tasks originate in the independent review of PR #15. They are intentionall
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-324 | Planned | Configure Dependabot security and version updates | Enable Dependabot alerts and security updates; add weekly version-update checks for Go modules (`gomod`) and GitHub Actions; group routine non-security updates where practical, limit concurrent pull requests, keep automatic merging disabled, and require the normal CI/security checks before merge. |
+| BL-324 | Done | Configure Dependabot security and version updates | **Completed:** PR #36 merged exact reviewed head `eb35b059793eb1327d0570c62174e6090e57a14e` as merge commit `396bfa7720bdd11c8baf3bf133096f911174b303`, changing exactly `.github/dependabot.yml` and `Governance/change-trigger-catalog.json`. Exact-commit/push-scope independent review passed with `OpenFindingCount=0`; pre-merge CI and Metadata Regression passed. Post-merge CI #116, Metadata Regression #45, and CodeQL actions/Go/Python analyses passed; initial GitHub processing for both `gomod` and `github-actions` completed successfully. Dependabot Alerts and Dependabot Security Updates are enabled, security updates are not paused, weekly version updates, routine non-security grouping, and concurrent-PR limits are active, and automatic merging remains disabled. No BL-324 task work remains. |
 
 ### PR #16 independent-review follow-up
 
@@ -585,8 +585,8 @@ the versioned `GENERIC_COMMIT_PREPARATION` profile still require a valid
 `currentStateGate`. Full generator/profile migration is BL-340; group/tag
 metadata and reusable selection remain BL-338.
 
-Completed BL-339 is the required enabler before BL-324 resumes. Its scope was
-limited to explicit isolated source/worktree selection; exact HEAD,
+Completed BL-339 was the required enabler for the now-completed BL-324 work.
+Its scope was limited to explicit isolated source/worktree selection; exact HEAD,
 tree, and file-hash binding; toolchain/platform, execution-context, and selector
 preflights; and standardized Git/PowerShell probes. It uses BL-339 and creates
 no new ID.
@@ -663,7 +663,7 @@ terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
 three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
 The binding remaining queue is:
-`continue BL-324 → schedule BL-340 independently in SPR-61 → final documentation convergence → Local Work Register dissolution audit → separately authorized Local Work Register removal`.
+`schedule BL-340 independently in SPR-61 → final documentation convergence → Local Work Register dissolution audit → separately authorized Local Work Register removal`.
 
 ## Cross-epic rules
 

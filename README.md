@@ -603,8 +603,11 @@ correction passed focused independent delta review with no warnings or
 failures, and `BL251-PRECOMMIT-REV-001` is closed. The exact commit, remote
 push, Draft PR, Hosted CI, and focused independent review of the documentation
 correction are complete. `PR30-REV-001` is
-`CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. Merge remains separately authorized.
-BL-324 remains not begun.
+`CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. BL-324 is complete: PR #36 merged the
+exact reviewed two-path Dependabot configuration, post-merge CI, Metadata
+Regression, CodeQL, and both initial Dependabot ecosystem runs passed,
+Dependabot Alerts and unpaused Security Updates are enabled, and automatic
+merging remains disabled. The next current queue item is BL-340.
 
 ## Basic Usage
 
