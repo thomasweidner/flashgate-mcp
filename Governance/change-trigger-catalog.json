@@ -322,7 +322,7 @@
       "id": "DEPENDENCY_TOOLCHAIN",
       "domain": "dependency-toolchain",
       "sources": ["DIFF", "EVENT"],
-      "pathPatterns": [".editorconfig", ".gitattributes", ".gitignore", "go.mod", "go.sum", "vendor/**", ".golangci.yml", "scripts/**"],
+      "pathPatterns": [".editorconfig", ".gitattributes", ".gitignore", ".github/dependabot.yml", "go.mod", "go.sum", "vendor/**", ".golangci.yml", "scripts/**"],
       "continuousGates": ["dependency", "build", "lint", "supply-chain", "reproducibility"]
     },
     {
