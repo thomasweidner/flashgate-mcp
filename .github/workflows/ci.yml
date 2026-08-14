@@ -239,6 +239,14 @@ jobs:
             "GovernanceCheckCount: $($governanceReport.checkCount)"
             "GovernanceErrorCount: $($governanceReport.errorCount)"
 
+            $hostedPortabilityResultPath = Join-Path $env:RUNNER_TEMP 'governance-hosted-portability.json'
+            .\scripts\Test-GovernanceHostedCiPortabilityFixtures.ps1 `
+              -WorkingPath $env:RUNNER_TEMP `
+              -ResultPath $hostedPortabilityResultPath
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Governance Hosted-CI portability regression failed.'
+            }
+
             .\scripts\Test-GovernanceConsistencyFixtures.ps1 `
               -CanonicalArtifactValidatorPath (Join-Path $PWD 'scripts\Test-ClassicReviewArtifact.ps1')
             if ($LASTEXITCODE -ne 0) {

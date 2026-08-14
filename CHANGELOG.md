@@ -6,6 +6,33 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Added
+
+- Corrected the BL-338 Classic review finding `BL338-CLASSIC-REV-001`: the
+  repository fixture harness no longer imports contributor-local Codex-Work or
+  INF-160 files, accepts optional validated executable/capability inputs, and
+  performs a fail-closed portable process preflight for Hosted CI. A permanent
+  repository-only regression covers listing, canonical selection, invalid
+  selector zero-execution, capability metadata, and the CI invocation. INF-160
+  remains the local Codex caller-boundary route; BL-337 and BL-340 scope is
+  unchanged. The focused independent Classic delta reviews closed
+  `BL338-CLASSIC-REV-001` and the report-convergence finding
+  `BL338-CLASSIC-REV-002` with no new finding;
+  `BL338ClassicPreCommitQualityGate=PASS`. This is not commit authorization.
+- Implemented BL-338 locally with one schema-validated 277-case governance
+  metadata inventory, deterministic metadata and resolved-set SHA-256 bindings,
+  `-ListGroups`/`-ListTags`/`-ListCases`, compatible CaseName plus Group/Tag
+  selection, platform/capability preflight, structured fail-closed diagnostics,
+  ordinal cross-platform ordering, portable PowerShell/Git preflight with
+  optional caller-validated executable bindings,
+  execution descriptors whose IDs derive from the inventory, and a permanent
+  38-case selector matrix. The independent full review and focused delta
+  review closed BL338-REV-001..004 with no open finding. The final native Linux
+  `standard` gate passed with 12 results, 11 validation commands, unchanged
+  Windows source, and zero warnings or failures. Git integration remains
+  separately authorized, so BL-338 stays `Planned`; BL-337 and BL-340 are not
+  implemented.
+
 ### Planning
 
 - Defined the Version 1.0 release boundary: canonical `Planned` backlog tasks are required for the initial stable release and `Later` tasks are accepted post-Version-1.0 work.
