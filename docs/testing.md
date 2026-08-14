@@ -12,6 +12,7 @@ first execution. Then run:
 ```powershell
 & {
     .\scripts\Test-GovernanceConsistency.ps1
+    .\scripts\Test-GovernanceCaseSelectionFixtures.ps1
     .\scripts\Test-GovernanceConsistencyFixtures.ps1
     .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
     .\scripts\Test-ImplementationReviewHandoffFixtures.ps1
@@ -34,6 +35,46 @@ Exactly seven permanent profiles are cataloged:
 5. `commit-preparation`;
 6. `focused-revalidation`;
 7. `full-completion`.
+
+### Canonical governance case selection
+
+BL-338 stores the complete ordered 277-case inventory in
+`Governance/governance-case-metadata.json`; its closed JSON schema is
+`Governance/governance-case-metadata.schema.json`. The shared
+`scripts/GovernanceCaseSelection.psm1` reader rejects unreadable, malformed,
+non-UTF-8, unknown-property, duplicate, unordered, platform-inconsistent,
+capability-incomplete, and unresolvable dependency metadata before any case
+execution. The canonicalized catalog and resolved case objects receive
+independent semantic SHA-256 bindings.
+
+`scripts/Test-GovernanceConsistencyFixtures.ps1` exposes `-ListGroups`,
+`-ListTags`, `-ListCases`, `-CaseName`, `-Group`, and `-Tag`. Exactly one
+selector class may be active; multiple values within that class retain the
+existing semantics (CaseName/Group union, Tag conjunction). Unknown,
+duplicate, mixed-class, zero-result, platform-incompatible, or
+capability-incomplete requests return structured diagnostics with
+`RunnerProcessStartCount=0` and `ValidationExecutionCount=0`. The executable
+descriptors contain execution inputs only: their IDs are assigned directly
+from the canonical ordered inventory, while supplemental routes consume
+ordered metadata subsets rather than a second maintained CaseId list. The
+repository harness has no runtime dependency on Codex-Work or another
+contributor-local infrastructure tree. It binds platform and capabilities
+fail-closed from explicit validated caller inputs or deterministic local
+process discovery. A local Codex caller applies the INF-160
+`pwsh-governance`/`git-local-readonly` routes at its own boundary and may pass
+the selected executable paths; Hosted CI uses only repository files and its
+prepared PowerShell/Git runtime.
+
+`scripts/Test-GovernanceCaseSelectionFixtures.ps1` is the permanent focused
+38-case matrix for list, selector, metadata-schema, deterministic hash/order,
+mixed-valid/invalid, platform, capability, and zero-execution behavior.
+`scripts/Test-GovernanceHostedCiPortabilityFixtures.ps1` adds repository-only
+regressions for all list operations, a canonical case selection and preflight,
+invalid-selector zero execution, the absence of hard-coded contributor paths,
+and the actual CI invocation contract.
+BL-337 later consumes the single resolved set; it does not reselect. BL-340
+remains responsible for generator/profile migration and does not own this
+metadata source.
 
 Every profile runs the same fail-fast cheap sequence before any subordinate
 matrix result is read: PowerShell parser/syntax; `.gitattributes` and
@@ -214,8 +255,13 @@ progress SHA-256 before normal process exit. Every canonical descriptor binds
 its case ID, group, tags, supported platforms, required capabilities, and
 Windows-only dependencies. The current governance runner derives its full
 count and focused platform subset only from that source. `-Tag`,
-`-TargetPlatform`, and `-AvailableCapability` resolve before the first fixture
-process; unknown, duplicate, ambiguous, platform-incompatible, or
+`-TargetPlatform`, and platform capability inputs resolve before the first
+fixture process. Local Codex orchestration consumes INF-160 executable,
+version, hash, realpath, environment, owner, and working-root evidence before
+calling the portable harness; repository and Hosted-CI execution do not import
+INF-160 files. Other callers may provide already validated executable paths and
+capabilities, or use the harness's deterministic process preflight.
+Unknown, duplicate, ambiguous, platform-incompatible, or
 capability-incomplete selections execute zero cases. Full and focused runs fail
 closed unless the resolved selection and completed IDs match that inventory
 exactly, none are unexpectedly skipped, cleanup succeeds, and repository status

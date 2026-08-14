@@ -36,6 +36,24 @@ fixtures. A native subset may contain only cases whose canonical metadata
 supports Linux, whose required capabilities are present, and whose Windows-only
 dependency set is empty.
 
+BL-338 realizes this inventory as the closed, strict-UTF-8
+`Governance/governance-case-metadata.json` contract with
+`Governance/governance-case-metadata.schema.json`. Its contiguous `Order`
+preserves the established BL-339 execution order; groups and tags are derived
+ordinally. `scripts/GovernanceCaseSelection.psm1` is the single reader,
+semantic validator, canonicalizer, list provider, and selector resolver. The
+fixture harness assigns executable descriptor identity from that canonical
+order; descriptor code owns only execution inputs. Supplemental routes consume
+ordered metadata subsets, so no second maintained CaseId/group/tag list exists.
+The repository fixture harness is contributor- and Hosted-CI-portable. It has
+no runtime dependency on a local Codex-Work tree, contributor-specific absolute
+path, or external validator copy. It performs its own fail-closed platform and
+capability preflight from explicitly supplied executable paths/capabilities or
+from deterministic repository-host process discovery. Local Codex callers bind
+the `pwsh-governance` and `git-local-readonly` INF-160 routes at their caller
+boundary and may pass those validated executables into the harness; INF-160 is
+not a repository or Hosted-CI installation requirement.
+
 Long runs emit machine-readable progress and heartbeat events. Progress is
 `completed/selected` with a named unit and phase. Completed means terminal
 `PASS`, `FAIL`, `SKIPPED`, `BLOCKED`, or `CANCELLED`; `PENDING` and `NOT_RUN`
@@ -169,12 +187,11 @@ and no redundant blocker or invocation summary fields are introduced.
 - BL-340 completes the remaining workflow-generator and reusable-profile
   migration onto the BL-339 contract, including current `currentStateGate`
   generation and explicit schema-version-1 historical-read compatibility.
-- Until BL-338 supplies the complete reusable metadata layer, the current
-  governance runner derives its active count, ordered metadata-inventory
-  SHA-256, platform/capability-valid resolved selection, and completion parity
-  from one runtime inventory assembled from its canonical case definitions; no
-  fixed current count or separately maintained native case list is
-  authoritative.
+- BL-338 supplies the complete reusable metadata layer. The governance runner
+  derives its active count, ordered metadata-inventory SHA-256,
+  platform/capability-valid resolved selection, and completion parity from the
+  JSON inventory. No fixed current count, runtime-assembled metadata catalog,
+  or separately maintained native case list is authoritative.
 - The currently migrated path accepts a hash-bound BL-339 orchestration request
   and result. BL-340 owns complete workflow-generator/profile migration: new
   generated records bind `currentStateGate`, while historical stored

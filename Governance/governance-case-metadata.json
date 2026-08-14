@@ -1,0 +1,4786 @@
+{
+  "SchemaVersion": 1,
+  "CapabilityCatalog": [
+    {
+      "CapabilityId": "git",
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ]
+    },
+    {
+      "CapabilityId": "powershell-7.6.4",
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ]
+    }
+  ],
+  "WindowsOnlyDependencyCatalog": [],
+  "Cases": [
+    {
+      "Order": 1,
+      "CaseId": "positive-bundled-start",
+      "Group": "governance-record",
+      "Tags": [
+        "legacy-compatibility",
+        "positive",
+        "post-bl230-native"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 2,
+      "CaseId": "positive-current-state-gate",
+      "Group": "governance-record",
+      "Tags": [
+        "current-state-gate",
+        "positive",
+        "post-bl230-native"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 3,
+      "CaseId": "positive-independent-review",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 4,
+      "CaseId": "positive-focused-delta",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 5,
+      "CaseId": "positive-commit-preparation",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 6,
+      "CaseId": "negative-required-current-state-gate-missing",
+      "Group": "governance-record",
+      "Tags": [
+        "current-state-gate",
+        "negative",
+        "post-bl230-native"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 7,
+      "CaseId": "positive-release-hosted-ci",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 8,
+      "CaseId": "positive-real-filesystem-path",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 9,
+      "CaseId": "positive-real-mcp-path",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 10,
+      "CaseId": "positive-real-release-workflow-path",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 11,
+      "CaseId": "negative-missing-diff-trigger",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 12,
+      "CaseId": "negative-duplicate-search",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 13,
+      "CaseId": "negative-independent-mutation",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 14,
+      "CaseId": "negative-same-run-disposition",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 15,
+      "CaseId": "negative-deferred-without-boundary",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 16,
+      "CaseId": "negative-classic-readiness",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 17,
+      "CaseId": "negative-precommit-classic-readiness-false",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 18,
+      "CaseId": "negative-boundary-result",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 19,
+      "CaseId": "negative-open-precommit-finding",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 20,
+      "CaseId": "negative-release-ci-source",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 21,
+      "CaseId": "negative-release-ci-source-incomplete",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 22,
+      "CaseId": "negative-schema-boolean-type",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 23,
+      "CaseId": "negative-schema-nested-property",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 24,
+      "CaseId": "negative-path-parent-traversal",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 25,
+      "CaseId": "negative-path-absolute-unix",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 26,
+      "CaseId": "negative-path-absolute-windows",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 27,
+      "CaseId": "negative-path-unc",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 28,
+      "CaseId": "negative-path-dot-segment",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 29,
+      "CaseId": "negative-path-backslash",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 30,
+      "CaseId": "negative-path-double-separator",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 31,
+      "CaseId": "negative-path-empty",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 32,
+      "CaseId": "negative-path-control-character",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 33,
+      "CaseId": "negative-path-unicode-nfd",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 34,
+      "CaseId": "negative-path-unknown-repository-relative",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 35,
+      "CaseId": "negative-nonempty-no-trigger",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 36,
+      "CaseId": "positive-same-run-pair",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 37,
+      "CaseId": "negative-same-run-missing-partner",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 38,
+      "CaseId": "negative-same-run-duplicate-partner",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 39,
+      "CaseId": "negative-same-run-missing-evidence",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 40,
+      "CaseId": "negative-same-run-correction-without-discovery",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 41,
+      "CaseId": "negative-same-run-foreign-id",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 42,
+      "CaseId": "positive-deferred-boundary",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 43,
+      "CaseId": "negative-deferred-nonblocking",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 44,
+      "CaseId": "negative-deferred-ambiguous-boundary",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 45,
+      "CaseId": "negative-deferred-empty-next-action",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 46,
+      "CaseId": "negative-deferred-class-mismatch",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 47,
+      "CaseId": "negative-focused-unrelated-path",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 48,
+      "CaseId": "negative-focused-unchanged-declared",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 49,
+      "CaseId": "negative-focused-missing-finding",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 50,
+      "CaseId": "negative-focused-wrong-baseline-hash",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 51,
+      "CaseId": "negative-focused-wrong-patch-hash",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 52,
+      "CaseId": "negative-focused-wrong-current-delta-hash",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 53,
+      "CaseId": "negative-focused-scope-expansion",
+      "Group": "scope-inventory",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 54,
+      "CaseId": "negative-provenance-repository",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 55,
+      "CaseId": "negative-provenance-baseline",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 56,
+      "CaseId": "negative-provenance-head",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 57,
+      "CaseId": "negative-provenance-workflow-commit",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 58,
+      "CaseId": "negative-provenance-run-id",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 59,
+      "CaseId": "negative-provenance-run-attempt",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 60,
+      "CaseId": "negative-provenance-event",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 61,
+      "CaseId": "negative-provenance-ref",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 62,
+      "CaseId": "negative-provenance-head-sha",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 63,
+      "CaseId": "report-contract-valid",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract",
+        "post-bl230-native"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 64,
+      "CaseId": "report-contract-missing-field",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 65,
+      "CaseId": "report-contract-extra-field",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 66,
+      "CaseId": "report-contract-wrong-type",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 67,
+      "CaseId": "report-contract-invalid-enum",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 68,
+      "CaseId": "report-contract-invalid-nested",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 69,
+      "CaseId": "report-contract-assignment-contradiction",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 70,
+      "CaseId": "report-contract-scope-contradiction",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 71,
+      "CaseId": "report-contract-incomplete-finding",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 72,
+      "CaseId": "report-contract-readiness-contradiction",
+      "Group": "completion-report",
+      "Tags": [
+        "completion-contract",
+        "contract"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 73,
+      "CaseId": "negative-real-package-missing-file",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 74,
+      "CaseId": "negative-real-package-wrong-hash",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 75,
+      "CaseId": "negative-real-package-wrong-size",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 76,
+      "CaseId": "negative-real-package-scope-inventory-wrong-scope",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 77,
+      "CaseId": "negative-real-package-wrong-scope",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 78,
+      "CaseId": "negative-real-package-duplicate-scope",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 79,
+      "CaseId": "negative-real-package-path-scope-swap",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 80,
+      "CaseId": "negative-real-package-extra-scope",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 81,
+      "CaseId": "negative-real-package-path-case-duplicate",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 82,
+      "CaseId": "negative-real-package-handoff-stale-status",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 83,
+      "CaseId": "negative-real-package-handoff-target-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 84,
+      "CaseId": "negative-real-package-handoff-closed-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 85,
+      "CaseId": "negative-real-package-handoff-run-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 86,
+      "CaseId": "negative-real-package-handoff-commit-prep-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 87,
+      "CaseId": "negative-real-package-handoff-commit-auth-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 88,
+      "CaseId": "negative-real-package-handoff-review-mode-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 89,
+      "CaseId": "negative-real-package-handoff-next-action-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 90,
+      "CaseId": "negative-real-package-handoff-narrative-contract-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 91,
+      "CaseId": "negative-real-package-handoff-missing-block",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 92,
+      "CaseId": "negative-real-package-handoff-duplicate-block",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 93,
+      "CaseId": "negative-real-package-handoff-invalid-json",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 94,
+      "CaseId": "negative-real-package-handoff-visible-pending-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 95,
+      "CaseId": "negative-real-package-handoff-visible-commit-prep-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 96,
+      "CaseId": "negative-real-package-handoff-visible-commit-auth-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 97,
+      "CaseId": "negative-real-package-handoff-visible-target-count-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 98,
+      "CaseId": "negative-real-package-handoff-visible-corrected-count-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 99,
+      "CaseId": "negative-real-package-handoff-visible-pending-count-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 100,
+      "CaseId": "negative-real-package-handoff-visible-closed-count-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 101,
+      "CaseId": "negative-real-package-handoff-visible-open-count-mismatch",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 102,
+      "CaseId": "negative-real-package-handoff-visible-duplicate-key-same",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 103,
+      "CaseId": "negative-real-package-handoff-visible-duplicate-key-conflict",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 104,
+      "CaseId": "negative-real-package-handoff-visible-unknown-key",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 105,
+      "CaseId": "negative-real-package-handoff-reserved-key-outside",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 106,
+      "CaseId": "negative-real-package-handoff-extra-status-begin",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 107,
+      "CaseId": "negative-real-package-handoff-extra-status-end",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 108,
+      "CaseId": "negative-real-package-handoff-extra-contract-begin",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 109,
+      "CaseId": "negative-real-package-handoff-extra-contract-end",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 110,
+      "CaseId": "negative-real-package-handoff-reversed-status-markers",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 111,
+      "CaseId": "negative-real-package-handoff-reversed-contract-markers",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 112,
+      "CaseId": "negative-real-package-missing-assignment",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 113,
+      "CaseId": "negative-real-package-missing-report",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 114,
+      "CaseId": "negative-real-package-missing-external",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 115,
+      "CaseId": "negative-real-package-extra-member",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 116,
+      "CaseId": "negative-real-package-patch-bytes-stale-manifest",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 117,
+      "CaseId": "negative-real-package-patch-bytes-remanifested",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 118,
+      "CaseId": "negative-real-package-patch-bytes-records-rehashed",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 119,
+      "CaseId": "negative-real-package-current-delta-bytes-remanifested",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 120,
+      "CaseId": "negative-real-package-patches-swapped",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 121,
+      "CaseId": "negative-real-package-trusted-wrong-patch-hash",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 122,
+      "CaseId": "negative-real-package-focused-wrong-patch-hash",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 123,
+      "CaseId": "negative-real-package-focused-wrong-current-hash",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 124,
+      "CaseId": "negative-real-package-focused-missing-finding",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 125,
+      "CaseId": "negative-real-package-focused-extra-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 126,
+      "CaseId": "negative-real-package-focused-missing-interface",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 127,
+      "CaseId": "negative-real-package-focused-wrong-reference",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 128,
+      "CaseId": "negative-real-package-correction-missing-finding",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 129,
+      "CaseId": "negative-real-package-correction-extra-finding",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 130,
+      "CaseId": "negative-real-package-correction-duplicate-finding",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 131,
+      "CaseId": "negative-real-package-correction-missing-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 132,
+      "CaseId": "negative-real-package-correction-foreign-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 133,
+      "CaseId": "negative-real-package-correction-missing-test",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 134,
+      "CaseId": "negative-real-package-regression-unknown-finding",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 135,
+      "CaseId": "negative-real-package-regression-unknown-test",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 136,
+      "CaseId": "negative-real-package-completion-missing-finding",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 137,
+      "CaseId": "negative-real-package-completion-wrong-status",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 138,
+      "CaseId": "negative-real-package-completion-wrong-severity",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 139,
+      "CaseId": "negative-real-package-completion-empty-findings",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 140,
+      "CaseId": "negative-real-package-completion-wrong-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 141,
+      "CaseId": "negative-real-package-completion-foreign-test",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 142,
+      "CaseId": "negative-real-package-completion-empty-evidence",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 143,
+      "CaseId": "negative-real-package-report-missing-repository-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 144,
+      "CaseId": "negative-real-package-report-extra-repository-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 145,
+      "CaseId": "negative-real-package-report-missing-external-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 146,
+      "CaseId": "negative-real-package-report-extra-external-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 147,
+      "CaseId": "negative-real-package-report-stale-status",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 148,
+      "CaseId": "negative-real-package-report-conflicting-queue",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 149,
+      "CaseId": "negative-real-package-report-missing-block",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 150,
+      "CaseId": "negative-real-package-report-double-block",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 151,
+      "CaseId": "negative-real-package-report-dummy-json",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 152,
+      "CaseId": "negative-real-package-local-register-stale-status",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 153,
+      "CaseId": "negative-real-package-open-boundary",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 154,
+      "CaseId": "negative-real-package-repository-internal",
+      "Group": "handoff-package",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 155,
+      "CaseId": "positive-domain-public-mcp-contract",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 156,
+      "CaseId": "positive-domain-filesystem-semantics",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 157,
+      "CaseId": "positive-domain-security-boundary",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 158,
+      "CaseId": "positive-domain-platform-architecture",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 159,
+      "CaseId": "positive-domain-artifact-release-contract",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 160,
+      "CaseId": "positive-domain-dependency-toolchain",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 161,
+      "CaseId": "positive-domain-workflow-ci",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 162,
+      "CaseId": "positive-domain-performance-resource",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 163,
+      "CaseId": "positive-domain-documentation-governance-lifecycle",
+      "Group": "governance-record",
+      "Tags": [
+        "positive"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 164,
+      "CaseId": "negative-mode-independent-review-independent",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 165,
+      "CaseId": "negative-mode-independent-review-repositorymutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 166,
+      "CaseId": "negative-mode-independent-review-externalmutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 167,
+      "CaseId": "negative-mode-independent-review-reviewscope",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 168,
+      "CaseId": "negative-mode-independent-review-commitallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 169,
+      "CaseId": "negative-mode-independent-review-correctionallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 170,
+      "CaseId": "negative-mode-independent-review-requirespriorreview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 171,
+      "CaseId": "negative-mode-independent-review-requiresfocuseddeltareview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 172,
+      "CaseId": "negative-mode-bundled-correction-independent",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 173,
+      "CaseId": "negative-mode-bundled-correction-repositorymutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 174,
+      "CaseId": "negative-mode-bundled-correction-externalmutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 175,
+      "CaseId": "negative-mode-bundled-correction-reviewscope",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 176,
+      "CaseId": "negative-mode-bundled-correction-commitallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 177,
+      "CaseId": "negative-mode-bundled-correction-correctionallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 178,
+      "CaseId": "negative-mode-bundled-correction-requirespriorreview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 179,
+      "CaseId": "negative-mode-bundled-correction-requiresfocuseddeltareview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 180,
+      "CaseId": "negative-mode-focused-independent-delta-review-independent",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 181,
+      "CaseId": "negative-mode-focused-independent-delta-review-repositorymutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 182,
+      "CaseId": "negative-mode-focused-independent-delta-review-externalmutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 183,
+      "CaseId": "negative-mode-focused-independent-delta-review-reviewscope",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 184,
+      "CaseId": "negative-mode-focused-independent-delta-review-commitallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 185,
+      "CaseId": "negative-mode-focused-independent-delta-review-correctionallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 186,
+      "CaseId": "negative-mode-focused-independent-delta-review-requirespriorreview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 187,
+      "CaseId": "negative-mode-focused-independent-delta-review-requiresfocuseddeltareview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 188,
+      "CaseId": "negative-mode-commit-preparation-independent",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 189,
+      "CaseId": "negative-mode-commit-preparation-repositorymutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 190,
+      "CaseId": "negative-mode-commit-preparation-externalmutationallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 191,
+      "CaseId": "negative-mode-commit-preparation-reviewscope",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 192,
+      "CaseId": "negative-mode-commit-preparation-commitallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 193,
+      "CaseId": "negative-mode-commit-preparation-correctionallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 194,
+      "CaseId": "negative-mode-commit-preparation-requirespriorreview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 195,
+      "CaseId": "negative-mode-commit-preparation-requiresfocuseddeltareview",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 196,
+      "CaseId": "negative-policy-remediationpolicy-newormateriallyrebuiltartifactcyclebudget",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 197,
+      "CaseId": "negative-policy-remediationpolicy-establishedvalidatedartifactcyclebudget",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 198,
+      "CaseId": "negative-policy-remediationpolicy-automaticretrybudgetafterfirstproductivewrite",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 199,
+      "CaseId": "negative-policy-remediationpolicy-mutationattemptboundary",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 200,
+      "CaseId": "negative-policy-remediationpolicy-directlycorrectabledefectclasses",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 201,
+      "CaseId": "negative-policy-remediationpolicy-classicreturnrequiredonlyatdecisionauthorizationscopeorbudgetboundary",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 202,
+      "CaseId": "negative-policy-activitygatepolicy-finalgaterequiredimmediatelybeforefirstproductivewrite",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 203,
+      "CaseId": "negative-policy-activitygatepolicy-externalmonitormustbestoppedorplaintextredacted",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 204,
+      "CaseId": "negative-policy-activitygatepolicy-monitoredplaintextpathsandobjectnamesforbiddeninconcurrentcontrolstate",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 205,
+      "CaseId": "negative-policy-activitygatepolicy-timevaryingchecksallowedbetweenfinalgateandwrite",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 206,
+      "CaseId": "negative-policy-validationexecutionpolicy-resultstatuses",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 207,
+      "CaseId": "negative-policy-validationexecutionpolicy-progresssemantics",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 208,
+      "CaseId": "negative-policy-validationexecutionpolicy-warninginvariant",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 209,
+      "CaseId": "negative-policy-validationexecutionpolicy-counterfields",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 210,
+      "CaseId": "negative-policy-validationexecutionpolicy-requiredpreflightbindings",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 211,
+      "CaseId": "negative-policy-validationexecutionpolicy-finalfullvalidationrunlimit",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 212,
+      "CaseId": "negative-policy-validationexecutionpolicy-resumerequireshashboundstate",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 213,
+      "CaseId": "negative-policy-validationexecutionpolicy-failurestatuses",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 214,
+      "CaseId": "negative-policy-validationexecutionpolicy-blockedincrementsfailurecount",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 215,
+      "CaseId": "negative-policy-validationexecutionpolicy-terminalprogresseventpercaserequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 216,
+      "CaseId": "negative-policy-validationexecutionpolicy-minimumprogresseventfields",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 217,
+      "CaseId": "negative-policy-validationexecutionpolicy-identicaleventsuppressionrequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 218,
+      "CaseId": "negative-policy-validationexecutionpolicy-heartbeatintervalrequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 219,
+      "CaseId": "negative-policy-validationexecutionpolicy-heartbeatexplicitlytyped",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 220,
+      "CaseId": "negative-policy-validationexecutionpolicy-allowedprogressemissionreasons",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 221,
+      "CaseId": "negative-policy-validationexecutionpolicy-missingprogressinstrumentationcreatesfinding",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 222,
+      "CaseId": "negative-policy-validationexecutionpolicy-selectionresolvedbeforerunnerstart",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 223,
+      "CaseId": "negative-policy-validationexecutionpolicy-selectorresolutioncardinality",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 224,
+      "CaseId": "negative-policy-validationexecutionpolicy-unknownduplicateambiguousselectionfailsclosed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 225,
+      "CaseId": "negative-policy-validationexecutionpolicy-canonicalcaseinventoryformat",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 226,
+      "CaseId": "negative-policy-validationexecutionpolicy-singlecasemetadatasourcerequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 227,
+      "CaseId": "negative-policy-validationexecutionpolicy-structuredselectiondiagnosticidsrequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 228,
+      "CaseId": "negative-policy-validationexecutionpolicy-explicitsourceandworktreeparametersrequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 229,
+      "CaseId": "negative-policy-validationexecutionpolicy-hardcodedmainworktreeallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 230,
+      "CaseId": "negative-policy-validationexecutionpolicy-requiredsourcebindings",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 231,
+      "CaseId": "negative-policy-validationexecutionpolicy-nativeevidencemustmatchdeltaworktree",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 232,
+      "CaseId": "negative-policy-validationexecutionpolicy-standardprobeclasses",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 233,
+      "CaseId": "negative-policy-validationexecutionpolicy-helpercommandshadowingallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 234,
+      "CaseId": "negative-policy-validationexecutionpolicy-detachedheaddetection",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 235,
+      "CaseId": "negative-policy-validationexecutionpolicy-directexitcodeevaluationrequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 236,
+      "CaseId": "negative-policy-validationexecutionpolicy-timeoutbudgetfromprobecountandmeasuredruntimerequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 237,
+      "CaseId": "negative-policy-validationexecutionpolicy-knownnormalusercontextskipssandboxattempt",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 238,
+      "CaseId": "negative-policy-validationexecutionpolicy-blockedandfailsemanticallydistinct",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 239,
+      "CaseId": "negative-policy-validationexecutionpolicy-historicalandcurrentcontractversionsseparated",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 240,
+      "CaseId": "negative-policy-validationexecutionpolicy-scopeoverrunfailsclosed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 241,
+      "CaseId": "negative-policy-classichandoffpolicy-singlerequiredfiledirecttransferallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 242,
+      "CaseId": "negative-policy-classichandoffpolicy-multiplerequiredfilesrequireexactlyonezip",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 243,
+      "CaseId": "negative-policy-classichandoffpolicy-separatepackagemembertransferallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 244,
+      "CaseId": "negative-policy-classichandoffpolicy-freshfullrebuildrequiredafterartifactchange",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 245,
+      "CaseId": "negative-policy-classichandoffpolicy-manifestcoveragerequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 246,
+      "CaseId": "negative-policy-classichandoffpolicy-sha256validationrequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 247,
+      "CaseId": "negative-policy-classichandoffpolicy-rejectunsafeduplicateorcasecollidingpaths",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 248,
+      "CaseId": "negative-policy-classichandoffpolicy-rejectlinkjunctionorreparsetargets",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 249,
+      "CaseId": "negative-policy-classichandoffpolicy-classicreviewreadyrequirescompletepackage",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 250,
+      "CaseId": "negative-policy-classichandoffpolicy-zipfreereadinessrequired",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 251,
+      "CaseId": "negative-policy-classichandoffpolicy-inplacefinalziprepairallowed",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 252,
+      "CaseId": "negative-policy-classichandoffpolicy-invalidfinalzipdisposition",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 253,
+      "CaseId": "negative-policy-classichandoffpolicy-correctedpackagerequiresfreshstaging",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 254,
+      "CaseId": "negative-selection-error-before-fixture-start",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 255,
+      "CaseId": "negative-explicit-source-worktree-binding",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 256,
+      "CaseId": "negative-helper-command-shadowing",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 257,
+      "CaseId": "negative-detached-head-detection",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 258,
+      "CaseId": "negative-direct-exitcode-evaluation",
+      "Group": "governance-record",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 259,
+      "CaseId": "negative-scope-overrun-fails-closed",
+      "Group": "scope-inventory",
+      "Tags": [
+        "negative"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 260,
+      "CaseId": "negative-orchestration-profile-duplicate",
+      "Group": "governance-record",
+      "Tags": [
+        "bl-339-phase-a",
+        "negative",
+        "orchestration-policy"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 261,
+      "CaseId": "negative-cheap-gate-order",
+      "Group": "governance-record",
+      "Tags": [
+        "bl-339-phase-a",
+        "negative",
+        "orchestration-policy"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 262,
+      "CaseId": "negative-efficiency-counter-omitted",
+      "Group": "governance-record",
+      "Tags": [
+        "bl-339-phase-a",
+        "negative",
+        "orchestration-policy"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 263,
+      "CaseId": "negative-full-completion-owner-duplicate",
+      "Group": "governance-record",
+      "Tags": [
+        "bl-339-phase-a",
+        "negative",
+        "orchestration-policy"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 264,
+      "CaseId": "positive-package-single-file-direct",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "positive",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 265,
+      "CaseId": "positive-package-full-rebuild-after-change",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "positive",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 266,
+      "CaseId": "negative-package-duplicate-zip-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "negative",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 267,
+      "CaseId": "negative-package-case-colliding-zip-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "negative",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 268,
+      "CaseId": "negative-package-absolute-zip-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "negative",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 269,
+      "CaseId": "negative-package-traversal-zip-path",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "negative",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 270,
+      "CaseId": "negative-package-link-junction-reparse-entry",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "negative",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 271,
+      "CaseId": "negative-package-separate-member-transfer",
+      "Group": "handoff-package",
+      "Tags": [
+        "artifact-policy",
+        "negative",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 272,
+      "CaseId": "positive-runtime-hosted-ci-array",
+      "Group": "runtime-contract",
+      "Tags": [
+        "positive",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 273,
+      "CaseId": "positive-complete-tracked-path-coverage",
+      "Group": "scope-inventory",
+      "Tags": [
+        "inventory-contract",
+        "positive",
+        "post-bl230-native",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 274,
+      "CaseId": "negative-unclassified-tracked-path",
+      "Group": "scope-inventory",
+      "Tags": [
+        "negative",
+        "supplemental-execution"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 275,
+      "CaseId": "positive-real-ci-workflow-binding",
+      "Group": "workflow-binding",
+      "Tags": [
+        "positive",
+        "post-bl230-native",
+        "supplemental-execution",
+        "workflow-binding"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 276,
+      "CaseId": "positive-real-release-workflow-binding",
+      "Group": "workflow-binding",
+      "Tags": [
+        "positive",
+        "post-bl230-native",
+        "supplemental-execution",
+        "workflow-binding"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    },
+    {
+      "Order": 277,
+      "CaseId": "negative-real-workflow-semantic-diagnostic",
+      "Group": "workflow-binding",
+      "Tags": [
+        "diagnostic-contract",
+        "negative",
+        "post-bl230-native",
+        "supplemental-execution",
+        "workflow-binding"
+      ],
+      "SupportedPlatforms": [
+        "linux",
+        "windows"
+      ],
+      "RequiredCapabilities": [
+        "git",
+        "powershell-7.6.4"
+      ],
+      "WindowsOnlyDependency": []
+    }
+  ]
+}
