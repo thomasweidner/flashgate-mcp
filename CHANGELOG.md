@@ -18,8 +18,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   unchanged. The focused independent Classic delta reviews closed
   `BL338-CLASSIC-REV-001` and the report-convergence finding
   `BL338-CLASSIC-REV-002` with no new finding;
-  `BL338ClassicPreCommitQualityGate=PASS`. This is not commit authorization.
-- Implemented BL-338 locally with one schema-validated 277-case governance
+  `BL338ClassicPreCommitQualityGate=PASS`. The reviewed implementation commit
+  `a28953b19d1e3ff51ffdbd12262964787a9252dc` was merged through PR #40 as
+  `b72c29e5d65803b11463f8d6b3d6f304cf510bf6`.
+- Completed BL-338 with one schema-validated 277-case governance
   metadata inventory, deterministic metadata and resolved-set SHA-256 bindings,
   `-ListGroups`/`-ListTags`/`-ListCases`, compatible CaseName plus Group/Tag
   selection, platform/capability preflight, structured fail-closed diagnostics,
@@ -29,9 +31,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   38-case selector matrix. The independent full review and focused delta
   review closed BL338-REV-001..004 with no open finding. The final native Linux
   `standard` gate passed with 12 results, 11 validation commands, unchanged
-  Windows source, and zero warnings or failures. Git integration remains
-  separately authorized, so BL-338 stays `Planned`; BL-337 and BL-340 are not
-  implemented.
+  Windows source, and zero warnings or failures. Post-merge CI #122, Metadata
+  Regression #51, and CodeQL #68 all passed on the merge commit; BL-338 is
+  `Done` with `OpenFindingCount=0`. BL-337 and BL-340 remain `Planned` and are
+  not implemented by BL-338.
 
 ### Planning
 
