@@ -607,7 +607,8 @@ correction are complete. `PR30-REV-001` is
 exact reviewed two-path Dependabot configuration, post-merge CI, Metadata
 Regression, CodeQL, and both initial Dependabot ecosystem runs passed,
 Dependabot Alerts and unpaused Security Updates are enabled, and automatic
-merging remains disabled. The next current queue item is BL-340.
+merging remains disabled. BL-340 has a local isolated implementation prepared
+for independent full review; it is not committed, published, merged, or `Done`.
 
 ## Basic Usage
 

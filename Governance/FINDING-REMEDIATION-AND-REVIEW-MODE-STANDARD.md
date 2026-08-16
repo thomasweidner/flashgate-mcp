@@ -1,7 +1,7 @@
 # FlashGate Finding Remediation and Review-Mode Standard
 
 **Status:** Binding
-**Tasks:** BL-333 foundation, BL-334 enforcement, and BL-336 handoff-profile generalization
+**Tasks:** BL-333 foundation, BL-334 enforcement, BL-336 handoff-profile generalization, and BL-340 profile migration
 
 ## Modes
 
@@ -166,6 +166,13 @@ they do not create placeholder findings, correction matrices, or regression
 matrices. The generic commit-preparation profile binds the external independent
 review directly to the reviewed paths and hashes. Finding-correction artifacts
 remain exclusive to the `FINDING_CORRECTION` profile.
+
+`EVIDENCE_ONLY_FOCUSED_REVIEW` expresses an independent review with an empty
+repository delta and newly hash-bound read-only evidence; it must not manufacture
+a correction/task patch or finding. `POST_MERGE_CLOSURE` is likewise
+finding-free unless a new finding is actually observed, and restricts execution
+to live merge/readback plus directly affected documentation/status gates while
+unchanged matrices remain explicitly `NOT_RUN`.
 
 Focused delta records additionally bind the prior review package and hash,
 the explicitly discriminated previous-review state, `correction-only.patch` and its byte-exact SHA-256,

@@ -168,8 +168,14 @@ try {
             "orchestration:$($orchestrationResult.profile):$orchestrationResultHash"
         )
     }
+    [string[]]$backlogCoverage = if ($TaskId -ceq 'BL-334') { @('BL-333', 'BL-334') } else { @($TaskId) }
+    [string[]]$duplicateSearchSources = @()
+    if ($observed.Count -gt 0) {
+        $duplicateSearchSources = @('BACKLOG.md', 'Governance/change-trigger-catalog.json')
+    }
     $record = [ordered]@{
         schemaVersion = 1
+        recordReadinessClass = 'CURRENT'
         recordedAt = [datetimeoffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
         taskId = $TaskId
         repository = $Repository
@@ -190,15 +196,10 @@ try {
         triggeredDomains = $triggeredDomains
         observedTriggers = $observed
         affectedContinuousGates = $affectedGates
-        existingBacklogCoverage = if ($TaskId -ceq 'BL-334') { @('BL-333', 'BL-334') } else { @($TaskId) }
+        existingBacklogCoverage = $backlogCoverage
         duplicateSearch = [ordered]@{
             performed = $observed.Count -gt 0
-            sources = if ($observed.Count -gt 0) {
-                @('BACKLOG.md', 'Governance/change-trigger-catalog.json')
-            }
-            else {
-                @()
-            }
+            sources = $duplicateSearchSources
             result = if ($observed.Count -gt 0) { 'EXISTING_ITEM_REUSED' } else { 'NOT_REQUIRED' }
         }
         repeatedChecks = @($repeatedChecks)
@@ -242,7 +243,7 @@ try {
             required = $true
             sourceVerified = $true
             sources = @(
-                "$repositorySlug@$HeadSha"
+                '{0}@{1}' -f $repositorySlug, $HeadSha
                 "github-actions-run:$RunId"
             )
             workflowCommit = $WorkflowCommit

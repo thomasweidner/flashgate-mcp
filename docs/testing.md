@@ -16,6 +16,7 @@ first execution. Then run:
     .\scripts\Test-GovernanceConsistencyFixtures.ps1
     .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
     .\scripts\Test-ImplementationReviewHandoffFixtures.ps1
+    .\scripts\Test-GovernanceValidationOrchestration.ps1
     .\scripts\Test-DocumentationConsistency.ps1
 }
 ```
@@ -26,7 +27,7 @@ ADR-0016 and BL-337 through BL-340 define the governance-harness layer.
 
 BL-339 uses `scripts/Invoke-GovernanceValidation.ps1` and the strict
 request/result schemas in `Governance/governance-validation-*.schema.json`.
-Exactly seven permanent profiles are cataloged:
+Exactly nine permanent profiles are cataloged:
 
 1. `documentation-registration`;
 2. `governance-schema-change`;
@@ -34,7 +35,9 @@ Exactly seven permanent profiles are cataloged:
 4. `finding-correction`;
 5. `commit-preparation`;
 6. `focused-revalidation`;
-7. `full-completion`.
+7. `evidence-only-focused-review`;
+8. `post-merge-closure`;
+9. `full-completion`.
 
 ### Canonical governance case selection
 
@@ -73,13 +76,14 @@ regressions for all list operations, a canonical case selection and preflight,
 invalid-selector zero execution, the absence of hard-coded contributor paths,
 and the actual CI invocation contract.
 BL-337 later consumes the single resolved set; it does not reselect. BL-340
-remains responsible for generator/profile migration and does not own this
-metadata source.
+integrates the same reader directly into orchestration and does not own or
+modify this metadata source.
 
 Every profile runs the same fail-fast cheap sequence before any subordinate
 matrix result is read: PowerShell parser/syntax; `.gitattributes` and
 `.editorconfig` EOL/UTF-8/trailing-whitespace/single-final-newline rules;
-`git diff --check`; required external and ignored input existence/hash binding;
+`git diff --check`; required VERSIONED, IGNORED, GIT_EXCLUDED, and EXTERNAL
+input root/classification/existence/hash/link binding;
 PowerShell/Git/platform/execution-context binding; then explicit source
 repository, isolated worktree, HEAD, tree, file-hash and dynamic selector
 binding. A failed gate stops the sequence and later expensive stages remain
@@ -92,11 +96,28 @@ The scope and file-hash path sets must be exactly equal and reject duplicates or
 Windows case collisions. Explicit protected-worktree bindings independently
 verify root, HEAD, tree, branch/detached state, and raw status hash.
 
-The request carries task data, not generated controller code. Subordinate
-results are strict UTF-8 and schema/version/profile/hash bound before use.
+The exact-commit profile additionally proves intended base and merge base,
+effective PR scope and byte-exact patch SHA-256, an isolated integration
+projection tree, exact authorized-write-set containment, an empty real index,
+and every declared protected foreign state. Wrong base, merge base, staged
+input, scope excess, foreign drift/hunks, or a nonreproducible projection fails
+before subordinate validation.
+
+The request carries task data, not generated controller code. The authoritative
+task-controller inventory is scanned below the fixed
+`.governance-task-controllers` root derived from the already bound worktree;
+request declarations are expectations only. Undeclared actual controllers,
+declaration/inventory drift, task-specific executables, outside-root paths,
+unknown exceptions, and counter drift fail before subordinate execution.
+Versioned helpers below `scripts/` remain valid permanent profiles. Subordinate results are strict UTF-8 and
+schema/version/profile/hash bound before use.
 Unchanged PASS evidence is reused only when every declared dependency hash
 matches; changed source, toolchain, selector, or other dependency invalidates
-only its dependants. The result reports `validationExecutionCount`,
+only its dependants. The result includes deterministic `REUSED`/`INVALIDATED`
+entries for commit, tree, working status, scope, selector, package, external
+inputs, and evidence. Current hashes are derived from validated repository,
+selector, package-input, external-input, and evidence bytes; a caller-supplied
+`currentSha256` is only a compatibility expectation and cannot force reuse. It reports `validationExecutionCount`,
 `infrastructureOrInvocationFailureCount`, `fullMatrixRunCount`,
 `packageWriteAttemptCount`, `generatedTaskControllerFileCount`,
 `generatedTaskControllerLineCount`, and `readOnlyProbeCount`. `BLOCKED` is not a
@@ -110,19 +131,28 @@ and pre-publication interruption failures leave the final path absent. The
 write-attempt counter is set before the first write-capable candidate open; no
 second attempt occurs. Post-publication interruption preserves the valid ZIP. BL-338 remains the
 exclusive owner of dynamic case/group/tag/platform/capability listing and
-selection; the BL-339 request only binds that interface and its hashes. BL-340
-owns complete workflow-generator/profile migration, including current
-`currentStateGate` generation and explicit historical schema-version-1 reads.
+selection; BL-340 orchestration imports that interface and resolves the selected
+set before subordinate execution. Current workflow records carry
+`recordReadinessClass=CURRENT` and a passing `currentStateGate`; historical
+schema-version-1 records remain readable under their historical schema but are
+not current readiness evidence.
 
 `Test-ImplementationReviewHandoffFixtures.ps1` is the focused permanent matrix
-for the pre-review profile. It covers a valid directory and ZIP, absent prior
+for all generic review transitions. It covers a valid directory and ZIP, absent prior
 review evidence, full-completion reuse, explicit discriminator failures,
 patch/scope failures, directory-first no-write behavior, exactly one write,
-failed first opens against an existing file and a directory target, no retry,
+precondition rejection of an existing file or directory target before a write
+attempt, no retry,
 reopen/manifest/SHA parity, readiness, and positive/negative compatibility with
-`GENERIC_COMMIT_PREPARATION`. The profile requires
-`pre-review-validation-evidence.json`; commit preparation still requires
-`independent-review-evidence.json`.
+`GENERIC_COMMIT_PREPARATION`, zero-delta evidence-only review with real packaged
+evidence bytes, missing/wrong/tampered/colliding evidence rejection, rejection of an
+artificial patch, and post-merge merge-state/live-readback plus explicit
+unchanged-matrix `NOT_RUN` behavior. Patch-bearing implementation review
+requires `pre-review-validation-evidence.json`; commit preparation still
+requires `independent-review-evidence.json`. Both zero-delta profiles also use
+`independent-review-evidence.json`. Evidence-only packages contain ten members
+and post-merge packages eleven; neither contains `task.patch` or
+`current-delta.patch`.
 
 `Test-FindingCorrectionHandoffFixtures.ps1` is the focused permanent matrix for
 the productive correction-to-focused-review contract. It covers task-neutral

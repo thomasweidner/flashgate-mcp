@@ -469,7 +469,7 @@ try {
                     finally { $memory.Dispose() }
                 }
                 finally { $entryStream.Dispose() }
-                if ($bytes.Length -eq 0) { throw "Empty package member: $($entry.FullName)" }
+                if ($bytes.Length -eq 0) { throw ('Empty package member: {0}' -f [string]$entry.FullName) }
                 $entryBytes[$entry.FullName] = $bytes
                 $entryText[$entry.FullName] = Get-StrictText -Bytes $bytes -Name $entry.FullName
             }
@@ -487,6 +487,7 @@ try {
     $profile = [string]$assignmentDiscriminator.profile
     $transitionType = [string]$assignmentDiscriminator.transitionType
     $isImplementationReview = $profile -ceq 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
+    $isZeroDeltaProfile = $profile -cin @('EVIDENCE_ONLY_FOCUSED_REVIEW', 'POST_MERGE_CLOSURE')
     if ($profile -ceq 'GENERIC_COMMIT_PREPARATION' -and
         $transitionType -ceq 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL') {
         $evidenceName = 'independent-review-evidence.json'
@@ -497,15 +498,35 @@ try {
         $evidenceName = 'pre-review-validation-evidence.json'
         $evidenceSchemaName = 'generic-pre-review-validation-evidence.schema.json'
     }
+    elseif ($profile -ceq 'EVIDENCE_ONLY_FOCUSED_REVIEW' -and
+        $transitionType -ceq 'EVIDENCE_ONLY_TO_FOCUSED_REVIEW') {
+        $evidenceName = 'independent-review-evidence.json'
+        $evidenceSchemaName = 'generic-independent-review-evidence.schema.json'
+    }
+    elseif ($profile -ceq 'POST_MERGE_CLOSURE' -and
+        $transitionType -ceq 'POST_MERGE_TO_DOCUMENTATION_CLOSURE') {
+        $evidenceName = 'independent-review-evidence.json'
+        $evidenceSchemaName = 'generic-independent-review-evidence.schema.json'
+    }
     else {
         throw 'Unknown or mismatched explicit handoff profile and transition type.'
     }
-    $requiredNames = @(
-        'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
-        'current-delta.patch', $evidenceName,
-        'MANIFEST.sha256', 'package-inventory.json', 'report.md',
-        'scope-inventory.json', 'task.patch', 'validation-summary.json'
-    )
+    $boundEvidenceNames = @()
+    if ($isZeroDeltaProfile -and $entryText.ContainsKey($evidenceName)) {
+        $evidenceDiscriminator = $entryText[$evidenceName] | ConvertFrom-Json -Depth 30 -DateKind String
+        $boundEvidenceNames = @($evidenceDiscriminator.evidenceBindings | ForEach-Object { [string]$_.path })
+    }
+    $requiredNames = if ($isZeroDeltaProfile) {
+        @('HANDOFF.md', 'assignment-record.json', 'completion-report.json', $evidenceName,
+            'MANIFEST.sha256', 'package-inventory.json', 'report.md',
+            'scope-inventory.json', 'validation-summary.json') + $boundEvidenceNames
+    }
+    else {
+        @('HANDOFF.md', 'assignment-record.json', 'completion-report.json',
+            'current-delta.patch', $evidenceName,
+            'MANIFEST.sha256', 'package-inventory.json', 'report.md',
+            'scope-inventory.json', 'task.patch', 'validation-summary.json')
+    }
 
     $safeNames = @($names | Where-Object {
             $_ -match '^[A-Za-z0-9][A-Za-z0-9._-]*$' -and
@@ -611,11 +632,9 @@ try {
                 throw 'Generic package contains a correction-profile discriminator or typed field.'
             }
 
-            $scannedArtifacts = @(
-                'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
-                'current-delta.patch', $evidenceName,
-                'report.md', 'task.patch', 'validation-summary.json'
-            )
+            $scannedArtifacts = @('HANDOFF.md', 'assignment-record.json', 'completion-report.json',
+                $evidenceName, 'report.md', 'validation-summary.json')
+            if (-not $isZeroDeltaProfile) { $scannedArtifacts += @('current-delta.patch', 'task.patch') }
             $hostPathFreeArtifacts = @($scope.hostPathPolicy.hostPathFreeArtifacts | ForEach-Object { [string]$_ })
             $allowedHostReferences = @($scope.hostPathPolicy.allowedReferences)
             $hostPathPolicyPass = $true
@@ -663,8 +682,8 @@ try {
             }
 
             $scopeInventoryHash = Get-ByteSha256 -Bytes $entryBytes['scope-inventory.json']
-            $taskPatchHash = Get-ByteSha256 -Bytes $entryBytes['task.patch']
-            $currentDeltaHash = Get-ByteSha256 -Bytes $entryBytes['current-delta.patch']
+            $taskPatchHash = if ($isZeroDeltaProfile) { $null } else { Get-ByteSha256 -Bytes $entryBytes['task.patch'] }
+            $currentDeltaHash = if ($isZeroDeltaProfile) { $null } else { Get-ByteSha256 -Bytes $entryBytes['current-delta.patch'] }
             $identityPass = (
                 [string]$assignment.taskId -ceq [string]$completion.taskId -and
                 [string]$assignment.taskId -ceq [string]$review.taskId -and
@@ -686,9 +705,15 @@ try {
                     ((@($binding.excludedDeltaPaths | Sort-Object) -join "`n") -ceq (@($scope.excludedDeltaPaths | Sort-Object) -join "`n"))
             }
             foreach ($binding in @($assignment, $completion)) {
-                $currentStatePass = $currentStatePass -and
-                    [string]$binding.taskPatchSha256 -ceq $taskPatchHash -and
-                    [string]$binding.currentDeltaSha256 -ceq $currentDeltaHash
+                if ($isZeroDeltaProfile) {
+                    $currentStatePass = $currentStatePass -and
+                        $null -eq $binding.taskPatchSha256 -and $null -eq $binding.currentDeltaSha256
+                }
+                else {
+                    $currentStatePass = $currentStatePass -and
+                        [string]$binding.taskPatchSha256 -ceq $taskPatchHash -and
+                        [string]$binding.currentDeltaSha256 -ceq $currentDeltaHash
+                }
             }
             $findingJson = @($assignment.findingIds) | ConvertTo-Json -Compress
             $findingParityPass = (
@@ -715,7 +740,7 @@ try {
                     'config', '--get', 'remote.origin.url'
                 )).StandardOutput.Trim()
             $baselineObject = Invoke-GitText -Root $resolvedAuthoritativeRepositoryRoot -Argument @(
-                'cat-file', '-e', "$($scope.baselineCommit)^{commit}"
+                'cat-file', '-e', ('{0}^{{commit}}' -f [string]$scope.baselineCommit)
             ) -AllowFailure
             $authoritativeIdentityPass = (
                 [System.IO.Path]::GetFullPath($authoritativeTopLevel).TrimEnd('\', '/') -ceq $resolvedAuthoritativeRepositoryRoot -and
@@ -756,6 +781,21 @@ try {
                     ([string]$scopeEntry.gitStatus -cne 'TRACKED_RENAMED' -or
                         [string]$scopeEntry.previousPath -cne [string]$scopeEntry.path)
             }
+            if ($isZeroDeltaProfile) {
+                $realObjectDatabasePass = $true
+                $literalPathspecPass = $true
+                $actualDeltaInventoryPass = $scope.entries.Count -eq 0
+                $excludedDeltaPathPass = $scope.excludedDeltaPaths.Count -eq 0
+                $scopePass = $scopeMetadataPass -and $scope.entries.Count -eq 0 -and
+                    $scope.allowedDeltaPaths.Count -eq 0
+                Add-Check -Id 'GENERIC-REAL-OBJECT-DATABASE-IMMUTABILITY' -Passed $realObjectDatabasePass
+                Add-Check -Id 'GENERIC-LITERAL-PATHSPEC-BINDING' -Passed $literalPathspecPass
+                Add-Check -Id 'GENERIC-EXCLUDED-DELTA-PATH-PROHIBITION' -Passed $excludedDeltaPathPass
+                Add-Check -Id 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Passed $actualDeltaInventoryPass
+                Add-Check -Id 'GENERIC-SCOPE-METADATA-PARITY' -Passed $scopeMetadataPass
+                Add-Check -Id 'GENERIC-PATCH-SCOPE-PARITY' -Passed $scopePass
+            }
+            else {
             $emptyGitEvidence = [pscustomobject]@{
                 RealObjectDatabaseImmutable = $false
                 TemporaryArtifactsRemoved = $true
@@ -816,6 +856,7 @@ try {
             )
             Add-Check -Id 'GENERIC-SCOPE-METADATA-PARITY' -Passed $scopeMetadataPass
             Add-Check -Id 'GENERIC-PATCH-SCOPE-PARITY' -Passed $scopePass
+            }
 
             $authoritativeEntries = @(Get-AuthoritativeStatusEntries `
                 -Root $resolvedAuthoritativeRepositoryRoot -BaselineCommit ([string]$scope.baselineCommit))
@@ -895,7 +936,7 @@ try {
                 Add-Check -Id 'GENERIC-PRE-REVIEW-VALIDATION-EVIDENCE' -Passed $reviewHashPass
                 if (-not $reviewHashPass) { throw 'Pre-review validation evidence parity failed.' }
             }
-            else {
+            elseif (-not $isZeroDeltaProfile) {
                 $reviewedNames = @($review.reviewedArtifacts | ForEach-Object { [string]$_.path })
                 $reviewHashPass = (
                     ($reviewedNames | Sort-Object -Unique).Count -eq 2 -and
@@ -907,6 +948,35 @@ try {
                 }
                 Add-Check -Id 'GENERIC-INDEPENDENT-REVIEW-HASHES' -Passed $reviewHashPass
                 if (-not $reviewHashPass) { throw 'Independent-review path or hash parity failed.' }
+            }
+            else {
+                $bindingIds = @($review.evidenceBindings | ForEach-Object { [string]$_.id })
+                $bindingPaths = @($review.evidenceBindings | ForEach-Object { [string]$_.path })
+                $reviewHashPass = @($review.reviewedArtifacts).Count -eq 0 -and
+                    @($bindingIds | Sort-Object -Unique).Count -eq $bindingIds.Count -and
+                    @($bindingPaths | Sort-Object -Unique).Count -eq $bindingPaths.Count -and
+                    @($bindingPaths | ForEach-Object ToLowerInvariant | Sort-Object -Unique).Count -eq $bindingPaths.Count -and
+                    $bindingIds.Count -gt 0 -and $bindingIds.Count -eq $bindingPaths.Count
+                foreach ($evidenceBinding in @($review.evidenceBindings)) {
+                    $evidencePath = [string]$evidenceBinding.path
+                    $reviewHashPass = $reviewHashPass -and
+                        $entryBytes.ContainsKey($evidencePath) -and
+                        [string]$evidenceBinding.sha256 -ceq (Get-ByteSha256 -Bytes $entryBytes[$evidencePath])
+                }
+                $bindingKinds = @($review.evidenceBindings | ForEach-Object { [string]$_.kind })
+                if ($profile -ceq 'EVIDENCE_ONLY_FOCUSED_REVIEW') {
+                    $reviewHashPass = $reviewHashPass -and $bindingKinds.Count -eq 1 -and
+                        $bindingKinds[0] -ceq 'EXTERNAL_READ_ONLY'
+                }
+                if ($profile -ceq 'POST_MERGE_CLOSURE') {
+                    $reviewHashPass = $reviewHashPass -and $bindingKinds.Count -eq 2 -and
+                        @($bindingKinds | Sort-Object -Unique).Count -eq 2 -and
+                        'MERGE_STATE' -in $bindingKinds -and
+                        'LIVE_EXTERNAL_READBACK' -in $bindingKinds -and
+                        [string]$review.matrixDisposition -ceq 'UNCHANGED_MATRICES_NOT_RUN'
+                }
+                Add-Check -Id 'GENERIC-INDEPENDENT-REVIEW-HASHES' -Passed $reviewHashPass
+                if (-not $reviewHashPass) { throw 'Read-only evidence binding or post-merge disposition failed.' }
             }
 
             $inventoryExpectedNames = @($requiredNames | Where-Object { $_ -notin @('package-inventory.json', 'MANIFEST.sha256') } | Sort-Object)
@@ -984,7 +1054,7 @@ try {
                 @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN' | Where-Object {
                     [int]$validation.progress.statusCounts.$_ -ne [int]$progressCheckCounts[$_]
                 }).Count -eq 0 -and
-                [string]$validation.progress.message -clike "$($validation.progress.completed)/$($validation.progress.selected) $($validation.progress.unit)*"
+                [string]$validation.progress.message -clike ('{0}/{1} {2}*' -f [int]$validation.progress.completed, [int]$validation.progress.selected, [string]$validation.progress.unit)
             )
             $failedCheckCount = @($validation.checks | Where-Object { [string]$_.result -ceq 'FAIL' }).Count
             $failureCountInvariantPass = (
@@ -1070,6 +1140,16 @@ try {
                 -not $failureCountInvariantPass -or -not $progressEventInvariantPass -or -not $zipFreeReadinessPass) {
                 throw 'Telemetry, progress, warning, or ZIP-free readiness invariants failed.'
             }
+            $contractPatchParityPass = if ($isZeroDeltaProfile) {
+                $null -eq $handoff.taskPatchSha256 -and $null -eq $report.taskPatchSha256 -and
+                    $null -eq $handoff.currentDeltaSha256 -and $null -eq $report.currentDeltaSha256
+            }
+            else {
+                [string]$handoff.taskPatchSha256 -ceq $taskPatchHash -and
+                    [string]$report.taskPatchSha256 -ceq $taskPatchHash -and
+                    [string]$handoff.currentDeltaSha256 -ceq $currentDeltaHash -and
+                    [string]$report.currentDeltaSha256 -ceq $currentDeltaHash
+            }
             $contractParityPass = (
                 [string]$handoff.taskId -ceq [string]$assignment.taskId -and
                 [string]$report.taskId -ceq [string]$assignment.taskId -and
@@ -1092,10 +1172,7 @@ try {
                 [int]$report.infrastructureOrInvocationFailureCount -eq [int]$completion.infrastructureOrInvocationFailureCount -and
                 [string]$handoff.scopeInventorySha256 -ceq $scopeInventoryHash -and
                 [string]$report.scopeInventorySha256 -ceq $scopeInventoryHash -and
-                [string]$handoff.taskPatchSha256 -ceq $taskPatchHash -and
-                [string]$report.taskPatchSha256 -ceq $taskPatchHash -and
-                [string]$handoff.currentDeltaSha256 -ceq $currentDeltaHash -and
-                [string]$report.currentDeltaSha256 -ceq $currentDeltaHash -and
+                $contractPatchParityPass -and
                 ((@($handoff.allowedDeltaPaths | Sort-Object) -join "`n") -ceq (@($scope.allowedDeltaPaths | Sort-Object) -join "`n")) -and
                 ((@($report.allowedDeltaPaths | Sort-Object) -join "`n") -ceq (@($scope.allowedDeltaPaths | Sort-Object) -join "`n")) -and
                 ((@($handoff.excludedDeltaPaths | Sort-Object) -join "`n") -ceq (@($scope.excludedDeltaPaths | Sort-Object) -join "`n")) -and
@@ -1132,6 +1209,7 @@ try {
             Add-Check -Id 'GENERIC-CLASSIC-READINESS' -Passed $readinessPass
             if (-not $contractParityPass -or -not $readinessPass) { throw 'Contract or readiness parity failed.' }
 
+            $allowedDeltaPathText = [string]::Join("`n", [string[]]@($handoff.allowedDeltaPaths))
             $visibleLines = @(
                 "TaskId: $($handoff.taskId)"
                 "TransitionType: $($handoff.transitionType)"
@@ -1141,7 +1219,7 @@ try {
                 "FindingCount: $(@($handoff.findingIds).Count)"
                 "ReviewStatus: $($handoff.reviewStatus)"
                 'CommitAuthorized: false'
-                "AllowedDeltaPaths: $(@($handoff.allowedDeltaPaths) -join ',')"
+                ('AllowedDeltaPaths: {0}' -f [string]$allowedDeltaPathText)
                 "NextAction: $($handoff.nextAction)"
             )
             $normalizedHandoff = $entryText['HANDOFF.md'].Replace("`r`n", "`n")

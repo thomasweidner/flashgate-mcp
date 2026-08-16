@@ -77,6 +77,25 @@
       "embeddedReportContractSchema": "finding-correction-report-contract.schema.json",
       "optionalArtifacts": ["publication-regression-evidence.json", "publication-regression-result.json"],
       "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "correction-only.patch", "correction-scope-inventory.json", "current-delta.patch", "external-governance-manifest.json", "finding-correction-matrix.json", "finding-ledger.json", "finding-regression-matrix.json", "focused-delta-review-record.json", "MANIFEST.sha256", "package-inventory.json", "previous-review-binding.json", "readiness-evidence.json", "report.md", "scope-inventory.json", "trusted-expected-hashes.json", "validation-summary.json"]
+    },
+    {
+      "id": "EVIDENCE_ONLY_FOCUSED_REVIEW",
+      "transitionType": "EVIDENCE_ONLY_TO_FOCUSED_REVIEW",
+      "explicitDiscriminatorRequired": true,
+      "emptyRepositoryDeltaRequired": true,
+      "externalReadOnlyEvidenceAllowed": true,
+      "independentReviewRequired": true,
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "independent-review-evidence.json", "MANIFEST.sha256", "package-inventory.json", "report.md", "scope-inventory.json", "validation-summary.json"]
+    },
+    {
+      "id": "POST_MERGE_CLOSURE",
+      "transitionType": "POST_MERGE_TO_DOCUMENTATION_CLOSURE",
+      "explicitDiscriminatorRequired": true,
+      "emptyRepositoryDeltaRequired": true,
+      "mergeEvidenceReuseRequired": true,
+      "liveExternalReadbackRequired": true,
+      "unchangedMatricesNotRunRequired": true,
+      "requiredArtifacts": ["HANDOFF.md", "assignment-record.json", "completion-report.json", "independent-review-evidence.json", "MANIFEST.sha256", "package-inventory.json", "report.md", "scope-inventory.json", "validation-summary.json"]
     }
   ],
   "modes": [
@@ -242,6 +261,8 @@
       { "id": "finding-correction", "requiredSubordinateStages": ["focused-revalidation", "regression-evidence"], "fullMatrix": false },
       { "id": "commit-preparation", "requiredSubordinateStages": ["scope-patch-handoff"], "fullMatrix": false },
       { "id": "focused-revalidation", "requiredSubordinateStages": ["focused-revalidation"], "fullMatrix": false },
+      { "id": "evidence-only-focused-review", "requiredSubordinateStages": ["focused-revalidation"], "fullMatrix": false },
+      { "id": "post-merge-closure", "requiredSubordinateStages": ["documentation-consistency"], "fullMatrix": false },
       { "id": "full-completion", "requiredSubordinateStages": ["orchestration-focused", "generic-handoff", "governance-consistency", "documentation-consistency", "shell-validation", "native-linux-standard", "full-completion"], "fullMatrix": true }
     ],
     "counterFields": [

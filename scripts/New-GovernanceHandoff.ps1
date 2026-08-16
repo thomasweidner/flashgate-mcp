@@ -5,13 +5,13 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'LegacyDocument')][string]$StatusSourcePath,
 
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')]
-    [ValidateSet('GENERIC_COMMIT_PREPARATION', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'FINDING_CORRECTION')][string]$Profile,
+    [ValidateSet('GENERIC_COMMIT_PREPARATION', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'EVIDENCE_ONLY_FOCUSED_REVIEW', 'POST_MERGE_CLOSURE', 'FINDING_CORRECTION')][string]$Profile,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')]
-    [ValidateSet('COMMIT_PREPARATION_TO_COMMIT_APPROVAL', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW')][string]$TransitionType,
+    [ValidateSet('COMMIT_PREPARATION_TO_COMMIT_APPROVAL', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'EVIDENCE_ONLY_TO_FOCUSED_REVIEW', 'POST_MERGE_TO_DOCUMENTATION_CLOSURE', 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW')][string]$TransitionType,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')]
     [ValidatePattern('^BL-[0-9]{3}$')][string]$TaskId,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')][string]$SourceDirectory,
-    [Parameter(Mandatory, ParameterSetName = 'GenericPackage')][string[]]$AllowedDeltaPath,
+    [Parameter(Mandatory, ParameterSetName = 'GenericPackage')][AllowEmptyCollection()][string[]]$AllowedDeltaPath,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')][string]$PackagePath,
     [Parameter(ParameterSetName = 'GenericPackage')][string]$AuthoritativeRepositoryRoot,
     [Parameter(ParameterSetName = 'GenericPackage')][string]$OrchestrationResultPath,
@@ -152,7 +152,7 @@ try {
                 $_ -notin @($source.PSObject.Properties.Name)
             })
         if ($missing.Count -gt 0) {
-            throw "Status source is missing required properties: $($missing -join ', ')"
+            throw ('Status source is missing required properties: {0}' -f ($missing -join ', '))
         }
 
         $contract = [ordered]@{}
@@ -160,32 +160,49 @@ try {
             $contract[$property] = $source.$property
         }
         $contractJson = $contract | ConvertTo-Json -Depth 20
+        $contractStatus = [string]$contract.status
+        $contractCorrectionMode = [string]$contract.correctionMode
+        $targetFindingCount = [int]$contract.targetFindingCount
+        $correctedFindingCount = [int]$contract.correctedFindingCount
+        $pendingDeltaFindingCount = [int]$contract.pendingDeltaFindingCount
+        $closedFindingCount = [int]$contract.closedFindingCount
+        $openFindingCount = [int]$contract.openFindingCount
+        $classicReviewReadyText = ([string]$contract.classicReviewReady).ToLowerInvariant()
+        $targetFindingText = [string]::Join(',', [string[]]@($contract.targetFindings))
+        $pendingFindingText = [string]::Join(',', [string[]]@($contract.pendingFindings))
+        $closedFindingText = [string]::Join(',', [string[]]@($contract.closedFindings))
+        $run007Status = [string]$contract.run007Status
+        $commitPreparationApprovedText = ([string]$contract.commitPreparationApproved).ToLowerInvariant()
+        $commitAuthorizedText = ([string]$contract.commitAuthorized).ToLowerInvariant()
+        $requiredReviewMode = [string]$contract.requiredReviewMode
+        $contractNextAction = [string]$contract.nextAction
         $handoff = @"
 # BL-333/BL-334 fourth bundled correction handoff
 
 <!-- BEGIN GOVERNANCE-HANDOFF-STATUS -->
-Status: $($contract.status)
-CorrectionMode: $($contract.correctionMode)
-TargetFindingCount: $($contract.targetFindingCount)
-CorrectedFindingCount: $($contract.correctedFindingCount)
-PendingDeltaFindingCount: $($contract.pendingDeltaFindingCount)
-ClosedFindingCount: $($contract.closedFindingCount)
-OpenFindingCount: $($contract.openFindingCount)
-ClassicReviewReady: $(([string]$contract.classicReviewReady).ToLowerInvariant())
-TargetFindings: $(@($contract.targetFindings) -join ',')
-PendingFindings: $(@($contract.pendingFindings) -join ',')
-ClosedFindings: $(@($contract.closedFindings) -join ',')
-Run007Status: $($contract.run007Status)
-CommitPreparationApproved: $(([string]$contract.commitPreparationApproved).ToLowerInvariant())
-CommitAuthorized: $(([string]$contract.commitAuthorized).ToLowerInvariant())
-RequiredReviewMode: $($contract.requiredReviewMode)
-NextAction: $($contract.nextAction)
+Status: $contractStatus
+CorrectionMode: $contractCorrectionMode
+TargetFindingCount: $targetFindingCount
+CorrectedFindingCount: $correctedFindingCount
+PendingDeltaFindingCount: $pendingDeltaFindingCount
+ClosedFindingCount: $closedFindingCount
+OpenFindingCount: $openFindingCount
+ClassicReviewReady: $classicReviewReadyText
+TargetFindings: __TARGET_FINDINGS__
+PendingFindings: __PENDING_FINDINGS__
+ClosedFindings: __CLOSED_FINDINGS__
+Run007Status: $run007Status
+CommitPreparationApproved: $commitPreparationApprovedText
+CommitAuthorized: $commitAuthorizedText
+RequiredReviewMode: $requiredReviewMode
+NextAction: $contractNextAction
 <!-- END GOVERNANCE-HANDOFF-STATUS -->
 
 <!-- BEGIN GOVERNANCE-HANDOFF-CONTRACT -->
 $contractJson
 <!-- END GOVERNANCE-HANDOFF-CONTRACT -->
 "@
+        $handoff = $handoff.Replace('__TARGET_FINDINGS__', $targetFindingText).Replace('__PENDING_FINDINGS__', $pendingFindingText).Replace('__CLOSED_FINDINGS__', $closedFindingText)
         $resolvedOutputPath = [System.IO.Path]::GetFullPath($OutputPath)
         $outputDirectory = Split-Path -Parent $resolvedOutputPath
         if (-not (Test-Path -LiteralPath $outputDirectory -PathType Container)) {
@@ -208,10 +225,13 @@ $contractJson
         }
         $isImplementationReview = $Profile -ceq 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
         $isFindingCorrection = $Profile -ceq 'FINDING_CORRECTION'
+        $isZeroDeltaProfile = $Profile -cin @('EVIDENCE_ONLY_FOCUSED_REVIEW', 'POST_MERGE_CLOSURE')
         $expectedTransition = switch ($Profile) {
             'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW' { 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW' }
             'GENERIC_COMMIT_PREPARATION' { 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL' }
             'FINDING_CORRECTION' { 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW' }
+            'EVIDENCE_ONLY_FOCUSED_REVIEW' { 'EVIDENCE_ONLY_TO_FOCUSED_REVIEW' }
+            'POST_MERGE_CLOSURE' { 'POST_MERGE_TO_DOCUMENTATION_CLOSURE' }
             default { throw 'Unknown explicit handoff profile.' }
         }
         if ($TransitionType -cne $expectedTransition) {
@@ -232,6 +252,7 @@ $contractJson
                 'current-delta.patch', 'external-governance-manifest.json',
                 'finding-correction-matrix.json', 'finding-ledger.json',
                 'finding-regression-matrix.json', 'focused-delta-review-record.json',
+                'focused-validation-result.json',
                 'previous-review-binding.json', 'readiness-evidence.json',
                 'report.md', 'scope-inventory.json', 'trusted-expected-hashes.json',
                 'validation-summary.json'
@@ -353,7 +374,14 @@ $contractJson
             }
             [void][System.IO.Directory]::CreateDirectory($stagingRoot)
             foreach ($name in $requiredSourceNames) {
-                [System.IO.File]::Copy((Join-Path $resolvedSourceDirectory $name), (Join-Path $stagingRoot $name), $false)
+                $sourcePath = Join-Path $resolvedSourceDirectory $name
+                $sourceItem = Get-Item -LiteralPath $sourcePath -Force
+                if ($sourceItem.PSIsContainer -or
+                    ($sourceItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+                    -not [string]::IsNullOrWhiteSpace([string]$sourceItem.LinkType)) {
+                    throw "Finding-correction source member must be a regular non-link file: $name"
+                }
+                [System.IO.File]::Copy($sourcePath, (Join-Path $stagingRoot $name), $false)
             }
 
             if ($contentLifecycleState -ceq 'FINAL_REVIEW_PACKAGE') {
@@ -422,6 +450,14 @@ $contractJson
                 nextAction = [string]$completion.nextAction
             }
             $contractJson = $contract | ConvertTo-Json -Depth 20
+            $artifactLifecycleStateText = [string]$contract.artifactLifecycleState
+            $contractStatus = [string]$contract.status
+            $readyToExecuteText = ([string]$contract.readyToExecute).ToLowerInvariant()
+            $classicReviewReadyText = ([string]$contract.classicReviewReady).ToLowerInvariant()
+            $findingCount = @($contract.findingIds).Count
+            $reviewStatus = [string]$contract.reviewStatus
+            $packageWriteAttemptCountText = [int]$contract.packageWriteAttemptCount
+            $contractNextAction = [string]$contract.nextAction
             $handoff = @"
 # $TaskId finding-correction handoff
 
@@ -429,21 +465,22 @@ $contractJson
 TaskId: $TaskId
 TransitionType: $TransitionType
 Profile: $Profile
-ArtifactLifecycleState: $($contract.artifactLifecycleState)
-Status: $($contract.status)
-ReadyToExecute: $(([string]$contract.readyToExecute).ToLowerInvariant())
-ClassicReviewReady: $(([string]$contract.classicReviewReady).ToLowerInvariant())
-FindingCount: $(@($contract.findingIds).Count)
-ReviewStatus: $($contract.reviewStatus)
-PackageWriteAttemptCount: $($contract.packageWriteAttemptCount)
+ArtifactLifecycleState: $artifactLifecycleStateText
+Status: $contractStatus
+ReadyToExecute: $readyToExecuteText
+ClassicReviewReady: $classicReviewReadyText
+FindingCount: __FINDING_COUNT__
+ReviewStatus: $reviewStatus
+PackageWriteAttemptCount: $packageWriteAttemptCountText
 CommitAuthorized: false
-NextAction: $($contract.nextAction)
+NextAction: $contractNextAction
 <!-- END GOVERNANCE-HANDOFF-STATUS -->
 
 <!-- BEGIN GOVERNANCE-HANDOFF-CONTRACT -->
 $contractJson
 <!-- END GOVERNANCE-HANDOFF-CONTRACT -->
 "@
+            $handoff = $handoff.Replace('__FINDING_COUNT__', [string]$findingCount)
             [System.IO.File]::WriteAllText((Join-Path $stagingRoot 'HANDOFF.md'), $handoff, $utf8)
 
             $inventoryEntries = @(
@@ -478,7 +515,7 @@ $contractJson
             $directoryValidationExitCode = $LASTEXITCODE
             $validationExecutionCount++
             if ($directoryValidationExitCode -ne 0) {
-                throw "Finding-correction staging validation failed: $(($directoryValidationOutput | Out-String).Trim())"
+                throw ('Finding-correction staging validation failed: {0}' -f (($directoryValidationOutput | Out-String).Trim()))
             }
             $directoryValidationStatus = 'PASS'
             $readyToExecute = $true
@@ -496,7 +533,7 @@ $contractJson
                             -ReturnInsteadOfExit)
                     $script:validationExecutionCount++
                     if ($LASTEXITCODE -ne 0) {
-                        throw "Finding-correction candidate validation failed: $(($candidateOutput | Out-String).Trim())"
+                        throw ('Finding-correction candidate validation failed: {0}' -f (($candidateOutput | Out-String).Trim()))
                     }
                 }
                 $publication = Publish-GovernanceHandoffPackage -StagingDirectory $stagingRoot `
@@ -519,18 +556,26 @@ $contractJson
         else {
             'generic-independent-review-evidence.schema.json'
         }
-        $requiredSourceNames = @(
-            'assignment-record.json', 'completion-report.json',
-            'current-delta.patch', $evidenceName,
-            'report.md', 'scope-inventory.json', 'task.patch',
-            'validation-summary.json'
-        )
+        $requiredSourceNames = if ($isZeroDeltaProfile) {
+            @('assignment-record.json', 'completion-report.json', $evidenceName,
+                'report.md', 'scope-inventory.json', 'validation-summary.json')
+        }
+        else {
+            @('assignment-record.json', 'completion-report.json',
+                'current-delta.patch', $evidenceName,
+                'report.md', 'scope-inventory.json', 'task.patch',
+                'validation-summary.json')
+        }
         $actualSourceNames = @(
             Get-ChildItem -LiteralPath $resolvedSourceDirectory -File |
                 ForEach-Object Name | Sort-Object
         )
-        if (($actualSourceNames -join "`n") -cne (($requiredSourceNames | Sort-Object) -join "`n")) {
-            throw 'Generic source directory must contain exactly the eight canonical source artifacts.'
+        if (-not $isZeroDeltaProfile -and
+            ($actualSourceNames -join "`n") -cne (($requiredSourceNames | Sort-Object) -join "`n")) {
+            throw 'Generic source directory must contain exactly the canonical source artifacts.'
+        }
+        if ($isZeroDeltaProfile -and @($requiredSourceNames | Where-Object { $_ -notin $actualSourceNames }).Count -gt 0) {
+            throw 'Generic zero-delta source directory is missing a canonical source artifact.'
         }
 
         $governanceRoot = Join-Path (Split-Path -Parent $PSScriptRoot) 'Governance'
@@ -569,8 +614,8 @@ $contractJson
         $review = Read-StrictUtf8Json -LiteralPath (Join-Path $resolvedSourceDirectory $evidenceName)
         $scope = Read-StrictUtf8Json -LiteralPath (Join-Path $resolvedSourceDirectory 'scope-inventory.json')
         $scopeInventorySha256 = Get-LowerSha256 -LiteralPath (Join-Path $resolvedSourceDirectory 'scope-inventory.json')
-        $taskPatchSha256 = Get-LowerSha256 -LiteralPath (Join-Path $resolvedSourceDirectory 'task.patch')
-        $currentDeltaSha256 = Get-LowerSha256 -LiteralPath (Join-Path $resolvedSourceDirectory 'current-delta.patch')
+        $taskPatchSha256 = if ($isZeroDeltaProfile) { $null } else { Get-LowerSha256 -LiteralPath (Join-Path $resolvedSourceDirectory 'task.patch') }
+        $currentDeltaSha256 = if ($isZeroDeltaProfile) { $null } else { Get-LowerSha256 -LiteralPath (Join-Path $resolvedSourceDirectory 'current-delta.patch') }
         $fullCompletionEvidenceSha256 = if ($isImplementationReview) {
             Get-LowerSha256 -LiteralPath (Join-Path $resolvedSourceDirectory $evidenceName)
         }
@@ -606,9 +651,14 @@ $contractJson
             }
         }
         foreach ($binding in @($assignment, $completion)) {
-            if ([string]$binding.taskPatchSha256 -cne $taskPatchSha256 -or
+            if ($isZeroDeltaProfile) {
+                if ($null -ne $binding.taskPatchSha256 -or $null -ne $binding.currentDeltaSha256) {
+                    throw 'Zero-delta profiles require null patch hash bindings.'
+                }
+            }
+            elseif ([string]$binding.taskPatchSha256 -cne $taskPatchSha256 -or
                 [string]$binding.currentDeltaSha256 -cne $currentDeltaSha256) {
-                throw 'Patch hash binding mismatch.'
+                    throw 'Patch hash binding mismatch.'
             }
         }
         if ($isImplementationReview) {
@@ -626,7 +676,7 @@ $contractJson
                 throw 'Pre-review evidence semantics are invalid.'
             }
         }
-        else {
+        elseif (-not $isZeroDeltaProfile) {
             foreach ($reviewed in @($review.reviewedArtifacts)) {
                 $expectedHash = if ([string]$reviewed.path -ceq 'task.patch') {
                     $taskPatchSha256
@@ -637,6 +687,56 @@ $contractJson
                 if ([string]$reviewed.sha256 -cne $expectedHash) {
                     throw 'Independent-review patch hash binding mismatch.'
                 }
+            }
+        }
+        else {
+            if (@($review.reviewedArtifacts).Count -ne 0 -or @($scope.entries).Count -ne 0 -or
+                @($scope.allowedDeltaPaths).Count -ne 0 -or @($AllowedDeltaPath).Count -ne 0) {
+                throw 'Evidence-only and post-merge profiles require an empty repository delta and no patch artifacts.'
+            }
+            if (@($review.evidenceBindings).Count -lt 1) {
+                throw 'Evidence-only and post-merge profiles require hash-bound read-only evidence.'
+            }
+            $evidenceIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+            $evidencePaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+            $evidencePathsWindows = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+            $evidenceArtifactNames = [System.Collections.Generic.List[string]]::new()
+            foreach ($evidenceBinding in @($review.evidenceBindings)) {
+                $evidenceId = [string]$evidenceBinding.id
+                $evidencePath = [string]$evidenceBinding.path
+                if (-not $evidenceIds.Add($evidenceId)) {
+                    throw "Duplicate evidence binding ID: $evidenceId"
+                }
+                if (-not $evidencePaths.Add($evidencePath) -or -not $evidencePathsWindows.Add($evidencePath)) {
+                    throw "Duplicate or case-colliding evidence artifact path: $evidencePath"
+                }
+                $sourceEvidencePath = Join-Path $resolvedSourceDirectory $evidencePath
+                if (-not (Test-Path -LiteralPath $sourceEvidencePath -PathType Leaf)) {
+                    throw "Evidence artifact is missing: $evidencePath"
+                }
+                $sourceEvidenceItem = Get-Item -LiteralPath $sourceEvidencePath -Force
+                if (($sourceEvidenceItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                    throw "Evidence artifact must be a regular non-link file: $evidencePath"
+                }
+                if ((Get-LowerSha256 -LiteralPath $sourceEvidencePath) -cne [string]$evidenceBinding.sha256) {
+                    throw "Evidence artifact hash mismatch: $evidencePath"
+                }
+                $evidenceArtifactNames.Add($evidencePath)
+            }
+            $kinds = @($review.evidenceBindings | ForEach-Object { [string]$_.kind })
+            if ($Profile -ceq 'EVIDENCE_ONLY_FOCUSED_REVIEW' -and
+                ($kinds.Count -ne 1 -or $kinds[0] -cne 'EXTERNAL_READ_ONLY')) {
+                throw 'Evidence-only focused review requires exactly one real EXTERNAL_READ_ONLY evidence artifact.'
+            }
+            if ($Profile -ceq 'POST_MERGE_CLOSURE' -and
+                ($kinds.Count -ne 2 -or @($kinds | Sort-Object -Unique).Count -ne 2 -or
+                    'MERGE_STATE' -notin $kinds -or 'LIVE_EXTERNAL_READBACK' -notin $kinds -or
+                    [string]$review.matrixDisposition -cne 'UNCHANGED_MATRICES_NOT_RUN')) {
+                throw 'Post-merge closure requires exactly one real merge-state artifact, one live external readback artifact, and explicit NOT_RUN matrix disposition.'
+            }
+            $requiredSourceNames = @($requiredSourceNames + @($evidenceArtifactNames))
+            if (($actualSourceNames -join "`n") -cne (($requiredSourceNames | Sort-Object) -join "`n")) {
+                throw 'Generic zero-delta source directory must contain exactly the canonical contract and bound evidence artifacts.'
             }
         }
         $assignmentFindingJson = @($assignment.findingIds) | ConvertTo-Json -Compress
@@ -695,6 +795,12 @@ $contractJson
             [System.IO.File]::Copy((Join-Path $resolvedSourceDirectory $name), (Join-Path $stagingRoot $name), $false)
         }
 
+        $contractStatus = [string]$contract.status
+        $classicReviewReadyText = ([string]$contract.classicReviewReady).ToLowerInvariant()
+        $findingCount = @($contract.findingIds).Count
+        $reviewStatus = [string]$contract.reviewStatus
+        $allowedDeltaPathText = [string]::Join("`n", [string[]]@($contract.allowedDeltaPaths))
+        $completionNextAction = [string]$completion.nextAction
         $handoff = @"
 # $TaskId governance handoff
 
@@ -702,19 +808,20 @@ $contractJson
 TaskId: $TaskId
 TransitionType: $TransitionType
 Profile: $Profile
-Status: $($contract.status)
-ClassicReviewReady: $(([string]$contract.classicReviewReady).ToLowerInvariant())
-FindingCount: $(@($contract.findingIds).Count)
-ReviewStatus: $($contract.reviewStatus)
+Status: $contractStatus
+ClassicReviewReady: $classicReviewReadyText
+FindingCount: __FINDING_COUNT__
+ReviewStatus: $reviewStatus
 CommitAuthorized: false
-AllowedDeltaPaths: $(@($contract.allowedDeltaPaths) -join ',')
-NextAction: $($completion.nextAction)
+AllowedDeltaPaths: __ALLOWED_DELTA_PATHS__
+NextAction: $completionNextAction
 <!-- END GOVERNANCE-HANDOFF-STATUS -->
 
 <!-- BEGIN GOVERNANCE-HANDOFF-CONTRACT -->
 $contractJson
 <!-- END GOVERNANCE-HANDOFF-CONTRACT -->
 "@
+        $handoff = $handoff.Replace('__FINDING_COUNT__', [string]$findingCount).Replace('__ALLOWED_DELTA_PATHS__', $allowedDeltaPathText)
         [System.IO.File]::WriteAllText((Join-Path $stagingRoot 'HANDOFF.md'), $handoff, $utf8)
 
         $inventoryEntries = @(
@@ -766,7 +873,7 @@ $contractJson
         $directoryValidationExitCode = $LASTEXITCODE
         $validationExecutionCount++
         if ($directoryValidationExitCode -ne 0) {
-            throw "Staging directory validation failed before ZIP write: $(($directoryValidationOutput | Out-String).Trim())"
+            throw ('Staging directory validation failed before ZIP write: {0}' -f (($directoryValidationOutput | Out-String).Trim()))
         }
         $directoryValidationStatus = 'PASS'
 
@@ -783,7 +890,7 @@ $contractJson
                     -ReturnInsteadOfExit)
             $script:validationExecutionCount++
             if ($LASTEXITCODE -ne 0) {
-                throw "Generic governance candidate validation failed: $(($candidateOutput | Out-String).Trim())"
+                throw ('Generic governance candidate validation failed: {0}' -f (($candidateOutput | Out-String).Trim()))
             }
         }
         $publication = Publish-GovernanceHandoffPackage -StagingDirectory $stagingRoot `

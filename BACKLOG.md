@@ -566,6 +566,13 @@ These tasks originate in the final independent review of PR #21. They are accept
 | BL-340 | Planned | Complete governance generator/profile migration | Migrate the unchanged workflow generator and all current reusable governance profiles to the complete BL-339 orchestration contract. New generated records must bind a valid `currentStateGate`; stored schema-version-1 records remain explicitly readable under their historical schema without becoming current readiness evidence. Reuse BL-339 orchestration rather than duplicating its implementation or reopening any BL339-REV finding. **Acceptance:** generator, profile, schema/catalog, transition, compatibility, and documentation triggers are identified; focused positive and fail-closed fixtures cover current-record generation, absent/stale state binding, profile parity, and historical-v1 reads; directly affected governance and documentation gates pass; the task is independently implementable and reviewable. BL-340 is an independent SPR-61 task and is not a new prerequisite for resuming BL-324. |
 | BL-341 | Planned | Define cross-mode host-process ownership and lifecycle | ADR-0017 binds direct STDIO, proxy-edge, and persistent service process owners; connection ownership; owner/transport loss; PID plus start identity; bounded shutdown; orphan classification; instance diagnostics; service persistence; separation from Managed Process and Operations/Jobs; and Windows/Linux lifecycle-test ownership. BL-241 retains integrated multi-client/lifecycle tests and BL-129 retains managed-child cleanup. |
 
+BL-340 has a local isolated, uncommitted implementation prepared for independent
+full review. It covers A–H, including exact-commit/push-scope evidence,
+evidence-only and post-merge zero-delta profiles, closed external-input classes,
+task-controller prohibition, partial state invalidation, and direct reuse of the
+unchanged BL-338 resolver. Its canonical status remains `Planned`; no commit,
+push, PR, Hosted-CI, merge, or remote-cleanup state is claimed.
+
 BL-339 is terminal `Done` with Full Completion and final independent review
 `PASS`.
 All REV-001..014 findings are closed and `OpenFindingCount=0`. Its productive

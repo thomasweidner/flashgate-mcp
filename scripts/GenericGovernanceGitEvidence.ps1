@@ -147,8 +147,8 @@ function Get-GenericObjectDirectoryInventory {
         }
     }
     $lines = @(foreach ($entry in $entries) {
-        if ($entry.type -ceq 'DIRECTORY') { "D`t$($entry.path)" }
-        else { "F`t$($entry.path)`t$($entry.length)`t$($entry.sha256)" }
+        if ($entry.type -ceq 'DIRECTORY') { 'D{0}{1}' -f "`t", [string]$entry.path }
+        else { 'F{0}{1}{0}{2}{0}{3}' -f "`t", [string]$entry.path, [int64]$entry.length, [string]$entry.sha256 }
     })
     $canonicalText = ($lines -join "`n") + "`n"
     return [pscustomobject][ordered]@{
@@ -267,10 +267,10 @@ function ConvertFrom-GenericNameStatusZ {
     $entries=[System.Collections.Generic.List[object]]::new();$keys=[System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     for($index=0;$index-lt$records.Count;$index++){
         $status=$records[$index];if([string]::IsNullOrEmpty($status)){continue};$previousPath=$null;$path=$null
-        if($status-match'^R[0-9]{1,3}$'){if($index+2-ge$records.Count){throw '[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Malformed rename delta inventory.'};$previousPath=Assert-GenericRepositoryPath $records[++$index].Replace('\','/');$path=Assert-GenericRepositoryPath $records[++$index].Replace('\','/');$kind='RENAME';$key="R`t$previousPath`t$path"}
-        elseif($status-in@('A','M','D','T')){if($index+1-ge$records.Count){throw '[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Missing ordinary delta path.'};$path=Assert-GenericRepositoryPath $records[++$index].Replace('\','/');$kind=@{A='ADDED';M='MODIFIED';D='DELETED';T='TYPE_CHANGED'}[$status];$key="$status`t$path"}
-        else{throw "[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Unsupported delta status code: $status"}
-        if(-not$keys.Add($key)){throw "[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Duplicate delta inventory entry: $key"}
+        if($status-match'^R[0-9]{1,3}$'){if($index+2-ge$records.Count){throw '[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Malformed rename delta inventory.'};$previousPath=Assert-GenericRepositoryPath $records[++$index].Replace('\','/');$path=Assert-GenericRepositoryPath $records[++$index].Replace('\','/');$kind='RENAME';$key='R{0}{1}{0}{2}' -f "`t",$previousPath,$path}
+        elseif($status-in@('A','M','D','T')){if($index+1-ge$records.Count){throw '[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Missing ordinary delta path.'};$path=Assert-GenericRepositoryPath $records[++$index].Replace('\','/');$kind=@{A='ADDED';M='MODIFIED';D='DELETED';T='TYPE_CHANGED'}[$status];$key='{0}{1}{2}' -f [string]$status,"`t",$path}
+        else{throw ('[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Unsupported delta status code: {0}' -f [string]$status)}
+        if(-not$keys.Add($key)){throw ('[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Duplicate delta inventory entry: {0}' -f [string]$key)}
         [void]$entries.Add([pscustomobject][ordered]@{status=$status;kind=$kind;previousPath=$previousPath;path=$path;key=$key})
     }
     return @($entries)
@@ -279,7 +279,7 @@ function ConvertFrom-GenericNameStatusZ {
 function Get-GenericExpectedDeltaInventoryKeys {
     param([Parameter(Mandatory)][object[]]$IncludedEntry)
     $keys=[System.Collections.Generic.List[string]]::new()
-    foreach($entry in $IncludedEntry){$path=Assert-GenericRepositoryPath ([string]$entry.path);$key=switch([string]$entry.gitStatus){'TRACKED_RENAMED'{$previous=Assert-GenericRepositoryPath ([string]$entry.previousPath);"R`t$previous`t$path"}'TRACKED_DELETED'{"D`t$path"}'TRACKED_ADDED'{"A`t$path"}'UNTRACKED'{"A`t$path"}'TRACKED_MODE_CHANGED'{"M`t$path"}'TRACKED_MODIFIED'{"M`t$path"}default{throw "[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Unsupported scope status: $($entry.gitStatus)"}};[void]$keys.Add($key)}
+    foreach($entry in $IncludedEntry){$path=Assert-GenericRepositoryPath ([string]$entry.path);$key=switch([string]$entry.gitStatus){'TRACKED_RENAMED'{$previous=Assert-GenericRepositoryPath ([string]$entry.previousPath);'R{0}{1}{0}{2}' -f "`t",$previous,$path}'TRACKED_DELETED'{'D{0}{1}' -f "`t",$path}'TRACKED_ADDED'{'A{0}{1}' -f "`t",$path}'UNTRACKED'{'A{0}{1}' -f "`t",$path}'TRACKED_MODE_CHANGED'{'M{0}{1}' -f "`t",$path}'TRACKED_MODIFIED'{'M{0}{1}' -f "`t",$path}default{throw ('[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Unsupported scope status: {0}' -f [string]$entry.gitStatus)}};[void]$keys.Add($key)}
     if(@($keys|Sort-Object -Unique).Count-ne$keys.Count){throw '[GENERIC-ACTUAL-DELTA-INVENTORY-PARITY] Duplicate expected delta inventory entry.'}
     return @($keys|Sort-Object)
 }
@@ -458,6 +458,60 @@ function Get-GenericDeltaEvidence {
         RealObjectDatabaseImmutable=$objectImmutable;RealObjectInventoryBeforeSha256=[string]$beforeInventory.sha256
         RealObjectInventoryAfterSha256=[string]$afterInventory.sha256;RealObjectInventoryEntryCount=[int]$beforeInventory.entryCount
         TemporaryObjectFileCount=$temporaryObjectFileCount;TemporaryArtifactsRemoved=$cleanupPassed
+    }
+}
+
+function Get-GenericIntegrationProjectionEvidence {
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$BaselineCommit,
+        [Parameter(Mandatory)][object[]]$IncludedEntry,
+        [AllowEmptyCollection()][object[]]$ExcludedEntry = @()
+    )
+    $paths = @(Get-GenericScopePaths -Entry $IncludedEntry | Sort-Object -Unique)
+    if ($paths.Count -eq 0) {
+        throw '[GENERIC-INTEGRATION-PROJECTION] At least one included repository path is required.'
+    }
+    $excludedPaths = @(Get-GenericScopePaths -Entry $ExcludedEntry | Sort-Object -Unique)
+    $beforeInventory = Get-GenericRealObjectInventory -Root $Root
+    $context = New-GenericGitIsolationContext -Root $Root
+    $operationError = $null
+    $projection = $null
+    $cleanupPassed = $false
+    try {
+        $null = Invoke-GenericGitBytes -Root $Root -Argument @('read-tree', $BaselineCommit) -Environment $context.Environment
+        $null = Invoke-GenericGitBytes -Root $Root -Argument (@('add', '-A', '--') + $paths) -Environment $context.Environment -RepositoryPaths
+        $projectionResult = Invoke-GenericGitBytes -Root $Root -Argument @('write-tree') -Environment $context.Environment
+        $projection = [System.Text.UTF8Encoding]::new($false, $true).GetString($projectionResult.Bytes).Trim()
+        if ($projection -notmatch '^[0-9a-f]{40}$') {
+            throw '[GENERIC-INTEGRATION-PROJECTION] Git did not return a canonical tree identity.'
+        }
+    }
+    catch {
+        $operationError = $_
+    }
+    finally {
+        $afterInventory = Get-GenericRealObjectInventory -Root $Root
+        try {
+            Remove-GenericGitIsolationContext -Context $context
+            $cleanupPassed = $true
+        }
+        catch {
+            if ($null -eq $operationError) { $operationError = $_ }
+        }
+    }
+    if ($null -ne $operationError) { throw $operationError }
+    $objectImmutable = Test-GenericObjectInventoryEqual -Before $beforeInventory -After $afterInventory
+    if (-not $objectImmutable -or -not $cleanupPassed) {
+        throw '[GENERIC-INTEGRATION-PROJECTION] Temporary projection changed the real object database or was not removed.'
+    }
+    return [pscustomobject][ordered]@{
+        Tree = $projection
+        IncludedPaths = $paths
+        ExcludedPaths = $excludedPaths
+        ExcludedPathProhibition = @($paths | Where-Object { $_ -cin $excludedPaths }).Count -eq 0
+        RealObjectDatabaseImmutable = $objectImmutable
+        TemporaryArtifactsRemoved = $cleanupPassed
     }
 }
 

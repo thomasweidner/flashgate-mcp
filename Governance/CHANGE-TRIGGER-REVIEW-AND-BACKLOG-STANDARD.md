@@ -1,7 +1,7 @@
 # FlashGate Change-Trigger Review and Backlog Registration Standard
 
 **Status:** Binding
-**Tasks:** BL-333 foundation, BL-334 enforcement, and BL-336 handoff-profile generalization
+**Tasks:** BL-333 foundation, BL-334 enforcement, BL-336 handoff-profile generalization, and BL-340 profile migration
 **Machine-readable source:** [change-trigger-catalog.json](change-trigger-catalog.json)
 
 ## Purpose
@@ -158,6 +158,12 @@ BL-336 is registered in the machine-readable catalog as the accepted follow-up
 for task-neutral handoff profiles. The pre-registration classification
 `NEW_BACKLOG_REQUIRED` becomes the canonical persisted result
 `NEW_BACKLOG_REGISTERED` once the backlog and catalog entries exist.
+
+BL-340 adds no new trigger vocabulary. Current generated records use the same
+catalog and must carry `recordReadinessClass=CURRENT` plus a passing
+`currentStateGate`. Historical schema-version-1 records remain readable through
+their versioned schema, but absence of that current readiness class prevents
+their reuse as current checkpoint evidence.
 
 ## Enforcement
 

@@ -4,6 +4,8 @@ param(
     [Parameter(Mandatory)][string]$PackagePath,
     [Parameter(Mandatory)][string]$RepositoryRoot,
     [Parameter(Mandatory)][string]$AuthoritativeRepositoryRoot,
+    [string]$IndependentReviewOutcomePath,
+    [string]$ExpectedIndependentReviewOutcomeSha256,
     [switch]$ReturnInsteadOfExit
 )
 
@@ -17,6 +19,11 @@ $context = $null
 $archive = $null
 $archiveStream = $null
 $lifecycleState = 'UNKNOWN'
+$independentReviewOutcomeValidation = 'NOT_APPLICABLE'
+$independentReviewOutcomeSha256 = $null
+$immediatePreviousReviewPackageSha256 = $null
+$transitiveFullReviewBaselineSha256 = $null
+$findingDispositionBindingResult = 'NOT_APPLICABLE'
 
 . (Join-Path $PSScriptRoot 'GenericGovernanceGitEvidence.ps1')
 Import-Module (Join-Path $PSScriptRoot 'GovernanceValidationOrchestration.psm1') -Force
@@ -56,6 +63,52 @@ function Read-JsonBytes {
         $arguments.ExpectedSchemaVersion = $ExpectedSchemaVersion
     }
     return Read-GovernanceJsonContract @arguments
+}
+
+function Read-IndependentReviewOutcome {
+    param(
+        [Parameter(Mandatory)][string]$LiteralPath,
+        [Parameter(Mandatory)][string]$ExpectedSha256,
+        [Parameter(Mandatory)][string]$ExpectedTaskId
+    )
+
+    if ([string]::IsNullOrWhiteSpace($LiteralPath) -or
+        [string]::IsNullOrWhiteSpace($ExpectedSha256)) {
+        throw '[CORRECTION-INDEPENDENT-OUTCOME-INPUT] Focused-to-focused validation requires path and expected SHA-256.'
+    }
+    $resolvedPath = [System.IO.Path]::GetFullPath($LiteralPath)
+    Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-EXISTS' -Passed (
+        Test-Path -LiteralPath $resolvedPath -PathType Leaf
+    ) -Evidence $resolvedPath
+    $item = Get-Item -LiteralPath $resolvedPath -Force
+    Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-REGULAR-FILE' -Passed (
+        -not $item.PSIsContainer -and
+        ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -eq 0 -and
+        [string]::IsNullOrWhiteSpace([string]$item.LinkType)
+    )
+    $bytes = [System.IO.File]::ReadAllBytes($resolvedPath)
+    Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-NO-BOM' -Passed (
+        $bytes.Length -lt 3 -or
+        -not ($bytes[0] -eq 0xef -and $bytes[1] -eq 0xbb -and $bytes[2] -eq 0xbf)
+    )
+    $actualSha256 = (Get-Hash -Bytes $bytes).ToUpperInvariant()
+    Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-HASH' -Passed (
+        $actualSha256 -ceq $ExpectedSha256.ToUpperInvariant()
+    ) -Evidence "actual=$actualSha256;expected=$($ExpectedSha256.ToUpperInvariant())"
+    $contract = Read-JsonBytes -Bytes $bytes -Name 'independent review outcome' `
+        -SchemaName 'generic-independent-review-evidence.schema.json' -ExpectedSchemaVersion 1
+    Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-IDENTITY' -Passed (
+        [string]$contract.artifactType -ceq 'INDEPENDENT_FOCUSED_DELTA_REVIEW_OUTCOME' -and
+        [string]$contract.taskId -ceq $ExpectedTaskId -and
+        [string]$contract.reviewMode -ceq 'FOCUSED_INDEPENDENT_DELTA_REVIEW' -and
+        [string]$contract.reviewerRole -ceq 'INDEPENDENT_REVIEWER'
+    )
+    return [pscustomobject][ordered]@{
+        Path = $resolvedPath
+        Bytes = $bytes
+        Sha256 = $actualSha256
+        Contract = $contract
+    }
 }
 
 function Read-EmbeddedJsonContract {
@@ -115,6 +168,447 @@ function Assert-Subset {
     $rightSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
     foreach ($item in $right) { [void]$rightSet.Add($item) }
     Add-Result -Id $Label -Passed (@($left | Where-Object { -not $rightSet.Contains($_) }).Count -eq 0)
+}
+
+function Read-ReviewZipEntries {
+    param([Parameter(Mandatory)][string]$LiteralPath, [Parameter(Mandatory)][string]$Label)
+
+    $resolvedPath = [System.IO.Path]::GetFullPath($LiteralPath)
+    Add-Result -Id "$Label-EXISTS" -Passed (Test-Path -LiteralPath $resolvedPath -PathType Leaf) `
+        -Evidence $resolvedPath
+    $entries = [System.Collections.Generic.Dictionary[string, byte[]]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    $names = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($resolvedPath)
+    try {
+        foreach ($entry in $zip.Entries) {
+            $name = [string]$entry.FullName
+            if ($name -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$' -or
+                -not $names.Add($name) -or $entries.ContainsKey($name)) {
+                throw "[$Label] Unsafe, duplicate, or case-colliding member: $name"
+            }
+            $unixType = ([uint32]$entry.ExternalAttributes -shr 16) -band 0xf000
+            if ($unixType -eq 0xa000 -or ([uint32]$entry.ExternalAttributes -band 0x400) -ne 0) {
+                throw "[$Label] Link or reparse ZIP semantics: $name"
+            }
+            $memory = [System.IO.MemoryStream]::new()
+            try {
+                $stream = $entry.Open()
+                try { $stream.CopyTo($memory) } finally { $stream.Dispose() }
+                $entries.Add($name, $memory.ToArray())
+            }
+            finally { $memory.Dispose() }
+        }
+    }
+    finally { $zip.Dispose() }
+    return $entries
+}
+
+function Assert-ManifestInventoryCoverage {
+    param(
+        [Parameter(Mandatory)]$Entries,
+        [Parameter(Mandatory)]$Inventory,
+        [Parameter(Mandatory)][string]$Label
+    )
+
+    $inventoryEntries = @($Inventory.entries)
+    $inventoryNames = @($Entries.Keys | Where-Object { $_ -notin @('MANIFEST.sha256', 'package-inventory.json') })
+    Assert-EqualSet @($inventoryEntries | ForEach-Object path) $inventoryNames "$Label-INVENTORY-COVERAGE"
+    foreach ($inventoryEntry in $inventoryEntries) {
+        $name = [string]$inventoryEntry.path
+        Add-Result -Id "$Label-INVENTORY-$name" -Passed (
+            $Entries.ContainsKey($name) -and
+            [string]$inventoryEntry.sha256 -ceq (Get-Hash $Entries[$name]) -and
+            [int64]$inventoryEntry.length -eq $Entries[$name].LongLength
+        )
+    }
+
+    $manifestText = [System.Text.UTF8Encoding]::new($false, $true).GetString($Entries['MANIFEST.sha256'])
+    $manifestNames = @($manifestText.TrimEnd("`r", "`n") -split "`n" | ForEach-Object {
+            $match = [regex]::Match(
+                $_,
+                '^(?<hash>[0-9a-f]{64})  (?<length>[0-9]+)  (?<path>[A-Za-z0-9][A-Za-z0-9._-]*)$'
+            )
+            if (-not $match.Success) { throw "[$Label] Invalid manifest line: $_" }
+            $name = $match.Groups['path'].Value
+            if (-not $Entries.ContainsKey($name) -or
+                $match.Groups['hash'].Value -cne (Get-Hash $Entries[$name]) -or
+                [int64]$match.Groups['length'].Value -ne $Entries[$name].LongLength) {
+                throw "[$Label] Manifest mismatch: $name"
+            }
+            $name
+        })
+    Assert-EqualSet $manifestNames @($Entries.Keys | Where-Object { $_ -cne 'MANIFEST.sha256' }) `
+        "$Label-MANIFEST-COVERAGE"
+}
+
+function Get-IndependentOutcomeState {
+    param([Parameter(Mandatory)]$Outcome, [Parameter(Mandatory)][string]$Label)
+
+    $isGeneralized = $null -ne $Outcome.PSObject.Properties['targetFindingOutcomes']
+    if ($isGeneralized) {
+        $targetOutcomes = @($Outcome.targetFindingOutcomes)
+        $newFindings = @($Outcome.newFindings)
+        $inheritedClosed = @(Get-CanonicalSet @($Outcome.inheritedClosedFindingIds) "$Label-INHERITED")
+        $targetIds = @(Get-CanonicalSet @($targetOutcomes | ForEach-Object id) "$Label-TARGETS")
+        $newIds = @(Get-CanonicalSet @($newFindings | ForEach-Object id) "$Label-NEW")
+        $targetClosed = @($targetOutcomes | Where-Object {
+                [string]$_.disposition -ceq 'CLOSED_BY_INDEPENDENT_DELTA_REVIEW'
+            } | ForEach-Object id)
+        $targetOpen = @($targetOutcomes | Where-Object {
+                [string]$_.disposition -ceq 'OPEN_INCOMPLETE_CORRECTION'
+            } | ForEach-Object id)
+        Add-Result -Id "$Label-TARGET-DISPOSITIONS" -Passed (
+            $targetClosed.Count + $targetOpen.Count -eq $targetOutcomes.Count
+        )
+        Add-Result -Id "$Label-NEW-DISPOSITIONS" -Passed (
+            @($newFindings | Where-Object { [string]$_.disposition -cne 'OPEN' }).Count -eq 0
+        )
+        $previousIds = @(Get-CanonicalSet @($inheritedClosed + $targetIds) "$Label-PREVIOUS-UNIVERSE")
+        $openIds = @(Get-CanonicalSet @($targetOpen + $newIds) "$Label-DERIVED-OPEN")
+        $closedIds = @(Get-CanonicalSet @($inheritedClosed + $targetClosed) "$Label-DERIVED-CLOSED")
+        $authoritativeIds = @(Get-CanonicalSet @($previousIds + $newIds) "$Label-AUTHORITATIVE-UNIVERSE")
+        $resultValid = switch ([string]$Outcome.reviewResult) {
+            'PASS' {
+                $openIds.Count -eq 0 -and $newIds.Count -eq 0 -and
+                $targetClosed.Count -eq $targetOutcomes.Count
+            }
+            'FAIL_WITH_FINDINGS' { $openIds.Count -gt 0 }
+            default { $false }
+        }
+    }
+    else {
+        $targetOutcomes = @($Outcome.findingOutcomes)
+        $targetIds = @(Get-CanonicalSet @($targetOutcomes | ForEach-Object id) "$Label-LEGACY-TARGETS")
+        $newIds = @()
+        $openIds = @($targetOutcomes | Where-Object {
+                [string]$_.disposition -ceq 'OPEN_INCOMPLETE_CORRECTION'
+            } | ForEach-Object id)
+        $closedIds = @($targetOutcomes | Where-Object {
+                [string]$_.disposition -ceq 'CLOSED_BY_INDEPENDENT_DELTA_REVIEW'
+            } | ForEach-Object id)
+        Add-Result -Id "$Label-LEGACY-DISPOSITIONS" -Passed (
+            $openIds.Count + $closedIds.Count -eq $targetOutcomes.Count
+        )
+        $previousIds = $targetIds
+        $authoritativeIds = $targetIds
+        $resultValid = [string]$Outcome.reviewResult -ceq 'FAIL_WITH_FINDING' -and $openIds.Count -gt 0
+    }
+
+    Assert-EqualSet @($Outcome.openFindingIds) $openIds "$Label-OPEN-SET"
+    Assert-EqualSet @($Outcome.closedFindingIds) $closedIds "$Label-CLOSED-SET"
+    $declaredOpen = @(Get-CanonicalSet @($Outcome.openFindingIds) "$Label-DECLARED-OPEN")
+    $declaredClosed = @(Get-CanonicalSet @($Outcome.closedFindingIds) "$Label-DECLARED-CLOSED")
+    $closedSet = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($id in $declaredClosed) { [void]$closedSet.Add($id) }
+    Add-Result -Id "$Label-OPEN-CLOSED-DISJOINT" -Passed (
+        @($declaredOpen | Where-Object { $closedSet.Contains($_) }).Count -eq 0
+    )
+    Assert-EqualSet @($declaredOpen + $declaredClosed) $authoritativeIds "$Label-STATE-COMPLETE"
+    Add-Result -Id "$Label-REVIEW-RESULT" -Passed $resultValid
+
+    $directOutcomes = @($Outcome.directInterfaceOutcomes)
+    $directIds = @(Get-CanonicalSet @($directOutcomes | ForEach-Object id) "$Label-DIRECT-INTERFACES")
+    Add-Result -Id "$Label-DIRECT-DISPOSITIONS" -Passed (
+        @($directOutcomes | Where-Object { [string]$_.disposition -cne 'CLOSED' }).Count -eq 0 -and
+        $directIds.Count -eq $directOutcomes.Count
+    )
+
+    return [pscustomobject][ordered]@{
+        IsGeneralized = $isGeneralized
+        TargetFindingIds = $targetIds
+        NewFindingIds = $newIds
+        PreviousFindingIds = $previousIds
+        OpenFindingIds = $openIds
+        ClosedFindingIds = $closedIds
+        AuthoritativeFindingIds = $authoritativeIds
+    }
+}
+
+function Get-FocusedPackageContract {
+    param(
+        [Parameter(Mandatory)]$Entries,
+        [Parameter(Mandatory)][string]$Label,
+        [Parameter(Mandatory)][string]$ExpectedTaskId
+    )
+
+    $assignment = Read-JsonBytes $Entries['assignment-record.json'] "$Label assignment" `
+        'finding-correction-assignment.schema.json' 2
+    $completion = Read-JsonBytes $Entries['completion-report.json'] "$Label completion" `
+        'finding-correction-completion.schema.json' 2
+    $inventory = Read-JsonBytes $Entries['package-inventory.json'] "$Label inventory" '' 1
+    $focused = Read-JsonBytes $Entries['focused-delta-review-record.json'] "$Label focused record" `
+        'focused-delta-review-record.schema.json' 3
+
+    Add-Result -Id "$Label-PROFILE" -Passed (
+        [string]$assignment.profile -ceq 'FINDING_CORRECTION' -and
+        [string]$completion.profile -ceq 'FINDING_CORRECTION' -and
+        [string]$inventory.profile -ceq 'FINDING_CORRECTION' -and
+        [string]$assignment.transitionType -ceq 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW' -and
+        [string]$completion.transitionType -ceq 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW' -and
+        [string]$inventory.transitionType -ceq 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW'
+    )
+    Add-Result -Id "$Label-IDENTITY" -Passed (
+        [string]$assignment.taskId -ceq $ExpectedTaskId -and
+        [string]$completion.taskId -ceq $ExpectedTaskId -and
+        [string]$inventory.taskId -ceq $ExpectedTaskId
+    )
+
+    $requiredNames = @(
+        'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
+        'correction-only.patch', 'correction-scope-inventory.json',
+        'current-delta.patch', 'external-governance-manifest.json',
+        'finding-correction-matrix.json', 'finding-ledger.json',
+        'finding-regression-matrix.json', 'focused-delta-review-record.json',
+        'MANIFEST.sha256', 'package-inventory.json', 'previous-review-binding.json',
+        'readiness-evidence.json', 'report.md', 'scope-inventory.json',
+        'trusted-expected-hashes.json', 'validation-summary.json'
+    )
+    $outcomeBindings = @(
+        $assignment.PSObject.Properties['previousIndependentReviewOutcomeSha256'],
+        $completion.PSObject.Properties['previousIndependentReviewOutcomeSha256'],
+        $focused.PSObject.Properties['previousIndependentReviewOutcomeSha256']
+    )
+    $outcomeBindingCount = @($outcomeBindings | Where-Object { $null -ne $_ }).Count
+    Add-Result -Id "$Label-OUTCOME-BINDING-SHAPE" -Passed ($outcomeBindingCount -in @(0, 3))
+    $outcomeRequired = $outcomeBindingCount -eq 3
+    if ($outcomeRequired) { $requiredNames += 'previous-independent-review-outcome.json' }
+
+    $publicationRequired = $null -ne $focused.PSObject.Properties['publicationRegressionEvidence']
+    if ($publicationRequired) {
+        $requiredNames += @('publication-regression-evidence.json', 'publication-regression-result.json')
+    }
+    $focusedSourceRequired = $Entries.ContainsKey('focused-validation-result.json')
+    if ($focusedSourceRequired) {
+        $requiredNames += 'focused-validation-result.json'
+    }
+    Assert-EqualSet @($Entries.Keys) $requiredNames "$Label-PROFILE-DRIVEN-PACKAGE-SHAPE"
+    Assert-ManifestInventoryCoverage -Entries $Entries -Inventory $inventory -Label $Label
+
+    if ($focusedSourceRequired) {
+        $regression = Read-JsonBytes $Entries['finding-regression-matrix.json'] `
+            "$Label finding regression" 'finding-regression-matrix.schema.json' 2
+        $sourceResult = Read-JsonBytes $Entries['focused-validation-result.json'] `
+            "$Label focused validation source" '' 2
+        $sourceBinding = $regression.finalFocusedValidationEvidence
+        $sourceRows = @($sourceResult.results)
+        $regressionRows = @($regression.findings | ForEach-Object regressionTests)
+        Add-Result -Id "$Label-FOCUSED-SOURCE-BYTE-BINDING" -Passed (
+            [string]$sourceBinding.sourceArtifact -ceq 'focused-validation-result.json' -and
+            [int64]$sourceBinding.sourceEvidenceLength -eq
+                $Entries['focused-validation-result.json'].LongLength -and
+            [string]$sourceBinding.sourceEvidenceSha256 -ceq
+                (Get-Hash $Entries['focused-validation-result.json']) -and
+            [string]$sourceResult.status -ceq 'PASS' -and
+            [int]$sourceResult.selected -eq $sourceRows.Count -and
+            [int]$sourceResult.passed -eq @($sourceRows | Where-Object result -ceq 'PASS').Count -and
+            [int]$sourceResult.failed -eq 0
+        )
+        Assert-EqualSet -Left @($sourceRows | ForEach-Object id) `
+            -Right @($regressionRows | ForEach-Object id) `
+            -Label "$Label-FOCUSED-SOURCE-RESULT-SET"
+    }
+
+    $embeddedOutcome = $null
+    $embeddedOutcomeHash = $null
+    if ($outcomeRequired) {
+        $embeddedOutcomeHash = (Get-Hash $Entries['previous-independent-review-outcome.json']).ToUpperInvariant()
+        Add-Result -Id "$Label-OUTCOME-HASH-PARITY" -Passed (
+            [string]$assignment.previousIndependentReviewOutcomeSha256 -ceq $embeddedOutcomeHash -and
+            [string]$completion.previousIndependentReviewOutcomeSha256 -ceq $embeddedOutcomeHash -and
+            [string]$focused.previousIndependentReviewOutcomeSha256 -ceq $embeddedOutcomeHash
+        )
+        $embeddedOutcome = Read-JsonBytes $Entries['previous-independent-review-outcome.json'] `
+            "$Label embedded independent outcome" 'generic-independent-review-evidence.schema.json' 1
+    }
+
+    return [pscustomobject][ordered]@{
+        Assignment = $assignment
+        Completion = $completion
+        Inventory = $inventory
+        Focused = $focused
+        EmbeddedOutcome = $embeddedOutcome
+        EmbeddedOutcomeHash = $embeddedOutcomeHash
+        CurrentDeltaSha256 = (Get-Hash $Entries['current-delta.patch']).ToUpperInvariant()
+        CorrectionPatchSha256 = (Get-Hash $Entries['correction-only.patch']).ToUpperInvariant()
+    }
+}
+
+function Assert-OutcomeReviewsFocusedPackage {
+    param(
+        [Parameter(Mandatory)]$Outcome,
+        [Parameter(Mandatory)]$ReviewedNode,
+        [Parameter(Mandatory)][string]$TransitiveFullReviewSha256,
+        [Parameter(Mandatory)][string]$Label
+    )
+
+    $state = Get-IndependentOutcomeState -Outcome $Outcome -Label $Label
+    $reviewedHashProperty = if ($state.IsGeneralized) {
+        [string]$Outcome.reviewedPackageSha256
+    }
+    else { [string]$Outcome.previousReviewPackageSha256 }
+    Add-Result -Id "$Label-REVIEWED-PACKAGE" -Passed (
+        $reviewedHashProperty -ceq [string]$ReviewedNode.PackageSha256
+    )
+    Add-Result -Id "$Label-REVIEWED-DELTA" -Passed (
+        [string]$Outcome.reviewedCurrentDeltaSha256 -ceq [string]$ReviewedNode.Contract.CurrentDeltaSha256
+    )
+    Assert-EqualSet $state.TargetFindingIds @($ReviewedNode.Contract.Focused.reviewedFindingIds) `
+        "$Label-PRODUCER-TARGETS"
+
+    if ($state.IsGeneralized) {
+        Add-Result -Id "$Label-REVIEWED-CORRECTION" -Passed (
+            [string]$Outcome.reviewedCorrectionPatchSha256 -ceq
+                [string]$ReviewedNode.Contract.CorrectionPatchSha256
+        )
+        Add-Result -Id "$Label-IMMEDIATE-PREVIOUS" -Passed (
+            [string]$Outcome.immediatePreviousReviewPackageSha256 -ceq
+                ([string]$ReviewedNode.Contract.Focused.previousReviewSha256).ToUpperInvariant()
+        )
+        $expectedPriorOutcomeHash = [string]$ReviewedNode.Contract.EmbeddedOutcomeHash
+        $hasPriorOutcomeBinding = $null -ne $Outcome.PSObject.Properties['previousIndependentReviewOutcomeSha256']
+        Add-Result -Id "$Label-PREVIOUS-OUTCOME-PRESENCE" -Passed (
+            $hasPriorOutcomeBinding -eq (-not [string]::IsNullOrWhiteSpace($expectedPriorOutcomeHash))
+        )
+        if ($hasPriorOutcomeBinding) {
+            Add-Result -Id "$Label-PREVIOUS-OUTCOME-HASH" -Passed (
+                [string]$Outcome.previousIndependentReviewOutcomeSha256 -ceq $expectedPriorOutcomeHash
+            )
+            $priorState = Get-IndependentOutcomeState `
+                -Outcome $ReviewedNode.Contract.EmbeddedOutcome -Label "$Label-PREVIOUS-STATE"
+            Assert-EqualSet $state.PreviousFindingIds $priorState.AuthoritativeFindingIds `
+                "$Label-PREVIOUS-STATE-PARITY"
+        }
+    }
+    Add-Result -Id "$Label-TRANSITIVE-FULL" -Passed (
+        [string]$Outcome.transitiveFullReviewBaselineSha256 -ceq $TransitiveFullReviewSha256
+    )
+    return $state
+}
+
+function Resolve-ReviewPackageChain {
+    param(
+        [Parameter(Mandatory)][string]$InitialPackagePath,
+        [Parameter(Mandatory)][string]$ExpectedInitialSha256,
+        [Parameter(Mandatory)][string]$ExpectedTaskId
+    )
+
+    $nodes = [System.Collections.Generic.List[object]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $path = [System.IO.Path]::GetFullPath($InitialPackagePath)
+    $expectedHash = $ExpectedInitialSha256.ToUpperInvariant()
+    $transitiveFullHash = $null
+    for ($depth = 0; $depth -lt 16; $depth++) {
+        $label = "CORRECTION-RECURSIVE-CHAIN-$depth"
+        Add-Result -Id "$label-NO-CYCLE" -Passed $seen.Add($path) -Evidence $path
+        $actualHash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToUpperInvariant()
+        Add-Result -Id "$label-PACKAGE-HASH" -Passed ($actualHash -ceq $expectedHash)
+        $entries = Read-ReviewZipEntries -LiteralPath $path -Label $label
+        $discriminatorNames = @('assignment-record.json', 'completion-report.json', 'package-inventory.json')
+        $discriminatorCount = @(
+            $discriminatorNames | Where-Object { $entries.ContainsKey($_) }
+        ).Count
+        if ($discriminatorCount -eq 0) {
+            Assert-EqualSet @($entries.Keys) `
+                @('MANIFEST.sha256', 'current-delta.patch', 'scope-inventory.json') `
+                "$label-LEGACY-FULL-PACKAGE-SHAPE"
+            $legacyScope = Read-JsonBytes $entries['scope-inventory.json'] `
+                "$label legacy full scope" '' 1
+            Add-Result -Id "$label-LEGACY-FULL-SCOPE" -Passed (
+                $null -ne $legacyScope.PSObject.Properties['entries'] -and
+                $null -ne $legacyScope.PSObject.Properties['pathCount'] -and
+                [int]$legacyScope.pathCount -eq @($legacyScope.entries).Count
+            )
+            $legacyManifestText = [System.Text.UTF8Encoding]::new($false, $true).GetString(
+                $entries['MANIFEST.sha256']
+            )
+            $legacyManifestNames = @($legacyManifestText.TrimEnd("`r", "`n") -split "`n" | ForEach-Object {
+                    $match = [regex]::Match(
+                        $_,
+                        '^(?<hash>[0-9a-f]{64})  (?<length>[0-9]+)  (?<path>[A-Za-z0-9][A-Za-z0-9._-]*)$'
+                    )
+                    if (-not $match.Success) { throw "[$label] Invalid legacy manifest line: $_" }
+                    $name = $match.Groups['path'].Value
+                    if (-not $entries.ContainsKey($name) -or
+                        $match.Groups['hash'].Value -cne (Get-Hash $entries[$name]) -or
+                        [int64]$match.Groups['length'].Value -ne $entries[$name].LongLength) {
+                        throw "[$label] Legacy manifest mismatch: $name"
+                    }
+                    $name
+                })
+            Assert-EqualSet $legacyManifestNames `
+                @($entries.Keys | Where-Object { $_ -cne 'MANIFEST.sha256' }) `
+                "$label-LEGACY-FULL-MANIFEST-COVERAGE"
+            $transitiveFullHash = $actualHash
+            break
+        }
+        Add-Result -Id "$label-DISCRIMINATORS" -Passed (
+            $discriminatorCount -eq $discriminatorNames.Count
+        )
+        $assignmentDiscriminatorText = [System.Text.UTF8Encoding]::new($false, $true).GetString(
+            $entries['assignment-record.json']
+        )
+        if ($assignmentDiscriminatorText.Contains([char]0xfffd) -or
+            $assignmentDiscriminatorText.IndexOf([char]0) -ge 0) {
+            throw "[$label] Invalid strict UTF-8 assignment discriminator."
+        }
+        $assignmentDiscriminator = $assignmentDiscriminatorText | ConvertFrom-Json -Depth 100
+        if ([string]$assignmentDiscriminator.profile -ceq 'FINDING_CORRECTION') {
+            $contract = Get-FocusedPackageContract -Entries $entries -Label $label `
+                -ExpectedTaskId $ExpectedTaskId
+            $node = [pscustomobject][ordered]@{
+                PackagePath = $path
+                PackageSha256 = $actualHash
+                Profile = 'FINDING_CORRECTION'
+                Entries = $entries
+                Contract = $contract
+            }
+            [void]$nodes.Add($node)
+            $path = [System.IO.Path]::GetFullPath([string]$contract.Focused.previousReviewPackage)
+            $expectedHash = ([string]$contract.Focused.previousReviewSha256).ToUpperInvariant()
+            continue
+        }
+
+        $expectedProfile = 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
+        Add-Result -Id "$label-FULL-PROFILE" -Passed (
+            [string]$assignmentDiscriminator.profile -ceq $expectedProfile
+        )
+        $requiredNames = @(
+            'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
+            'current-delta.patch', 'MANIFEST.sha256', 'package-inventory.json',
+            'pre-review-validation-evidence.json', 'report.md', 'scope-inventory.json',
+            'task.patch', 'validation-summary.json'
+        )
+        Assert-EqualSet @($entries.Keys) $requiredNames "$label-FULL-PACKAGE-SHAPE"
+        $inventory = Read-JsonBytes $entries['package-inventory.json'] "$label full inventory" `
+            'generic-package-inventory.schema.json' 1
+        Assert-ManifestInventoryCoverage -Entries $entries -Inventory $inventory -Label $label
+        $transitiveFullHash = $actualHash
+        break
+    }
+    Add-Result -Id 'CORRECTION-RECURSIVE-CHAIN-TERMINATED' -Passed (
+        -not [string]::IsNullOrWhiteSpace($transitiveFullHash)
+    )
+    for ($index = 0; $index -lt $nodes.Count; $index++) {
+        $node = $nodes[$index]
+        if ($null -ne $node.Contract.EmbeddedOutcome) {
+            Add-Result -Id "CORRECTION-RECURSIVE-CHAIN-$index-HAS-NEXT" -Passed (
+                $index + 1 -lt $nodes.Count
+            )
+            [void](Assert-OutcomeReviewsFocusedPackage -Outcome $node.Contract.EmbeddedOutcome `
+                    -ReviewedNode $nodes[$index + 1] -TransitiveFullReviewSha256 $transitiveFullHash `
+                    -Label "CORRECTION-RECURSIVE-CHAIN-$index-OUTCOME")
+        }
+    }
+    return [pscustomobject][ordered]@{
+        Nodes = @($nodes)
+        TransitiveFullReviewSha256 = $transitiveFullHash
+    }
 }
 
 function Get-PublicationBindingSignature {
@@ -333,10 +827,15 @@ try {
         'correction-only.patch', 'correction-scope-inventory.json', 'current-delta.patch',
         'external-governance-manifest.json', 'finding-correction-matrix.json',
         'finding-ledger.json', 'finding-regression-matrix.json',
-        'focused-delta-review-record.json', 'MANIFEST.sha256', 'package-inventory.json',
+        'focused-delta-review-record.json', 'focused-validation-result.json',
+        'MANIFEST.sha256', 'package-inventory.json',
         'previous-review-binding.json', 'readiness-evidence.json', 'report.md',
         'scope-inventory.json', 'trusted-expected-hashes.json', 'validation-summary.json'
     )
+    $hasIndependentReviewOutcomeMember = $entryBytes.ContainsKey('previous-independent-review-outcome.json')
+    if ($hasIndependentReviewOutcomeMember) {
+        $requiredNames += 'previous-independent-review-outcome.json'
+    }
     $hasPublicationEvidence = $entryBytes.ContainsKey('publication-regression-evidence.json')
     $hasPublicationResult = $entryBytes.ContainsKey('publication-regression-result.json')
     if ($hasPublicationEvidence -or $hasPublicationResult) {
@@ -353,6 +852,8 @@ try {
     $correctionScope = Read-JsonBytes $entryBytes['correction-scope-inventory.json'] 'correction-scope-inventory.json' '' 1
     $correctionMatrix = Read-JsonBytes $entryBytes['finding-correction-matrix.json'] 'finding-correction-matrix.json' 'finding-correction-matrix.schema.json' 2
     $regressionMatrix = Read-JsonBytes $entryBytes['finding-regression-matrix.json'] 'finding-regression-matrix.json' 'finding-regression-matrix.schema.json' 2
+    $focusedValidationResult = Read-JsonBytes $entryBytes['focused-validation-result.json'] `
+        'focused-validation-result.json' '' 2
     $ledger = Read-JsonBytes $entryBytes['finding-ledger.json'] 'finding-ledger.json' 'finding-ledger.schema.json' 1
     $focused = Read-JsonBytes $entryBytes['focused-delta-review-record.json'] 'focused-delta-review-record.json' 'focused-delta-review-record.schema.json' 3
     $previous = Read-JsonBytes $entryBytes['previous-review-binding.json'] 'previous-review-binding.json' 'previous-review-binding.schema.json' 3
@@ -697,11 +1198,52 @@ try {
         'CORRECTION-REPORT-REGRESSION-MATRIX-UNION'
     Assert-EqualSet $reportContract.permanentRegressionEvidence.testIds $ledgerRegressionIds `
         'CORRECTION-REPORT-LEDGER-REGRESSION-UNION'
+    $finalFocusedValidationProperty = $regressionMatrix.PSObject.Properties['finalFocusedValidationEvidence']
+    if ($null -eq $finalFocusedValidationProperty) {
+        throw 'Finding regression evidence does not bind the final focused validation result.'
+    }
+    $finalFocusedValidation = $finalFocusedValidationProperty.Value
+    $regressionRows = @($regressionMatrix.findings | ForEach-Object regressionTests)
+    $regressionRowIds = @($regressionRows | ForEach-Object id)
+    $sourceResultRows = @($focusedValidationResult.results)
+    $sourceResultIds = @($sourceResultRows | ForEach-Object { [string]$_.id })
+    $sourceEvidenceBytes = $entryBytes['focused-validation-result.json']
+    Add-Result -Id 'CORRECTION-FOCUSED-SOURCE-EVIDENCE-BYTE-BINDING' -Passed (
+        [string]$finalFocusedValidation.sourceArtifact -ceq 'focused-validation-result.json' -and
+        [int64]$finalFocusedValidation.sourceEvidenceLength -eq $sourceEvidenceBytes.LongLength -and
+        [string]$finalFocusedValidation.sourceEvidenceSha256 -ceq (Get-Hash -Bytes $sourceEvidenceBytes)
+    )
+    Add-Result -Id 'CORRECTION-FOCUSED-SOURCE-EVIDENCE-RESULT' -Passed (
+        [string]$focusedValidationResult.status -ceq 'PASS' -and
+        [int]$focusedValidationResult.selected -eq $sourceResultRows.Count -and
+        [int]$focusedValidationResult.passed -eq @($sourceResultRows | Where-Object result -ceq 'PASS').Count -and
+        [int]$focusedValidationResult.failed -eq @($sourceResultRows | Where-Object result -ceq 'FAIL').Count -and
+        [int]$focusedValidationResult.failed -eq 0 -and
+        [int]$focusedValidationResult.selected -eq [int]$focusedValidationResult.passed
+    )
+    Assert-EqualSet -Left $sourceResultIds -Right $regressionRowIds `
+        -Label 'CORRECTION-FOCUSED-SOURCE-EVIDENCE-RESULT-SET'
+    Add-Result -Id 'CORRECTION-FINAL-FOCUSED-VALIDATION-EVIDENCE' -Passed (
+        [string]$finalFocusedValidation.status -ceq 'PASS' -and
+        [int]$finalFocusedValidation.selected -eq [int]$focusedValidationResult.selected -and
+        [int]$finalFocusedValidation.passed -eq [int]$focusedValidationResult.passed -and
+        [int]$finalFocusedValidation.failed -eq [int]$focusedValidationResult.failed -and
+        [int]$finalFocusedValidation.selected -eq $regressionRowIds.Count -and
+        [int]$finalFocusedValidation.passed -eq @($regressionRows | Where-Object status -ceq 'PASS').Count -and
+        [int]$finalFocusedValidation.failed -eq 0 -and
+        [int]$regressionMatrix.fixtureCount -eq [int]$finalFocusedValidation.selected -and
+        @($regressionRowIds | Sort-Object -Unique).Count -eq $regressionRowIds.Count
+    )
     Add-Result -Id 'CORRECTION-REPORT-FOCUSED-VALIDATION' -Passed (
         [string]$reportContract.permanentRegressionEvidence.result -ceq 'PASS' -and
         [string]$reportContract.focusedValidationResult.result -ceq [string]$validationSummary.focusedFixtureResult -and
-        [int]$reportContract.focusedValidationResult.selected -eq [int]$validationSummary.focusedFixtureCount -and
-        [int]$reportContract.focusedValidationResult.passed -eq [int]$validationSummary.focusedFixtureCount -and
+        [int]$reportContract.focusedValidationResult.selected -eq [int]$finalFocusedValidation.selected -and
+        [int]$reportContract.focusedValidationResult.passed -eq [int]$finalFocusedValidation.passed -and
+        [int]$validationSummary.focusedFixtureCount -eq [int]$finalFocusedValidation.selected -and
+        [int]$validationSummary.focusedFixtureSelectedCount -eq [int]$finalFocusedValidation.selected -and
+        [int]$validationSummary.focusedFixturePassedCount -eq [int]$finalFocusedValidation.passed -and
+        [string]$validationSummary.focusedFixtureEvidenceSha256 -ceq [string]$finalFocusedValidation.sourceEvidenceSha256 -and
+        [int64]$validationSummary.focusedFixtureEvidenceLength -eq [int64]$finalFocusedValidation.sourceEvidenceLength -and
         [bool]$reportContract.independentDeltaReviewRequired
     )
 
@@ -748,6 +1290,14 @@ try {
         [string]$reportContract.previousReview.bindingArtifact -ceq 'previous-review-binding.json' -and
         [string]$reportContract.previousReview.bindingSha256 -ceq $hashBindings.previousReviewBindingSha256
     )
+    if ($hasIndependentReviewOutcomeMember) {
+        $memberOutcomeHash = (Get-Hash $entryBytes['previous-independent-review-outcome.json']).ToUpperInvariant()
+        Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-CONTRACT-HASH-PARITY' -Passed (
+            [string]$assignment.previousIndependentReviewOutcomeSha256 -ceq $memberOutcomeHash -and
+            [string]$completion.previousIndependentReviewOutcomeSha256 -ceq $memberOutcomeHash -and
+            [string]$focused.previousIndependentReviewOutcomeSha256 -ceq $memberOutcomeHash
+        ) -Evidence "member=$memberOutcomeHash"
+    }
 
     $previousState = if ([int]$previous.schemaVersion -eq 2) {
         Convert-LegacyPreviousState -Previous $previous
@@ -792,21 +1342,30 @@ try {
         }
         Assert-EqualSet @($focusedState.previousReviewedPostimages | ForEach-Object { "$(($_ | ConvertTo-Json -Compress))" }) `
             @($previousState.previousReviewedPostimages | ForEach-Object { "$(($_ | ConvertTo-Json -Compress))" }) 'CORRECTION-PREVIOUS-POSTIMAGE-PARITY'
-        $historicalPath = [System.IO.Path]::GetFullPath([string]$previousState.historicalPackagePath)
-        Add-Result -Id 'CORRECTION-HISTORICAL-PACKAGE-EXISTS' -Passed (Test-Path -LiteralPath $historicalPath -PathType Leaf)
-        Add-Result -Id 'CORRECTION-HISTORICAL-PACKAGE-HASH' -Passed ((Get-FileHash -LiteralPath $historicalPath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq [string]$previousState.historicalPackageSha256)
-        $historicalEntries = @{}
+        $historicalPackagePath = [System.IO.Path]::GetFullPath([string]$previousState.historicalPackagePath)
+        Add-Result -Id 'CORRECTION-HISTORICAL-PACKAGE-EXISTS' -Passed (Test-Path -LiteralPath $historicalPackagePath -PathType Leaf)
+        Add-Result -Id 'CORRECTION-HISTORICAL-PACKAGE-HASH' -Passed ((Get-FileHash -LiteralPath $historicalPackagePath -Algorithm SHA256).Hash.ToLowerInvariant() -ceq [string]$previousState.historicalPackageSha256)
+        $historicalEntries = [System.Collections.Generic.Dictionary[string, byte[]]]::new(
+            [System.StringComparer]::Ordinal
+        )
+        $historicalEntryNamesIgnoreCase = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
         Add-Type -AssemblyName System.IO.Compression
-        $historicalArchive = [System.IO.Compression.ZipFile]::OpenRead($historicalPath)
+        $historicalArchive = [System.IO.Compression.ZipFile]::OpenRead($historicalPackagePath)
         try {
-            foreach ($name in @('MANIFEST.sha256', 'current-delta.patch', 'scope-inventory.json')) {
-                $historicalEntry = @($historicalArchive.Entries | Where-Object FullName -ceq $name)
-                if ($historicalEntry.Count -ne 1) { throw "Historical member missing: $name" }
+            foreach ($historicalEntry in $historicalArchive.Entries) {
+                $name = [string]$historicalEntry.FullName
+                if ($name -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$' -or
+                    -not $historicalEntryNamesIgnoreCase.Add($name) -or
+                    $historicalEntries.ContainsKey($name)) {
+                    throw "Historical package contains an unsafe, duplicate, or case-colliding member: $name"
+                }
                 $memory = [System.IO.MemoryStream]::new()
                 try {
-                    $stream = $historicalEntry[0].Open()
+                    $stream = $historicalEntry.Open()
                     try { $stream.CopyTo($memory) } finally { $stream.Dispose() }
-                    $historicalEntries[$name] = $memory.ToArray()
+                    $historicalEntries.Add($name, $memory.ToArray())
                 }
                 finally { $memory.Dispose() }
             }
@@ -817,10 +1376,435 @@ try {
             (Get-Hash $historicalEntries['current-delta.patch']) -ceq [string]$previousState.historicalPatchSha256 -and
             (Get-Hash $historicalEntries['scope-inventory.json']) -ceq [string]$previousState.historicalScopeInventorySha256
         )
-        $historicalScope = Read-JsonBytes $historicalEntries['scope-inventory.json'] `
-            'historical scope-inventory.json' '' 1
-        $historicalEntriesList = @($historicalScope.entries)
-        foreach ($historicalScopeEntry in $historicalEntriesList) {
+
+        $genericDiscriminatorNames = @(
+            'assignment-record.json', 'completion-report.json', 'package-inventory.json'
+        )
+        $genericDiscriminatorCount = @(
+            $genericDiscriminatorNames | Where-Object { $historicalEntries.ContainsKey($_) }
+        ).Count
+        $historicalAssignmentDiscriminator = if ($historicalEntries.ContainsKey('assignment-record.json')) {
+            $historicalDiscriminatorText = [System.Text.UTF8Encoding]::new($false, $true).GetString(
+                $historicalEntries['assignment-record.json']
+            )
+            $historicalDiscriminatorText | ConvertFrom-Json -Depth 100
+        }
+        else { $null }
+        $historicalIsFindingCorrection = (
+            $genericDiscriminatorCount -eq $genericDiscriminatorNames.Count -and
+            [string]$historicalAssignmentDiscriminator.profile -ceq 'FINDING_CORRECTION'
+        )
+        $historicalPackageProfile = $null
+        $historicalAllEntries = @()
+        $historicalEntriesList = @()
+        $historicalSemanticEntryCount = 0
+        if ($genericDiscriminatorCount -eq 0) {
+            Assert-EqualSet -Left @($historicalEntries.Keys) `
+                -Right @('MANIFEST.sha256', 'current-delta.patch', 'scope-inventory.json') `
+                -Label 'CORRECTION-HISTORICAL-LEGACY-PACKAGE-SHAPE'
+            $historicalScope = Read-JsonBytes $historicalEntries['scope-inventory.json'] `
+                'historical legacy scope-inventory.json' '' 1
+            Add-Result -Id 'CORRECTION-HISTORICAL-LEGACY-SCOPE-DISCRIMINATOR' -Passed (
+                $null -ne $historicalScope.PSObject.Properties['pathCount'] -and
+                $null -ne $historicalScope.PSObject.Properties['entries'] -and
+                $null -eq $historicalScope.PSObject.Properties['profile']
+            )
+            $historicalPackageProfile = 'LEGACY_FINDING_CORRECTION_SNAPSHOT'
+            $historicalAllEntries = @($historicalScope.entries)
+            $historicalEntriesList = @($historicalAllEntries)
+            $historicalSemanticEntryCount = $historicalEntriesList.Count
+            Add-Result -Id 'CORRECTION-HISTORICAL-LEGACY-PATHCOUNT' -Passed (
+                [int]$historicalScope.pathCount -eq $historicalSemanticEntryCount
+            ) -Evidence "declared=$($historicalScope.pathCount);entries=$historicalSemanticEntryCount"
+        }
+        elseif ($historicalIsFindingCorrection) {
+            $historicalAssignment = Read-JsonBytes $historicalEntries['assignment-record.json'] `
+                'historical focused assignment-record.json' 'finding-correction-assignment.schema.json' 2
+            $historicalCompletion = Read-JsonBytes $historicalEntries['completion-report.json'] `
+                'historical focused completion-report.json' 'finding-correction-completion.schema.json' 2
+            $historicalInventory = Read-JsonBytes $historicalEntries['package-inventory.json'] `
+                'historical focused package-inventory.json' '' 1
+            $historicalScope = Read-JsonBytes $historicalEntries['scope-inventory.json'] `
+                'historical focused scope-inventory.json' '' 1
+            $historicalFocused = Read-JsonBytes $historicalEntries['focused-delta-review-record.json'] `
+                'historical focused focused-delta-review-record.json' 'focused-delta-review-record.schema.json' 3
+            $historicalPrevious = Read-JsonBytes $historicalEntries['previous-review-binding.json'] `
+                'historical focused previous-review-binding.json' 'previous-review-binding.schema.json' 3
+            $historicalRequiredNames = @(
+                'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
+                'correction-only.patch', 'correction-scope-inventory.json',
+                'current-delta.patch', 'external-governance-manifest.json',
+                'finding-correction-matrix.json', 'finding-ledger.json',
+                'finding-regression-matrix.json', 'focused-delta-review-record.json',
+                'MANIFEST.sha256', 'package-inventory.json', 'previous-review-binding.json',
+                'readiness-evidence.json', 'report.md', 'scope-inventory.json',
+                'trusted-expected-hashes.json', 'validation-summary.json'
+            )
+            $historicalOutcomeBindings = @(
+                $historicalAssignment.PSObject.Properties['previousIndependentReviewOutcomeSha256'],
+                $historicalCompletion.PSObject.Properties['previousIndependentReviewOutcomeSha256'],
+                $historicalFocused.PSObject.Properties['previousIndependentReviewOutcomeSha256']
+            )
+            $historicalOutcomeBindingCount = @(
+                $historicalOutcomeBindings | Where-Object { $null -ne $_ }
+            ).Count
+            Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-OUTCOME-BINDING-SHAPE' -Passed (
+                $historicalOutcomeBindingCount -in @(0, 3)
+            )
+            $historicalHasIndependentOutcome = $historicalOutcomeBindingCount -eq 3
+            if ($historicalHasIndependentOutcome) {
+                $historicalRequiredNames += 'previous-independent-review-outcome.json'
+            }
+            $historicalHasPublicationEvidence = $historicalEntries.ContainsKey('publication-regression-evidence.json')
+            $historicalHasPublicationResult = $historicalEntries.ContainsKey('publication-regression-result.json')
+            $historicalPublicationRequired = (
+                $null -ne $historicalFocused.PSObject.Properties['publicationRegressionEvidence']
+            )
+            Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-PUBLICATION-PAIR' -Passed (
+                $historicalHasPublicationEvidence -eq $historicalHasPublicationResult -and
+                $historicalHasPublicationEvidence -eq $historicalPublicationRequired
+            )
+            if ($historicalPublicationRequired) {
+                $historicalRequiredNames += @('publication-regression-evidence.json', 'publication-regression-result.json')
+            }
+            $historicalHasFocusedSourceEvidence = $historicalEntries.ContainsKey('focused-validation-result.json')
+            if ($historicalHasFocusedSourceEvidence) {
+                $historicalRequiredNames += 'focused-validation-result.json'
+            }
+            Assert-EqualSet -Left @($historicalEntries.Keys) -Right $historicalRequiredNames `
+                -Label 'CORRECTION-HISTORICAL-FOCUSED-PROFILE-DRIVEN-PACKAGE-SHAPE'
+            $historicalPackageProfile = 'FINDING_CORRECTION'
+
+            if ($historicalHasFocusedSourceEvidence) {
+                $historicalRegression = Read-JsonBytes $historicalEntries['finding-regression-matrix.json'] `
+                    'historical focused finding-regression-matrix.json' `
+                    'finding-regression-matrix.schema.json' 2
+                $historicalSourceResult = Read-JsonBytes $historicalEntries['focused-validation-result.json'] `
+                    'historical focused focused-validation-result.json' '' 2
+                $historicalSourceBinding = $historicalRegression.finalFocusedValidationEvidence
+                $historicalSourceRows = @($historicalSourceResult.results)
+                $historicalRegressionRows = @($historicalRegression.findings | ForEach-Object regressionTests)
+                Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-SOURCE-BYTE-BINDING' -Passed (
+                    [string]$historicalSourceBinding.sourceArtifact -ceq 'focused-validation-result.json' -and
+                    [int64]$historicalSourceBinding.sourceEvidenceLength -eq
+                        $historicalEntries['focused-validation-result.json'].LongLength -and
+                    [string]$historicalSourceBinding.sourceEvidenceSha256 -ceq
+                        (Get-Hash $historicalEntries['focused-validation-result.json']) -and
+                    [string]$historicalSourceResult.status -ceq 'PASS' -and
+                    [int]$historicalSourceResult.selected -eq $historicalSourceRows.Count -and
+                    [int]$historicalSourceResult.passed -eq
+                        @($historicalSourceRows | Where-Object result -ceq 'PASS').Count -and
+                    [int]$historicalSourceResult.failed -eq 0
+                )
+                Assert-EqualSet -Left @($historicalSourceRows | ForEach-Object id) `
+                    -Right @($historicalRegressionRows | ForEach-Object id) `
+                    -Label 'CORRECTION-HISTORICAL-FOCUSED-SOURCE-RESULT-SET'
+            }
+
+            Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-PROFILE' -Passed (
+                [string]$historicalAssignment.profile -ceq 'FINDING_CORRECTION' -and
+                [string]$historicalCompletion.profile -ceq 'FINDING_CORRECTION' -and
+                [string]$historicalInventory.profile -ceq 'FINDING_CORRECTION' -and
+                [string]$historicalAssignment.transitionType -ceq 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW' -and
+                [string]$historicalCompletion.transitionType -ceq 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW' -and
+                [string]$historicalInventory.transitionType -ceq 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW'
+            )
+            Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-IDENTITY' -Passed (
+                [string]$historicalAssignment.taskId -ceq [string]$assignment.taskId -and
+                [string]$historicalCompletion.taskId -ceq [string]$assignment.taskId -and
+                [string]$historicalScope.taskId -ceq [string]$assignment.taskId -and
+                [string]$historicalInventory.taskId -ceq [string]$assignment.taskId
+            )
+            $historicalPatchHash = Get-Hash $historicalEntries['current-delta.patch']
+            $historicalScopeHash = Get-Hash $historicalEntries['scope-inventory.json']
+            Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-HASH-PARITY' -Passed (
+                [string]$historicalAssignment.currentDeltaSha256 -ceq $historicalPatchHash -and
+                [string]$historicalFocused.currentDeltaSha256 -ceq $historicalPatchHash -and
+                [string]$historicalAssignment.scopeInventorySha256 -ceq $historicalScopeHash
+            )
+
+            $historicalInventoryEntries = @($historicalInventory.entries)
+            $historicalInventoryNames = @(
+                $historicalEntries.Keys | Where-Object { $_ -notin @('MANIFEST.sha256', 'package-inventory.json') }
+            )
+            Assert-EqualSet @($historicalInventoryEntries | ForEach-Object path) `
+                $historicalInventoryNames 'CORRECTION-HISTORICAL-FOCUSED-INVENTORY-COVERAGE'
+            foreach ($historicalInventoryEntry in $historicalInventoryEntries) {
+                $inventoryName = [string]$historicalInventoryEntry.path
+                Add-Result -Id ('CORRECTION-HISTORICAL-FOCUSED-INVENTORY-' + $inventoryName) -Passed (
+                    [string]$historicalInventoryEntry.sha256 -ceq (Get-Hash $historicalEntries[$inventoryName]) -and
+                    [int64]$historicalInventoryEntry.length -eq $historicalEntries[$inventoryName].LongLength
+                )
+            }
+            $historicalManifestText = [System.Text.UTF8Encoding]::new($false, $true).GetString(
+                $historicalEntries['MANIFEST.sha256']
+            )
+            $historicalManifestNames = @($historicalManifestText.TrimEnd("`r", "`n") -split "`n" | ForEach-Object {
+                    $manifestMatch = [regex]::Match(
+                        $_,
+                        '^(?<hash>[0-9a-f]{64})  (?<length>[0-9]+)  (?<path>[A-Za-z0-9][A-Za-z0-9._-]*)$'
+                    )
+                    if (-not $manifestMatch.Success) { throw "Invalid historical focused manifest line: $_" }
+                    $manifestName = $manifestMatch.Groups['path'].Value
+                    if (-not $historicalEntries.ContainsKey($manifestName) -or
+                        $manifestMatch.Groups['hash'].Value -cne (Get-Hash $historicalEntries[$manifestName]) -or
+                        [int64]$manifestMatch.Groups['length'].Value -ne $historicalEntries[$manifestName].LongLength) {
+                        throw "Historical focused manifest mismatch: $manifestName"
+                    }
+                    $manifestName
+                })
+            Assert-EqualSet $historicalManifestNames `
+                @($historicalEntries.Keys | Where-Object { $_ -cne 'MANIFEST.sha256' }) `
+                'CORRECTION-HISTORICAL-FOCUSED-MANIFEST-COVERAGE'
+
+            $historicalEmbeddedOutcome = $null
+            $historicalEmbeddedOutcomeHash = $null
+            if ($historicalHasIndependentOutcome) {
+                $historicalEmbeddedOutcomeHash = (
+                    Get-Hash $historicalEntries['previous-independent-review-outcome.json']
+                ).ToUpperInvariant()
+                Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-OUTCOME-HASH-PARITY' -Passed (
+                    [string]$historicalAssignment.previousIndependentReviewOutcomeSha256 -ceq
+                        $historicalEmbeddedOutcomeHash -and
+                    [string]$historicalCompletion.previousIndependentReviewOutcomeSha256 -ceq
+                        $historicalEmbeddedOutcomeHash -and
+                    [string]$historicalFocused.previousIndependentReviewOutcomeSha256 -ceq
+                        $historicalEmbeddedOutcomeHash
+                )
+                $historicalEmbeddedOutcome = Read-JsonBytes `
+                    $historicalEntries['previous-independent-review-outcome.json'] `
+                    'historical focused previous-independent-review-outcome.json' `
+                    'generic-independent-review-evidence.schema.json' 1
+            }
+
+            $outcomeEvidence = Read-IndependentReviewOutcome `
+                -LiteralPath $IndependentReviewOutcomePath `
+                -ExpectedSha256 $ExpectedIndependentReviewOutcomeSha256 `
+                -ExpectedTaskId ([string]$assignment.taskId)
+            $outcome = $outcomeEvidence.Contract
+            $independentReviewOutcomeSha256 = $outcomeEvidence.Sha256
+            $immediatePreviousReviewPackageSha256 = (
+                Get-FileHash -LiteralPath $historicalPackagePath -Algorithm SHA256
+            ).Hash.ToUpperInvariant()
+            Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-TRANSITIVE-STATE' -Passed (
+                [string]$historicalFocused.previousReviewState.type -ceq 'IMMUTABLE_REVIEW_PACKAGE' -and
+                [string]$historicalPrevious.previousReviewState.type -ceq 'IMMUTABLE_REVIEW_PACKAGE' -and
+                [string]$historicalFocused.previousReviewSha256 -ceq
+                    [string]$historicalFocused.previousReviewState.historicalPackageSha256 -and
+                [string]$historicalFocused.previousReviewSha256 -ceq
+                    [string]$historicalPrevious.previousReviewState.historicalPackageSha256
+            )
+            $recursiveChain = Resolve-ReviewPackageChain `
+                -InitialPackagePath ([string]$historicalFocused.previousReviewPackage) `
+                -ExpectedInitialSha256 ([string]$historicalFocused.previousReviewSha256) `
+                -ExpectedTaskId ([string]$assignment.taskId)
+            $transitiveFullReviewBaselineSha256 = $recursiveChain.TransitiveFullReviewSha256
+            if ($historicalHasIndependentOutcome) {
+                Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-OUTCOME-HAS-REVIEWED-NODE' -Passed (
+                    @($recursiveChain.Nodes).Count -gt 0
+                )
+                [void](Assert-OutcomeReviewsFocusedPackage -Outcome $historicalEmbeddedOutcome `
+                        -ReviewedNode @($recursiveChain.Nodes)[0] `
+                        -TransitiveFullReviewSha256 $transitiveFullReviewBaselineSha256 `
+                        -Label 'CORRECTION-HISTORICAL-EMBEDDED-OUTCOME')
+            }
+
+            $historicalFindingIds = @(Get-CanonicalSet -Value @($historicalFocused.reviewedFindingIds) `
+                -Label 'CORRECTION-HISTORICAL-FOCUSED-FINDINGS')
+            Assert-EqualSet $historicalAssignment.findingIds $historicalFindingIds `
+                'CORRECTION-HISTORICAL-FOCUSED-FINDING-UNIVERSE'
+            $historicalNode = [pscustomobject][ordered]@{
+                PackagePath = $historicalPackagePath
+                PackageSha256 = $immediatePreviousReviewPackageSha256
+                Profile = 'FINDING_CORRECTION'
+                Entries = $historicalEntries
+                Contract = [pscustomobject][ordered]@{
+                    Assignment = $historicalAssignment
+                    Completion = $historicalCompletion
+                    Inventory = $historicalInventory
+                    Focused = $historicalFocused
+                    EmbeddedOutcome = $historicalEmbeddedOutcome
+                    EmbeddedOutcomeHash = $historicalEmbeddedOutcomeHash
+                    CurrentDeltaSha256 = $historicalPatchHash.ToUpperInvariant()
+                    CorrectionPatchSha256 = (
+                        Get-Hash $historicalEntries['correction-only.patch']
+                    ).ToUpperInvariant()
+                }
+            }
+            $outcomeState = Assert-OutcomeReviewsFocusedPackage -Outcome $outcome `
+                -ReviewedNode $historicalNode `
+                -TransitiveFullReviewSha256 $transitiveFullReviewBaselineSha256 `
+                -Label 'CORRECTION-INDEPENDENT-OUTCOME'
+            Assert-EqualSet $assignment.findingIds $outcomeState.OpenFindingIds `
+                'CORRECTION-INDEPENDENT-OUTCOME-TARGET-FINDINGS'
+            Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-MEMBER-PRESENT' -Passed $hasIndependentReviewOutcomeMember
+            Add-Result -Id 'CORRECTION-INDEPENDENT-OUTCOME-MEMBER-BYTES' -Passed (
+                $hasIndependentReviewOutcomeMember -and
+                (Get-Hash $entryBytes['previous-independent-review-outcome.json']) -ceq
+                    (Get-Hash $outcomeEvidence.Bytes)
+            )
+            $independentReviewOutcomeValidation = 'PASS'
+            $findingDispositionBindingResult = 'PASS'
+
+            $historicalAllEntries = @($historicalScope.entries)
+            $historicalEntriesList = @($historicalAllEntries)
+            $historicalSemanticEntryCount = $historicalEntriesList.Count
+            Add-Result -Id 'CORRECTION-HISTORICAL-FOCUSED-PATHCOUNT' -Passed (
+                [int]$historicalScope.pathCount -eq $historicalSemanticEntryCount
+            )
+        }
+        elseif ($genericDiscriminatorCount -eq $genericDiscriminatorNames.Count) {
+            $genericExpectedNames = @(
+                'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
+                'current-delta.patch', 'MANIFEST.sha256', 'package-inventory.json',
+                'pre-review-validation-evidence.json', 'report.md', 'scope-inventory.json',
+                'task.patch', 'validation-summary.json'
+            )
+            Assert-EqualSet -Left @($historicalEntries.Keys) -Right $genericExpectedNames `
+                -Label 'CORRECTION-HISTORICAL-GENERIC-PACKAGE-SHAPE'
+            $historicalAssignment = Read-JsonBytes $historicalEntries['assignment-record.json'] `
+                'historical assignment-record.json' 'generic-assignment-record.schema.json' 1
+            $historicalCompletion = Read-JsonBytes $historicalEntries['completion-report.json'] `
+                'historical completion-report.json' 'generic-completion-report.schema.json' 1
+            $historicalInventory = Read-JsonBytes $historicalEntries['package-inventory.json'] `
+                'historical package-inventory.json' 'generic-package-inventory.schema.json' 1
+            $historicalScope = Read-JsonBytes $historicalEntries['scope-inventory.json'] `
+                'historical scope-inventory.json' 'generic-scope-inventory.schema.json' 1
+            $historicalPackageProfile = [string]$historicalAssignment.profile
+            $expectedHistoricalProfile = 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
+            $expectedHistoricalTransition = 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
+            Add-Result -Id 'CORRECTION-HISTORICAL-GENERIC-PROFILE' -Passed (
+                $historicalPackageProfile -ceq $expectedHistoricalProfile -and
+                [string]$historicalCompletion.profile -ceq $expectedHistoricalProfile -and
+                [string]$historicalInventory.profile -ceq $expectedHistoricalProfile -and
+                [string]$historicalScope.profile -ceq $expectedHistoricalProfile
+            )
+            Add-Result -Id 'CORRECTION-HISTORICAL-GENERIC-TRANSITION' -Passed (
+                [string]$historicalAssignment.transitionType -ceq $expectedHistoricalTransition -and
+                [string]$historicalCompletion.transitionType -ceq $expectedHistoricalTransition -and
+                [string]$historicalInventory.transitionType -ceq $expectedHistoricalTransition
+            )
+            Add-Result -Id 'CORRECTION-HISTORICAL-GENERIC-IDENTITY-PARITY' -Passed (
+                [string]$historicalAssignment.taskId -ceq [string]$historicalCompletion.taskId -and
+                [string]$historicalAssignment.taskId -ceq [string]$historicalScope.taskId -and
+                [string]$historicalAssignment.taskId -ceq [string]$historicalInventory.taskId -and
+                [string]$historicalAssignment.repository -ceq [string]$historicalCompletion.repository -and
+                [string]$historicalAssignment.repository -ceq [string]$historicalScope.repository -and
+                [string]$historicalAssignment.baselineCommit -ceq [string]$historicalCompletion.baselineCommit -and
+                [string]$historicalAssignment.baselineCommit -ceq [string]$historicalScope.baselineCommit -and
+                [string]$historicalAssignment.currentCommit -ceq [string]$historicalCompletion.currentCommit -and
+                [string]$historicalAssignment.currentCommit -ceq [string]$historicalScope.currentCommit -and
+                [string]$historicalAssignment.branch -ceq [string]$historicalCompletion.branch -and
+                [string]$historicalAssignment.branch -ceq [string]$historicalScope.branch
+            )
+            $historicalScopeHash = Get-Hash $historicalEntries['scope-inventory.json']
+            $historicalPatchHash = Get-Hash $historicalEntries['current-delta.patch']
+            Add-Result -Id 'CORRECTION-HISTORICAL-GENERIC-HASH-PARITY' -Passed (
+                [string]$historicalAssignment.scopeInventorySha256 -ceq $historicalScopeHash -and
+                [string]$historicalCompletion.scopeInventorySha256 -ceq $historicalScopeHash -and
+                [string]$historicalAssignment.taskPatchSha256 -ceq (Get-Hash $historicalEntries['task.patch']) -and
+                [string]$historicalCompletion.taskPatchSha256 -ceq (Get-Hash $historicalEntries['task.patch']) -and
+                [string]$historicalAssignment.currentDeltaSha256 -ceq $historicalPatchHash -and
+                [string]$historicalCompletion.currentDeltaSha256 -ceq $historicalPatchHash -and
+                (Get-Hash $historicalEntries['task.patch']) -ceq $historicalPatchHash
+            )
+            Add-Result -Id 'CORRECTION-HISTORICAL-GENERIC-REVIEW-STATUS' -Passed (
+                [bool]$historicalAssignment.classicReviewReady -and
+                [bool]$historicalCompletion.classicReviewReady -and
+                [string]$historicalCompletion.status -ceq 'CLASSIC_REVIEW_READY' -and
+                [bool]$historicalCompletion.zipFreeReadinessPassed -and
+                [string]$historicalCompletion.independentReviewStatus -ceq 'NOT_PERFORMED' -and
+                -not [bool]$historicalAssignment.commitAuthorized -and
+                -not [bool]$historicalCompletion.commitAuthorized
+            )
+            Assert-EqualSet $historicalAssignment.allowedDeltaPaths $historicalScope.allowedDeltaPaths `
+                'CORRECTION-HISTORICAL-GENERIC-ASSIGNMENT-ALLOWED'
+            Assert-EqualSet $historicalCompletion.allowedDeltaPaths $historicalScope.allowedDeltaPaths `
+                'CORRECTION-HISTORICAL-GENERIC-COMPLETION-ALLOWED'
+            Assert-EqualSet $historicalAssignment.excludedDeltaPaths $historicalScope.excludedDeltaPaths `
+                'CORRECTION-HISTORICAL-GENERIC-ASSIGNMENT-EXCLUDED'
+            Assert-EqualSet $historicalCompletion.excludedDeltaPaths $historicalScope.excludedDeltaPaths `
+                'CORRECTION-HISTORICAL-GENERIC-COMPLETION-EXCLUDED'
+
+            $historicalInventoryEntries = @($historicalInventory.entries)
+            $historicalInventoryNames = @(
+                $historicalEntries.Keys | Where-Object { $_ -notin @('MANIFEST.sha256', 'package-inventory.json') }
+            )
+            Assert-EqualSet @($historicalInventoryEntries | ForEach-Object path) `
+                $historicalInventoryNames 'CORRECTION-HISTORICAL-GENERIC-INVENTORY-COVERAGE'
+            foreach ($historicalInventoryEntry in $historicalInventoryEntries) {
+                $inventoryName = [string]$historicalInventoryEntry.path
+                Add-Result -Id ('CORRECTION-HISTORICAL-GENERIC-INVENTORY-' + $inventoryName) -Passed (
+                    [string]$historicalInventoryEntry.sha256 -ceq (Get-Hash $historicalEntries[$inventoryName]) -and
+                    [int64]$historicalInventoryEntry.length -eq $historicalEntries[$inventoryName].LongLength
+                )
+            }
+
+            $historicalManifestText = [System.Text.UTF8Encoding]::new($false, $true).GetString(
+                $historicalEntries['MANIFEST.sha256']
+            )
+            $historicalManifestLines = @($historicalManifestText.TrimEnd("`r", "`n") -split "`n")
+            $historicalManifestNames = @($historicalManifestLines | ForEach-Object {
+                    $manifestMatch = [regex]::Match(
+                        $_,
+                        '^(?<hash>[0-9a-f]{64})  (?<length>[0-9]+)  (?<path>[A-Za-z0-9][A-Za-z0-9._-]*)$'
+                    )
+                    if (-not $manifestMatch.Success) { throw "Invalid historical manifest line: $_" }
+                    $manifestName = $manifestMatch.Groups['path'].Value
+                    if (-not $historicalEntries.ContainsKey($manifestName) -or
+                        $manifestMatch.Groups['hash'].Value -cne (Get-Hash $historicalEntries[$manifestName]) -or
+                        [int64]$manifestMatch.Groups['length'].Value -ne $historicalEntries[$manifestName].LongLength) {
+                        throw "Historical manifest mismatch: $manifestName"
+                    }
+                    $manifestName
+                })
+            Assert-EqualSet $historicalManifestNames `
+                @($historicalEntries.Keys | Where-Object { $_ -cne 'MANIFEST.sha256' }) `
+                'CORRECTION-HISTORICAL-GENERIC-MANIFEST-COVERAGE'
+
+            $historicalAllEntries = @($historicalScope.entries)
+            $historicalEntriesList = @(
+                $historicalAllEntries | Where-Object { [string]$_.inclusionDecision -ceq 'INCLUDE' }
+            )
+            $historicalExcludedEntries = @(
+                $historicalAllEntries | Where-Object { [string]$_.inclusionDecision -ceq 'EXCLUDE' }
+            )
+            [object[]]$historicalIncludedPaths = @()
+            if ($historicalEntriesList.Count -gt 0) {
+                $historicalIncludedPaths = @(Get-ExpandedScopePaths -Entries $historicalEntriesList)
+            }
+            [object[]]$historicalExcludedPaths = @()
+            if ($historicalExcludedEntries.Count -gt 0) {
+                $historicalExcludedPaths = @(Get-ExpandedScopePaths -Entries $historicalExcludedEntries)
+            }
+            Assert-EqualSet $historicalIncludedPaths `
+                $historicalScope.allowedDeltaPaths 'CORRECTION-HISTORICAL-GENERIC-INCLUDED-SCOPE'
+            $declaredHistoricalExcludedPaths = @($historicalScope.excludedDeltaPaths)
+            if ($historicalExcludedPaths.Count -eq 0 -and $declaredHistoricalExcludedPaths.Count -eq 0) {
+                Add-Result -Id 'CORRECTION-HISTORICAL-GENERIC-EXCLUDED-SCOPE' -Passed $true
+            }
+            elseif ($historicalExcludedPaths.Count -eq 0 -or $declaredHistoricalExcludedPaths.Count -eq 0) {
+                Add-Result -Id 'CORRECTION-HISTORICAL-GENERIC-EXCLUDED-SCOPE' -Passed $false `
+                    -Evidence "entries=$($historicalExcludedPaths.Count);declared=$($declaredHistoricalExcludedPaths.Count)"
+            }
+            else {
+                Assert-EqualSet $historicalExcludedPaths $declaredHistoricalExcludedPaths `
+                    'CORRECTION-HISTORICAL-GENERIC-EXCLUDED-SCOPE'
+            }
+            $historicalSemanticEntryCount = $historicalEntriesList.Count
+        }
+        else {
+            throw 'Historical previous-review package has an incomplete or unknown profile discriminator.'
+        }
+        Add-Result -Id 'CORRECTION-HISTORICAL-PACKAGE-PROFILE-TYPED' -Passed (
+            $historicalPackageProfile -in @(
+                'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW',
+                'FINDING_CORRECTION',
+                'LEGACY_FINDING_CORRECTION_SNAPSHOT'
+            )
+        ) -Evidence "profile=$historicalPackageProfile"
+
+        foreach ($historicalScopeEntry in $historicalAllEntries) {
             $historicalPath = [string]$historicalScopeEntry.path
             $historicalPreviousPath = if ($historicalScopeEntry.PSObject.Properties['previousPath']) {
                 [string]$historicalScopeEntry.previousPath
@@ -838,12 +1822,9 @@ try {
         }
         $historicalPaths = @(Get-ExpandedScopePaths -Entries $historicalEntriesList)
         $historicalCanonicalPaths = @(Get-CanonicalSet -Value $historicalPaths -Label 'CORRECTION-HISTORICAL-SCOPE-PATHS')
-        Add-Result -Id 'CORRECTION-HISTORICAL-SCOPE-INTERNAL-PATHCOUNT' -Passed (
-            [int]$historicalScope.pathCount -eq $historicalEntriesList.Count
-        ) -Evidence "declared=$($historicalScope.pathCount);entries=$($historicalEntriesList.Count);paths=$($historicalCanonicalPaths.Count)"
         Add-Result -Id 'CORRECTION-HISTORICAL-SCOPE-PREVIOUS-COUNT' -Passed (
-            [int]$previousState.previousReviewedPathCount -eq [int]$historicalScope.pathCount
-        ) -Evidence "previous=$($previousState.previousReviewedPathCount);historical=$($historicalScope.pathCount)"
+            [int]$previousState.previousReviewedPathCount -eq $historicalSemanticEntryCount
+        ) -Evidence "previous=$($previousState.previousReviewedPathCount);semanticEntries=$historicalSemanticEntryCount;paths=$($historicalCanonicalPaths.Count);profile=$historicalPackageProfile"
         $historicalPatchPath = Join-Path $context.Root 'historical.patch'
         [System.IO.File]::WriteAllBytes($historicalPatchPath, $historicalEntries['current-delta.patch'])
         Invoke-IsolatedGitText @('read-tree', [string]$previousState.previousReviewedBaselineCommit) | Out-Null
@@ -959,6 +1940,11 @@ finally {
         FailureCount = if ($status -ceq 'PASS') { 0 } else { 1 }
         ReadyToExecute = $status -ceq 'PASS'
         PackageWriteAttemptCount = 0
+        IndependentReviewOutcomeValidation = $independentReviewOutcomeValidation
+        IndependentReviewOutcomeSHA256 = $independentReviewOutcomeSha256
+        ImmediatePreviousReviewPackageSHA256 = $immediatePreviousReviewPackageSha256
+        TransitiveFullReviewBaselineSHA256 = $transitiveFullReviewBaselineSha256
+        FindingDispositionBindingResult = $findingDispositionBindingResult
         FailureMessage = $failureMessage
     }
     $result | Format-List

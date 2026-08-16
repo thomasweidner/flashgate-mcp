@@ -670,7 +670,7 @@ function Test-TrackedPathCoverage {
                     )
                 )).Substring(0, 12)) -Passed $covered `
             -Message 'Tracked path maps to a material trigger or one explicit exclusion.' `
-            -Evidence "$path => $($triggerIdsForPath -join ',')"
+            -Evidence ('{0} => {1}' -f $path, (@($triggerIdsForPath) | ConvertTo-Json -Compress))
     }
 }
 
@@ -1023,6 +1023,8 @@ try {
         'finding-correction',
         'commit-preparation',
         'focused-revalidation',
+        'evidence-only-focused-review',
+        'post-merge-closure',
         'full-completion'
     )
     $expectedCheapGateOrder = @(
@@ -1043,8 +1045,8 @@ try {
         'readOnlyProbeCount'
     )
     Add-GovernanceCheck -Id 'CATALOG-ORCHESTRATION-PROFILE-COUNT' `
-        -Passed (@($catalog.orchestrationPolicy.profiles).Count -eq 7) `
-        -Message 'Catalog contains exactly seven permanent orchestration profiles.'
+        -Passed (@($catalog.orchestrationPolicy.profiles).Count -eq 9) `
+        -Message 'Catalog contains exactly nine permanent orchestration profiles.'
     Add-GovernanceCheck -Id 'CATALOG-ORCHESTRATION-PROFILE-IDS' `
         -Passed (Test-OrdinalSequenceEqual -Left $orchestrationProfileIds -Right $expectedOrchestrationProfiles) `
         -Message 'Orchestration profile IDs and order are canonical.'
@@ -1168,11 +1170,11 @@ try {
     Add-GovernanceCheck -Id 'SCHEMA-RESULTS' -Passed ((($resultIds | Sort-Object) -join ',') -eq (($schemaResults | Sort-Object) -join ',')) -Message 'Schema and catalog trigger results agree.'
     Add-GovernanceCheck -Id 'SCHEMA-TRIGGERS' -Passed ((($triggerIds | Sort-Object) -join ',') -eq (($schemaTriggers | Sort-Object) -join ',')) -Message 'Schema and catalog trigger IDs agree.'
     Add-GovernanceCheck -Id 'SCHEMA-BOUNDARIES' -Passed ((($boundaryIds | Sort-Object) -join ',') -eq (($schemaBoundaries | Sort-Object) -join ',')) -Message 'Schema and catalog decision boundaries agree.'
-    Add-GovernanceCheck -Id 'SCHEMA-FINDINGS' -Passed ((($findingDispositions | Sort-Object) -join ',') -eq (($schemaFindingDispositions | Sort-Object) -join ',')) -Message 'Schema and catalog finding dispositions agree.'
+    Add-GovernanceCheck -Id 'SCHEMA-FINDINGS' -Passed ((($findingDispositions | Sort-Object) -join "`n") -eq (($schemaFindingDispositions | Sort-Object) -join "`n")) -Message 'Schema and catalog finding dispositions agree.'
 
     $standardsText = ($standardPaths | ForEach-Object { [System.IO.File]::ReadAllText($_, [System.Text.UTF8Encoding]::new($false, $true)) }) -join "`n"
     foreach ($value in @($modeIds + $checkpointIds + $boundaryIds + $resultIds | Sort-Object -Unique)) {
-        Add-GovernanceCheck -Id "STANDARD-$value" -Passed $standardsText.Contains($value, [System.StringComparison]::Ordinal) -Message 'Binding standards reference every catalog control value.' -Evidence $value
+        Add-GovernanceCheck -Id ('STANDARD-{0}' -f [string]$value) -Passed $standardsText.Contains([string]$value, [System.StringComparison]::Ordinal) -Message 'Binding standards reference every catalog control value.' -Evidence $value
     }
 
     $derivedTriggers = Get-DerivedTriggers -Catalog $catalog -Paths $ChangedPath
@@ -1206,10 +1208,12 @@ try {
     $duplicateBacklogIds = @($backlogTaskIds | Group-Object | Where-Object Count -ne 1)
     $maxBacklogId = if ($backlogTaskNumbers.Count -gt 0) { $backlogTaskNumbers[-1] } else { 0 }
     $missingBacklogNumbers = @(1..$maxBacklogId | Where-Object { $_ -notin $backlogTaskNumbers })
+    $duplicateBacklogIdText = [string]::Join("`n", [string[]]@($duplicateBacklogIds | ForEach-Object Name))
+    $missingBacklogNumberText = [string]::Join("`n", [string[]]$missingBacklogNumbers)
     Add-GovernanceCheck -Id 'BACKLOG-CONTINUITY' `
         -Passed ($maxBacklogId -ge 335 -and $duplicateBacklogIds.Count -eq 0 -and $missingBacklogNumbers.Count -eq 0) `
         -Message 'Backlog IDs are continuous through BL-335 and unique.' `
-        -Evidence "max=$maxBacklogId; duplicates=$(@($duplicateBacklogIds | ForEach-Object Name) -join ','); missing=$($missingBacklogNumbers -join ',')"
+        -Evidence ('max={0}; duplicates={1}; missing={2}' -f $maxBacklogId, $duplicateBacklogIdText, $missingBacklogNumberText)
     Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
         -Passed $backlogText.Contains(
             'schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
@@ -1307,6 +1311,17 @@ try {
             [bool]$record.commitPreparation.validationPassed -or
             [bool]$record.commitPreparation.commitAuthorized
         )
+        $currentReadinessClassPass = (
+            -not $currentStateReadinessClaimed -or
+            ('recordReadinessClass' -in $recordProperties -and
+                [string]$record.recordReadinessClass -ceq 'CURRENT')
+        )
+        Add-GovernanceCheck -Id 'RECORD-CURRENT-READINESS-CLASS' `
+            -Passed $currentReadinessClassPass `
+            -Message (
+                'Historical schema-version-1 records remain readable, but every current-state, ' +
+                'validation, checkpoint, handoff, or commit-readiness claim requires recordReadinessClass=CURRENT.'
+            )
         Add-GovernanceCheck -Id 'RECORD-CURRENT-STATE-GATE-PRESENCE' `
             -Passed (-not $currentStateReadinessClaimed -or $hasCurrentStateGate) `
             -Message (
@@ -2461,6 +2476,7 @@ try {
             )
 
             $handoffResultsPass = (
+                $currentReadinessClassPass -and
                 [bool]$record.handoff.required -and
                 $packageExists -and
                 $packageOutsideRepository -and
@@ -2679,12 +2695,12 @@ try {
                         $declaredButUnchangedPaths
                         $undeclaredCorrectionPaths
                         $referencePathMutations
-                    ) -join ', '
+                    ) -join '; '
                 )
             Add-GovernanceCheck -Id 'RECORD-FOCUSED-DELTA-FINDINGS' `
                 -Passed ($missingReviewedFindings.Count -eq 0) `
                 -Message 'Focused delta includes every corrected finding.' `
-                -Evidence ($missingReviewedFindings -join ', ')
+                -Evidence ($missingReviewedFindings -join '; ')
         }
 
         $completionReportValidated = $false

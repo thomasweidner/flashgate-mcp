@@ -8,6 +8,17 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Prepared the local BL-340 governance generator/profile migration for
+  independent review. The BL-339 orchestrator now has exact intended-base,
+  merge-base, effective-PR-scope/patch, integration-projection, authorized-write
+  and protected-state results; it consumes the unchanged BL-338 selector
+  resolver and records eight-component reuse/invalidation state. The sole
+  `New-GovernanceHandoff.ps1` generator now supports evidence-only focused
+  review and post-merge documentation closure without synthetic patch members.
+  External inputs distinguish VERSIONED, IGNORED, GIT_EXCLUDED, and EXTERNAL,
+  and task-controller inventory is enforced fail closed. This is an isolated,
+  uncommitted implementation pending independent full review; no remote or
+  release state is implied.
 - Corrected the BL-338 Classic review finding `BL338-CLASSIC-REV-001`: the
   repository fixture harness no longer imports contributor-local Codex-Work or
   INF-160 files, accepts optional validated executable/capability inputs, and

@@ -267,16 +267,20 @@ final run. Progress always means completed selected units, never a pass/fail
 pair, and repeated long runs without numeric progress are instrumentation
 findings.
 
-BL-339 standardizes that workflow as seven cataloged data profiles and
+BL-339 standardizes that workflow, and BL-340 completes it as nine cataloged data profiles and
 one strict request/result contract. The ordered cheap prefix prevents expensive
-work after parser, text/EOL, diff, external-input, toolchain/context, or exact
-source/selector failures. Task-local generated controllers are exceptional and
-measured; the normal count is zero because the thin runner composes permanent
-helpers and typed subordinate results. Exact PASS/dependency hashes allow
+work after parser, text/EOL, diff, closed external-input classification,
+toolchain/context, exact source, or canonical selector-resolution failures.
+Task-local generated controllers are exceptional and measured from a declared
+inventory; the normal count is zero because the thin runner composes permanent
+helpers and typed subordinate results. Unknown exceptions or counter drift fail
+closed. Exact PASS/dependency hashes and an eight-component state map allow
 unchanged evidence reuse and selective invalidation rather than prophylactic
 full reruns. Its reusable `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` handoff
 profile carries that hash-bound full-completion evidence directly into the first
 independent review without requiring a review artifact that cannot yet exist.
+The same generator supports evidence-only focused review and post-merge closure
+as nine-member empty-delta packages, without artificial patch generation.
 
 The correction handoff uses the same generator in directory-first
 `PreflightOnly` mode. This performs schema, snapshot, patch, scope, finding,
@@ -300,8 +304,9 @@ The canonical workflow metrics are `validationExecutionCount`,
 package permits exactly one full-completion run and one final package write.
 Directory validation precedes ZIP creation so known content errors cost zero
 package-write attempts. The attempt counter becomes one immediately before the
-first write-capable final-path open, including a failed open; automatic retry is
-zero.
+first write-capable candidate open after target preconditions pass, including a
+failed candidate open. An existing file or directory target fails before that
+attempt; automatic retry is zero.
 
 ## Conditional reads
 

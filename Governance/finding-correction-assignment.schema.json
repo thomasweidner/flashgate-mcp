@@ -72,6 +72,7 @@
     "correctionPatchSha256": { "$ref": "#/$defs/hash" },
     "findingLedgerSha256": { "$ref": "#/$defs/hash" },
     "previousReviewBindingSha256": { "$ref": "#/$defs/hash" },
+    "previousIndependentReviewOutcomeSha256": { "$ref": "#/$defs/outcomeHash" },
     "allowedDeltaPaths": { "$ref": "#/$defs/paths" },
     "correctionOnlyPaths": { "$ref": "#/$defs/paths" },
     "directInterfacePaths": { "$ref": "#/$defs/paths" },
@@ -80,6 +81,7 @@
   "$defs": {
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "outcomeHash": { "type": "string", "pattern": "^[0-9A-F]{64}$" },
     "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
     "paths": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
     "findingIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^BL[0-9]{3}(?:-BL[0-9]{3})?(?:-[A-Z][A-Z0-9]*)*-REV-[0-9]{3}$" } }

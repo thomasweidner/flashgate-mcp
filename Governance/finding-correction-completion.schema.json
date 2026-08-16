@@ -56,6 +56,7 @@
     "transitionType": { "const": "BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW" },
     "status": { "enum": ["ZIP_FREE_READY_TO_EXECUTE", "FINAL_REVIEW_PACKAGE"] },
     "findingIds": { "$ref": "#/$defs/findingIds" },
+    "previousIndependentReviewOutcomeSha256": { "$ref": "#/$defs/outcomeHash" },
     "reviewStatus": { "const": "AWAITING_FOCUSED_INDEPENDENT_DELTA_REVIEW" },
     "readyToExecute": { "type": "boolean" },
     "classicReviewReady": { "type": "boolean" },
@@ -76,6 +77,7 @@
     "nextAction": { "enum": ["READY_FOR_SINGLE_DELTA_REVIEW_PACKAGE_WRITE_AUTHORIZATION", "FOCUSED_INDEPENDENT_DELTA_REVIEW"] }
   },
   "$defs": {
+    "outcomeHash": { "type": "string", "pattern": "^[0-9A-F]{64}$" },
     "findingIds": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "pattern": "^BL[0-9]{3}(?:-BL[0-9]{3})?(?:-[A-Z][A-Z0-9]*)*-REV-[0-9]{3}$" } }
   }
 }

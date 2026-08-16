@@ -3,8 +3,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$GeneratorPath,
-    [Parameter(Mandatory)][ValidateSet('GENERIC_COMMIT_PREPARATION', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'FINDING_CORRECTION')][string]$Profile,
-    [Parameter(Mandatory)][ValidateSet('COMMIT_PREPARATION_TO_COMMIT_APPROVAL', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW')][string]$TransitionType,
+    [Parameter(Mandatory)][ValidateSet('GENERIC_COMMIT_PREPARATION', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'EVIDENCE_ONLY_FOCUSED_REVIEW', 'POST_MERGE_CLOSURE', 'FINDING_CORRECTION')][string]$Profile,
+    [Parameter(Mandatory)][ValidateSet('COMMIT_PREPARATION_TO_COMMIT_APPROVAL', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'EVIDENCE_ONLY_TO_FOCUSED_REVIEW', 'POST_MERGE_TO_DOCUMENTATION_CLOSURE', 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW')][string]$TransitionType,
     [Parameter(Mandatory)][ValidatePattern('^BL-[0-9]{3}$')][string]$TaskId,
     [Parameter(Mandatory)][string]$SourceDirectory,
     [Parameter(Mandatory)][string]$AllowedDeltaPathBindingPath,

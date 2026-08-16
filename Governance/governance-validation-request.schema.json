@@ -23,6 +23,9 @@
     "externalInputs",
     "toolchain",
     "selectors",
+    "exactCommit",
+    "stateComponents",
+    "taskControllers",
     "currentDependencies",
     "priorEvidence",
     "subordinateResults"
@@ -53,6 +56,8 @@
         "finding-correction",
         "commit-preparation",
         "focused-revalidation",
+        "evidence-only-focused-review",
+        "post-merge-closure",
         "full-completion"
       ]
     },
@@ -92,12 +97,13 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "path", "purpose", "kind", "sha256"],
+        "required": ["id", "path", "sourceRoot", "purpose", "kind", "sha256"],
         "properties": {
           "id": { "$ref": "#/$defs/id" },
           "path": { "$ref": "#/$defs/absolutePath" },
+          "sourceRoot": { "$ref": "#/$defs/absolutePath" },
           "purpose": { "type": "string", "minLength": 1 },
-          "kind": { "enum": ["EXTERNAL", "IGNORED"] },
+          "kind": { "enum": ["VERSIONED", "IGNORED", "GIT_EXCLUDED", "EXTERNAL"] },
           "sha256": { "$ref": "#/$defs/hash" }
         }
       }
@@ -118,14 +124,65 @@
     "selectors": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["interface", "inventorySha256", "caseNames", "tags", "targetPlatform", "availableCapabilities"],
+      "required": ["interface", "metadataPath", "schemaPath", "inventorySha256", "caseNames", "groups", "tags", "targetPlatform", "availableCapabilities"],
       "properties": {
-        "interface": { "const": "scripts/Test-GovernanceConsistencyFixtures.ps1" },
+        "interface": { "const": "scripts/GovernanceCaseSelection.psm1" },
+        "metadataPath": { "const": "Governance/governance-case-metadata.json" },
+        "schemaPath": { "const": "Governance/governance-case-metadata.schema.json" },
         "inventorySha256": { "$ref": "#/$defs/hash" },
         "caseNames": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "groups": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
         "tags": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
         "targetPlatform": { "enum": ["windows", "linux"] },
         "availableCapabilities": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } }
+      }
+    },
+    "exactCommit": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["intendedBase", "targetRef", "expectedMergeBase", "authorizedWriteSet", "expectedEffectivePRScope", "expectedEffectivePRPatchSha256", "expectedIntegrationProjection"],
+          "properties": {
+            "intendedBase": { "$ref": "#/$defs/commit" },
+            "targetRef": { "type": "string", "minLength": 1 },
+            "expectedMergeBase": { "$ref": "#/$defs/commit" },
+            "authorizedWriteSet": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/repositoryPath" } },
+            "expectedEffectivePRScope": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/repositoryPath" } },
+            "expectedEffectivePRPatchSha256": { "$ref": "#/$defs/hash" },
+            "expectedIntegrationProjection": { "$ref": "#/$defs/commit" }
+          }
+        }
+      ]
+    },
+    "stateComponents": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component", "priorSha256"],
+        "properties": {
+          "component": { "enum": ["commit", "tree", "working-status", "scope", "selector", "package", "external-inputs", "evidence"] },
+          "priorSha256": { "$ref": "#/$defs/hash" },
+          "currentSha256": { "$ref": "#/$defs/hash" }
+        }
+      }
+    },
+    "taskControllers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "lineCount", "classification", "exceptionId"],
+        "properties": {
+          "path": { "$ref": "#/$defs/absolutePath" },
+          "lineCount": { "type": "integer", "minimum": 1 },
+          "classification": { "enum": ["TASK_SPECIFIC_EXECUTABLE", "PERMANENT_PROFILE"] },
+          "exceptionId": { "type": ["string", "null"] }
+        }
       }
     },
     "currentDependencies": {
