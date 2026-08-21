@@ -1,7 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:RequiredPowerShellVersion = '7.6.4'
+$script:RequiredPowerShellVersion = '7.6.5'
 $script:RequiredGitBashPath = 'C:\Program Files\Git\bin\bash.exe'
 $script:ProcessTerminationWaitMilliseconds = 5000
 $script:StreamDrainWaitMilliseconds = 5000
@@ -228,14 +228,14 @@ function Invoke-RequiredGit {
 
     $result = Invoke-BoundedProcess -FilePath $GitPath -ArgumentList (@('-C', $RepositoryRoot) + $Arguments)
     if ($result.FailureClassification -notin @('None', 'ProcessTimedOut')) {
-        throw "Git command failed closed ($($result.FailureClassification)): $($Arguments -join ' '); $($result.StandardError)"
+        throw ('Git command failed closed ({0}): {1}; {2}' -f $result.FailureClassification, [string]::Join(' ', [string[]]$Arguments), $result.StandardError)
     }
     if ($result.TimedOut) {
-        throw "Git command timed out: $($Arguments -join ' ')"
+        throw ('Git command timed out: {0}' -f [string]::Join(' ', [string[]]$Arguments))
     }
     if ($result.ExitCode -ne 0) {
         $detail = $result.StandardError.Trim()
-        throw "Git command failed ($($result.ExitCode)): $($Arguments -join ' '); $detail"
+        throw ('Git command failed ({0}): {1}; {2}' -f $result.ExitCode, [string]::Join(' ', [string[]]$Arguments), $detail)
     }
     return $result.StandardOutput
 }
@@ -403,7 +403,7 @@ function Invoke-FlashGateShellValidation {
         $powerShellCount = @($inventory | Where-Object { [IO.Path]::GetExtension($_) -in @('.ps1', '.psm1') }).Count
         $bashCount = @($inventory | Where-Object { [IO.Path]::GetExtension($_) -eq '.sh' }).Count
         if ($inventory.Count -eq 0 -or $powerShellCount -eq 0 -or $bashCount -eq 0) {
-            throw "Shell inventory is incomplete: total=$($inventory.Count); PowerShell=$powerShellCount; Bash=$bashCount"
+            throw ('Shell inventory is incomplete: total={0}; PowerShell={1}; Bash={2}' -f $inventory.Count, $powerShellCount, $bashCount)
         }
         $beforeHashes = Get-ShellHashSnapshot -RepositoryRoot $resolvedRoot -Inventory $inventory
 
@@ -452,14 +452,14 @@ function Invoke-FlashGateShellValidation {
                     }
                     $syntax = Invoke-BoundedProcess -FilePath $resolvedGitBash -ArgumentList @('-n', '--', $fullPath)
                     if ($syntax.FailureClassification -notin @('None', 'ProcessTimedOut')) {
-                        throw "Git Bash syntax validation failed closed ($($syntax.FailureClassification)): $path; $($syntax.StandardError)"
+                        throw ('Git Bash syntax validation failed closed ({0}): {1}; {2}' -f $syntax.FailureClassification, $path, $syntax.StandardError)
                     }
                     if ($syntax.TimedOut) {
                         throw "Git Bash syntax validation timed out: $path"
                     }
                     if ($syntax.ExitCode -ne 0) {
                         $detail = ($syntax.StandardError + $syntax.StandardOutput).Trim()
-                        throw "Git Bash syntax validation failed ($($syntax.ExitCode)): $path; $detail"
+                        throw ('Git Bash syntax validation failed ({0}): {1}; {2}' -f $syntax.ExitCode, $path, $detail)
                     }
                 }
                 else {

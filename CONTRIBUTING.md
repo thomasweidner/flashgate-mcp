@@ -187,7 +187,7 @@ go build -o build/flashgate-mcp ./cmd/server
 ```
 
 Changes to PowerShell, Bash, CI, build, release, smoke, or validation scripts
-also require the deterministic shell gates. On Windows, use PowerShell 7.6.4:
+also require the deterministic shell gates. On Windows, use PowerShell 7.6.5:
 
 ```powershell
 & {

@@ -10,7 +10,7 @@ The earlier temporary `CUR-010` audit finding demonstrated why this distinction 
 
 ## Command
 
-Use PowerShell 7.6.4:
+Use PowerShell 7.6.5 on Windows:
 
 ```powershell
 & {
@@ -70,8 +70,8 @@ available.
 The Windows governance job checks out the exact pull-request head independently
 from the merge-result Go matrix. It compares the event-loaded workflow blob with
 the exact-head workflow blob before accepting workflow provenance. It then uses
-the official PowerShell 7.6.4 Windows x64 ZIP only after the pinned SHA-256
-`80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
+the official PowerShell 7.6.5 Windows x64 ZIP only after the pinned SHA-256
+`32EB8F6CDCE08F86E987D625A2733E54AC3E289AE7E1621B14C0B5BCEC2434EA`
 passes. Only after the hash, extraction, and executable-existence gates does it
 publish the verified extraction directory through `GITHUB_PATH`; the
 governance step uses the static `shell: pwsh` and requires its actual process
@@ -166,7 +166,7 @@ Run the gate:
 
 The repository script is the permanent local gate. The dedicated Hosted
 governance job calls the same productive script and fixture matrix under the
-pinned PowerShell 7.6.4 package without duplicating their validation logic.
+pinned Windows PowerShell 7.6.5 package without duplicating their validation logic.
 Merge-result Go testing remains a separate CI responsibility.
 
 CI integration must not silently convert exit code `2` into a documentation failure or ignore it. Infrastructure failure is separately actionable and blocks the gate because no trustworthy audit result was produced.

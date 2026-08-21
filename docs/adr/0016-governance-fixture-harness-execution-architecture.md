@@ -240,7 +240,7 @@ and no redundant blocker or invocation summary fields are introduced.
 - blocked-without-failure, selector-preflight, duplicate-event/heartbeat,
   explicit-source/worktree, helper-shadowing, detached-HEAD, exit-code, and
   scope-overrun positives or fail-closed negatives;
-- Windows PowerShell 7.6.4 and native Linux PowerShell validation.
+- Windows PowerShell 7.6.5 and native Linux PowerShell 7.6.4 validation.
 
 ## Related documents
 

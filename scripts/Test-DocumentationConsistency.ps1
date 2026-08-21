@@ -166,13 +166,13 @@ try {
         }
     }
 
-    Add-DocumentationCheck -Id 'DOC-002' -Category 'Encoding' -Passed ($utf8Failures.Count -eq 0) -Severity Error -Message 'All Markdown files are valid UTF-8.' -Evidence ($utf8Failures -join ', ')
+    Add-DocumentationCheck -Id 'DOC-002' -Category 'Encoding' -Passed ($utf8Failures.Count -eq 0) -Severity Error -Message 'All Markdown files are valid UTF-8.' -Evidence ($utf8Failures -join ' | ')
 
     $hashGroups = $markdownFiles |
         Group-Object -Property { (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }
     $duplicateGroups = @($hashGroups | Where-Object Count -gt 1)
     $duplicateEvidence = @($duplicateGroups | ForEach-Object {
-            ($_.Group | ForEach-Object { Get-RelativeRepositoryPath -Root $resolvedRepositoryRoot -Path $_.FullName }) -join ', '
+            ($_.Group | ForEach-Object { Get-RelativeRepositoryPath -Root $resolvedRepositoryRoot -Path $_.FullName }) -join ' | '
         }) -join '; '
 
     Add-DocumentationCheck -Id 'DOC-003' -Category 'Duplication' -Passed ($duplicateGroups.Count -eq 0) -Severity Error -Message 'No Markdown files have identical content.' -Evidence $duplicateEvidence
@@ -224,7 +224,7 @@ try {
             $insideRepository = $candidatePath.Equals($resolvedRepositoryRoot, $pathComparison) -or $candidatePath.StartsWith($rootPrefix, $pathComparison)
             if (-not $insideRepository -or -not (Test-Path -LiteralPath $candidatePath)) {
                 $relativeSource = Get-RelativeRepositoryPath -Root $resolvedRepositoryRoot -Path $file.FullName
-                [void]$brokenLinks.Add("$relativeSource -> $target")
+                [void]$brokenLinks.Add(('{0} -> {1}' -f $relativeSource, $target))
             }
         }
     }
@@ -251,7 +251,7 @@ try {
 
         $duplicateTaskIds = @($taskDefinitions | Group-Object Id | Where-Object Count -gt 1 | ForEach-Object Name)
         Add-DocumentationCheck -Id 'BL-002' -Category 'BacklogCatalog' -Passed ($taskDefinitions.Count -gt 0) -Severity Error -Message 'The canonical task catalog contains task definitions.' -Evidence $taskDefinitions.Count
-        Add-DocumentationCheck -Id 'BL-003' -Category 'BacklogCatalog' -Passed ($duplicateTaskIds.Count -eq 0) -Severity Error -Message 'Every canonical backlog ID is defined exactly once.' -Evidence ($duplicateTaskIds -join ', ')
+        Add-DocumentationCheck -Id 'BL-003' -Category 'BacklogCatalog' -Passed ($duplicateTaskIds.Count -eq 0) -Severity Error -Message 'Every canonical backlog ID is defined exactly once.' -Evidence ($duplicateTaskIds -join ' | ')
 
         $taskNumbers = @($taskDefinitions.Number | Sort-Object -Unique)
         $missingTaskIds = [System.Collections.Generic.List[string]]::new()
@@ -267,7 +267,7 @@ try {
             $maximumTaskNumber = 0
         }
 
-        Add-DocumentationCheck -Id 'BL-004' -Category 'BacklogCatalog' -Passed ($missingTaskIds.Count -eq 0) -Severity Error -Message 'Canonical backlog IDs form a continuous range beginning at BL-001.' -Evidence ($missingTaskIds -join ', ')
+        Add-DocumentationCheck -Id 'BL-004' -Category 'BacklogCatalog' -Passed ($missingTaskIds.Count -eq 0) -Severity Error -Message 'Canonical backlog IDs form a continuous range beginning at BL-001.' -Evidence ($missingTaskIds -join ' | ')
 
         $taskStatus = @{}
         foreach ($definition in $taskDefinitions) {
@@ -293,7 +293,7 @@ try {
         }
 
         $duplicateAssignments = @($assignments | Group-Object Id | Where-Object Count -gt 1 | ForEach-Object {
-                '{0}: {1}' -f $_.Name, (($_.Group.Sprint | Sort-Object -Unique) -join ', ')
+                '{0}: {1}' -f $_.Name, (($_.Group.Sprint | Sort-Object -Unique) -join ' | ')
             })
         $unknownAssignments = @($assignments | Where-Object { -not $taskStatus.ContainsKey($_.Id) } | Select-Object -ExpandProperty Id -Unique | Sort-Object)
         $assignedIds = @($assignments.Id | Sort-Object -Unique)
@@ -304,14 +304,14 @@ try {
 
         Add-DocumentationCheck -Id 'BL-005' -Category 'SprintAssignments' -Passed ($sprintMatches.Count -gt 0) -Severity Error -Message 'The sprint sequence contains status-bearing sprint rows.' -Evidence $sprintMatches.Count
         Add-DocumentationCheck -Id 'BL-006' -Category 'SprintAssignments' -Passed ($duplicateAssignments.Count -eq 0) -Severity Error -Message 'Every sprint-assigned backlog task appears in exactly one sprint row.' -Evidence ($duplicateAssignments -join '; ')
-        Add-DocumentationCheck -Id 'BL-007' -Category 'SprintAssignments' -Passed ($unknownAssignments.Count -eq 0) -Severity Error -Message 'Every sprint reference resolves to a canonical backlog task.' -Evidence ($unknownAssignments -join ', ')
-        Add-DocumentationCheck -Id 'BL-008' -Category 'SprintAssignments' -Passed ($unassignedPlanned.Count -eq 0) -Severity Error -Message 'Every Planned task is assigned to a Version 1.0 sprint.' -Evidence ($unassignedPlanned -join ', ')
-        Add-DocumentationCheck -Id 'BL-009' -Category 'SprintAssignments' -Passed ($assignedLater.Count -eq 0) -Severity Error -Message 'No Later task is assigned to a Version 1.0 sprint.' -Evidence ($assignedLater -join ', ')
+        Add-DocumentationCheck -Id 'BL-007' -Category 'SprintAssignments' -Passed ($unknownAssignments.Count -eq 0) -Severity Error -Message 'Every sprint reference resolves to a canonical backlog task.' -Evidence ($unknownAssignments -join ' | ')
+        Add-DocumentationCheck -Id 'BL-008' -Category 'SprintAssignments' -Passed ($unassignedPlanned.Count -eq 0) -Severity Error -Message 'Every Planned task is assigned to a Version 1.0 sprint.' -Evidence ($unassignedPlanned -join ' | ')
+        Add-DocumentationCheck -Id 'BL-009' -Category 'SprintAssignments' -Passed ($assignedLater.Count -eq 0) -Severity Error -Message 'No Later task is assigned to a Version 1.0 sprint.' -Evidence ($assignedLater -join ' | ')
         Add-DocumentationCheck -Id 'BL-010' -Category 'SprintStatus' -Passed $true -Severity Warning -Message 'Done tasks in Planned sprint rows are reported for semantic review because cross-cutting tasks may complete before the containing sprint.' -Evidence ($doneInPlannedSprints -join '; ')
         Add-DocumentationCheck -Id 'BL-011' -Category 'SprintStatus' -Passed ($nonDoneInDoneSprints.Count -eq 0) -Severity Error -Message 'Done sprint rows contain only Done tasks.' -Evidence ($nonDoneInDoneSprints -join '; ')
         Add-DocumentationCheck -Id 'BL-012' -Category 'BacklogCatalog' -Passed ($maximumTaskNumber -eq $taskDefinitions.Count) -Severity Error -Message 'The maximum backlog number equals the number of unique canonical tasks.' -Evidence "Maximum=$maximumTaskNumber; Definitions=$($taskDefinitions.Count)"
-        Add-DocumentationCheck -Id 'SPR-001' -Category 'SprintIdentifiers' -Passed ($invalidSprintIds.Count -eq 0) -Severity Error -Message 'Every current sprint row uses SPR-<positive integer> without suffixes or decimals.' -Evidence ($invalidSprintIds -join ', ')
-        Add-DocumentationCheck -Id 'SPR-002' -Category 'SprintIdentifiers' -Passed ($duplicateSprintIds.Count -eq 0) -Severity Error -Message 'Every canonical sprint identifier appears in exactly one status row.' -Evidence ($duplicateSprintIds -join ', ')
+        Add-DocumentationCheck -Id 'SPR-001' -Category 'SprintIdentifiers' -Passed ($invalidSprintIds.Count -eq 0) -Severity Error -Message 'Every current sprint row uses SPR-<positive integer> without suffixes or decimals.' -Evidence ($invalidSprintIds -join ' | ')
+        Add-DocumentationCheck -Id 'SPR-002' -Category 'SprintIdentifiers' -Passed ($duplicateSprintIds.Count -eq 0) -Severity Error -Message 'Every canonical sprint identifier appears in exactly one status row.' -Evidence ($duplicateSprintIds -join ' | ')
         Add-DocumentationCheck -Id 'SPR-003' -Category 'SprintIdentifiers' -Passed ($legacySprintRows.Count -eq 0) -Severity Error -Message 'The current backlog contains no legacy Sprint 3.x status rows.' -Evidence ($legacySprintRows -join '; ')
     }
 
@@ -326,10 +326,10 @@ try {
         $content = if ($contentByPath.ContainsKey($fullPath)) { $contentByPath[$fullPath] } else { [System.IO.File]::ReadAllText($fullPath, $strictUtf8) }
         $safeId = ($relativePath -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
 
-        Add-DocumentationCheck -Id "ID-$safeId-REPO" -Category 'ProjectIdentity' -Passed $content.Contains($expectedRepository, [System.StringComparison]::Ordinal) -Severity Error -Message "$relativePath contains the current repository identity." -Evidence $expectedRepository
-        Add-DocumentationCheck -Id "ID-$safeId-MODULE" -Category 'ProjectIdentity' -Passed $content.Contains($expectedModule, [System.StringComparison]::Ordinal) -Severity Error -Message "$relativePath contains the current Go module identity." -Evidence $expectedModule
+        Add-DocumentationCheck -Id ('ID-{0}-REPO' -f $safeId) -Category 'ProjectIdentity' -Passed $content.Contains($expectedRepository, [System.StringComparison]::Ordinal) -Severity Error -Message ('{0} contains the current repository identity.' -f $relativePath) -Evidence $expectedRepository
+        Add-DocumentationCheck -Id ('ID-{0}-MODULE' -f $safeId) -Category 'ProjectIdentity' -Passed $content.Contains($expectedModule, [System.StringComparison]::Ordinal) -Severity Error -Message ('{0} contains the current Go module identity.' -f $relativePath) -Evidence $expectedModule
         $containsHistoricalCurrentIdentity = $content.Contains($historicalOwner, [System.StringComparison]::Ordinal) -or $content.Contains($historicalModule, [System.StringComparison]::Ordinal)
-        Add-DocumentationCheck -Id "ID-$safeId-HISTORICAL" -Category 'ProjectIdentity' -Passed (-not $containsHistoricalCurrentIdentity) -Severity Error -Message "$relativePath does not present the former owner identity in an active identity document." -Evidence $historicalOwner
+        Add-DocumentationCheck -Id ('ID-{0}-HISTORICAL' -f $safeId) -Category 'ProjectIdentity' -Passed (-not $containsHistoricalCurrentIdentity) -Severity Error -Message ('{0} does not present the former owner identity in an active identity document.' -f $relativePath) -Evidence $historicalOwner
     }
 
     $architecturePath = Join-Path $resolvedRepositoryRoot 'docs/architecture.md'
@@ -344,7 +344,7 @@ try {
         foreach ($plannedMarker in @('multiple named roots', 'general profiles/capabilities', 'search', 'Operations/Job Manager', 'process observation/management', 'typed command execution', 'system-information tools')) {
             $markerId = ($plannedMarker -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
             $listedAsNotImplemented = [regex]::IsMatch($currentState, '(?ms)Not yet implemented:.*?-\s*' + [regex]::Escape($plannedMarker) + '\s*;')
-            Add-DocumentationCheck -Id "CUR-$markerId" -Category 'CurrentStateBoundary' -Passed $listedAsNotImplemented -Severity Error -Message "Architecture explicitly lists '$plannedMarker' as not yet implemented." -Evidence $plannedMarker
+            Add-DocumentationCheck -Id ('CUR-{0}' -f $markerId) -Category 'CurrentStateBoundary' -Passed $listedAsNotImplemented -Severity Error -Message ("Architecture explicitly lists '{0}' as not yet implemented." -f $plannedMarker) -Evidence $plannedMarker
         }
     }
 
@@ -352,7 +352,7 @@ try {
     $catalogPath = Join-Path $resolvedRepositoryRoot 'docs/mcp-tool-catalog.json'
     $catalog = Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
     $catalogTools = @($catalog.tools | ForEach-Object { $_.name })
-    Add-DocumentationCheck -Id 'TOOL-001' -Category 'ToolCatalog' -Passed (($catalogTools -join ',') -eq ($expectedTools -join ',')) -Severity Error -Message 'The machine-readable catalog contains the exact eight implemented tools in canonical order.' -Evidence ($catalogTools -join ', ')
+    Add-DocumentationCheck -Id 'TOOL-001' -Category 'ToolCatalog' -Passed (@(Compare-Object -ReferenceObject $expectedTools -DifferenceObject $catalogTools -SyncWindow 0).Count -eq 0) -Severity Error -Message 'The machine-readable catalog contains the exact eight implemented tools in canonical order.' -Evidence ($catalogTools | ConvertTo-Json -Compress)
 
     $readmePath = Join-Path $resolvedRepositoryRoot 'README.md'
     $readmeText = if ($contentByPath.ContainsKey($readmePath)) { $contentByPath[$readmePath] } else { [System.IO.File]::ReadAllText($readmePath, $strictUtf8) }
@@ -361,7 +361,7 @@ try {
     if ($null -ne $implementedToolsSection) {
         $readmeTools = @([regex]::Matches($implementedToolsSection, '(?m)^\|\s*`(?<tool>[a-z0-9_]+)`\s*\|') | ForEach-Object { $_.Groups['tool'].Value })
     }
-    Add-DocumentationCheck -Id 'TOOL-002' -Category 'ToolCatalog' -Passed (($readmeTools -join ',') -eq ($expectedTools -join ',')) -Severity Error -Message 'README lists the exact eight implemented tools in canonical order.' -Evidence ($readmeTools -join ', ')
+    Add-DocumentationCheck -Id 'TOOL-002' -Category 'ToolCatalog' -Passed (@(Compare-Object -ReferenceObject $expectedTools -DifferenceObject $readmeTools -SyncWindow 0).Count -eq 0) -Severity Error -Message 'README lists the exact eight implemented tools in canonical order.' -Evidence ($readmeTools | ConvertTo-Json -Compress)
 
     $toolsDocumentPath = Join-Path $resolvedRepositoryRoot 'docs/tools.md'
     $toolsDocumentText = if ($contentByPath.ContainsKey($toolsDocumentPath)) { $contentByPath[$toolsDocumentPath] } else { [System.IO.File]::ReadAllText($toolsDocumentPath, $strictUtf8) }
@@ -370,7 +370,7 @@ try {
     if ($toolsBlockMatch.Success) {
         $documentedTools = @($toolsBlockMatch.Groups['tools'].Value -split '\r?\n' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | ForEach-Object { $_.Trim() })
     }
-    Add-DocumentationCheck -Id 'TOOL-003' -Category 'ToolCatalog' -Passed (($documentedTools -join ',') -eq ($expectedTools -join ',')) -Severity Error -Message 'docs/tools.md lists the exact eight implemented tools in canonical order.' -Evidence ($documentedTools -join ', ')
+    Add-DocumentationCheck -Id 'TOOL-003' -Category 'ToolCatalog' -Passed (@(Compare-Object -ReferenceObject $expectedTools -DifferenceObject $documentedTools -SyncWindow 0).Count -eq 0) -Severity Error -Message 'docs/tools.md lists the exact eight implemented tools in canonical order.' -Evidence ($documentedTools | ConvertTo-Json -Compress)
 
     $governanceSources = @(
         'Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md',
@@ -398,7 +398,7 @@ try {
     foreach ($relativePath in $governanceSources) {
         $governancePath = Join-Path $resolvedRepositoryRoot $relativePath
         $governanceId = ($relativePath -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
-        Add-DocumentationCheck -Id "GOV-$governanceId" -Category 'Governance' -Passed (Test-Path -LiteralPath $governancePath -PathType Leaf) -Severity Error -Message "Required governance source exists: $relativePath" -Evidence $relativePath
+        Add-DocumentationCheck -Id ('GOV-{0}' -f $governanceId) -Category 'Governance' -Passed (Test-Path -LiteralPath $governancePath -PathType Leaf) -Severity Error -Message ('Required governance source exists: {0}' -f $relativePath) -Evidence $relativePath
     }
 
     $governanceCatalogPath = Join-Path $resolvedRepositoryRoot 'Governance/change-trigger-catalog.json'
@@ -440,13 +440,13 @@ try {
             $canonicalArtifactValidator,
             '-ArtifactPath',
             '-ReadinessRequirement RequireTrue',
-            'PowerShell 7.6.4',
+            'PowerShell 7.6.5',
             'Exit code `0` is PASS',
             'prerequisite static/semantic gate',
             'it is not an alternative'
         )) {
         $bindingId = ($bindingText -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
-        Add-DocumentationCheck -Id "GOV-CANONICAL-ARTIFACT-$bindingId" -Category 'Governance' -Passed (
+        Add-DocumentationCheck -Id ('GOV-CANONICAL-ARTIFACT-{0}' -f $bindingId) -Category 'Governance' -Passed (
             $handoffStandard.Contains($bindingText, [System.StringComparison]::Ordinal)
         ) -Severity Error -Message "Handoff standard binds canonical artifact-validator contract: $bindingText"
     }
@@ -455,7 +455,7 @@ try {
         $fullPath = Join-Path $resolvedRepositoryRoot $relativePath
         $sourceText = if ($contentByPath.ContainsKey($fullPath)) { $contentByPath[$fullPath] } else { [System.IO.File]::ReadAllText($fullPath, $strictUtf8) }
         $governanceId = ($relativePath -replace '[^A-Za-z0-9]+', '-').Trim('-').ToUpperInvariant()
-        Add-DocumentationCheck -Id "GOV-REFERENCE-$governanceId" -Category 'Governance' -Passed $sourceText.Contains('Test-GovernanceConsistency', [System.StringComparison]::Ordinal) -Severity Error -Message "$relativePath references the governance enforcement gate."
+        Add-DocumentationCheck -Id ('GOV-REFERENCE-{0}' -f $governanceId) -Category 'Governance' -Passed $sourceText.Contains('Test-GovernanceConsistency', [System.StringComparison]::Ordinal) -Severity Error -Message ('{0} references the governance enforcement gate.' -f $relativePath)
     }
 
     $status = if ($script:Errors.Count -gt 0) { 'FAIL' } elseif ($script:Warnings.Count -gt 0) { 'PASS_WITH_WARNINGS' } else { 'PASS' }

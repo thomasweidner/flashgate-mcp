@@ -383,7 +383,7 @@ Porcelain-v2 status and `staged=false` remain separate mandatory evidence. The
 authoritative binary patch includes both rename sides and is byte-equal to both
 packaged patches.
 
-Run the documentation consistency gate with PowerShell 7.6.4:
+Run the documentation consistency gate with PowerShell 7.6.5 on Windows:
 
 ```powershell
 .\scripts\Test-DocumentationConsistency.ps1
@@ -392,7 +392,7 @@ Run the documentation consistency gate with PowerShell 7.6.4:
 The detailed checklist and exit-code contract are documented in [docs/documentation-quality-gate.md](docs/documentation-quality-gate.md).
 
 Validate the complete PowerShell and Bash entry-point inventory on Windows
-with the required PowerShell 7.6.4 and Git Bash runtimes:
+with the required Windows PowerShell 7.6.5 and Git Bash runtimes:
 
 ```powershell
 & {
@@ -438,7 +438,7 @@ changes require the controlled native Linux validation described in
 remains the leading development environment; WSL2 receives a one-way test copy
 and never returns source changes.
 
-Invoke the canonical Windows entry point with PowerShell 7.6.4:
+Invoke the canonical Windows entry point with PowerShell 7.6.5:
 
 ```powershell
 & {
@@ -465,7 +465,7 @@ FlashGate enforces separate repository-wide Go statement-coverage gates for Wind
 | Windows | 71.4% |
 | Linux | 70.6% |
 
-Run the Windows coverage gate with PowerShell 7.6.4:
+Run the Windows coverage gate with PowerShell 7.6.5:
 
 ```powershell
 .\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 71.4

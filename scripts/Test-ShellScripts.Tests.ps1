@@ -107,8 +107,8 @@ try {
         -not (Test-RequiredPowerShellVersion -ActualVersion '7.6.3')
     ) -Detail 'PowerShell 7.6.3 was accepted.'
     Add-TestResult -Name 'required-powershell-version-passes' -Passed (
-        Test-RequiredPowerShellVersion -ActualVersion '7.6.4'
-    ) -Detail 'PowerShell 7.6.4 was rejected.'
+        Test-RequiredPowerShellVersion -ActualVersion '7.6.5'
+    ) -Detail 'PowerShell 7.6.5 was rejected.'
 
     $invalidRoot = Invoke-FlashGateShellValidation -RepositoryRoot (Join-Path $testRoot 'not-present') -GitBashPath $gitBashPath
     Add-TestResult -Name 'invalid-repository-root-fails' -Passed ($invalidRoot.Status -eq 'FAIL') -Detail 'Invalid root passed.'

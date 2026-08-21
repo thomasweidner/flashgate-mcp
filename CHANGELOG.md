@@ -19,6 +19,13 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   and task-controller inventory is enforced fail closed. This is an isolated,
   uncommitted implementation pending independent full review; no remote or
   release state is implied.
+- Prepared INF-168 Phase 2B for independent review: Windows and Hosted CI now
+  bind PowerShell 7.6.5, while native Linux remains pinned to the existing
+  portable PowerShell 7.6.4 binary. Governance case metadata keeps schema
+  version 1 and resolves platform-specific capabilities without multiplying
+  the 277-case inventory. The Windows CI package is pinned to the official
+  `PowerShell-7.6.5-win-x64.zip` SHA-256. No Git integration or remote mutation
+  is included in this uncommitted review handoff.
 - Corrected the BL-338 Classic review finding `BL338-CLASSIC-REV-001`: the
   repository fixture harness no longer imports contributor-local Codex-Work or
   INF-160 files, accepts optional validated executable/capability inputs, and

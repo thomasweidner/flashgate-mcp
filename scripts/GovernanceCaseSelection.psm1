@@ -288,9 +288,9 @@ function Read-GovernanceCaseMetadata {
                         [string]$_.CapabilityId -ceq [string]$requiredCapability
                     })[0]
                 if (@($case.SupportedPlatforms | Where-Object {
-                            $_ -cnotin @($capability.SupportedPlatforms)
-                        }).Count -gt 0) {
-                    throw 'Case platform metadata contradicts a required capability platform.'
+                            $_ -cin @($capability.SupportedPlatforms)
+                        }).Count -eq 0) {
+                    throw 'Case platform metadata has no overlap with a required capability platform.'
                 }
             }
             $canonicalCases.Add([ordered]@{
@@ -500,7 +500,14 @@ function Resolve-GovernanceCaseSelection {
                                 -RequiredPlatform (@($case.SupportedPlatforms) -join '|') `
                                 -ActualPlatform $TargetPlatform))
                 }
-                $missingCapabilities = @($case.RequiredCapabilities | Where-Object {
+                $applicableCapabilities = @($case.RequiredCapabilities | Where-Object {
+                        $requiredCapability = $_
+                        $capability = @($Metadata.CanonicalCatalog.CapabilityCatalog | Where-Object {
+                                [string]$_.CapabilityId -ceq [string]$requiredCapability
+                            })[0]
+                        $TargetPlatform -cin @($capability.SupportedPlatforms)
+                    })
+                $missingCapabilities = @($applicableCapabilities | Where-Object {
                         $_ -cnotin @($AvailableCapability)
                     })
                 if ($missingCapabilities.Count -gt 0) {

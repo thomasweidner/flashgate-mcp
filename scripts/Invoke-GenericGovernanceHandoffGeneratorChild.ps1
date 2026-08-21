@@ -22,8 +22,29 @@ $document = $null
 $exitCode = 2
 
 try {
-    if ($PSVersionTable.PSVersion.ToString() -cne '7.6.4') {
-        throw "PowerShell 7.6.4 is required; actual=$($PSVersionTable.PSVersion)"
+    $powerShellVersion = $PSVersionTable.PSVersion.ToString()
+    if ($IsWindows) {
+        if ($powerShellVersion -cne '7.6.5') {
+            throw "Windows PowerShell 7.6.5 is required; actual=$powerShellVersion"
+        }
+    }
+    elseif ($IsLinux) {
+        $expectedLinuxPowerShellPath = '/home/weidnerthomas/voxtronic/tools/powershell/7.6.4/pwsh'
+        $expectedLinuxPowerShellSha256 = '12E9F5223179BA9059948E9B49640D174BA78CF029433D5BAC832500278C0915'
+        if ($powerShellVersion -cne '7.6.4') {
+            throw "Native Linux PowerShell 7.6.4 is required; actual=$powerShellVersion"
+        }
+        $actualLinuxPowerShellPath = (Get-Process -Id $PID).Path
+        if ($actualLinuxPowerShellPath -cne $expectedLinuxPowerShellPath) {
+            throw "Native Linux PowerShell must use the managed executable; expected=$expectedLinuxPowerShellPath; actual=$actualLinuxPowerShellPath"
+        }
+        $actualLinuxPowerShellSha256 = (Get-FileHash -LiteralPath $actualLinuxPowerShellPath -Algorithm SHA256).Hash
+        if ($actualLinuxPowerShellSha256 -cne $expectedLinuxPowerShellSha256) {
+            throw "Managed native Linux PowerShell SHA-256 mismatch; expected=$expectedLinuxPowerShellSha256; actual=$actualLinuxPowerShellSha256"
+        }
+    }
+    else {
+        throw 'The generic governance generator child supports only Windows and native Linux.'
     }
 
     $resolvedGeneratorPath = [IO.Path]::GetFullPath($GeneratorPath)

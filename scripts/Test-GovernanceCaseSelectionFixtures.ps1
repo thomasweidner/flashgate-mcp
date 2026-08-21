@@ -66,7 +66,7 @@ try {
     Import-Module -Name $modulePath -Force
 
     $metadata = Read-GovernanceCaseMetadata -Path $metadataPath -SchemaPath $schemaPath
-    $available = @('git', 'powershell-7.6.4')
+    $available = @('git', 'powershell-7.6.5')
     $single = Resolve-GovernanceCaseSelection -Metadata $metadata `
         -CaseName 'positive-bundled-start' -TargetPlatform windows `
         -AvailableCapability $available
@@ -130,9 +130,14 @@ try {
             Id = 'BL338-POS-009-WINDOWS-COMPATIBLE'
             Passed = $windowsCase.ReadyToExecute
         })
+    $linuxCase = Resolve-GovernanceCaseSelection -Metadata $metadata `
+        -CaseName 'positive-bundled-start' -TargetPlatform linux `
+        -AvailableCapability @('git', 'powershell-7.6.4')
     $results.Add([pscustomobject]@{
-            Id = 'BL338-POS-010-CAPABILITY-COMPLETE'
-            Passed = $windowsCase.CapabilityIncompleteSelectorCount -eq 0
+            Id = 'BL338-POS-010-PLATFORM-CAPABILITIES-COMPLETE'
+            Passed = $windowsCase.CapabilityIncompleteSelectorCount -eq 0 -and
+                $linuxCase.ReadyToExecute -and
+                $linuxCase.CapabilityIncompleteSelectorCount -eq 0
         })
 
     $singleAgain = Resolve-GovernanceCaseSelection -Metadata $metadata `

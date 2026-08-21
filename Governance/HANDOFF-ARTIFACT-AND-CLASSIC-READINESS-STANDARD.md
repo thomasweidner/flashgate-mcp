@@ -232,7 +232,7 @@ The authoritative external artifact gate is:
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Scripts\Test-ClassicReviewArtifact.ps1
 ```
 
-Binding invocation under PowerShell 7.6.4:
+Binding invocation under Windows PowerShell 7.6.5:
 
 ```powershell
 & {

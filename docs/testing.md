@@ -6,7 +6,7 @@ BL-333 supplies the change-trigger, finding-remediation/review-mode, and
 handoff-readiness foundation. BL-334 enforces it through
 `scripts/Test-GovernanceConsistency.ps1`.
 
-Parse every new or changed PowerShell source with PowerShell 7.6.4 before its
+Parse every new or changed PowerShell source with PowerShell 7.6.5 on Windows before its
 first execution. Then run:
 
 ```powershell
@@ -333,7 +333,7 @@ unknown or duplicate status records, and CR/LF/NUL paths fail their named gate.
 The `info/alternates` and fixture-only object-divergence paths are constructed
 component by component so the same child hierarchy is exercised on Windows and
 Unix filesystems. A change to this shared Git-evidence helper requires the full
-generic fixture matrix under PowerShell 7.6.4 on Windows and on a native Linux
+generic fixture matrix under PowerShell 7.6.5 on Windows and PowerShell 7.6.4 on a native Linux
 copy below `/home`; the real Unix executable package must run on Linux, and a
 platform-gated synthetic result does not satisfy that end-to-end gate.
 
@@ -360,9 +360,9 @@ the head only after byte parity passes. The Windows/Linux Go matrix retains its
 normal merge checkout and continues to validate the prospective merge result.
 
 The governance job downloads
-`PowerShell-7.6.4-win-x64.zip` only from the official versioned PowerShell
+`PowerShell-7.6.5-win-x64.zip` only from the official versioned PowerShell
 release URL and verifies SHA-256
-`80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793`
+`32EB8F6CDCE08F86E987D625A2733E54AC3E289AE7E1621B14C0B5BCEC2434EA`
 before extraction. After the hash, extraction, and executable-existence gates
 pass, it publishes only that extraction directory through `GITHUB_PATH` and
 uses the static `shell: pwsh`. The governance step compares the running
@@ -371,8 +371,8 @@ explicit ordinal, case-insensitive equality after both absolute paths are
 normalized. Casing-only differences are accepted; different drives,
 directories, subdirectories, filenames, relative paths, and empty values
 remain fail-closed, with no global installation, latest-version resolution, or
-fallback. The productive validator gates the exact `7.6.4` interpreter and
-downloaded package digest; the fixture runner also requires 7.6.4 and launches
+fallback. The productive Windows validator gates the exact `7.6.5` interpreter and
+downloaded package digest; the Windows fixture runner also requires 7.6.5 and launches
 child validators from its current `$PSHOME`.
 
 The fixture matrix exercises the production validator with positive and
@@ -512,7 +512,7 @@ go test -cover ./...
 ### Shell script validation
 
 BL-251 validates the complete repository shell-entry-point inventory rather
-than a fixed file list. The Windows gate requires PowerShell 7.6.4 and
+than a fixed file list. The Windows gate requires PowerShell 7.6.5 and
 `C:\Program Files\Git\bin\bash.exe`, parses every `.ps1` and `.psm1`, runs
 Git Bash syntax checks for every `.sh`, validates strict UTF-8, line endings,
 final newlines and supported Bash shebangs, and proves that validation did not
@@ -546,7 +546,7 @@ The PowerShell matrix currently passes 21/21 cases. The Bash cleanup-negative
 probe uses only its task-local fixture root and requires `Status: FAIL`,
 `Cleanup: FAIL`, a nonzero failure count, a nonzero exit code, and exactly one
 terminal status block. CI
-runs both Windows commands after binding the verified PowerShell 7.6.4
+runs both Windows commands after binding the verified PowerShell 7.6.5
 runtime, and both native Bash commands on Ubuntu. PSScriptAnalyzer and
 ShellCheck remain optional local enrichments: when they are unavailable and
 installation is not authorized, the parser, native syntax checks, structural
@@ -585,7 +585,7 @@ MCP project is activated by this workflow.
 
 ### Canonical entry points
 
-Run PowerShell 7.6.4 through the Windows orchestrator:
+Run PowerShell 7.6.5 through the Windows orchestrator:
 
 ```text
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1

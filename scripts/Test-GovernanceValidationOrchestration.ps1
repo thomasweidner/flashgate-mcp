@@ -38,7 +38,7 @@ function Invoke-RequiredGit {
 
     $output = @(& git -C $Root @Argument 2>&1)
     if ($LASTEXITCODE -ne 0) {
-        throw ('Git fixture command failed: git {0}; {1}' -f ($Argument -join ' '), ($output -join ' | '))
+        throw ('Git fixture command failed: git {0}; {1}' -f [string]::Join(' ', [string[]]$Argument), [string]::Join(' | ', [string[]]$output))
     }
     return $output
 }
@@ -238,7 +238,7 @@ try {
             groups = @()
             tags = @()
             targetPlatform = if ($IsWindows) { 'windows' } else { 'linux' }
-            availableCapabilities = @('git', 'powershell-7.6.4')
+            availableCapabilities = @('git', $(if ($IsWindows) { 'powershell-7.6.5' } else { 'powershell-7.6.4' }))
         }
         exactCommit = $null
         stateComponents = @(
