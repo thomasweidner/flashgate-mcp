@@ -3,6 +3,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'GenericGovernanceGitEvidence.ps1')
+
 $script:TerminalStatuses = @('PASS', 'FAIL', 'SKIPPED', 'BLOCKED', 'CANCELLED', 'PENDING', 'NOT_RUN')
 $script:CheapGateOrder = @(
     'parser-syntax',
@@ -115,7 +117,7 @@ function Read-GovernanceJsonContract {
             -ErrorVariable schemaErrors `
             -ErrorAction SilentlyContinue
         if (-not $schemaValid) {
-            throw "JSON schema validation failed: $resolvedPath; $(@($schemaErrors | ForEach-Object ToString) -join ' | ')"
+            throw ('JSON schema validation failed: {0}; {1}' -f $resolvedPath, (@($schemaErrors | ForEach-Object ToString) -join ' | '))
         }
     }
 
@@ -222,7 +224,7 @@ function Invoke-GovernanceGitText {
     $output = @(& git -C $RepositoryRoot @Argument 2>&1)
     $exitCode = $LASTEXITCODE
     if ($exitCode -notin $AllowedExitCode) {
-        throw "Git command failed ($exitCode): git $($Argument -join ' '); $($output -join ' | ')"
+        throw ('Git command failed ({0}): git {1}; {2}' -f $exitCode, ($Argument -join ' '), ($output -join ' | '))
     }
     return [pscustomobject]@{
         ExitCode = $exitCode
@@ -234,6 +236,7 @@ function Invoke-GovernanceGitBytes {
     param(
         [Parameter(Mandatory)][string]$RepositoryRoot,
         [Parameter(Mandatory)][string[]]$Argument,
+        [AllowEmptyCollection()][byte[]]$StandardInputBytes = @(),
         [int[]]$AllowedExitCode = @(0)
     )
 
@@ -246,6 +249,7 @@ function Invoke-GovernanceGitBytes {
     $startInfo.CreateNoWindow = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
+    $startInfo.RedirectStandardInput = $StandardInputBytes.Count -gt 0
     [void]$startInfo.ArgumentList.Add('-C')
     [void]$startInfo.ArgumentList.Add([System.IO.Path]::GetFullPath($RepositoryRoot))
     foreach ($argumentValue in $Argument) {
@@ -260,13 +264,17 @@ function Invoke-GovernanceGitBytes {
         if (-not $process.Start()) {
             throw 'Git process did not start.'
         }
+        if ($StandardInputBytes.Count -gt 0) {
+            $process.StandardInput.BaseStream.Write($StandardInputBytes, 0, $StandardInputBytes.Length)
+            $process.StandardInput.Close()
+        }
         $standardOutputCopy = $process.StandardOutput.BaseStream.CopyToAsync($standardOutput)
         $standardErrorRead = $process.StandardError.ReadToEndAsync()
         $process.WaitForExit()
         [void]$standardOutputCopy.GetAwaiter().GetResult()
         $standardError = $standardErrorRead.GetAwaiter().GetResult()
         if ($process.ExitCode -notin $AllowedExitCode) {
-            throw "Git command failed ($($process.ExitCode)): git $($Argument -join ' '); $standardError"
+            throw ('Git command failed ({0}): git {1}; {2}' -f $process.ExitCode, ($Argument -join ' '), $standardError)
         }
         return [pscustomobject]@{
             ExitCode = $process.ExitCode
@@ -386,36 +394,172 @@ function Test-GovernanceExternalInputBinding {
 
     $diagnostics = [System.Collections.Generic.List[string]]::new()
     $bound = [System.Collections.Generic.List[object]]::new()
-    $paths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $pathComparer = if ($IsWindows) { [System.StringComparer]::OrdinalIgnoreCase } else { [System.StringComparer]::Ordinal }
+    $pathComparison = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    $paths = [System.Collections.Generic.HashSet[string]]::new($pathComparer)
+    $ids = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $probeCount = 0
+    $normalizePath = {
+        param([string]$Value)
+        $full = [System.IO.Path]::GetFullPath($Value)
+        $root = [System.IO.Path]::GetPathRoot($full)
+        if ([string]::Equals($full, $root, $pathComparison)) { return $full }
+        return $full.TrimEnd('\', '/')
+    }
+    $repositoryRoot = & $normalizePath $SourceRepositoryRoot
     foreach ($entry in @($ExternalInput)) {
-        $path = [System.IO.Path]::GetFullPath([string]$entry.path)
+        $id = [string]$entry.id
+        $path = & $normalizePath ([string]$entry.path)
+        $sourceRoot = & $normalizePath ([string]$entry.sourceRoot)
+        if (-not $ids.Add($id)) {
+            $diagnostics.Add("Duplicate input ID: $id")
+            continue
+        }
         if (-not $paths.Add($path)) {
             $diagnostics.Add("Duplicate input path: $path")
+            continue
+        }
+        if (-not (Test-Path -LiteralPath $sourceRoot -PathType Container)) {
+            $diagnostics.Add("Input source root is missing or not a directory: $sourceRoot")
+            continue
+        }
+        $probeCount++
+        $sourceRootItem = Get-Item -LiteralPath $sourceRoot -Force
+        if (($sourceRootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+            $null -ne $sourceRootItem.LinkType) {
+            $diagnostics.Add("Input source root is a link or reparse point: $sourceRoot")
+            continue
+        }
+        $rootPrefix = if ($sourceRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+            $sourceRoot
+        }
+        else {
+            $sourceRoot + [System.IO.Path]::DirectorySeparatorChar
+        }
+        if (-not $path.StartsWith($rootPrefix, $pathComparison)) {
+            $diagnostics.Add("Input is outside its declared source root: $path")
             continue
         }
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             $diagnostics.Add("Required input is missing: $path")
             continue
         }
+        $probeCount++
+        $cursor = $path
+        $unsafeLink = $false
+        while ($true) {
+            $item = Get-Item -LiteralPath $cursor -Force
+            if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+                $null -ne $item.LinkType) {
+                $unsafeLink = $true
+                break
+            }
+            if ([string]::Equals($cursor, $sourceRoot, $pathComparison)) { break }
+            $cursor = Split-Path -Parent $cursor
+            if ([string]::IsNullOrWhiteSpace($cursor) -or
+                -not $cursor.StartsWith($rootPrefix, $pathComparison) -and
+                -not [string]::Equals($cursor, $sourceRoot, $pathComparison)) {
+                $unsafeLink = $true
+                break
+            }
+        }
+        if ($unsafeLink) {
+            $diagnostics.Add("Input traverses a link or reparse point: $path")
+            continue
+        }
         $actualHash = Get-GovernanceLowerSha256 -LiteralPath $path
+        $probeCount++
         if ($actualHash -cne [string]$entry.sha256) {
             $diagnostics.Add("Input hash mismatch: $path")
             continue
         }
-        if ([string]$entry.kind -ceq 'IGNORED') {
-            $ignore = Invoke-GovernanceGitText `
-                -RepositoryRoot $SourceRepositoryRoot `
-                -Argument @('check-ignore', '--', $path) `
+        $kind = [string]$entry.kind
+        $repositoryPrefix = if ($repositoryRoot.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+            $repositoryRoot
+        }
+        else {
+            $repositoryRoot + [System.IO.Path]::DirectorySeparatorChar
+        }
+        $insideRepository = $path.StartsWith($repositoryPrefix, $pathComparison)
+        if ($kind -ceq 'EXTERNAL') {
+            if ($insideRepository) {
+                $diagnostics.Add("EXTERNAL input is inside the repository: $path")
+                continue
+            }
+        }
+        else {
+            if (-not $insideRepository -or -not [string]::Equals($sourceRoot, $repositoryRoot, $pathComparison)) {
+                $diagnostics.Add("Git-classified input is not rooted in the source repository: $path")
+                continue
+            }
+            $relativePath = [System.IO.Path]::GetRelativePath($repositoryRoot, $path).Replace('\', '/')
+            $tracked = Invoke-GovernanceGitText -RepositoryRoot $repositoryRoot `
+                -Argument @('ls-files', '--error-unmatch', '--', $relativePath) -AllowedExitCode @(0, 1)
+            $ignoreInput = [System.Text.UTF8Encoding]::new($false).GetBytes($relativePath + [char]0)
+            $ignore = Invoke-GovernanceGitBytes -RepositoryRoot $repositoryRoot `
+                -Argument @('check-ignore', '-v', '-z', '--no-index', '--stdin') `
+                -StandardInputBytes $ignoreInput `
                 -AllowedExitCode @(0, 1)
-            if ($ignore.ExitCode -ne 0) {
-                $diagnostics.Add("IGNORED input is not ignored by Git: $path")
+            $gitInfoExclude = Invoke-GovernanceGitText -RepositoryRoot $repositoryRoot `
+                -Argument @('rev-parse', '--git-path', 'info/exclude')
+            $coreExcludes = Invoke-GovernanceGitText -RepositoryRoot $repositoryRoot `
+                -Argument @('config', '--path', '--get', 'core.excludesFile') -AllowedExitCode @(0, 1)
+            $probeCount += 4
+            $gitInfoExcludePath = if ([System.IO.Path]::IsPathRooted($gitInfoExclude.Text.Trim())) {
+                & $normalizePath $gitInfoExclude.Text.Trim()
+            }
+            else {
+                & $normalizePath (Join-Path $repositoryRoot $gitInfoExclude.Text.Trim())
+            }
+            $coreExcludesPath = $null
+            if ($coreExcludes.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($coreExcludes.Text)) {
+                $coreExcludesPath = if ([System.IO.Path]::IsPathRooted($coreExcludes.Text.Trim())) {
+                    & $normalizePath $coreExcludes.Text.Trim()
+                }
+                else {
+                    & $normalizePath (Join-Path $repositoryRoot $coreExcludes.Text.Trim())
+                }
+            }
+            $ignoreSourcePath = $null
+            if ($ignore.ExitCode -eq 0) {
+                $ignoreText = [System.Text.UTF8Encoding]::new($false, $true).GetString([byte[]]$ignore.Bytes)
+                $ignoreFields = @($ignoreText.Split([char]0))
+                if ($ignoreFields.Count -ge 4 -and -not [string]::IsNullOrWhiteSpace($ignoreFields[0])) {
+                    $ignoreSourcePath = if ([System.IO.Path]::IsPathRooted($ignoreFields[0])) {
+                        & $normalizePath $ignoreFields[0]
+                    }
+                    else {
+                        & $normalizePath (Join-Path $repositoryRoot $ignoreFields[0])
+                    }
+                }
+            }
+            $gitExcluded = $null -ne $ignoreSourcePath -and (
+                [string]::Equals($ignoreSourcePath, $gitInfoExcludePath, $pathComparison) -or
+                ($null -ne $coreExcludesPath -and
+                    [string]::Equals($ignoreSourcePath, $coreExcludesPath, $pathComparison))
+            )
+            $classified = if ($tracked.ExitCode -eq 0) {
+                'VERSIONED'
+            }
+            elseif ($ignore.ExitCode -eq 0 -and $gitExcluded) {
+                'GIT_EXCLUDED'
+            }
+            elseif ($ignore.ExitCode -eq 0) {
+                'IGNORED'
+            }
+            else {
+                'UNCLASSIFIED'
+            }
+            if ($classified -cne $kind) {
+                $diagnostics.Add("Git classification mismatch for ${path}: expected $kind, actual $classified")
                 continue
             }
         }
         [void]$bound.Add([pscustomobject]@{
-            Id = [string]$entry.id
+            Id = $id
             Path = $path
-            Kind = [string]$entry.kind
+            SourceRoot = $sourceRoot
+            Kind = $kind
             Purpose = [string]$entry.purpose
             Sha256 = $actualHash
         })
@@ -424,7 +568,7 @@ function Test-GovernanceExternalInputBinding {
         Status = if ($diagnostics.Count -eq 0) { 'PASS' } else { 'FAIL' }
         BoundInputs = @($bound)
         Diagnostics = @($diagnostics)
-        ReadOnlyProbeCount = @($ExternalInput).Count
+        ReadOnlyProbeCount = $probeCount
     }
 }
 
@@ -477,6 +621,8 @@ function Test-GovernanceSourceBinding {
     $diagnostics = [System.Collections.Generic.List[string]]::new()
     $probeCount = 0
     $actualStatusHash = $null
+    $actualCommit = $null
+    $actualTree = $null
     $protectedBindings = [System.Collections.Generic.List[object]]::new()
     $sourceRoot = [System.IO.Path]::GetFullPath([string]$Request.sourceRepositoryRoot).TrimEnd('\', '/')
     $worktreeRoot = [System.IO.Path]::GetFullPath([string]$Request.worktreeRoot).TrimEnd('\', '/')
@@ -502,6 +648,8 @@ function Test-GovernanceSourceBinding {
     if ($diagnostics.Count -eq 0) {
         $head = Invoke-GovernanceGitText -RepositoryRoot $worktreeRoot -Argument @('rev-parse', 'HEAD')
         $tree = Invoke-GovernanceGitText -RepositoryRoot $worktreeRoot -Argument @('rev-parse', 'HEAD^{tree}')
+        $actualCommit = $head.Text.Trim()
+        $actualTree = $tree.Text.Trim()
         $branch = Invoke-GovernanceGitText `
             -RepositoryRoot $worktreeRoot `
             -Argument @('symbolic-ref', '--quiet', '--short', 'HEAD') `
@@ -646,18 +794,49 @@ function Test-GovernanceSourceBinding {
     else {
         $actualDetached = $null
     }
-    $selectorText = $Request.selectors | ConvertTo-Json -Compress -Depth 20
-    $selectorHash = [Convert]::ToHexString(
-        [System.Security.Cryptography.SHA256]::HashData(
-            [System.Text.UTF8Encoding]::new($false).GetBytes($selectorText)
-        )
-    ).ToLowerInvariant()
+    $selectorHash = $null
+    $resolvedCaseCount = 0
+    try {
+        $governanceRoot = [System.IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
+        $selectorModulePath = Join-Path $governanceRoot 'scripts/GovernanceCaseSelection.psm1'
+        $metadataPath = Join-Path $governanceRoot 'Governance/governance-case-metadata.json'
+        $metadataSchemaPath = Join-Path $governanceRoot 'Governance/governance-case-metadata.schema.json'
+        if ([string]$Request.selectors.interface -cne 'scripts/GovernanceCaseSelection.psm1' -or
+            [string]$Request.selectors.metadataPath -cne 'Governance/governance-case-metadata.json' -or
+            [string]$Request.selectors.schemaPath -cne 'Governance/governance-case-metadata.schema.json') {
+            throw 'Selector request does not bind the canonical BL-338 source, schema, and resolver.'
+        }
+        Import-Module -Name $selectorModulePath -Force -ErrorAction Stop
+        $metadata = Read-GovernanceCaseMetadata -Path $metadataPath -SchemaPath $metadataSchemaPath
+        if ([string]$metadata.MetadataInventorySHA256 -cne [string]$Request.selectors.inventorySha256) {
+            throw 'Canonical selector inventory hash mismatch.'
+        }
+        $selection = Resolve-GovernanceCaseSelection -Metadata $metadata `
+            -CaseName @($Request.selectors.caseNames) `
+            -Group @($Request.selectors.groups) `
+            -Tag @($Request.selectors.tags) `
+            -TargetPlatform ([string]$Request.selectors.targetPlatform) `
+            -AvailableCapability @($Request.selectors.availableCapabilities)
+        $selectorHash = [string]$selection.ResolvedCaseSetSHA256
+        $resolvedCaseCount = [int]$selection.ResolvedCaseCount
+        if (-not [bool]$selection.ReadyToExecute -or [string]$selection.SelectorResolutionResult -cne 'PASS') {
+            foreach ($selectorDiagnostic in @($selection.ErrorDiagnostics)) {
+                $diagnostics.Add("Selector resolution failed: $($selectorDiagnostic | ConvertTo-Json -Compress -Depth 10)")
+            }
+            if (@($selection.ErrorDiagnostics).Count -eq 0) {
+                $diagnostics.Add('Selector resolution failed without executable cases.')
+            }
+        }
+    }
+    catch {
+        $diagnostics.Add("Canonical selector binding failed: $($_.Exception.Message)")
+    }
     return [pscustomobject]@{
         Status = if ($diagnostics.Count -eq 0) { 'PASS' } else { 'FAIL' }
         SourceRepositoryRoot = $sourceRoot
         WorktreeRoot = $worktreeRoot
-        CurrentCommit = [string]$Request.currentCommit
-        Tree = [string]$Request.expectedTree
+        CurrentCommit = $actualCommit
+        Tree = $actualTree
         DetachedHead = $actualDetached
         ExpectedStatusSha256 = [string]$Request.expectedStatusSha256
         ActualStatusSha256 = $actualStatusHash
@@ -666,6 +845,7 @@ function Test-GovernanceSourceBinding {
         ProtectedWorktrees = @($protectedBindings)
         SelectorInventorySha256 = [string]$Request.selectors.inventorySha256
         SelectionSha256 = $selectorHash
+        ResolvedCaseCount = $resolvedCaseCount
         Diagnostics = @($diagnostics)
         ReadOnlyProbeCount = $probeCount
     }
@@ -716,6 +896,421 @@ function Get-GovernanceEvidenceDisposition {
     return [pscustomobject]@{
         ReusedIds = @($reused)
         Invalidated = @($invalidated)
+    }
+}
+
+function Get-GovernanceCanonicalDigest {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowNull()][object]$Value)
+
+    $json = if ($null -eq $Value) {
+        'null'
+    }
+    elseif ($Value -is [array] -and @($Value).Count -eq 0) {
+        '[]'
+    }
+    else {
+        $Value | ConvertTo-Json -Compress -Depth 100
+    }
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($json)
+    return Get-GovernanceByteSha256 -Bytes $bytes
+}
+
+function Get-GovernanceCurrentComponentHashes {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$Request,
+        [AllowNull()][object]$SourceResult,
+        [AllowNull()][object]$ExternalResult,
+        [Parameter(Mandatory)][object]$EvidenceDisposition
+    )
+
+    $hashes = [ordered]@{
+        commit = $null
+        tree = $null
+        'working-status' = $null
+        scope = $null
+        selector = $null
+        package = $null
+        'external-inputs' = $null
+        evidence = $null
+    }
+    if ($null -ne $SourceResult) {
+        if (-not [string]::IsNullOrWhiteSpace([string]$SourceResult.CurrentCommit)) {
+            $hashes.commit = Get-GovernanceCanonicalDigest -Value ([ordered]@{
+                    component = 'commit'; value = [string]$SourceResult.CurrentCommit
+                })
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$SourceResult.Tree)) {
+            $hashes.tree = Get-GovernanceCanonicalDigest -Value ([ordered]@{
+                    component = 'tree'; value = [string]$SourceResult.Tree
+                })
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$SourceResult.ActualStatusSha256)) {
+            $hashes['working-status'] = [string]$SourceResult.ActualStatusSha256
+        }
+        $actualScope = @(
+            $Request.fileHashes | Sort-Object { [string]$_.path } | ForEach-Object {
+                $relativePath = [string]$_.path
+                $fullPath = Join-Path ([string]$Request.worktreeRoot) ($relativePath.Replace('/', [System.IO.Path]::DirectorySeparatorChar))
+                [ordered]@{
+                    path = $relativePath
+                    sha256 = if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+                        Get-GovernanceLowerSha256 -LiteralPath $fullPath
+                    }
+                    else { $null }
+                }
+            }
+        )
+        $hashes.scope = Get-GovernanceCanonicalDigest -Value ([ordered]@{
+                scopePaths = @($Request.scopePaths | Sort-Object)
+                files = $actualScope
+            })
+        if (-not [string]::IsNullOrWhiteSpace([string]$SourceResult.SelectionSha256)) {
+            $hashes.selector = [string]$SourceResult.SelectionSha256
+        }
+    }
+    if ($null -ne $ExternalResult) {
+        $externalState = @($ExternalResult.BoundInputs | Sort-Object Id | ForEach-Object {
+                [ordered]@{
+                    id = [string]$_.Id
+                    path = [string]$_.Path
+                    sourceRoot = [string]$_.SourceRoot
+                    kind = [string]$_.Kind
+                    sha256 = [string]$_.Sha256
+                }
+            })
+        $hashes['external-inputs'] = Get-GovernanceCanonicalDigest -Value $externalState
+    }
+    $packageInputs = @($Request.subordinateResults | Sort-Object { [string]$_.id } | ForEach-Object {
+            $resultPath = [string]$_.path
+            [ordered]@{
+                id = [string]$_.id
+                sha256 = if (Test-Path -LiteralPath $resultPath -PathType Leaf) {
+                    Get-GovernanceLowerSha256 -LiteralPath $resultPath
+                }
+                else { $null }
+            }
+        })
+    $hashes.package = Get-GovernanceCanonicalDigest -Value ([ordered]@{
+            profile = [string]$Request.profile
+            exactCommit = $Request.exactCommit
+            subordinateResults = $packageInputs
+        })
+    $priorEvidenceState = @($Request.priorEvidence | Sort-Object { [string]$_.id } | ForEach-Object {
+            $evidencePath = [string]$_.path
+            [ordered]@{
+                id = [string]$_.id
+                sha256 = if (Test-Path -LiteralPath $evidencePath -PathType Leaf) {
+                    Get-GovernanceLowerSha256 -LiteralPath $evidencePath
+                }
+                else { $null }
+            }
+        })
+    $hashes.evidence = Get-GovernanceCanonicalDigest -Value ([ordered]@{
+            currentDependencies = @($Request.currentDependencies | Sort-Object { [string]$_.id })
+            priorEvidence = $priorEvidenceState
+            reusedIds = @($EvidenceDisposition.ReusedIds | Sort-Object)
+            invalidated = @($EvidenceDisposition.Invalidated | Sort-Object Id)
+        })
+    return $hashes
+}
+
+function Get-GovernanceStateTransitionMap {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object[]]$StateComponent,
+        [Parameter(Mandatory)][System.Collections.IDictionary]$CurrentComponentHash
+    )
+
+    $required = @('commit', 'tree', 'working-status', 'scope', 'selector', 'package', 'external-inputs', 'evidence')
+    $actual = @($StateComponent | ForEach-Object { [string]$_.component })
+    if ((@($actual | Sort-Object -Unique).Count -ne $required.Count) -or
+        (($actual | Sort-Object) -join "`n") -cne (($required | Sort-Object) -join "`n")) {
+        throw 'State transition input must contain each canonical component exactly once.'
+    }
+    return @($required | ForEach-Object {
+            $component = [string]$_
+            $entry = @($StateComponent | Where-Object { [string]$_.component -ceq $component })[0]
+            $currentHash = $CurrentComponentHash[$component]
+            $reused = $null -ne $currentHash -and
+                [string]$entry.priorSha256 -ceq [string]$currentHash
+            [pscustomobject][ordered]@{
+                Component = $component
+                PriorSha256 = [string]$entry.priorSha256
+                CurrentSha256 = if ($null -eq $currentHash) { $null } else { [string]$currentHash }
+                Disposition = if ($reused) { 'REUSED' } else { 'INVALIDATED' }
+                Reason = if ($reused) {
+                    'ACTUAL_HASH_BOUND_STATE_UNCHANGED'
+                }
+                elseif ($null -eq $currentHash) {
+                    'ACTUAL_CURRENT_STATE_NOT_AVAILABLE'
+                }
+                else {
+                    "ACTUAL_${component}_HASH_CHANGED".ToUpperInvariant()
+                }
+            }
+        })
+}
+
+function Test-GovernanceTaskControllerInventory {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$WorktreeRoot,
+        [AllowEmptyCollection()][object[]]$TaskController = @()
+    )
+
+    $diagnostics = [System.Collections.Generic.List[string]]::new()
+    $pathComparer = if ($IsWindows) { [System.StringComparer]::OrdinalIgnoreCase } else { [System.StringComparer]::Ordinal }
+    $pathComparison = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    $resolvedWorktreeRoot = [System.IO.Path]::GetFullPath($WorktreeRoot).TrimEnd('\', '/')
+    $worktreePrefix = $resolvedWorktreeRoot + [System.IO.Path]::DirectorySeparatorChar
+    $permanentRoot = Join-Path $resolvedWorktreeRoot 'scripts'
+    $permanentPrefix = $permanentRoot + [System.IO.Path]::DirectorySeparatorChar
+    $actualInventory = [System.Collections.Generic.Dictionary[string, object]]::new($pathComparer)
+    $trackedPaths = [System.Collections.Generic.HashSet[string]]::new($pathComparer)
+    $inventoryConventionRoot = Join-Path $resolvedWorktreeRoot '.governance-task-controllers'
+    $inventoryConventionPrefix = $inventoryConventionRoot + [System.IO.Path]::DirectorySeparatorChar
+
+    if (-not (Test-Path -LiteralPath $resolvedWorktreeRoot -PathType Container)) {
+        $diagnostics.Add("Validated worktree root is not a directory: $resolvedWorktreeRoot")
+    }
+    else {
+        $rootItem = Get-Item -LiteralPath $resolvedWorktreeRoot -Force
+        if (($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+            $null -ne $rootItem.LinkType) {
+            $diagnostics.Add("Validated worktree root is a link or reparse point: $resolvedWorktreeRoot")
+        }
+        else {
+            $trackedResult = Invoke-GovernanceGitText -RepositoryRoot $resolvedWorktreeRoot `
+                -Argument @('ls-files', '-z')
+            foreach ($trackedPath in @($trackedResult.Text.Split([char]0))) {
+                if (-not [string]::IsNullOrEmpty($trackedPath)) {
+                    [void]$trackedPaths.Add($trackedPath.Replace('\', '/'))
+                }
+            }
+
+            $pendingDirectories = [System.Collections.Generic.Stack[string]]::new()
+            $pendingDirectories.Push($resolvedWorktreeRoot)
+            while ($pendingDirectories.Count -gt 0) {
+                $directory = $pendingDirectories.Pop()
+                foreach ($item in @(Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop)) {
+                    if ([string]::Equals([string]$item.Name, '.git', $pathComparison)) {
+                        continue
+                    }
+                    if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+                        $null -ne $item.LinkType) {
+                        $diagnostics.Add("Controller inventory contains a link or reparse point: $($item.FullName)")
+                        continue
+                    }
+                    if ($item.PSIsContainer) {
+                        $pendingDirectories.Push([System.IO.Path]::GetFullPath($item.FullName))
+                        continue
+                    }
+                    $isPowerShellArtifact =
+                        [string]::Equals([string]$item.Extension, '.ps1', $pathComparison) -or
+                        [string]::Equals([string]$item.Extension, '.psm1', $pathComparison)
+                    $actualPath = [System.IO.Path]::GetFullPath($item.FullName)
+                    if (-not $isPowerShellArtifact) {
+                        if ($actualPath.StartsWith($inventoryConventionPrefix, $pathComparison)) {
+                            $diagnostics.Add("Task-controller inventory convention contains an unsupported executable artifact: $actualPath")
+                        }
+                        continue
+                    }
+                    $relativePath = [System.IO.Path]::GetRelativePath($resolvedWorktreeRoot, $actualPath).Replace('\', '/')
+                    $isPermanentProfile =
+                        $actualPath.StartsWith($permanentPrefix, $pathComparison) -and
+                        $trackedPaths.Contains($relativePath)
+                    if ($isPermanentProfile) {
+                        continue
+                    }
+                    if ($actualInventory.ContainsKey($actualPath)) {
+                        $diagnostics.Add("Duplicate or case-aliased actual task controller: $actualPath")
+                        continue
+                    }
+                    $actualInventory.Add($actualPath, [pscustomobject]@{
+                            Path = $actualPath
+                            LineCount = @([System.IO.File]::ReadAllLines($actualPath)).Count
+                        })
+                }
+            }
+        }
+    }
+
+    $taskSpecificFileCount = $actualInventory.Count
+    $taskSpecificLineCount = if ($actualInventory.Count -eq 0) {
+        0
+    }
+    else {
+        [int]($actualInventory.Values | Measure-Object -Property LineCount -Sum).Sum
+    }
+    $declaredPaths = [System.Collections.Generic.HashSet[string]]::new($pathComparer)
+    $declaredTaskPaths = [System.Collections.Generic.HashSet[string]]::new($pathComparer)
+    foreach ($controller in @($TaskController)) {
+        try {
+            $path = [System.IO.Path]::GetFullPath([string]$controller.path)
+        }
+        catch {
+            $diagnostics.Add("Invalid controller declaration path: $([string]$controller.path)")
+            continue
+        }
+        if (-not $declaredPaths.Add($path)) {
+            $diagnostics.Add("Duplicate or case-aliased controller declaration path: $path")
+            continue
+        }
+        $insideValidatedWorktree = $path.StartsWith($worktreePrefix, $pathComparison)
+        if (-not $insideValidatedWorktree) {
+            $diagnostics.Add("Controller declaration is outside the validated worktree: $path")
+        }
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $diagnostics.Add("Controller inventory path is missing: $path")
+            continue
+        }
+        $controllerItem = Get-Item -LiteralPath $path -Force
+        if (($controllerItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0 -or
+            $null -ne $controllerItem.LinkType) {
+            $diagnostics.Add("Controller inventory path is a link or reparse point: $path")
+            continue
+        }
+        $actualLineCount = @([System.IO.File]::ReadAllLines($path)).Count
+        if ($actualLineCount -ne [int]$controller.lineCount) {
+            $diagnostics.Add("Controller line-count inventory drift: $path")
+        }
+        if ([string]$controller.classification -ceq 'TASK_SPECIFIC_EXECUTABLE') {
+            [void]$declaredTaskPaths.Add($path)
+            if ($insideValidatedWorktree -and -not $actualInventory.ContainsKey($path)) {
+                $diagnostics.Add("Declared task-specific controller is absent from the authoritative inventory: $path")
+            }
+            $diagnostics.Add("Executable task-specific controller is prohibited: $path")
+            if (-not [string]::IsNullOrWhiteSpace([string]$controller.exceptionId)) {
+                $diagnostics.Add("Unknown task-controller exception: $($controller.exceptionId)")
+            }
+        }
+        elseif ([string]$controller.classification -ceq 'PERMANENT_PROFILE') {
+            if (-not $path.StartsWith($permanentPrefix, $pathComparison)) {
+                $diagnostics.Add("Permanent profile is outside the canonical scripts root: $path")
+            }
+            else {
+                $relativePath = [System.IO.Path]::GetRelativePath($resolvedWorktreeRoot, $path).Replace('\', '/')
+                if (-not $trackedPaths.Contains($relativePath)) {
+                    $diagnostics.Add("Permanent profile is not a versioned existing helper: $path")
+                }
+            }
+            if ($null -ne $controller.exceptionId) {
+                $diagnostics.Add("Permanent profiles cannot declare a task-controller exception: $path")
+            }
+        }
+        else {
+            $diagnostics.Add("Unknown controller classification: $($controller.classification)")
+        }
+    }
+    foreach ($actualPath in $actualInventory.Keys) {
+        if (-not $declaredTaskPaths.Contains($actualPath)) {
+            $diagnostics.Add("Undeclared actual task-specific controller: $actualPath")
+        }
+    }
+    foreach ($declaredTaskPath in $declaredTaskPaths) {
+        if (-not $actualInventory.ContainsKey($declaredTaskPath)) {
+            $diagnostics.Add("Controller declaration/actual inventory mismatch: $declaredTaskPath")
+        }
+    }
+    return [pscustomobject][ordered]@{
+        Status = if ($diagnostics.Count -eq 0) { 'PASS' } else { 'FAIL' }
+        AuthoritativeInventoryRoot = $resolvedWorktreeRoot
+        GeneratedTaskControllerFileCount = $taskSpecificFileCount
+        GeneratedTaskControllerLineCount = $taskSpecificLineCount
+        Diagnostics = @($diagnostics)
+    }
+}
+
+function Test-GovernanceExactCommitProfile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$Request,
+        [Parameter(Mandatory)][object]$SourceResult
+    )
+
+    $notRun = [pscustomobject][ordered]@{
+        IntendedBaseResult = 'NOT_RUN'
+        MergeBaseResult = 'NOT_RUN'
+        EffectivePRScopeResult = 'NOT_RUN'
+        EffectivePRPatchHash = $null
+        IntegrationProjectionResult = 'NOT_RUN'
+        IntegrationProjectionHash = $null
+        AuthorizedWriteSetResult = 'NOT_RUN'
+        ForeignProtectedStateResult = 'NOT_RUN'
+        Diagnostics = @()
+    }
+    if ($null -eq $Request.exactCommit) {
+        if ([string]$Request.profile -ceq 'commit-preparation') {
+            $notRun.IntendedBaseResult = 'FAIL'
+            $notRun.Diagnostics = @('commit-preparation requires the exactCommit contract.')
+        }
+        return $notRun
+    }
+
+    $contract = $Request.exactCommit
+    $diagnostics = [System.Collections.Generic.List[string]]::new()
+    $root = [string]$Request.worktreeRoot
+    $intendedBasePass = [string]$Request.baselineCommit -ceq [string]$contract.intendedBase
+    try {
+        $null = Invoke-GovernanceGitText -RepositoryRoot $root -Argument @('cat-file', '-e', "$($contract.intendedBase)^{commit}")
+    }
+    catch { $intendedBasePass = $false }
+    if (-not $intendedBasePass) { $diagnostics.Add('Intended base is absent or does not match the bound baseline.') }
+
+    $mergeBase = Invoke-GovernanceGitText -RepositoryRoot $root -Argument @('merge-base', [string]$Request.currentCommit, [string]$contract.targetRef)
+    $mergeBasePass = $mergeBase.Text.Trim() -ceq [string]$contract.expectedMergeBase
+    if (-not $mergeBasePass) { $diagnostics.Add('Merge base does not match the expected intended-base projection.') }
+
+    $entries = @(Get-GenericStatusEvidence -Root $root -BaselineCommit ([string]$contract.intendedBase))
+    $authorized = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($path in @($contract.authorizedWriteSet)) { [void]$authorized.Add([string]$path) }
+    $included = @($entries | Where-Object {
+            $authorized.Contains([string]$_.Path) -and
+            ($null -eq $_.PreviousPath -or $authorized.Contains([string]$_.PreviousPath))
+        })
+    $excluded = @($entries | Where-Object { $_ -notin $included })
+    $staged = @($entries | Where-Object { [bool]$_.Staged })
+    $effectiveScope = @(Get-GenericScopePaths -Entry $entries | Sort-Object -Unique)
+    $scopePass = (($effectiveScope -join "`n") -ceq (@($contract.expectedEffectivePRScope | Sort-Object) -join "`n"))
+    $authorizedPass = $excluded.Count -eq 0 -and $staged.Count -eq 0
+    if (-not $scopePass) { $diagnostics.Add('Effective PR scope differs from the expected scope.') }
+    if ($excluded.Count -gt 0) { $diagnostics.Add('Effective delta contains a path outside the authorized write set.') }
+    if ($staged.Count -gt 0) { $diagnostics.Add('Staged input is prohibited for exact commit preparation.') }
+
+    $patchHash = $null
+    $projectionHash = $null
+    $patchPass = $false
+    $projectionPass = $false
+    if ($included.Count -gt 0 -and $authorizedPass) {
+        $delta = Get-GenericDeltaEvidence -Root $root -BaselineCommit ([string]$contract.intendedBase) `
+            -IncludedEntry $included -ExcludedEntry $excluded
+        $patchHash = Get-GovernanceByteSha256 -Bytes ([byte[]]$delta.Bytes)
+        $patchPass = $patchHash -ceq [string]$contract.expectedEffectivePRPatchSha256 -and
+            [bool]$delta.ActualDeltaInventoryParity -and [bool]$delta.ExcludedDeltaPathProhibition
+        $projection = Get-GenericIntegrationProjectionEvidence -Root $root `
+            -BaselineCommit ([string]$contract.intendedBase) -IncludedEntry $included -ExcludedEntry $excluded
+        $projectionHash = [string]$projection.Tree
+        $projectionPass = $projectionHash -ceq [string]$contract.expectedIntegrationProjection -and
+            [bool]$projection.ExcludedPathProhibition
+    }
+    if (-not $patchPass) { $diagnostics.Add('Effective PR patch hash or actual delta inventory is not reproducible.') }
+    if (-not $projectionPass) { $diagnostics.Add('Integration projection is not reproducible.') }
+
+    $protected = @($SourceResult.ProtectedWorktrees)
+    $protectedPassCount = @($protected | Where-Object { [string]$_.Status -ceq 'PASS' }).Count
+    $foreignResult = if ($protectedPassCount -eq $protected.Count) { 'PASS_{0}_OF_{1}' -f $protectedPassCount, $protected.Count } else { 'FAIL' }
+    return [pscustomobject][ordered]@{
+        IntendedBaseResult = if ($intendedBasePass) { 'PASS' } else { 'FAIL' }
+        MergeBaseResult = if ($mergeBasePass) { 'PASS' } else { 'FAIL' }
+        EffectivePRScopeResult = if ($scopePass -and $patchPass) { 'PASS' } else { 'FAIL' }
+        EffectivePRPatchHash = $patchHash
+        IntegrationProjectionResult = if ($projectionPass) { 'PASS' } else { 'FAIL' }
+        IntegrationProjectionHash = $projectionHash
+        AuthorizedWriteSetResult = if ($authorizedPass) { 'PASS' } else { 'FAIL' }
+        ForeignProtectedStateResult = $foreignResult
+        Diagnostics = @($diagnostics)
     }
 }
 
@@ -832,6 +1427,26 @@ function Invoke-GovernanceValidationOrchestration {
     $infrastructureOrInvocationFailureCount = 0
     $blocked = $false
     $sourceResult = $null
+    $inputResult = $null
+    $validationExecutionCount = 0
+    $controllerResult = [pscustomobject][ordered]@{
+        Status = 'NOT_RUN'
+        AuthoritativeInventoryRoot = $null
+        GeneratedTaskControllerFileCount = 0
+        GeneratedTaskControllerLineCount = 0
+        Diagnostics = @('Controller inventory requires a successful source-worktree binding.')
+    }
+    $profileResults = [pscustomobject][ordered]@{
+        IntendedBaseResult = 'NOT_RUN'
+        MergeBaseResult = 'NOT_RUN'
+        EffectivePRScopeResult = 'NOT_RUN'
+        EffectivePRPatchHash = $null
+        IntegrationProjectionResult = 'NOT_RUN'
+        IntegrationProjectionHash = $null
+        AuthorizedWriteSetResult = 'NOT_RUN'
+        ForeignProtectedStateResult = 'NOT_RUN'
+        Diagnostics = @()
+    }
 
     foreach ($gateId in $script:CheapGateOrder) {
         $gateStatus = 'PASS'
@@ -892,6 +1507,28 @@ function Invoke-GovernanceValidationOrchestration {
                     $gateStatus = [string]$sourceResult.Status
                     $diagnostics = @($sourceResult.Diagnostics)
                     $readOnlyProbeCount += [int]$sourceResult.ReadOnlyProbeCount
+                    if ($gateStatus -ceq 'PASS') {
+                        $controllerResult = Test-GovernanceTaskControllerInventory `
+                            -WorktreeRoot ([string]$sourceResult.WorktreeRoot) `
+                            -TaskController @($Request.taskControllers)
+                        if ([string]$controllerResult.Status -ne 'PASS') {
+                            $gateStatus = 'FAIL'
+                            $diagnostics += @($controllerResult.Diagnostics)
+                        }
+                    }
+                    if ($gateStatus -ceq 'PASS') {
+                        $profileResults = Test-GovernanceExactCommitProfile -Request $Request -SourceResult $sourceResult
+                        if (@(
+                                $profileResults.IntendedBaseResult,
+                                $profileResults.MergeBaseResult,
+                                $profileResults.EffectivePRScopeResult,
+                                $profileResults.IntegrationProjectionResult,
+                                $profileResults.AuthorizedWriteSetResult
+                            ) -contains 'FAIL' -or [string]$profileResults.ForeignProtectedStateResult -ceq 'FAIL') {
+                            $gateStatus = 'FAIL'
+                            $diagnostics += @($profileResults.Diagnostics)
+                        }
+                    }
                 }
             }
         }
@@ -927,6 +1564,14 @@ function Invoke-GovernanceValidationOrchestration {
     $evidenceDisposition = Get-GovernanceEvidenceDisposition `
         -PriorEvidence @($Request.priorEvidence) `
         -CurrentDependency @($Request.currentDependencies)
+    $currentComponentHashes = Get-GovernanceCurrentComponentHashes `
+        -Request $Request `
+        -SourceResult $sourceResult `
+        -ExternalResult $inputResult `
+        -EvidenceDisposition $evidenceDisposition
+    $stateTransitionMap = @(Get-GovernanceStateTransitionMap `
+            -StateComponent @($Request.stateComponents) `
+            -CurrentComponentHash $currentComponentHashes)
     if ($failureCount -eq 0) {
         foreach ($requiredStage in @($profile[0].requiredSubordinateStages)) {
             $declared = @($Request.subordinateResults | Where-Object {
@@ -950,6 +1595,7 @@ function Invoke-GovernanceValidationOrchestration {
                     -LiteralPath ([string]$declared[0].path) `
                     -SchemaPath ([string]$declared[0].schemaPath) `
                     -ExpectedProfile ([string]$declared[0].expectedProfile)
+                $validationExecutionCount++
                 $typedNames = Get-GovernanceObjectPropertyNames -Value $typed
                 $typedStatus = if ('status' -in $typedNames) { [string]$typed.status } else { [string]$typed.result }
                 if ($typedStatus -ceq 'FAIL') { $failureCount++ }
@@ -984,7 +1630,12 @@ function Invoke-GovernanceValidationOrchestration {
         bindings = [ordered]@{
             repository = [string]$Request.repository
             sourceRepositoryRoot = [System.IO.Path]::GetFullPath([string]$Request.sourceRepositoryRoot)
-            worktreeRoot = [System.IO.Path]::GetFullPath([string]$Request.worktreeRoot)
+            worktreeRoot = if ($null -eq $sourceResult) {
+                [System.IO.Path]::GetFullPath([string]$Request.worktreeRoot)
+            }
+            else {
+                [string]$sourceResult.WorktreeRoot
+            }
             baselineCommit = [string]$Request.baselineCommit
             currentCommit = [string]$Request.currentCommit
             expectedTree = [string]$Request.expectedTree
@@ -1005,18 +1656,32 @@ function Invoke-GovernanceValidationOrchestration {
                     })
             })
             selectorInventorySha256 = [string]$Request.selectors.inventorySha256
+            selectionSha256 = if ($null -eq $sourceResult -or [string]::IsNullOrWhiteSpace([string]$sourceResult.SelectionSha256)) { $null } else { [string]$sourceResult.SelectionSha256 }
+            resolvedCaseCount = if ($null -eq $sourceResult) { 0 } else { [int]$sourceResult.ResolvedCaseCount }
         }
         stageResults = @($stageResults)
         evidenceReuse = [ordered]@{
             reusedIds = @($evidenceDisposition.ReusedIds)
             invalidated = @($evidenceDisposition.Invalidated)
         }
-        validationExecutionCount = 1
+        stateTransitionMap = @($stateTransitionMap)
+        profileResults = [ordered]@{
+            IntendedBaseResult = [string]$profileResults.IntendedBaseResult
+            MergeBaseResult = [string]$profileResults.MergeBaseResult
+            EffectivePRScopeResult = [string]$profileResults.EffectivePRScopeResult
+            EffectivePRPatchHash = $profileResults.EffectivePRPatchHash
+            IntegrationProjectionResult = [string]$profileResults.IntegrationProjectionResult
+            IntegrationProjectionHash = $profileResults.IntegrationProjectionHash
+            AuthorizedWriteSetResult = [string]$profileResults.AuthorizedWriteSetResult
+            ForeignProtectedStateResult = [string]$profileResults.ForeignProtectedStateResult
+        }
+        runnerProcessStartCount = 0
+        validationExecutionCount = $validationExecutionCount
         infrastructureOrInvocationFailureCount = $infrastructureOrInvocationFailureCount
         fullMatrixRunCount = $fullMatrixRunCount
         packageWriteAttemptCount = 0
-        generatedTaskControllerFileCount = 0
-        generatedTaskControllerLineCount = 0
+        generatedTaskControllerFileCount = [int]$controllerResult.GeneratedTaskControllerFileCount
+        generatedTaskControllerLineCount = [int]$controllerResult.GeneratedTaskControllerLineCount
         readOnlyProbeCount = $readOnlyProbeCount
         observedWarningCount = 0
         resolvedWarningCount = 0

@@ -107,7 +107,7 @@ function Publish-GovernanceHandoffPackage {
         throw 'Package write attempt count must be zero before the sole publication attempt.'
     }
 
-    $candidateName = '.{0}.{1}.pending' -f ([System.IO.Path]::GetFileName($resolvedFinal)), [guid]::NewGuid().ToString('N')
+    $candidateName = '{0}.{1}.pending' -f [guid]::NewGuid().ToString('N'), ([System.IO.Path]::GetFileName($resolvedFinal))
     $candidatePath = Join-Path $resolvedCandidateDirectory $candidateName
     $candidateSha256 = $null
     $candidateLength = 0L
@@ -159,7 +159,7 @@ function Publish-GovernanceHandoffPackage {
         -CandidatePath $candidatePath -FinalPath $resolvedFinal
     $candidateIdentity = [pscustomobject]@{
         Sha256 = Get-PublicationSha256 -LiteralPath $candidatePath
-        Length = [int64](Get-Item -LiteralPath $candidatePath).Length
+        Length = [int64][System.IO.FileInfo]::new($candidatePath).Length
     }
     & $CandidateValidator $candidatePath $candidateIdentity
     Invoke-PublicationPhaseObserver -Observer $PhaseObserver -Phase 'CANDIDATE_VALIDATED' `

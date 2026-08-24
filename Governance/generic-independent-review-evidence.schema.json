@@ -3,17 +3,132 @@
   "$id": "https://github.com/thomasweidner/flashgate-mcp/Governance/generic-independent-review-evidence.schema.json",
   "title": "FlashGate generic independent-review evidence",
   "type": "object",
+  "allOf": [
+    { "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] }, "then": { "properties": { "reviewedArtifacts": { "minItems": 2, "maxItems": 2, "items": { "type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": { "path": { "enum": ["task.patch", "current-delta.patch"] }, "sha256": { "$ref": "#/$defs/hash" } } } } } } },
+    { "if": { "properties": { "profile": { "const": "EVIDENCE_ONLY_FOCUSED_REVIEW" } }, "required": ["profile"] }, "then": { "required": ["evidenceBindings"], "properties": { "reviewedArtifacts": { "maxItems": 0 } } } },
+    { "if": { "properties": { "profile": { "const": "POST_MERGE_CLOSURE" } }, "required": ["profile"] }, "then": { "required": ["evidenceBindings", "matrixDisposition"], "properties": { "reviewedArtifacts": { "maxItems": 0 }, "matrixDisposition": { "const": "UNCHANGED_MATRICES_NOT_RUN" } } } }
+  ],
+  "oneOf": [
+    {
+      "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "profile", "reviewMode", "external", "result", "reviewerIndependencePreserved", "findingIds", "scopeInventorySha256", "allowedDeltaPaths", "excludedDeltaPaths", "reviewedArtifacts"],
+      "properties": { "reviewMode": { "const": "INDEPENDENT_REVIEW" } },
+      "not": { "required": ["artifactType"] }
+    },
+    {
+      "required": ["schemaVersion", "artifactType", "taskId", "reviewMode", "reviewerRole", "transitiveFullReviewBaselineSha256", "reviewedCurrentDeltaSha256", "reviewResult", "directInterfaceOutcomes", "openFindingIds", "closedFindingIds", "nextAction"],
+      "properties": { "reviewMode": { "const": "FOCUSED_INDEPENDENT_DELTA_REVIEW" } },
+      "oneOf": [
+        {
+          "required": ["previousReviewPackageSha256", "findingOutcomes"],
+          "properties": {
+            "reviewResult": { "const": "FAIL_WITH_FINDING" },
+            "nextAction": { "pattern": "^CORRECT_BL[0-9]{3}_REV_[0-9]{3}_AND_REQUEST_FOCUSED_INDEPENDENT_DELTA_REVIEW$" }
+          }
+        },
+        {
+          "required": ["reviewedPackageSha256", "immediatePreviousReviewPackageSha256", "reviewedCorrectionPatchSha256", "packageIntegrityResult", "targetFindingOutcomes", "newFindings", "inheritedClosedFindingIds"],
+          "properties": {
+            "reviewResult": { "enum": ["PASS", "FAIL_WITH_FINDINGS"] },
+            "nextAction": { "pattern": "^[A-Z0-9_]+$" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "reviewResult": { "const": "PASS" } }, "required": ["reviewResult"] },
+              "then": {
+                "properties": {
+                  "openFindingIds": { "maxItems": 0 },
+                  "newFindings": { "maxItems": 0 },
+                  "targetFindingOutcomes": {
+                    "items": { "properties": { "disposition": { "const": "CLOSED_BY_INDEPENDENT_DELTA_REVIEW" } } }
+                  }
+                }
+              }
+            },
+            {
+              "if": { "properties": { "reviewResult": { "const": "FAIL_WITH_FINDINGS" } }, "required": ["reviewResult"] },
+              "then": { "properties": { "openFindingIds": { "minItems": 1 } } }
+            }
+          ]
+        }
+      ],
+      "not": { "required": ["profile"] }
+    }
+  ],
   "additionalProperties": false,
-  "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "profile", "reviewMode", "external", "result", "reviewerIndependencePreserved", "findingIds", "scopeInventorySha256", "allowedDeltaPaths", "excludedDeltaPaths", "reviewedArtifacts"],
   "properties": {
     "schemaVersion": { "const": 1 },
+    "artifactType": { "const": "INDEPENDENT_FOCUSED_DELTA_REVIEW_OUTCOME" },
     "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },
     "branch": { "type": "string", "minLength": 1 },
-    "profile": { "const": "GENERIC_COMMIT_PREPARATION" },
-    "reviewMode": { "const": "INDEPENDENT_REVIEW" },
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "EVIDENCE_ONLY_FOCUSED_REVIEW", "POST_MERGE_CLOSURE"] },
+    "reviewMode": { "enum": ["INDEPENDENT_REVIEW", "FOCUSED_INDEPENDENT_DELTA_REVIEW"] },
+    "reviewerRole": { "const": "INDEPENDENT_REVIEWER" },
+    "previousReviewPackageSha256": { "$ref": "#/$defs/outcomeHash" },
+    "reviewedPackageSha256": { "$ref": "#/$defs/outcomeHash" },
+    "immediatePreviousReviewPackageSha256": { "$ref": "#/$defs/outcomeHash" },
+    "previousIndependentReviewOutcomeSha256": { "$ref": "#/$defs/outcomeHash" },
+    "transitiveFullReviewBaselineSha256": { "$ref": "#/$defs/outcomeHash" },
+    "reviewedCurrentDeltaSha256": { "$ref": "#/$defs/outcomeHash" },
+    "reviewedCorrectionPatchSha256": { "$ref": "#/$defs/outcomeHash" },
+    "packageIntegrityResult": { "const": "PASS" },
+    "reviewResult": { "enum": ["PASS", "FAIL_WITH_FINDING", "FAIL_WITH_FINDINGS"] },
+    "findingOutcomes": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "disposition"],
+        "properties": {
+          "id": { "$ref": "#/$defs/outcomeFindingId" },
+          "disposition": { "enum": ["CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "OPEN_INCOMPLETE_CORRECTION"] },
+          "reviewFinding": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "directInterfaceOutcomes": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "disposition"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^BL[0-9]{3}-CORR-[0-9]{3}$" },
+          "disposition": { "const": "CLOSED" }
+        }
+      }
+    },
+    "targetFindingOutcomes": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "disposition"],
+        "properties": {
+          "id": { "$ref": "#/$defs/outcomeFindingId" },
+          "disposition": { "enum": ["CLOSED_BY_INDEPENDENT_DELTA_REVIEW", "OPEN_INCOMPLETE_CORRECTION"] },
+          "reviewFinding": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "newFindings": {
+      "type": "array",
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "severity", "disposition", "summary", "evidence", "requiredCorrection"],
+        "properties": {
+          "id": { "$ref": "#/$defs/outcomeFindingId" },
+          "severity": { "enum": ["INFO", "MINOR", "MAJOR", "CRITICAL"] },
+          "disposition": { "const": "OPEN" },
+          "summary": { "type": "string", "minLength": 1 },
+          "evidence": { "type": "string", "minLength": 1 },
+          "requiredCorrection": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "inheritedClosedFindingIds": { "$ref": "#/$defs/outcomeFindingIds" },
+    "openFindingIds": { "$ref": "#/$defs/outcomeFindingIds" },
+    "closedFindingIds": { "$ref": "#/$defs/outcomeFindingIds" },
+    "nextAction": { "type": "string", "minLength": 1 },
     "external": { "const": true },
     "result": { "enum": ["PASS", "FAIL"] },
     "reviewerIndependencePreserved": { "const": true },
@@ -21,11 +136,16 @@
     "scopeInventorySha256": { "$ref": "#/$defs/hash" },
     "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
     "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
-    "reviewedArtifacts": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": { "path": { "enum": ["task.patch", "current-delta.patch"] }, "sha256": { "$ref": "#/$defs/hash" } } } }
+    "reviewedArtifacts": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["path", "sha256"], "properties": { "path": { "$ref": "#/$defs/path" }, "sha256": { "$ref": "#/$defs/hash" } } } },
+    "evidenceBindings": { "type": "array", "minItems": 1, "items": { "type": "object", "additionalProperties": false, "required": ["id", "kind", "path", "sha256", "state"], "properties": { "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" }, "kind": { "enum": ["EXTERNAL_READ_ONLY", "MERGE_STATE", "LIVE_EXTERNAL_READBACK"] }, "path": { "type": "string", "pattern": "^evidence-[A-Za-z0-9][A-Za-z0-9._-]*$" }, "sha256": { "$ref": "#/$defs/hash" }, "state": { "enum": ["REUSED", "REFRESHED"] } } } },
+    "matrixDisposition": { "const": "UNCHANGED_MATRICES_NOT_RUN" }
   },
   "$defs": {
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "outcomeHash": { "type": "string", "pattern": "^[0-9A-F]{64}$" },
+    "outcomeFindingId": { "type": "string", "pattern": "^BL[0-9]{3}-REV-[0-9]{3}$" },
+    "outcomeFindingIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/outcomeFindingId" } },
     "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
     "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },
     "findingIds": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" } }

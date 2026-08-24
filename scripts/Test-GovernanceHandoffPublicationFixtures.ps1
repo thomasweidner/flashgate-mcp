@@ -332,9 +332,22 @@ try {
     $caseExecutionAuthorized = $true
     $normalFinal = Join-Path $root 'normal.zip'
     $attempt = 0
+    $normalCandidateNames = [System.Collections.Generic.List[string]]::new()
     $validator = { param($candidate) if(Test-Path -LiteralPath $normalFinal){throw 'Final path existed during candidate validation.'}; Test-ZipCandidate $candidate }
-    $normal = Publish-GovernanceHandoffPackage $staging $normalFinal $validator ([ref]$attempt)
-    Add-Case 'GHP-NORMAL-PUBLICATION-PASS' ($attempt -eq 1 -and $normal.SerializationCount -eq 1 -and (Test-Path -LiteralPath $normalFinal))
+    $normal = Publish-GovernanceHandoffPackage $staging $normalFinal $validator ([ref]$attempt) -PhaseObserver {
+        param($state)
+        if ($state.Phase -ceq 'BEFORE_CREATE') {
+            $normalCandidateNames.Add([System.IO.Path]::GetFileName([string]$state.CandidatePath))
+        }
+    }
+    Add-Case 'GHP-NORMAL-PUBLICATION-PASS' (
+        $attempt -eq 1 -and
+        $normal.SerializationCount -eq 1 -and
+        (Test-Path -LiteralPath $normalFinal) -and
+        $normalCandidateNames.Count -eq 1 -and
+        -not $normalCandidateNames[0].StartsWith('.', [System.StringComparison]::Ordinal) -and
+        $normalCandidateNames[0].EndsWith('.normal.zip.pending', [System.StringComparison]::Ordinal)
+    ) 'candidate basename is provider-visible on Windows and Linux'
 
     $validatorFinal = Join-Path $root 'validator-failure.zip'; $attempt = 0
     $failed = Invoke-ExpectedFailure { Publish-GovernanceHandoffPackage $staging $validatorFinal { throw 'synthetic validator failure' } ([ref]$attempt) | Out-Null }

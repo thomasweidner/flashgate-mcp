@@ -115,6 +115,7 @@ function New-BaseRecord {
 
     return [ordered]@{
         schemaVersion = 1
+        recordReadinessClass = $script:CurrentRecordReadinessClass
         recordedAt = '2026-07-29T00:00:00+02:00'
         taskId = 'BL-333/BL-334'
         repository = 'https://github.com/thomasweidner/flashgate-mcp.git'
@@ -672,6 +673,7 @@ BL-335 remains blocked.
 
     $completionReport = Copy-Record -Record $Record
     $completionReport.PSObject.Properties.Remove('focusedDelta')
+    $completionReport.PSObject.Properties.Remove('recordReadinessClass')
     $completionReport | Add-Member -NotePropertyName repositoryArtifacts -NotePropertyValue @($ChangedPaths)
     $completionReport | Add-Member -NotePropertyName externalGovernanceChanges -NotePropertyValue @($externalPaths)
     $completionReport | Add-Member -NotePropertyName correctionPatchArtifact -NotePropertyValue 'correction-only.patch'
@@ -1930,6 +1932,7 @@ function New-CompletionFixture {
 
     $report = Copy-Record -Record $Record
     $report.PSObject.Properties.Remove('focusedDelta')
+    $report.PSObject.Properties.Remove('recordReadinessClass')
     $report | Add-Member -NotePropertyName repositoryArtifacts -NotePropertyValue @($ChangedPaths)
     $report | Add-Member -NotePropertyName externalGovernanceChanges -NotePropertyValue @()
     $report | Add-Member -NotePropertyName correctionPatchArtifact -NotePropertyValue 'correction-only.patch'
@@ -2031,9 +2034,23 @@ $pwsh = $null
 $gitOptionalLocksBefore = $null
 $gitProcessEnvironmentChanged = $false
 $locationPushed = $false
+$script:CurrentRecordReadinessClass = $null
 
 try {
     $resolvedRepositoryRoot = [System.IO.Path]::GetFullPath($RepositoryRoot)
+    $assignmentRecordSchemaPath = Join-Path $resolvedRepositoryRoot `
+        'Governance/assignment-governance-record.schema.json'
+    $assignmentRecordSchemaText = [System.IO.File]::ReadAllText(
+        $assignmentRecordSchemaPath,
+        [System.Text.UTF8Encoding]::new($false, $true)
+    )
+    $assignmentRecordSchema = $assignmentRecordSchemaText |
+        ConvertFrom-Json -Depth 100 -DateKind String
+    $script:CurrentRecordReadinessClass =
+        [string]$assignmentRecordSchema.properties.recordReadinessClass.const
+    if ($script:CurrentRecordReadinessClass -cne 'CURRENT') {
+        throw 'The canonical assignment-record schema does not bind recordReadinessClass=CURRENT.'
+    }
     if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
         $resolvedProgressPath = [System.IO.Path]::GetFullPath($ProgressPath)
         $progressParent = [System.IO.Path]::GetDirectoryName($resolvedProgressPath)
@@ -2111,8 +2128,15 @@ try {
     }
     if (@($AvailableCapability).Count -eq 0) {
         $portableCapabilities = [System.Collections.Generic.List[string]]::new()
-        if ($PSVersionTable.PSVersion.ToString() -ceq '7.6.4') {
-            $portableCapabilities.Add('powershell-7.6.4')
+        $requiredPowerShellCapability = if ($actualTargetPlatform -ceq 'windows') {
+            'powershell-7.6.5'
+        }
+        else {
+            'powershell-7.6.4'
+        }
+        $requiredPowerShellVersion = if ($actualTargetPlatform -ceq 'windows') { '7.6.5' } else { '7.6.4' }
+        if ($PSVersionTable.PSVersion.ToString() -ceq $requiredPowerShellVersion) {
+            $portableCapabilities.Add($requiredPowerShellCapability)
             $powerShellCapabilitySource = 'PORTABLE_PROCESS_PREFLIGHT'
         }
         $portableGit = Get-Command git -CommandType Application -ErrorAction SilentlyContinue
@@ -2128,7 +2152,13 @@ try {
         $resolvedAvailableCapability = @(
             Get-OrdinalSortedUniqueStrings -Value $AvailableCapability
         )
-        $powerShellCapabilitySource = if ('powershell-7.6.4' -cin $resolvedAvailableCapability) {
+        $requiredPowerShellCapability = if ($actualTargetPlatform -ceq 'windows') {
+            'powershell-7.6.5'
+        }
+        else {
+            'powershell-7.6.4'
+        }
+        $powerShellCapabilitySource = if ($requiredPowerShellCapability -cin $resolvedAvailableCapability) {
             'CALLER_SUPPLIED_VALIDATED_CAPABILITY'
         }
         else {
@@ -2251,7 +2281,7 @@ try {
     $temporaryBase = [System.IO.Path]::GetTempPath()
     $temporaryRoot = Join-Path $temporaryBase ('flashgate-governance-fixtures-' + [guid]::NewGuid().ToString('N'))
     [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
-    $requiredPowerShellVersion = '7.6.4'
+    $requiredPowerShellVersion = if ($actualTargetPlatform -ceq 'windows') { '7.6.5' } else { '7.6.4' }
     $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
     if ($actualPowerShellVersion -cne $requiredPowerShellVersion) {
         throw "PowerShell $requiredPowerShellVersion is required; actual=$actualPowerShellVersion"
@@ -2279,12 +2309,22 @@ try {
     $cases = [System.Collections.Generic.List[object]]::new()
 
     $bundled = New-BaseRecord -Mode BUNDLED_CORRECTION -Checkpoint ASSIGNMENT_START -ObservedTriggers DOCUMENTATION_GOVERNANCE_LIFECYCLE -TriggeredDomains documentation-governance -AffectedGates $documentationGates
-    [void]$cases.Add([pscustomobject]@{ Name = $canonicalFixtureNames[$cases.Count]; ExpectedExit = 0; ChangedPaths = @('Governance/change-trigger-catalog.json'); Record = $bundled })
-
-    $currentStateGatePositive = Copy-Record -Record $bundled
+    $bundled.Remove('recordReadinessClass')
     [void]$cases.Add([pscustomobject]@{
             Name = $canonicalFixtureNames[$cases.Count]
             ExpectedExit = 0
+            ExpectedReadinessClassState = 'ABSENT'
+            ChangedPaths = @('Governance/change-trigger-catalog.json')
+            Record = $bundled
+        })
+
+    $currentStateGatePositive = Copy-Record -Record $bundled
+    $currentStateGatePositive | Add-Member -NotePropertyName recordReadinessClass `
+        -NotePropertyValue $script:CurrentRecordReadinessClass
+    [void]$cases.Add([pscustomobject]@{
+            Name = $canonicalFixtureNames[$cases.Count]
+            ExpectedExit = 0
+            ExpectedReadinessClassState = 'CURRENT'
             ChangedPaths = @('Governance/change-trigger-catalog.json')
             Record = $currentStateGatePositive
         })
@@ -2335,6 +2375,7 @@ try {
     [void]$cases.Add([pscustomobject]@{
             Name = $canonicalFixtureNames[$cases.Count]
             ExpectedExit = 0
+            ExpectedReadinessClassState = 'CURRENT'
             ChangedPaths = @('BACKLOG.md')
             Record = $preCommit
             RecordPath = $classicFixture.AssignmentPath
@@ -2349,9 +2390,15 @@ try {
 
     $missingRequiredCurrentStateGate = Copy-Record -Record $preCommit
     $missingRequiredCurrentStateGate.PSObject.Properties.Remove('currentStateGate')
+    $missingRequiredCurrentStateGate.PSObject.Properties.Remove('recordReadinessClass')
     [void]$cases.Add([pscustomobject]@{
             Name = $canonicalFixtureNames[$cases.Count]
             ExpectedExit = 1
+            ExpectedFailedChecks = @(
+                'RECORD-CURRENT-READINESS-CLASS',
+                'RECORD-CURRENT-STATE-GATE-PRESENCE'
+            )
+            ExpectedReadinessClassState = 'ABSENT'
             ChangedPaths = @('BACKLOG.md')
             Record = $missingRequiredCurrentStateGate
         })
@@ -2414,7 +2461,19 @@ try {
 
     $incompleteHandoff = Copy-Record -Record $preCommit
     $incompleteHandoff.handoff.artifacts = @('HANDOFF.md')
-    [void]$cases.Add([pscustomobject]@{ Name = $canonicalFixtureNames[$cases.Count]; ExpectedExit = 1; ChangedPaths = @('BACKLOG.md'); Record = $incompleteHandoff })
+    $incompleteHandoff.recordReadinessClass = 'HISTORICAL'
+    [void]$cases.Add([pscustomobject]@{
+            Name = $canonicalFixtureNames[$cases.Count]
+            ExpectedExit = 1
+            ExpectedFailedChecks = @(
+                'RECORD-JSON-SCHEMA',
+                'RECORD-CURRENT-READINESS-CLASS',
+                'RECORD-CLASSIC-READY'
+            )
+            ExpectedReadinessClassState = 'NON_CURRENT'
+            ChangedPaths = @('BACKLOG.md')
+            Record = $incompleteHandoff
+        })
 
     $falseClassicReadiness = Copy-Record -Record $preCommit
     $falseClassicReadiness.handoff.classicReviewReady = $false
@@ -3103,6 +3162,44 @@ try {
         if ('RecordPath' -notin @($case.PSObject.Properties.Name)) {
             [System.IO.File]::WriteAllText($recordPath, ($case.Record | ConvertTo-Json -Depth 100), [System.Text.UTF8Encoding]::new($false))
         }
+        $readinessClassAssertionPass = $true
+        $readinessClassAssertionDiagnostic = ''
+        if ('ExpectedReadinessClassState' -in @($case.PSObject.Properties.Name)) {
+            $persistedRecord = Get-Content -LiteralPath $recordPath -Raw -Encoding UTF8 |
+                ConvertFrom-Json -Depth 100 -DateKind String
+            $hasReadinessClass = 'recordReadinessClass' -in @($persistedRecord.PSObject.Properties.Name)
+            $actualReadinessClass = if ($hasReadinessClass) {
+                [string]$persistedRecord.recordReadinessClass
+            }
+            else {
+                ''
+            }
+            $readinessClassAssertionPass = switch ([string]$case.ExpectedReadinessClassState) {
+                'CURRENT' {
+                    $hasReadinessClass -and
+                        $actualReadinessClass -ceq $script:CurrentRecordReadinessClass
+                    break
+                }
+                'ABSENT' {
+                    -not $hasReadinessClass
+                    break
+                }
+                'NON_CURRENT' {
+                    $hasReadinessClass -and
+                        $actualReadinessClass -cne $script:CurrentRecordReadinessClass
+                    break
+                }
+                default {
+                    throw "Unknown ExpectedReadinessClassState: $($case.ExpectedReadinessClassState)"
+                }
+            }
+            $readinessClassAssertionDiagnostic = (
+                'expectedState={0}; hasProperty={1}; actualValue={2}' -f
+                [string]$case.ExpectedReadinessClassState,
+                $hasReadinessClass,
+                $actualReadinessClass
+            )
+        }
         $completionFixture = if ('CompletionMutation' -in @($case.PSObject.Properties.Name)) {
             New-CompletionFixture -Root $temporaryRoot -Name $case.Name -Record $case.Record `
                 -RecordPath $recordPath -ChangedPaths @($case.ChangedPaths) `
@@ -3201,23 +3298,36 @@ try {
         $command = $commandParts -join ' '
         $output = @(& $pwsh -NoLogo -NoProfile -Command $command 2>&1)
         $actualExit = $LASTEXITCODE
-        $expectedFailedCheckPass = $true
-        if ('ExpectedFailedCheck' -in @($case.PSObject.Properties.Name)) {
-            $expectedFailedCheckPass = $false
+        [string[]]$expectedFailedChecks = @(
+            if ('ExpectedFailedChecks' -in @($case.PSObject.Properties.Name)) {
+                [string[]]@($case.ExpectedFailedChecks)
+            }
+            elseif ('ExpectedFailedCheck' -in @($case.PSObject.Properties.Name)) {
+                [string]$case.ExpectedFailedCheck
+            }
+        )
+        $expectedFailedCheckPass = $expectedFailedChecks.Count -eq 0
+        if ($expectedFailedChecks.Count -gt 0) {
             if (Test-Path -LiteralPath $reportPath -PathType Leaf) {
                 $fixtureReport = Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 |
                     ConvertFrom-Json -Depth 100 -DateKind String
                 $expectedFailedCheckPass = @(
-                    $fixtureReport.checks | Where-Object {
-                        [string]$_.Id -ceq [string]$case.ExpectedFailedCheck -and
-                        [string]$_.Result -ceq 'FAIL'
+                    $expectedFailedChecks | Where-Object {
+                        $expectedFailedCheck = $_
+                        @(
+                            $fixtureReport.checks | Where-Object {
+                                [string]$_.Id -ceq $expectedFailedCheck -and
+                                [string]$_.Result -ceq 'FAIL'
+                            }
+                        ).Count -ne 1
                     }
-                ).Count -eq 1
+                ).Count -eq 0
             }
         }
         $passed = (
             $actualExit -eq [int]$case.ExpectedExit -and
-            $expectedFailedCheckPass
+            $expectedFailedCheckPass -and
+            $readinessClassAssertionPass
         )
         $expectedFailedCheckText = $expectedFailedCheckPass.ToString()
         [void]$results.Add([pscustomobject]@{
@@ -3230,6 +3340,8 @@ try {
             }
             else {
                 "ExpectedFailedCheckPass=$expectedFailedCheckText`n" +
+                    ('ReadinessClassAssertion={0}' -f $readinessClassAssertionDiagnostic) +
+                    [Environment]::NewLine +
                     ($output -join [Environment]::NewLine)
             }
         })
@@ -3355,7 +3467,7 @@ try {
     $runtimeFixtureName = [string]$runtimeFixtureNames[0]
     if ($runtimeFixtureName -cin $selectedFixtureNames) {
         $runtimeRecordPath = Join-Path $temporaryRoot 'runtime-release-record.json'
-        $runtimePackagePath = Join-Path $temporaryRoot 'PowerShell-7.6.4-win-x64.zip'
+        $runtimePackagePath = Join-Path $temporaryRoot 'PowerShell-7.6.5-win-x64.zip'
         [System.IO.File]::WriteAllText(
             $runtimeRecordPath,
             ($release | ConvertTo-Json -Depth 100),
@@ -3615,10 +3727,15 @@ try {
                     'PULL_REQUEST_HEAD: ${{ github.event.pull_request.head.sha }}',
                     'PUSH_HEAD: ${{ github.sha }}',
                     'ref: ${{ steps.exact_head.outputs.expected_head }}',
-                    'https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/PowerShell-7.6.4-win-x64.zip',
-                    '80832551C52809301E6071C8BAC977BEB5A2F1EC953EB4DB9F94DEB953333793',
+                    'https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/PowerShell-7.6.5-win-x64.zip',
+                    '32EB8F6CDCE08F86E987D625A2733E54AC3E289AE7E1621B14C0B5BCEC2434EA',
+                    'name: Prepare Windows test PowerShell 7.6.5',
+                    'name: Bind Windows test job to exact PowerShell 7.6.5',
+                    'EXPECTED_PWSH_PATH: ${{ steps.test_pwsh765.outputs.pwsh_path }}',
+                    'PWSH_PACKAGE_PATH: ${{ steps.test_pwsh765.outputs.package_path }}',
+                    "throw 'Windows test shell does not use the verified PowerShell executable.'",
                     'shell: pwsh',
-                    'EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}',
+                    'EXPECTED_PWSH_PATH: ${{ steps.pwsh765.outputs.pwsh_path }}',
                     '$installRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append',
                     '"PowerShellVersion: $powerShellVersion"',
                     '"ExpectedPowerShellPath: $expectedPwshPath"',
@@ -3642,7 +3759,7 @@ try {
                     '-ExpectedEvent $env:EVENT_NAME',
                     '-ExpectedRef $env:GITHUB_REF_VALUE',
                     '-ExpectedHeadSha $expectedHead',
-                    "-ExpectedPowerShellVersion '7.6.4'",
+                    "-ExpectedPowerShellVersion '7.6.5'",
                     '-PowerShellPackagePath $env:PWSH_PACKAGE_PATH',
                     '-ExpectedPowerShellPackageSha256 $env:PWSH_PACKAGE_SHA256',
                     "Join-Path `$PWD 'scripts\Test-ClassicReviewArtifact.ps1'"
@@ -3684,13 +3801,31 @@ try {
 
                     $prepareStep = & $getNamedWorkflowStep `
                         -Text $Text `
-                        -Name 'Prepare PowerShell 7.6.4'
+                        -Name 'Prepare PowerShell 7.6.5'
                     $governanceStep = & $getNamedWorkflowStep `
                         -Text $Text `
-                        -Name 'Bind governance to exact commit and PowerShell 7.6.4'
+                        -Name 'Bind governance to exact commit and PowerShell 7.6.5'
+                    $testPrepareStep = & $getNamedWorkflowStep `
+                        -Text $Text `
+                        -Name 'Prepare Windows test PowerShell 7.6.5'
+                    $testGateStep = & $getNamedWorkflowStep `
+                        -Text $Text `
+                        -Name 'Bind Windows test job to exact PowerShell 7.6.5'
+                    $testExecutionStepNames = @(
+                        'Test with coverage',
+                        'JSON-RPC smoke test (Windows)',
+                        'JSON-RPC smoke test (Windows read-only)',
+                        'Negative JSON-RPC smoke test (Windows)',
+                        'Startup negative smoke test (Windows)'
+                    )
+                    $testExecutionSteps = @(
+                        foreach ($stepName in $testExecutionStepNames) {
+                            & $getNamedWorkflowStep -Text $Text -Name $stepName
+                        }
+                    )
                     $pathWriteToken = '$installRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append'
-                    $expectedPathToken = 'EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}'
-                    $oldDynamicShellToken = 'shell: ${{ steps.pwsh764.outputs.pwsh_path }}'
+                    $expectedPathToken = 'EXPECTED_PWSH_PATH: ${{ steps.pwsh765.outputs.pwsh_path }}'
+                    $oldDynamicShellToken = 'shell: ${{ steps.pwsh765.outputs.pwsh_path }}'
                     $legacyPathComparisonPattern = (
                         '\$resolvedActualPwshPath\s+-(?:c)?ne\s+\$expectedPwshPath'
                     )
@@ -3712,6 +3847,14 @@ try {
                     )
                     $preparePass = (
                         -not [string]::IsNullOrWhiteSpace($prepareStep) -and
+                        $prepareStep.Contains(
+                            'POWERSHELL_URI: ${{ env.POWERSHELL_765_URI }}',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $prepareStep.Contains(
+                            'POWERSHELL_SHA256: ${{ env.POWERSHELL_765_SHA256 }}',
+                            [System.StringComparison]::Ordinal
+                        ) -and
                         $pathWriteIndex -gt $hashGateIndex -and
                         $pathWriteIndex -gt $extractIndex -and
                         $pathWriteIndex -gt $executableGateIndex
@@ -3764,14 +3907,135 @@ try {
                             $legacyPathComparisonPattern
                         )
                     )
+                    $testPathWriteIndex = $testPrepareStep.IndexOf(
+                        $pathWriteToken,
+                        [System.StringComparison]::Ordinal
+                    )
+                    $testHashGateIndex = $testPrepareStep.IndexOf(
+                        'PowerShell package SHA-256 mismatch',
+                        [System.StringComparison]::Ordinal
+                    )
+                    $testExtractIndex = $testPrepareStep.IndexOf(
+                        'Expand-Archive',
+                        [System.StringComparison]::Ordinal
+                    )
+                    $testExecutableGateIndex = $testPrepareStep.IndexOf(
+                        'Extracted PowerShell executable does not exist',
+                        [System.StringComparison]::Ordinal
+                    )
+                    $testPreparePass = (
+                        -not [string]::IsNullOrWhiteSpace($testPrepareStep) -and
+                        $testPrepareStep.Contains(
+                            "if: matrix.os == 'windows-latest'",
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testPrepareStep.Contains(
+                            'id: test_pwsh765',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testPrepareStep.Contains(
+                            'POWERSHELL_URI: ${{ env.POWERSHELL_765_URI }}',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testPrepareStep.Contains(
+                            'POWERSHELL_SHA256: ${{ env.POWERSHELL_765_SHA256 }}',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testPathWriteIndex -gt $testHashGateIndex -and
+                        $testPathWriteIndex -gt $testExtractIndex -and
+                        $testPathWriteIndex -gt $testExecutableGateIndex
+                    )
+                    $testGatePass = (
+                        -not [string]::IsNullOrWhiteSpace($testGateStep) -and
+                        $testGateStep.Contains(
+                            "if: matrix.os == 'windows-latest'",
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        [regex]::IsMatch($testGateStep, '(?m)^        shell: pwsh\s*$') -and
+                        $testGateStep.Contains(
+                            'EXPECTED_PWSH_PATH: ${{ steps.test_pwsh765.outputs.pwsh_path }}',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testGateStep.Contains(
+                            'PWSH_PACKAGE_PATH: ${{ steps.test_pwsh765.outputs.package_path }}',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testGateStep.Contains(
+                            'PWSH_PACKAGE_SHA256: ${{ env.POWERSHELL_765_SHA256 }}',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testGateStep.Contains(
+                            "if (`$powerShellVersion -cne '7.6.5')",
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testGateStep.Contains(
+                            '$actualPackageSha256 = (Get-FileHash -LiteralPath $env:PWSH_PACKAGE_PATH -Algorithm SHA256).Hash',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testGateStep.Contains(
+                            'if ($actualPackageSha256 -cne $env:PWSH_PACKAGE_SHA256)',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testGateStep.Contains(
+                            '[System.StringComparison]::OrdinalIgnoreCase',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $testGateStep.Contains(
+                            "throw 'Windows test shell does not use the verified PowerShell executable.'",
+                            [System.StringComparison]::Ordinal
+                        )
+                    )
+                    $testPrepareIndex = $Text.IndexOf($testPrepareStep, [System.StringComparison]::Ordinal)
+                    $testGateIndex = $Text.IndexOf($testGateStep, [System.StringComparison]::Ordinal)
+                    $testExecutionPass = (
+                        $testPrepareIndex -ge 0 -and
+                        $testGateIndex -gt $testPrepareIndex -and
+                        @($testExecutionSteps).Count -eq $testExecutionStepNames.Count
+                    )
+                    for ($stepIndex = 0; $testExecutionPass -and $stepIndex -lt $testExecutionSteps.Count; $stepIndex++) {
+                        $executionStep = [string]$testExecutionSteps[$stepIndex]
+                        $executionIndex = $Text.IndexOf($executionStep, [System.StringComparison]::Ordinal)
+                        $testExecutionPass = (
+                            -not [string]::IsNullOrWhiteSpace($executionStep) -and
+                            $executionIndex -gt $testGateIndex -and
+                            [regex]::IsMatch($executionStep, '(?m)^        shell: pwsh\s*$')
+                        )
+                        if ($testExecutionPass -and $testExecutionStepNames[$stepIndex] -cne 'Test with coverage') {
+                            $testExecutionPass = $executionStep.Contains(
+                                "if: matrix.os == 'windows-latest'",
+                                [System.StringComparison]::Ordinal
+                            )
+                        }
+                    }
+                    $sharedConstantsPass = (
+                        $Text.Contains(
+                            'POWERSHELL_765_URI: https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/PowerShell-7.6.5-win-x64.zip',
+                            [System.StringComparison]::Ordinal
+                        ) -and
+                        $Text.Contains(
+                            'POWERSHELL_765_SHA256: 32EB8F6CDCE08F86E987D625A2733E54AC3E289AE7E1621B14C0B5BCEC2434EA',
+                            [System.StringComparison]::Ordinal
+                        )
+                    )
                     $oldDynamicShellAbsent = -not $Text.Contains(
                         $oldDynamicShellToken,
                         [System.StringComparison]::Ordinal
                     )
                     return [pscustomobject]@{
-                        Passed = $preparePass -and $governancePass -and $oldDynamicShellAbsent
+                        Passed = (
+                            $preparePass -and
+                            $governancePass -and
+                            $testPreparePass -and
+                            $testGatePass -and
+                            $testExecutionPass -and
+                            $sharedConstantsPass -and
+                            $oldDynamicShellAbsent
+                        )
                         PrepareStep = $prepareStep
                         GovernanceStep = $governanceStep
+                        TestPrepareStep = $testPrepareStep
+                        TestGateStep = $testGateStep
+                        TestExecutionSteps = @($testExecutionSteps)
                     }
                 }
                 $testWindowsSemanticPathParity = {
@@ -3809,30 +4073,30 @@ try {
                 if (-not $positiveWorkflowContract.Passed) {
                     $workflowContractFailures += 'corrected-workflow-contract'
                 }
-                $expectedWindowsPwshPath = 'D:\a\_temp\PowerShell-7.6.4-win-x64\pwsh.exe'
+                $expectedWindowsPwshPath = 'D:\a\_temp\PowerShell-7.6.5-win-x64\pwsh.exe'
                 if (-not (& $testWindowsSemanticPathParity `
                         -ExpectedPath $expectedWindowsPwshPath `
-                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-win-x64\pwsh.EXE')) {
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.5-win-x64\pwsh.EXE')) {
                     $workflowContractFailures += 'case-only-path-difference-not-accepted'
                 }
                 if (& $testWindowsSemanticPathParity `
                         -ExpectedPath $expectedWindowsPwshPath `
-                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-other\pwsh.exe') {
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.5-other\pwsh.exe') {
                     $workflowContractFailures += 'different-directory-not-rejected'
                 }
                 if (& $testWindowsSemanticPathParity `
                         -ExpectedPath $expectedWindowsPwshPath `
-                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-win-x64\powershell.exe') {
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.5-win-x64\powershell.exe') {
                     $workflowContractFailures += 'different-filename-not-rejected'
                 }
                 if (& $testWindowsSemanticPathParity `
                         -ExpectedPath $expectedWindowsPwshPath `
-                        -ActualPath 'E:\a\_temp\PowerShell-7.6.4-win-x64\pwsh.exe') {
+                        -ActualPath 'E:\a\_temp\PowerShell-7.6.5-win-x64\pwsh.exe') {
                     $workflowContractFailures += 'different-drive-not-rejected'
                 }
                 if (& $testWindowsSemanticPathParity `
                         -ExpectedPath $expectedWindowsPwshPath `
-                        -ActualPath 'D:\a\_temp\PowerShell-7.6.4-win-x64\subdir\pwsh.exe') {
+                        -ActualPath 'D:\a\_temp\PowerShell-7.6.5-win-x64\subdir\pwsh.exe') {
                     $workflowContractFailures += 'different-subdirectory-not-rejected'
                 }
                 if (& $testWindowsSemanticPathParity `
@@ -3855,16 +4119,96 @@ try {
                 }
 
                 $missingExpectedPathCandidate = $workflowText.Replace(
-                    'EXPECTED_PWSH_PATH: ${{ steps.pwsh764.outputs.pwsh_path }}',
+                    'EXPECTED_PWSH_PATH: ${{ steps.pwsh765.outputs.pwsh_path }}',
                     'REMOVED_EXPECTED_PWSH_PATH: true'
                 )
                 if ((& $testCIWorkflowContract -Text $missingExpectedPathCandidate).Passed) {
                     $workflowContractFailures += 'missing-expected-pwsh-path-not-rejected'
                 }
 
+                $missingTestPreparationCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.TestPrepareStep,
+                    ''
+                )
+                if ((& $testCIWorkflowContract -Text $missingTestPreparationCandidate).Passed) {
+                    $workflowContractFailures += 'missing-test-job-preparation-not-rejected'
+                }
+
+                $missingTestGateCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.TestGateStep,
+                    ''
+                )
+                if ((& $testCIWorkflowContract -Text $missingTestGateCandidate).Passed) {
+                    $workflowContractFailures += 'missing-test-job-runtime-gate-not-rejected'
+                }
+
+                $coverageBeforePreparationCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.TestPrepareStep,
+                    '__INF168_TEST_PREPARE_STEP__'
+                ).Replace(
+                    $positiveWorkflowContract.TestExecutionSteps[0],
+                    $positiveWorkflowContract.TestPrepareStep
+                ).Replace(
+                    '__INF168_TEST_PREPARE_STEP__',
+                    $positiveWorkflowContract.TestExecutionSteps[0]
+                )
+                if ((& $testCIWorkflowContract -Text $coverageBeforePreparationCandidate).Passed) {
+                    $workflowContractFailures += 'coverage-before-test-job-preparation-not-rejected'
+                }
+
+                $smokeBeforeGateCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.TestGateStep,
+                    '__INF168_TEST_RUNTIME_GATE_STEP__'
+                ).Replace(
+                    $positiveWorkflowContract.TestExecutionSteps[1],
+                    $positiveWorkflowContract.TestGateStep
+                ).Replace(
+                    '__INF168_TEST_RUNTIME_GATE_STEP__',
+                    $positiveWorkflowContract.TestExecutionSteps[1]
+                )
+                if ((& $testCIWorkflowContract -Text $smokeBeforeGateCandidate).Passed) {
+                    $workflowContractFailures += 'windows-smoke-before-test-job-gate-not-rejected'
+                }
+
+                $wrongTestVersionStep = $positiveWorkflowContract.TestGateStep.Replace(
+                    "if (`$powerShellVersion -cne '7.6.5')",
+                    "if (`$powerShellVersion -cne '7.6.4')"
+                )
+                $wrongTestVersionCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.TestGateStep,
+                    $wrongTestVersionStep
+                )
+                if ((& $testCIWorkflowContract -Text $wrongTestVersionCandidate).Passed) {
+                    $workflowContractFailures += 'wrong-test-job-version-not-rejected'
+                }
+
+                $wrongTestHashStep = $positiveWorkflowContract.TestPrepareStep.Replace(
+                    'POWERSHELL_SHA256: ${{ env.POWERSHELL_765_SHA256 }}',
+                    'POWERSHELL_SHA256: ${{ env.POWERSHELL_765_WRONG_SHA256 }}'
+                )
+                $wrongTestHashCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.TestPrepareStep,
+                    $wrongTestHashStep
+                )
+                if ((& $testCIWorkflowContract -Text $wrongTestHashCandidate).Passed) {
+                    $workflowContractFailures += 'wrong-test-job-hash-binding-not-rejected'
+                }
+
+                $wrongTestPathStep = $positiveWorkflowContract.TestGateStep.Replace(
+                    'EXPECTED_PWSH_PATH: ${{ steps.test_pwsh765.outputs.pwsh_path }}',
+                    'EXPECTED_PWSH_PATH: ${{ steps.test_pwsh765.outputs.package_path }}'
+                )
+                $wrongTestPathCandidate = $workflowText.Replace(
+                    $positiveWorkflowContract.TestGateStep,
+                    $wrongTestPathStep
+                )
+                if ((& $testCIWorkflowContract -Text $wrongTestPathCandidate).Passed) {
+                    $workflowContractFailures += 'wrong-test-job-path-binding-not-rejected'
+                }
+
                 $dynamicGovernanceStep = $positiveWorkflowContract.GovernanceStep.Replace(
                     '        shell: pwsh',
-                    '        shell: ${{ steps.pwsh764.outputs.pwsh_path }} -NoLogo -NoProfile -NonInteractive -File {0}'
+                    '        shell: ${{ steps.pwsh765.outputs.pwsh_path }} -NoLogo -NoProfile -NonInteractive -File {0}'
                 )
                 $dynamicShellCandidate = $workflowText.Replace(
                     $positiveWorkflowContract.GovernanceStep,

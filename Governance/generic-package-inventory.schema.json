@@ -4,16 +4,18 @@
   "title": "FlashGate generic package inventory",
   "type": "object",
   "allOf": [
-    { "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" } } } },
-    { "if": { "properties": { "profile": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } } } }
+    { "if": { "properties": { "profile": { "const": "GENERIC_COMMIT_PREPARATION" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" }, "entries": { "minItems": 9, "maxItems": 9 } } } },
+    { "if": { "properties": { "profile": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" }, "entries": { "minItems": 9, "maxItems": 9 } } } },
+    { "if": { "properties": { "profile": { "const": "EVIDENCE_ONLY_FOCUSED_REVIEW" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "EVIDENCE_ONLY_TO_FOCUSED_REVIEW" }, "entries": { "minItems": 8, "maxItems": 8 } } } },
+    { "if": { "properties": { "profile": { "const": "POST_MERGE_CLOSURE" } }, "required": ["profile"] }, "then": { "properties": { "transitionType": { "const": "POST_MERGE_TO_DOCUMENTATION_CLOSURE" }, "entries": { "minItems": 9, "maxItems": 9 } } } }
   ],
   "additionalProperties": false,
   "required": ["schemaVersion", "taskId", "profile", "transitionType", "entries"],
   "properties": {
     "schemaVersion": { "const": 1 },
     "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
-    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
-    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
-    "entries": { "type": "array", "minItems": 9, "maxItems": 9, "items": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "length"], "properties": { "path": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "length": { "type": "integer", "minimum": 1 } } } }
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW", "EVIDENCE_ONLY_FOCUSED_REVIEW", "POST_MERGE_CLOSURE"] },
+    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW", "EVIDENCE_ONLY_TO_FOCUSED_REVIEW", "POST_MERGE_TO_DOCUMENTATION_CLOSURE"] },
+    "entries": { "type": "array", "minItems": 8, "maxItems": 9, "items": { "type": "object", "additionalProperties": false, "required": ["path", "sha256", "length"], "properties": { "path": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" }, "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "length": { "type": "integer", "minimum": 1 } } } }
   }
 }

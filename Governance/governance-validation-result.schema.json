@@ -18,6 +18,9 @@
     "bindings",
     "stageResults",
     "evidenceReuse",
+    "stateTransitionMap",
+    "profileResults",
+    "runnerProcessStartCount",
     "validationExecutionCount",
     "infrastructureOrInvocationFailureCount",
     "fullMatrixRunCount",
@@ -42,6 +45,8 @@
         "finding-correction",
         "commit-preparation",
         "focused-revalidation",
+        "evidence-only-focused-review",
+        "post-merge-closure",
         "full-completion"
       ]
     },
@@ -49,7 +54,7 @@
     "bindings": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "sourceRepositoryRoot", "worktreeRoot", "baselineCommit", "currentCommit", "expectedTree", "expectedStatusSha256", "actualStatusSha256", "protectedWorktrees", "selectorInventorySha256"],
+      "required": ["repository", "sourceRepositoryRoot", "worktreeRoot", "baselineCommit", "currentCommit", "expectedTree", "expectedStatusSha256", "actualStatusSha256", "protectedWorktrees", "selectorInventorySha256", "selectionSha256", "resolvedCaseCount"],
       "properties": {
         "repository": { "type": "string", "format": "uri" },
         "sourceRepositoryRoot": { "type": "string", "minLength": 3 },
@@ -84,7 +89,9 @@
             }
           }
         },
-        "selectorInventorySha256": { "$ref": "#/$defs/hash" }
+        "selectorInventorySha256": { "$ref": "#/$defs/hash" },
+        "selectionSha256": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+        "resolvedCaseCount": { "type": "integer", "minimum": 0 }
       }
     },
     "stageResults": {
@@ -122,7 +129,40 @@
         }
       }
     },
-    "validationExecutionCount": { "type": "integer", "minimum": 1 },
+    "stateTransitionMap": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["Component", "PriorSha256", "CurrentSha256", "Disposition", "Reason"],
+        "properties": {
+          "Component": { "enum": ["commit", "tree", "working-status", "scope", "selector", "package", "external-inputs", "evidence"] },
+          "PriorSha256": { "$ref": "#/$defs/hash" },
+          "CurrentSha256": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+          "Disposition": { "enum": ["REUSED", "INVALIDATED"] },
+          "Reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "profileResults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["IntendedBaseResult", "MergeBaseResult", "EffectivePRScopeResult", "EffectivePRPatchHash", "IntegrationProjectionResult", "IntegrationProjectionHash", "AuthorizedWriteSetResult", "ForeignProtectedStateResult"],
+      "properties": {
+        "IntendedBaseResult": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+        "MergeBaseResult": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+        "EffectivePRScopeResult": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+        "EffectivePRPatchHash": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+        "IntegrationProjectionResult": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+        "IntegrationProjectionHash": { "oneOf": [{ "$ref": "#/$defs/commit" }, { "type": "null" }] },
+        "AuthorizedWriteSetResult": { "enum": ["PASS", "FAIL", "NOT_RUN"] },
+        "ForeignProtectedStateResult": { "pattern": "^(PASS_[0-9]+_OF_[0-9]+|FAIL|NOT_RUN)$" }
+      }
+    },
+    "runnerProcessStartCount": { "type": "integer", "minimum": 0 },
+    "validationExecutionCount": { "type": "integer", "minimum": 0 },
     "infrastructureOrInvocationFailureCount": { "type": "integer", "minimum": 0 },
     "fullMatrixRunCount": { "type": "integer", "minimum": 0, "maximum": 1 },
     "packageWriteAttemptCount": { "type": "integer", "minimum": 0, "maximum": 1 },

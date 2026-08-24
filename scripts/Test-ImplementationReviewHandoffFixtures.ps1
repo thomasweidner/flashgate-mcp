@@ -37,7 +37,7 @@ function Invoke-FixtureGit {
     param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string[]]$Argument)
     $output = @(& git -c "safe.directory=$Root" -C $Root @Argument)
     if ($LASTEXITCODE -ne 0) {
-        throw "Fixture Git failed: git $($Argument -join ' ')"
+        throw ('Fixture Git failed: git {0}' -f ($Argument -join ' '))
     }
     return @($output)
 }
@@ -88,17 +88,22 @@ function New-ProfileSource {
         [Parameter(Mandatory)][string]$Path,
         [Parameter(Mandatory)]$Fixture,
         [Parameter(Mandatory)]
-        [ValidateSet('GENERIC_COMMIT_PREPARATION', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW')]
+        [ValidateSet('GENERIC_COMMIT_PREPARATION', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'EVIDENCE_ONLY_FOCUSED_REVIEW', 'POST_MERGE_CLOSURE')]
         [string]$Profile
     )
 
     [void][IO.Directory]::CreateDirectory($Path)
     $isImplementation = $Profile -ceq 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
-    $transition = if ($isImplementation) {
-        'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
+    $isZeroDelta = $Profile -cin @('EVIDENCE_ONLY_FOCUSED_REVIEW', 'POST_MERGE_CLOSURE')
+    $profileAllowedDeltaPaths = [string[]]@()
+    if (-not $isZeroDelta) {
+        $profileAllowedDeltaPaths = [string[]]@('fixture.txt')
     }
-    else {
-        'COMMIT_PREPARATION_TO_COMMIT_APPROVAL'
+    $transition = switch ($Profile) {
+        'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW' { 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW' }
+        'GENERIC_COMMIT_PREPARATION' { 'COMMIT_PREPARATION_TO_COMMIT_APPROVAL' }
+        'EVIDENCE_ONLY_FOCUSED_REVIEW' { 'EVIDENCE_ONLY_TO_FOCUSED_REVIEW' }
+        'POST_MERGE_CLOSURE' { 'POST_MERGE_TO_DOCUMENTATION_CLOSURE' }
     }
     $evidenceName = if ($isImplementation) {
         'pre-review-validation-evidence.json'
@@ -106,10 +111,29 @@ function New-ProfileSource {
     else {
         'independent-review-evidence.json'
     }
-    Write-Utf8 -Path (Join-Path $Path 'task.patch') -Text $Fixture.PatchText
-    Write-Utf8 -Path (Join-Path $Path 'current-delta.patch') -Text $Fixture.PatchText
+    if (-not $isZeroDelta) {
+        Write-Utf8 -Path (Join-Path $Path 'task.patch') -Text $Fixture.PatchText
+        Write-Utf8 -Path (Join-Path $Path 'current-delta.patch') -Text $Fixture.PatchText
+    }
 
     $fixtureItem = Get-Item -LiteralPath $Fixture.FixturePath -Force
+    $profileScopeEntries = [object[]]@()
+    if (-not $isZeroDelta) {
+        $profileScopeEntries = [object[]]@([ordered]@{
+                path = 'fixture.txt'
+                gitStatus = 'TRACKED_MODIFIED'
+                tracked = $true
+                staged = $false
+                postimage = [ordered]@{
+                    mode = '100644'
+                    modeSource = 'GIT_WORKTREE'
+                    length = [int64]$fixtureItem.Length
+                    sha256 = Get-LowerHash -Path $fixtureItem.FullName
+                }
+                inclusionDecision = 'INCLUDE'
+                reason = 'Implementation fixture delta'
+            })
+    }
     $scope = [ordered]@{
         schemaVersion = 1
         taskId = 'BL-339'
@@ -118,43 +142,33 @@ function New-ProfileSource {
         baselineCommit = $Fixture.Baseline
         currentCommit = $Fixture.CurrentCommit
         branch = $Fixture.Branch
-        allowedDeltaPaths = @('fixture.txt')
+        allowedDeltaPaths = $profileAllowedDeltaPaths
         excludedDeltaPaths = @()
-        entries = @([ordered]@{
-            path = 'fixture.txt'
-            gitStatus = 'TRACKED_MODIFIED'
-            tracked = $true
-            staged = $false
-            postimage = [ordered]@{
-                mode = '100644'
-                modeSource = 'GIT_WORKTREE'
-                length = [int64]$fixtureItem.Length
-                sha256 = Get-LowerHash -Path $fixtureItem.FullName
-            }
-            inclusionDecision = 'INCLUDE'
-            reason = 'Implementation fixture delta'
-        })
+        entries = $profileScopeEntries
         hostPathPolicy = [ordered]@{
             hostPathFreeArtifacts = @(
                 'HANDOFF.md', 'assignment-record.json', 'completion-report.json',
-                'current-delta.patch', $evidenceName, 'report.md', 'task.patch',
+                $evidenceName, 'report.md',
                 'validation-summary.json'
             )
             allowedReferences = @()
         }
     }
-    $patchBytes = Get-GenericDeltaBytes -Root $Fixture.Root `
-        -BaselineCommit $Fixture.Baseline `
-        -IncludedEntry @($scope.entries) `
-        -ExcludedEntry @()
-    [IO.File]::WriteAllBytes((Join-Path $Path 'task.patch'), $patchBytes)
-    [IO.File]::WriteAllBytes((Join-Path $Path 'current-delta.patch'), $patchBytes)
+    if (-not $isZeroDelta) {
+        $scope.hostPathPolicy.hostPathFreeArtifacts += @('current-delta.patch', 'task.patch')
+        $patchBytes = Get-GenericDeltaBytes -Root $Fixture.Root `
+            -BaselineCommit $Fixture.Baseline `
+            -IncludedEntry @($scope.entries) `
+            -ExcludedEntry @()
+        [IO.File]::WriteAllBytes((Join-Path $Path 'task.patch'), $patchBytes)
+        [IO.File]::WriteAllBytes((Join-Path $Path 'current-delta.patch'), $patchBytes)
+    }
     Write-Utf8 -Path (Join-Path $Path 'scope-inventory.json') -Text (
         $scope | ConvertTo-Json -Depth 30
     )
     $scopeHash = Get-LowerHash -Path (Join-Path $Path 'scope-inventory.json')
-    $taskHash = Get-LowerHash -Path (Join-Path $Path 'task.patch')
-    $deltaHash = Get-LowerHash -Path (Join-Path $Path 'current-delta.patch')
+    $taskHash = if ($isZeroDelta) { $null } else { Get-LowerHash -Path (Join-Path $Path 'task.patch') }
+    $deltaHash = if ($isZeroDelta) { $null } else { Get-LowerHash -Path (Join-Path $Path 'current-delta.patch') }
 
     if ($isImplementation) {
         $evidence = [ordered]@{
@@ -185,7 +199,7 @@ function New-ProfileSource {
             executionEnvelopeSha256 = ('b' * 64)
             findingIds = @()
             scopeInventorySha256 = $scopeHash
-            allowedDeltaPaths = @('fixture.txt')
+            allowedDeltaPaths = $profileAllowedDeltaPaths
             excludedDeltaPaths = @()
         }
     }
@@ -204,12 +218,35 @@ function New-ProfileSource {
             reviewerIndependencePreserved = $true
             findingIds = @()
             scopeInventorySha256 = $scopeHash
-            allowedDeltaPaths = @('fixture.txt')
+            allowedDeltaPaths = $profileAllowedDeltaPaths
             excludedDeltaPaths = @()
-            reviewedArtifacts = @(
+            reviewedArtifacts = [object[]]@()
+        }
+        if (-not $isZeroDelta) {
+            $evidence.reviewedArtifacts = [object[]]@(
                 [ordered]@{ path = 'task.patch'; sha256 = $taskHash },
                 [ordered]@{ path = 'current-delta.patch'; sha256 = $deltaHash }
             )
+        }
+        if ($isZeroDelta) {
+            if ($Profile -ceq 'POST_MERGE_CLOSURE') {
+                $mergeEvidencePath = 'evidence-merge-state.json'
+                $readbackEvidencePath = 'evidence-live-readback.json'
+                Write-Utf8 -Path (Join-Path $Path $mergeEvidencePath) -Text '{"mergeCommit":"0123456789abcdef0123456789abcdef01234567","state":"MERGED"}'
+                Write-Utf8 -Path (Join-Path $Path $readbackEvidencePath) -Text '{"readback":"PASS","source":"external-read-only"}'
+                $evidence.evidenceBindings = [object[]]@(
+                    [ordered]@{ id = 'merge-state'; kind = 'MERGE_STATE'; path = $mergeEvidencePath; sha256 = Get-LowerHash -Path (Join-Path $Path $mergeEvidencePath); state = 'REUSED' },
+                    [ordered]@{ id = 'live-readback'; kind = 'LIVE_EXTERNAL_READBACK'; path = $readbackEvidencePath; sha256 = Get-LowerHash -Path (Join-Path $Path $readbackEvidencePath); state = 'REFRESHED' }
+                )
+            }
+            else {
+                $externalEvidencePath = 'evidence-external-read-only.json'
+                Write-Utf8 -Path (Join-Path $Path $externalEvidencePath) -Text '{"review":"PASS","source":"external-read-only"}'
+                $evidence.evidenceBindings = [object[]]@(
+                    [ordered]@{ id = 'external-review'; kind = 'EXTERNAL_READ_ONLY'; path = $externalEvidencePath; sha256 = Get-LowerHash -Path (Join-Path $Path $externalEvidencePath); state = 'REFRESHED' }
+                )
+            }
+            if ($Profile -ceq 'POST_MERGE_CLOSURE') { $evidence.matrixDisposition = 'UNCHANGED_MATRICES_NOT_RUN' }
         }
     }
     Write-Utf8 -Path (Join-Path $Path $evidenceName) -Text (
@@ -232,8 +269,8 @@ function New-ProfileSource {
         baselineCommit = $Fixture.Baseline
         currentCommit = $Fixture.CurrentCommit
         branch = $Fixture.Branch
-        executionMode = if ($isImplementation) { 'BUNDLED_CORRECTION' } else { 'COMMIT_PREPARATION' }
-        checkpoint = if ($isImplementation) { 'SPRINT_CLOSE' } else { 'PRE_COMMIT' }
+        executionMode = if ($isImplementation) { 'BUNDLED_CORRECTION' } elseif ($Profile -ceq 'EVIDENCE_ONLY_FOCUSED_REVIEW') { 'INDEPENDENT_REVIEW' } elseif ($Profile -ceq 'POST_MERGE_CLOSURE') { 'POST_MERGE_CLOSURE' } else { 'COMMIT_PREPARATION' }
+        checkpoint = if ($isImplementation -or $isZeroDelta) { 'SPRINT_CLOSE' } else { 'PRE_COMMIT' }
         profile = $Profile
         transitionType = $transition
         changeTriggerReviewResult = 'EXISTING_BACKLOG_UPDATED'
@@ -244,7 +281,7 @@ function New-ProfileSource {
         scopeInventorySha256 = $scopeHash
         taskPatchSha256 = $taskHash
         currentDeltaSha256 = $deltaHash
-        allowedDeltaPaths = @('fixture.txt')
+        allowedDeltaPaths = $profileAllowedDeltaPaths
         excludedDeltaPaths = @()
     }
     if ($isImplementation) {
@@ -283,7 +320,7 @@ function New-ProfileSource {
         scopeInventorySha256 = $scopeHash
         taskPatchSha256 = $taskHash
         currentDeltaSha256 = $deltaHash
-        allowedDeltaPaths = @('fixture.txt')
+        allowedDeltaPaths = $profileAllowedDeltaPaths
         excludedDeltaPaths = @()
         nextAction = if ($isImplementation) {
             'INDEPENDENT_PHASE_A_FULL_REVIEW'
@@ -371,7 +408,7 @@ function New-ProfileSource {
         scopeInventorySha256 = $scopeHash
         taskPatchSha256 = $taskHash
         currentDeltaSha256 = $deltaHash
-        allowedDeltaPaths = @('fixture.txt')
+        allowedDeltaPaths = $profileAllowedDeltaPaths
         excludedDeltaPaths = @()
         nextAction = $completion.nextAction
     }
@@ -380,13 +417,14 @@ function New-ProfileSource {
         $reportContract.fullCompletionResultSha256 = [string]$evidence.fullCompletionResultSha256
         $reportContract.executionEnvelopeSha256 = [string]$evidence.executionEnvelopeSha256
     }
+    $reportContractJson = $reportContract | ConvertTo-Json -Depth 30
     $reportText = @"
 # Focused governance handoff fixture
 
 ClassicReviewReady: true
 
 <!-- BEGIN GOVERNANCE-REPORT-CONTRACT -->
-$($reportContract | ConvertTo-Json -Depth 30)
+$reportContractJson
 <!-- END GOVERNANCE-REPORT-CONTRACT -->
 "@
     Write-Utf8 -Path (Join-Path $Path 'report.md') -Text $reportText
@@ -395,7 +433,7 @@ $($reportContract | ConvertTo-Json -Depth 30)
         Profile = $Profile
         TransitionType = $transition
         EvidenceName = $evidenceName
-        AllowedDeltaPaths = @('fixture.txt')
+        AllowedDeltaPaths = $profileAllowedDeltaPaths
     }
 }
 
@@ -565,9 +603,9 @@ try {
         -SourcePath $implementationSource -PackagePath $existingTarget `
         -AuthoritativeRoot $fixture.Root
     $existingTargetAttemptMatches = @(
-        [regex]::Matches($existingTargetGenerator.Output, 'PackageWriteAttemptCount\s*:\s*1')
+        [regex]::Matches($existingTargetGenerator.Output, 'PackageWriteAttemptCount\s*:\s*0')
     ).Count
-    Add-Result -Name 'existing-target-fails-after-one-write-attempt' -Passed (
+    Add-Result -Name 'existing-target-precondition-stops-before-write-attempt' -Passed (
         $existingTargetGenerator.ExitCode -ne 0 -and
         $existingTargetAttemptMatches -eq 1 -and
         (Get-FileHash -LiteralPath $existingTarget -Algorithm SHA256).Hash -ceq $existingTargetHashBefore
@@ -579,20 +617,20 @@ try {
         -SourcePath $implementationSource -PackagePath $directoryTarget `
         -AuthoritativeRoot $fixture.Root
     $directoryTargetAttemptMatches = @(
-        [regex]::Matches($directoryTargetGenerator.Output, 'PackageWriteAttemptCount\s*:\s*1')
+        [regex]::Matches($directoryTargetGenerator.Output, 'PackageWriteAttemptCount\s*:\s*0')
     ).Count
-    Add-Result -Name 'directory-target-io-failure-counts-write-attempt' -Passed (
+    Add-Result -Name 'directory-target-precondition-stops-before-write-attempt' -Passed (
         $directoryTargetGenerator.ExitCode -ne 0 -and
         $directoryTargetAttemptMatches -eq 1 -and
         (Test-Path -LiteralPath $directoryTarget -PathType Container)
     ) -Evidence $directoryTargetGenerator.Output
 
-    Add-Result -Name 'write-failure-has-no-automatic-retry' -Passed (
+    Add-Result -Name 'target-precondition-failure-has-no-automatic-retry' -Passed (
         $existingTargetAttemptMatches -eq 1 -and
         $directoryTargetAttemptMatches -eq 1 -and
         -not (Test-Path -LiteralPath (Join-Path $temporaryRoot 'existing-target.retry.zip')) -and
         -not (Test-Path -LiteralPath (Join-Path $temporaryRoot 'directory-target.retry.zip'))
-    ) -Evidence "existingTargetAttempts=$existingTargetAttemptMatches; directoryTargetAttempts=$directoryTargetAttemptMatches"
+    ) -Evidence ('existingTargetAttempts={0}; directoryTargetAttempts={1}' -f $existingTargetAttemptMatches, $directoryTargetAttemptMatches)
 
     $invalidReadiness = Copy-PackageDirectory -Source $implementationDirectory -Name 'negative-readiness'
     $completion = Get-Content -LiteralPath (Join-Path $invalidReadiness 'completion-report.json') -Raw |
@@ -613,6 +651,100 @@ try {
         $implementationContract.TransitionType -ceq 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW'
     )
 
+    Write-Utf8 -Path $fixture.FixturePath -Text "before`n"
+    $evidenceOnlySource = Join-Path $temporaryRoot 'evidence-only-source'
+    $evidenceOnlyContract = New-ProfileSource -Path $evidenceOnlySource -Fixture $fixture `
+        -Profile 'EVIDENCE_ONLY_FOCUSED_REVIEW'
+    $evidenceOnlyZip = Join-Path $temporaryRoot 'evidence-only.zip'
+    $evidenceOnlyGenerator = Invoke-Generator -SourceContract $evidenceOnlyContract `
+        -SourcePath $evidenceOnlySource -PackagePath $evidenceOnlyZip -AuthoritativeRoot $fixture.Root
+    $packageWriteAttemptCount += [int]($evidenceOnlyGenerator.Output -match 'PackageWriteAttemptCount\s*:\s*1')
+    Add-Result -Name 'evidence-only-empty-delta-passes' -Passed (
+        $evidenceOnlyGenerator.ExitCode -eq 0 -and
+        (Invoke-Validator -PackagePath $evidenceOnlyZip -AuthoritativeRoot $fixture.Root).ExitCode -eq 0 -and
+        -not (Test-Path -LiteralPath (Join-Path $evidenceOnlySource 'task.patch')) -and
+        -not (Test-Path -LiteralPath (Join-Path $evidenceOnlySource 'current-delta.patch'))
+    ) -Evidence $evidenceOnlyGenerator.Output
+
+    $missingEvidenceSource = Join-Path $temporaryRoot 'evidence-only-missing-artifact'
+    Copy-Item -LiteralPath $evidenceOnlySource -Destination $missingEvidenceSource -Recurse
+    Remove-Item -LiteralPath (Join-Path $missingEvidenceSource 'evidence-external-read-only.json') -Force
+    $missingEvidenceZip = Join-Path $temporaryRoot 'must-not-create-missing-evidence.zip'
+    $missingEvidenceGenerator = Invoke-Generator -SourceContract $evidenceOnlyContract `
+        -SourcePath $missingEvidenceSource -PackagePath $missingEvidenceZip -AuthoritativeRoot $fixture.Root
+    Add-Result -Name 'evidence-only-missing-artifact-fails-closed' -Passed (
+        $missingEvidenceGenerator.ExitCode -ne 0 -and -not (Test-Path -LiteralPath $missingEvidenceZip)
+    ) -Evidence $missingEvidenceGenerator.Output
+
+    $wrongHashSource = Join-Path $temporaryRoot 'evidence-only-wrong-hash'
+    Copy-Item -LiteralPath $evidenceOnlySource -Destination $wrongHashSource -Recurse
+    $wrongHashEvidencePath = Join-Path $wrongHashSource 'independent-review-evidence.json'
+    $wrongHashEvidence = Get-Content -LiteralPath $wrongHashEvidencePath -Raw | ConvertFrom-Json -Depth 30
+    $wrongHashEvidence.evidenceBindings[0].sha256 = ('0' * 64)
+    Write-Utf8 -Path $wrongHashEvidencePath -Text ($wrongHashEvidence | ConvertTo-Json -Depth 30)
+    $wrongHashZip = Join-Path $temporaryRoot 'must-not-create-wrong-evidence-hash.zip'
+    $wrongHashGenerator = Invoke-Generator -SourceContract $evidenceOnlyContract `
+        -SourcePath $wrongHashSource -PackagePath $wrongHashZip -AuthoritativeRoot $fixture.Root
+    Add-Result -Name 'evidence-only-wrong-hash-fails-closed' -Passed (
+        $wrongHashGenerator.ExitCode -ne 0 -and -not (Test-Path -LiteralPath $wrongHashZip)
+    ) -Evidence $wrongHashGenerator.Output
+
+    $tamperedEvidenceDirectory = Join-Path $temporaryRoot 'tampered-evidence-package'
+    Expand-Archive -LiteralPath $evidenceOnlyZip -DestinationPath $tamperedEvidenceDirectory
+    Write-Utf8 -Path (Join-Path $tamperedEvidenceDirectory 'evidence-external-read-only.json') -Text '{"review":"TAMPERED"}'
+    Add-Result -Name 'packaged-evidence-tampering-fails-reopen-validation' -Passed (
+        (Invoke-Validator -PackagePath $tamperedEvidenceDirectory -AuthoritativeRoot $fixture.Root).ExitCode -ne 0
+    )
+
+    $artificialPatchSource = Join-Path $temporaryRoot 'evidence-only-artificial-patch'
+    Copy-Item -LiteralPath $evidenceOnlySource -Destination $artificialPatchSource -Recurse
+    Write-Utf8 -Path (Join-Path $artificialPatchSource 'task.patch') -Text "artificial patch`n"
+    $artificialPatchZip = Join-Path $temporaryRoot 'must-not-create-artificial-patch.zip'
+    $artificialPatchGenerator = Invoke-Generator -SourceContract $evidenceOnlyContract `
+        -SourcePath $artificialPatchSource -PackagePath $artificialPatchZip -AuthoritativeRoot $fixture.Root
+    Add-Result -Name 'evidence-only-artificial-patch-fails-closed' -Passed (
+        $artificialPatchGenerator.ExitCode -ne 0 -and -not (Test-Path -LiteralPath $artificialPatchZip)
+    ) -Evidence $artificialPatchGenerator.Output
+
+    $postMergeSource = Join-Path $temporaryRoot 'post-merge-source'
+    $postMergeContract = New-ProfileSource -Path $postMergeSource -Fixture $fixture `
+        -Profile 'POST_MERGE_CLOSURE'
+    $postMergeZip = Join-Path $temporaryRoot 'post-merge.zip'
+    $postMergeGenerator = Invoke-Generator -SourceContract $postMergeContract `
+        -SourcePath $postMergeSource -PackagePath $postMergeZip -AuthoritativeRoot $fixture.Root
+    $packageWriteAttemptCount += [int]($postMergeGenerator.Output -match 'PackageWriteAttemptCount\s*:\s*1')
+    Add-Result -Name 'post-merge-reuse-live-readback-not-run-passes' -Passed (
+        $postMergeGenerator.ExitCode -eq 0 -and
+        (Invoke-Validator -PackagePath $postMergeZip -AuthoritativeRoot $fixture.Root).ExitCode -eq 0
+    ) -Evidence $postMergeGenerator.Output
+
+    $collisionSource = Join-Path $temporaryRoot 'post-merge-case-collision'
+    Copy-Item -LiteralPath $postMergeSource -Destination $collisionSource -Recurse
+    $collisionEvidencePath = Join-Path $collisionSource 'independent-review-evidence.json'
+    $collisionEvidence = Get-Content -LiteralPath $collisionEvidencePath -Raw | ConvertFrom-Json -Depth 30
+    $collisionEvidence.evidenceBindings[1].path = 'evidence-MERGE-STATE.JSON'
+    $collisionEvidence.evidenceBindings[1].sha256 = [string]$collisionEvidence.evidenceBindings[0].sha256
+    Write-Utf8 -Path $collisionEvidencePath -Text ($collisionEvidence | ConvertTo-Json -Depth 30)
+    $collisionZip = Join-Path $temporaryRoot 'must-not-create-evidence-collision.zip'
+    $collisionGenerator = Invoke-Generator -SourceContract $postMergeContract `
+        -SourcePath $collisionSource -PackagePath $collisionZip -AuthoritativeRoot $fixture.Root
+    Add-Result -Name 'evidence-path-case-collision-fails-closed' -Passed (
+        $collisionGenerator.ExitCode -ne 0 -and -not (Test-Path -LiteralPath $collisionZip)
+    ) -Evidence $collisionGenerator.Output
+
+    $postMergeInvalidSource = Join-Path $temporaryRoot 'post-merge-missing-live-readback'
+    Copy-Item -LiteralPath $postMergeSource -Destination $postMergeInvalidSource -Recurse
+    $postMergeEvidencePath = Join-Path $postMergeInvalidSource 'independent-review-evidence.json'
+    $postMergeEvidence = Get-Content -Raw -LiteralPath $postMergeEvidencePath | ConvertFrom-Json -Depth 30
+    $postMergeEvidence.evidenceBindings = @($postMergeEvidence.evidenceBindings | Where-Object kind -cne 'LIVE_EXTERNAL_READBACK')
+    Write-Utf8 -Path $postMergeEvidencePath -Text ($postMergeEvidence | ConvertTo-Json -Depth 30)
+    $postMergeInvalidZip = Join-Path $temporaryRoot 'must-not-create-post-merge.zip'
+    $postMergeInvalidGenerator = Invoke-Generator -SourceContract $postMergeContract `
+        -SourcePath $postMergeInvalidSource -PackagePath $postMergeInvalidZip -AuthoritativeRoot $fixture.Root
+    Add-Result -Name 'post-merge-missing-live-readback-fails-closed' -Passed (
+        $postMergeInvalidGenerator.ExitCode -ne 0 -and -not (Test-Path -LiteralPath $postMergeInvalidZip)
+    ) -Evidence $postMergeInvalidGenerator.Output
+
     $status = if (@($results | Where-Object result -ceq 'FAIL').Count -eq 0) { 'PASS' } else { 'FAIL' }
 }
 catch {
@@ -626,7 +758,7 @@ finally {
     $result = [ordered]@{
         schemaVersion = 1
         status = $status
-        selectedFixtureCaseCount = 19
+        selectedFixtureCaseCount = 27
         observedFixtureCaseCount = $results.Count
         passedFixtureCaseCount = @($results | Where-Object result -ceq 'PASS').Count
         failedFixtureCaseCount = @($results | Where-Object result -ceq 'FAIL').Count

@@ -1,7 +1,7 @@
 # Handoff Artifact and Classic Review Readiness Standard
 
 **Status:** Binding
-**Tasks:** BL-333 foundation, BL-334 enforcement, and BL-336 handoff-profile generalization
+**Tasks:** BL-333 foundation, BL-334 enforcement, BL-336 handoff-profile generalization, and BL-340 profile migration
 
 ## Principle
 
@@ -85,6 +85,8 @@ package member. The supported pairs are:
 |---|---|---|
 | `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` | `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` | Complete implementation and reused full-completion evidence for the first independent full review; no prior independent-review evidence exists or is required. |
 | `COMMIT_PREPARATION_TO_COMMIT_APPROVAL` | `GENERIC_COMMIT_PREPARATION` | Task-neutral commit preparation, including finding-free work. |
+| `EVIDENCE_ONLY_TO_FOCUSED_REVIEW` | `EVIDENCE_ONLY_FOCUSED_REVIEW` | Independent focused review over newly bound read-only evidence with an empty repository delta and no synthetic patch. |
+| `POST_MERGE_TO_DOCUMENTATION_CLOSURE` | `POST_MERGE_CLOSURE` | Post-merge documentation/status closure with reused merge state, a live external readback, and unchanged matrices explicitly `NOT_RUN`. |
 | `BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW` | `FINDING_CORRECTION` | Strict finding correction and focused delta review. |
 
 `FINDING_CORRECTION` supports a ZIP-free `PreflightOnly` execution of the sole
@@ -157,6 +159,17 @@ The generic commit-preparation profile contains exactly `HANDOFF.md`, `assignmen
 matrices, `correction-only.patch`, focused-finding records, fixed queues, and
 BL-333/BL-334-specific status or path assumptions.
 
+The evidence-only and post-merge profiles use the same generator, directory
+validator, inventory, manifest, ordinal ordering, strict UTF-8, single-write,
+and reopen lifecycle. Their payloads omit `task.patch` and
+`current-delta.patch`; both hashes are JSON `null` and the authoritative scope
+must be empty. Each evidence binding names a unique canonical package member
+whose real non-link bytes match the declared SHA-256. Evidence-only therefore
+has ten members and exactly one `EXTERNAL_READ_ONLY` artifact. Post-merge has
+eleven members and exactly one real `MERGE_STATE` plus one real
+`LIVE_EXTERNAL_READBACK` artifact, plus
+`matrixDisposition=UNCHANGED_MATRICES_NOT_RUN`.
+
 The correction profile retains the existing correction/current-delta,
 finding-matrix, regression-matrix, focused-record, external-delta, trusted-hash,
 readiness, status, queue, and parity gates without weakening them. Its
@@ -219,7 +232,7 @@ The authoritative external artifact gate is:
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Scripts\Test-ClassicReviewArtifact.ps1
 ```
 
-Binding invocation under PowerShell 7.6.4:
+Binding invocation under Windows PowerShell 7.6.5:
 
 ```powershell
 & {
@@ -319,6 +332,13 @@ current-delta patches, scope inventory, validation summary, package inventory,
 manifest, and generic HANDOFF/report contracts. The generic profile always
 requires `commitAuthorized=false` and never treats Classic readiness as commit
 authorization.
+
+For `EVIDENCE_ONLY_FOCUSED_REVIEW` and `POST_MERGE_CLOSURE`, readiness replaces
+patch parity with exact empty-delta parity and the profile-specific packaged
+evidence bytes above. Missing, hash-drifted, tampered, duplicate/case-colliding
+evidence, artificial patch members, nonempty authoritative status, stale
+merge/readback bindings, or any profile/transition mismatch fail closed before
+the sole package-write attempt.
 
 The generic implementation-to-review and commit-preparation payloads each have
 exactly eleven members. They differ by one evidence member:

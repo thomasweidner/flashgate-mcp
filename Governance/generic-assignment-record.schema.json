@@ -11,7 +11,9 @@
           "executionMode": { "const": "COMMIT_PREPARATION" },
           "checkpoint": { "const": "PRE_COMMIT" },
           "transitionType": { "const": "COMMIT_PREPARATION_TO_COMMIT_APPROVAL" },
-          "branch": { "type": "string", "minLength": 1 }
+          "branch": { "type": "string", "minLength": 1 },
+          "taskPatchSha256": { "$ref": "#/$defs/hash" },
+          "currentDeltaSha256": { "$ref": "#/$defs/hash" }
         },
         "not": { "anyOf": [
           { "required": ["fullCompletionEvidenceSha256"] },
@@ -28,9 +30,29 @@
           "executionMode": { "const": "BUNDLED_CORRECTION" },
           "checkpoint": { "const": "SPRINT_CLOSE" },
           "transitionType": { "const": "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW" },
-          "branch": { "type": "string" }
+          "branch": { "type": "string" },
+          "taskPatchSha256": { "$ref": "#/$defs/hash" },
+          "currentDeltaSha256": { "$ref": "#/$defs/hash" }
         }
       }
+    },
+    {
+      "if": { "properties": { "profile": { "const": "EVIDENCE_ONLY_FOCUSED_REVIEW" } }, "required": ["profile"] },
+      "then": { "properties": {
+        "executionMode": { "const": "INDEPENDENT_REVIEW" },
+        "checkpoint": { "const": "SPRINT_CLOSE" },
+        "transitionType": { "const": "EVIDENCE_ONLY_TO_FOCUSED_REVIEW" },
+        "taskPatchSha256": { "type": "null" }, "currentDeltaSha256": { "type": "null" }
+      } }
+    },
+    {
+      "if": { "properties": { "profile": { "const": "POST_MERGE_CLOSURE" } }, "required": ["profile"] },
+      "then": { "properties": {
+        "executionMode": { "const": "POST_MERGE_CLOSURE" },
+        "checkpoint": { "const": "SPRINT_CLOSE" },
+        "transitionType": { "const": "POST_MERGE_TO_DOCUMENTATION_CLOSURE" },
+        "taskPatchSha256": { "type": "null" }, "currentDeltaSha256": { "type": "null" }
+      } }
     }
   ],
   "additionalProperties": false,
@@ -42,18 +64,18 @@
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },
     "branch": { "type": "string" },
-    "executionMode": { "enum": ["COMMIT_PREPARATION", "BUNDLED_CORRECTION"] },
+    "executionMode": { "enum": ["COMMIT_PREPARATION", "BUNDLED_CORRECTION", "INDEPENDENT_REVIEW", "POST_MERGE_CLOSURE"] },
     "checkpoint": { "enum": ["PRE_COMMIT", "SPRINT_CLOSE"] },
-    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
-    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW"] },
+    "profile": { "enum": ["GENERIC_COMMIT_PREPARATION", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW", "EVIDENCE_ONLY_FOCUSED_REVIEW", "POST_MERGE_CLOSURE"] },
+    "transitionType": { "enum": ["COMMIT_PREPARATION_TO_COMMIT_APPROVAL", "IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW", "EVIDENCE_ONLY_TO_FOCUSED_REVIEW", "POST_MERGE_TO_DOCUMENTATION_CLOSURE"] },
     "changeTriggerReviewResult": { "enum": ["NO_TRIGGER", "EXISTING_GATES_REQUIRED", "EXISTING_BACKLOG_UPDATED", "NEW_BACKLOG_REGISTERED"] },
     "currentStateGate": { "$ref": "#/$defs/currentStateGate" },
     "classicReviewReady": { "type": "boolean" },
     "findingIds": { "$ref": "#/$defs/findingIds" },
     "commitAuthorized": { "const": false },
     "scopeInventorySha256": { "$ref": "#/$defs/hash" },
-    "taskPatchSha256": { "$ref": "#/$defs/hash" },
-    "currentDeltaSha256": { "$ref": "#/$defs/hash" },
+    "taskPatchSha256": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
+    "currentDeltaSha256": { "oneOf": [{ "$ref": "#/$defs/hash" }, { "type": "null" }] },
     "allowedDeltaPaths": { "$ref": "#/$defs/pathArray" },
     "excludedDeltaPaths": { "$ref": "#/$defs/pathArray" },
     "fullCompletionEvidenceSha256": { "$ref": "#/$defs/hash" },

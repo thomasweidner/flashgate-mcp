@@ -89,12 +89,15 @@ request conforming to
 `Governance/governance-validation-request.schema.json`. The permanent profiles
 are `documentation-registration`, `governance-schema-change`,
 `fixture-harness-change`, `finding-correction`, `commit-preparation`,
-`focused-revalidation`, and `full-completion`. Do not generate a task-specific
-controller when the request and an existing permanent helper can express the
-work. Every profile runs parser/syntax, repository text policy,
-`git diff --check`, external/ignored-input hashes, toolchain/context binding,
-and source/worktree/selector binding in that order before consuming an
-expensive subordinate result.
+`focused-revalidation`, `evidence-only-focused-review`, `post-merge-closure`,
+and `full-completion`. Do not generate a task-specific controller when the
+request and an existing permanent helper can express the work; declared
+controller inventory and its file/line counters must agree and unknown
+exceptions fail closed. Every profile runs parser/syntax, repository text
+policy, `git diff --check`, VERSIONED/IGNORED/GIT_EXCLUDED/EXTERNAL input
+binding, toolchain/context binding, and actual canonical
+source/worktree/selector resolution in that order before consuming an expensive
+subordinate result.
 
 ## Scope
 
@@ -184,7 +187,7 @@ go build -o build/flashgate-mcp ./cmd/server
 ```
 
 Changes to PowerShell, Bash, CI, build, release, smoke, or validation scripts
-also require the deterministic shell gates. On Windows, use PowerShell 7.6.4:
+also require the deterministic shell gates. On Windows, use PowerShell 7.6.5:
 
 ```powershell
 & {

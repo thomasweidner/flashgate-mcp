@@ -44,6 +44,7 @@
     "mode": { "const": "FOCUSED_INDEPENDENT_DELTA_REVIEW" },
     "previousReviewPackage": { "type": "string", "minLength": 1 },
     "previousReviewSha256": { "$ref": "#/$defs/sha256" },
+    "previousIndependentReviewOutcomeSha256": { "$ref": "#/$defs/outcomeSha256" },
     "correctionStartCommit": { "$ref": "#/$defs/commit" },
     "previousReviewState": { "oneOf": [
       { "$ref": "#/$defs/commitState" },
@@ -70,6 +71,7 @@
   "$defs": {
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "outcomeSha256": { "type": "string", "pattern": "^[0-9A-F]{64}$" },
     "path": {
       "type": "string",
       "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$"

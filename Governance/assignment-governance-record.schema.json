@@ -108,6 +108,7 @@
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
+    "recordReadinessClass": { "const": "CURRENT" },
     "recordedAt": { "type": "string", "format": "date-time" },
     "taskId": { "type": "string", "pattern": "^(?:BL-[0-9]{3})(?:/BL-[0-9]{3})?$" },
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },

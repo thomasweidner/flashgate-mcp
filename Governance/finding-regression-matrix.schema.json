@@ -16,6 +16,7 @@
     "fixtureCount": { "type": "integer", "minimum": 1 },
     "fixtureResult": { "const": "PASS" },
     "validatorPath": { "type": "string", "minLength": 1 },
+    "finalFocusedValidationEvidence": { "$ref": "#/$defs/finalFocusedValidationEvidence" },
     "findings": {
       "type": "array",
       "minItems": 1,
@@ -23,6 +24,20 @@
     }
   },
   "$defs": {
+    "finalFocusedValidationEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceArtifact", "sourceEvidenceSha256", "sourceEvidenceLength", "status", "selected", "passed", "failed"],
+      "properties": {
+        "sourceArtifact": { "const": "focused-validation-result.json" },
+        "sourceEvidenceSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sourceEvidenceLength": { "type": "integer", "minimum": 1 },
+        "status": { "const": "PASS" },
+        "selected": { "type": "integer", "minimum": 1 },
+        "passed": { "type": "integer", "minimum": 1 },
+        "failed": { "const": 0 }
+      }
+    },
     "finding": {
       "type": "object",
       "additionalProperties": false,

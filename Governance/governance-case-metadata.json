@@ -11,7 +11,12 @@
     {
       "CapabilityId": "powershell-7.6.4",
       "SupportedPlatforms": [
-        "linux",
+        "linux"
+      ]
+    },
+    {
+      "CapabilityId": "powershell-7.6.5",
+      "SupportedPlatforms": [
         "windows"
       ]
     }
@@ -33,7 +38,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -52,7 +58,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -69,7 +76,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -86,7 +94,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -102,7 +111,7 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -121,7 +130,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -138,7 +148,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -155,7 +166,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -172,7 +184,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -189,7 +202,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -206,7 +220,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -223,7 +238,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -240,7 +256,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -257,7 +274,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -274,7 +292,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -291,7 +310,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -308,7 +328,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -325,7 +346,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -342,7 +364,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -359,7 +382,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -376,7 +400,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -393,7 +418,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -410,7 +436,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -427,7 +454,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -444,7 +472,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -461,7 +490,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -478,7 +508,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -495,7 +526,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -512,7 +544,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -529,7 +562,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -546,7 +580,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -563,7 +598,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -580,7 +616,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -597,7 +634,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -614,7 +652,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -631,7 +670,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -648,7 +688,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -665,7 +706,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -682,7 +724,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -699,7 +742,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -716,7 +760,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -733,7 +778,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -750,7 +796,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -767,7 +814,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -784,7 +832,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -801,7 +850,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -818,7 +868,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -835,7 +886,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -852,7 +904,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -869,7 +922,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -886,7 +940,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -903,7 +958,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -920,7 +976,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -937,7 +994,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -954,7 +1012,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -971,7 +1030,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -988,7 +1048,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1005,7 +1066,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1022,7 +1084,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1039,7 +1102,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1056,7 +1120,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1073,7 +1138,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1092,7 +1158,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1110,7 +1177,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1128,7 +1196,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1146,7 +1215,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1164,7 +1234,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1182,7 +1253,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1200,7 +1272,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1218,7 +1291,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1236,7 +1310,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1254,7 +1329,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1271,7 +1347,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1288,7 +1365,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1305,7 +1383,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1322,7 +1401,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1339,7 +1419,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1356,7 +1437,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1373,7 +1455,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1390,7 +1473,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1407,7 +1491,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1424,7 +1509,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1441,7 +1527,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1458,7 +1545,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1475,7 +1563,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1492,7 +1581,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1509,7 +1599,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1526,7 +1617,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1543,7 +1635,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1560,7 +1653,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1577,7 +1671,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1594,7 +1689,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1611,7 +1707,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1628,7 +1725,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1645,7 +1743,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1662,7 +1761,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1679,7 +1779,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1696,7 +1797,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1713,7 +1815,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1730,7 +1833,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1747,7 +1851,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1764,7 +1869,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1781,7 +1887,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1798,7 +1905,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1815,7 +1923,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1832,7 +1941,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1849,7 +1959,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1866,7 +1977,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1883,7 +1995,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1900,7 +2013,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1917,7 +2031,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1934,7 +2049,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1951,7 +2067,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1968,7 +2085,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -1985,7 +2103,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2002,7 +2121,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2019,7 +2139,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2036,7 +2157,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2053,7 +2175,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2070,7 +2193,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2087,7 +2211,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2104,7 +2229,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2121,7 +2247,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2138,7 +2265,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2155,7 +2283,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2172,7 +2301,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2189,7 +2319,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2206,7 +2337,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2223,7 +2355,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2240,7 +2373,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2257,7 +2391,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2274,7 +2409,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2291,7 +2427,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2308,7 +2445,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2325,7 +2463,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2342,7 +2481,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2359,7 +2499,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2376,7 +2517,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2393,7 +2535,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2410,7 +2553,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2427,7 +2571,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2444,7 +2589,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2461,7 +2607,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2478,7 +2625,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2495,7 +2643,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2512,7 +2661,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2529,7 +2679,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2546,7 +2697,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2563,7 +2715,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2580,7 +2733,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2597,7 +2751,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2614,7 +2769,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2631,7 +2787,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2648,7 +2805,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2665,7 +2823,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2682,7 +2841,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2699,7 +2859,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2716,7 +2877,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2733,7 +2895,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2750,7 +2913,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2767,7 +2931,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2784,7 +2949,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2801,7 +2967,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2818,7 +2985,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2835,7 +3003,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2852,7 +3021,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2869,7 +3039,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2886,7 +3057,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2903,7 +3075,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2920,7 +3093,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2937,7 +3111,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2954,7 +3129,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2971,7 +3147,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -2988,7 +3165,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3005,7 +3183,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3022,7 +3201,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3039,7 +3219,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3056,7 +3237,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3073,7 +3255,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3090,7 +3273,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3107,7 +3291,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3124,7 +3309,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3141,7 +3327,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3158,7 +3345,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3175,7 +3363,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3192,7 +3381,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3209,7 +3399,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3226,7 +3417,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3243,7 +3435,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3260,7 +3453,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3277,7 +3471,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3294,7 +3489,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3311,7 +3507,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3328,7 +3525,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3345,7 +3543,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3362,7 +3561,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3379,7 +3579,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3396,7 +3597,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3413,7 +3615,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3430,7 +3633,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3447,7 +3651,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3464,7 +3669,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3481,7 +3687,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3498,7 +3705,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3515,7 +3723,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3532,7 +3741,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3549,7 +3759,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3566,7 +3777,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3583,7 +3795,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3600,7 +3813,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3617,7 +3831,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3634,7 +3849,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3651,7 +3867,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3668,7 +3885,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3685,7 +3903,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3702,7 +3921,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3719,7 +3939,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3736,7 +3957,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3753,7 +3975,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3770,7 +3993,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3787,7 +4011,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3804,7 +4029,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3821,7 +4047,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3838,7 +4065,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3855,7 +4083,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3872,7 +4101,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3889,7 +4119,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3906,7 +4137,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3923,7 +4155,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3940,7 +4173,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3957,7 +4191,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3974,7 +4209,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -3991,7 +4227,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4008,7 +4245,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4025,7 +4263,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4042,7 +4281,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4059,7 +4299,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4076,7 +4317,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4093,7 +4335,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4110,7 +4353,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4127,7 +4371,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4144,7 +4389,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4161,7 +4407,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4178,7 +4425,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4195,7 +4443,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4212,7 +4461,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4229,7 +4479,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4246,7 +4497,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4263,7 +4515,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4280,7 +4533,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4297,7 +4551,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4314,7 +4569,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4331,7 +4587,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4348,7 +4605,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4365,7 +4623,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4382,7 +4641,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4399,7 +4659,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4416,7 +4677,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4433,7 +4695,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4452,7 +4715,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4471,7 +4735,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4490,7 +4755,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4509,7 +4775,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4528,7 +4795,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4547,7 +4815,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4566,7 +4835,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4585,7 +4855,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4604,7 +4875,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4623,7 +4895,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4642,7 +4915,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4661,7 +4935,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4679,7 +4954,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4699,7 +4975,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4717,7 +4994,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4737,7 +5015,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4757,7 +5036,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     },
@@ -4778,7 +5058,8 @@
       ],
       "RequiredCapabilities": [
         "git",
-        "powershell-7.6.4"
+        "powershell-7.6.4",
+        "powershell-7.6.5"
       ],
       "WindowsOnlyDependency": []
     }

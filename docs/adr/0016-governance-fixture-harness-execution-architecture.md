@@ -76,11 +76,14 @@ orchestrator binds immutable inputs, selection inventory, completed cases,
 outputs, and repository state; otherwise the run starts fresh.
 
 BL-339 realizes that decision as one strict request/result pair, one
-permanent PowerShell module, and one thin runner. The catalog owns exactly seven
+permanent PowerShell module, and one thin runner. BL-340 completes the migration;
+the catalog owns exactly nine
 orchestration profiles. Their common cheap-gate prefix is parser/syntax, leading
 `.gitattributes`/`.editorconfig` text policy, `git diff --check`, complete
-external/ignored-input existence and hashes, toolchain/platform/execution
-context, and repository/source/worktree/HEAD/tree/file-hash/selector binding.
+VERSIONED/IGNORED/GIT_EXCLUDED/EXTERNAL input existence, classification, roots,
+links, and hashes, toolchain/platform/execution context, and
+repository/source/worktree/HEAD/tree/file-hash plus canonical selector
+resolution.
 The first failed cheap gate marks later cheap gates `NOT_RUN` and prevents typed
 subordinate evidence from being consumed.
 
@@ -116,6 +119,11 @@ collisions. A protected foreign worktree is never an implicit exception: it is
 modeled independently with root, HEAD, tree, branch/detached state, and its own
 raw-status hash.
 
+External inputs use platform-native path comparison, include the declared
+source root itself in link/reparse checks, and derive `GIT_EXCLUDED` only from
+the actual `.git/info/exclude` or resolved `core.excludesFile` provenance
+reported by Git.
+
 For a separately declared publication matrix, the controller also owns an
 Expected Execution Input Binding created before runner start from the canonical
 catalog, runner, and dependency bytes. It passes both the strict binding
@@ -127,8 +135,9 @@ drift in either pre-start or post-import window therefore terminates with zero
 accepted cases rather than evidence from an unbound loaded code version.
 
 Task assignments are data. Existing fixture selectors remain the only dynamic
-case inventory and are bound by inventory and selection hashes; Phase A does
-not add case, group, tag, platform, or capability metadata. One canonical
+case inventory and are bound by inventory and selection hashes; BL-340 invokes
+that resolver rather than hashing a selector object alone and does not add case,
+group, tag, platform, or capability metadata. One canonical
 reader rejects invalid UTF-8, BOMs, duplicate properties, schema/version/profile
 mismatches, non-terminal status, trailing JSON, counter violations, and
 `BLOCKED`/failure-count contradictions. Unchanged PASS evidence is reusable only
@@ -144,7 +153,7 @@ before the first write-capable open of the final path, including a failed open;
 there is no automatic retry. This decision does not change BL-337 process-control ownership or
 BL-338 dynamic listing/selection ownership.
 
-The same producer supports two explicitly discriminated generic transitions.
+The same producer supports four explicitly discriminated generic transitions.
 `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` packages the complete implementation
 and hash-bound reusable full-completion evidence before any independent review;
 its review status is `NOT_PERFORMED` and it cannot contain or depend on an
@@ -152,6 +161,26 @@ independent-review artifact. `GENERIC_COMMIT_PREPARATION` remains the later
 review-dependent transition. Both use directory-first validation and the same
 exactly-once final ZIP boundary; their evidence members and schema fields are
 mutually exclusive.
+
+`EVIDENCE_ONLY_FOCUSED_REVIEW` packages only an empty repository scope and one
+hash-verified external/read-only evidence artifact; it has no patch members.
+`POST_MERGE_CLOSURE` adds real packaged merge-state and live-readback bytes
+whose hashes are verified by producer and validator, and explicitly records
+unchanged matrices as `NOT_RUN`. Both retain
+the same directory-first, manifest, one-write, reopen, and collision/link safety
+contract as the two patch-bearing profiles.
+
+For exact-commit preparation, the result binds intended base, merge base,
+effective PR scope and patch hash, isolated integration-projection tree,
+authorized write set, staged-state prohibition, and every protected foreign
+worktree. The request also carries eight state components (commit, tree,
+working status, scope, selector, package, external inputs, and evidence).
+Current hashes are derived from the validated actual state rather than trusted
+from the request; only components with changed hashes become `INVALIDATED`,
+with a deterministic reason. Executable task-controller inventory is scanned
+from the fixed root derived from the bound worktree and compared with request
+expectations and actual file/line counters; omissions, outside-root paths, and
+unknown exceptions fail before runner execution.
 
 A hash-verified task-local native toolchain is assignment-scoped rather than
 attempt-scoped. It is retained and reused through directly caused fixture,
@@ -184,9 +213,11 @@ and no redundant blocker or invocation summary fields are introduced.
 - BL-337 implements process isolation and bounded cleanup.
 - BL-338 implements canonical metadata, listing, and selection.
 - BL-339 implements reusable focused/full orchestration and telemetry.
-- BL-340 completes the remaining workflow-generator and reusable-profile
-  migration onto the BL-339 contract, including current `currentStateGate`
-  generation and explicit schema-version-1 historical-read compatibility.
+- BL-340 completes the workflow-generator and reusable-profile migration onto
+  the BL-339 contract, including current `currentStateGate` generation and
+  explicit schema-version-1 historical-read compatibility. Historical records
+  remain readable but cannot become current readiness evidence without the
+  current readiness discriminator and state gate.
 - BL-338 supplies the complete reusable metadata layer. The governance runner
   derives its active count, ordered metadata-inventory SHA-256,
   platform/capability-valid resolved selection, and completion parity from the
@@ -209,7 +240,7 @@ and no redundant blocker or invocation summary fields are introduced.
 - blocked-without-failure, selector-preflight, duplicate-event/heartbeat,
   explicit-source/worktree, helper-shadowing, detached-HEAD, exit-code, and
   scope-overrun positives or fail-closed negatives;
-- Windows PowerShell 7.6.4 and native Linux PowerShell validation.
+- Windows PowerShell 7.6.5 and native Linux PowerShell 7.6.4 validation.
 
 ## Related documents
 
