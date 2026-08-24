@@ -71,6 +71,13 @@ flashgate-mcp --mode service            Windows SCM or Linux systemd host
 
 The system service separates the authenticated caller from the effective OS execution backend. Version 1.0 uses a dedicated service-account backend for administratively granted roots. A later per-user worker backend is planned; in-process impersonation is excluded.
 
+Host-process lifecycle is also planned, not implemented. Direct and proxy/auto
+edge processes are session-scoped, while SCM/systemd services persist across
+client disconnects. ADR-0017 defines the owner matrix, one bounded process-root
+shutdown coordinator, secret-safe instance/exit diagnostics, and the strict
+`SUSPECTED_STALE` versus `DEFINITELY_ORPHANED` boundary. BL-341 owns the later
+runtime implementation and BL-241 its integrated Windows/Linux validation.
+
 ## Open-Source, Modules, and Protocol Extensions
 
 FlashGate MCP is developed as a general, vendor-neutral open-source project. The core must not require Voxtronic paths, internal systems, proprietary dependencies, organization secrets, or company-specific permissions.

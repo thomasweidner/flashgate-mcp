@@ -535,6 +535,7 @@ The vendored Windows resource generator and committed icon source are covered by
 | Processes | PID reuse, lifecycle races, command/environment disclosure, output cursors, orphan cleanup, child limits |
 | Typed commands | executable substitution, argument/config/hook/plugin injection, env, roots, output, network, OS isolation |
 | System service | endpoint spoofing, peer identity, service-account ACLs, policy/OS permission mismatch, privilege escalation, auto fallback |
+| MCP host lifecycle | orphaned direct/proxy hosts, retained pipes, long-lived wrappers, PID reuse, false owner attribution, stale/manipulated instance records, unsafe idle/singleton heuristics, owned-child/job survival, connection-owned state after proxy loss, unrelated-process targeting |
 | Future user workers | token/UID/session acquisition, groups/env, broker IPC, worker reuse, cross-user state, resource/crash isolation |
 | Payload/resources | amplification, base64 cost, host-path URI leak, owner/TTL checks, stale generation, compatibility fallback |
 | MCP versions/extensions | downgrade/mismatch, stateless routing, cache invalidation, Tasks lifecycle, deprecated capability confusion |
@@ -542,6 +543,23 @@ The vendored Windows resource generator and committed icon source are covered by
 | Future providers | policy bypass, capability inflation, dependency/update risk, in-process versus IPC isolation |
 
 Stateful components require race-detector coverage, restart/shutdown analysis, negative capability tests, quota/fairness tests, and cleanup verification.
+
+### MCP host lifecycle
+
+This planned Version 1.0 workstream treats top-level host lifecycle separately
+from Operations/Jobs and Managed Process ownership. It covers orphaned direct
+and proxy-edge hosts; retained or duplicated pipes; long-lived ChatGPT/Codex
+app servers and wrapper parents; PID reuse and false owner attribution;
+manipulated or stale instance records; unsafe age/idle/CPU/request-count or
+singleton reaping; owned child/job survival after host shutdown;
+cross-principal or connection-owned service state after proxy loss; and any
+attempt to target unrelated processes.
+
+Automatic termination requires conclusive transport and ownership evidence.
+PID alone and registry/state records are never authority. Ambiguous live
+process/transport/owner cases are `SUSPECTED_STALE`, remain diagnostic, and are
+not killed. Instance evidence is bounded and secret-safe; it excludes command
+lines, credentials, and unnecessary host paths. See ADR-0017 and BL-341.
 
 ## Version 1.0 Security Acceptance
 
@@ -560,6 +578,9 @@ Version 1.0 cannot release until:
 - audit lifecycle and disk-full behavior are defined/tested;
 - supported MCP versions/extensions are explicit;
 - release supply-chain evidence is complete.
+- after conclusive owner or transport loss and expiration of the bounded
+  shutdown window, zero `DEFINITELY_ORPHANED` session-scoped FlashGate hosts or
+  owned child processes remain.
 
 ## Deferred Security Decisions
 

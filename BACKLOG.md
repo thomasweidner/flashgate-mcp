@@ -67,8 +67,8 @@ The complete legacy mapping is recorded in
 | SPR-56 | Planned | BL-119–BL-126, BL-130–BL-135, BL-252–BL-254 | Managed process execution, output cursors, resource control, race tests, and CI jobs |
 | SPR-57 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170 | Typed allowlisted command execution, OS isolation, redaction, and security tests |
 | SPR-58 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
-| SPR-59 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166, BL-341 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, host-process ownership/lifecycle, and Variant A security |
-| SPR-60 | Planned | BL-226–BL-231 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, and Variant A service-account execution |
+| SPR-59 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
+| SPR-60 | Planned | BL-226–BL-231, BL-341 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, Variant A service-account execution, cross-mode host-process ownership, deterministic shutdown, diagnostics, and orphan prevention |
 | SPR-61 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-340 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, task-neutral governance handoffs, reusable fixture/validation orchestration, and governance generator/profile migration |
 
 Version 1.0 is reached only after `SPR-61` and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
@@ -372,9 +372,9 @@ available number only and is not an assigned sprint.
 |---|---|---|---|
 | BL-221 | Planned | Define native multi-mode runtime architecture and threat model | One Windows PE/Linux ELF binary; explicit current/planned boundaries; no interpreter, remote listener, or implicit privilege escalation |
 | BL-222 | Planned | Preserve one self-contained binary across runtime modes | Shared core and executable for `stdio`, `proxy`, `auto`, system service, and user-scoped host; split only through a separate evidence-backed ADR |
-| BL-223 | Planned | Define CLI mode and lifecycle contract | Preserve no-argument STDIO compatibility; specify `--mode stdio`, `--mode proxy`, `--mode auto`, `--mode service`, management commands, exit codes, and shutdown behavior |
-| BL-224 | Planned | Separate MCP/core runtime from transport and host lifecycle | Transport-neutral server/core wiring with no business logic in STDIO, IPC, SCM, or systemd adapters |
-| BL-225 | Planned | Define versioned local IPC protocol and compatibility handshake | Framing, protocol version, feature negotiation, correlation, cancellation, errors, limits, disconnects, and proxy/service version mismatch behavior |
+| BL-223 | Planned | Define CLI mode and lifecycle contract | Preserve no-argument STDIO compatibility; specify `--mode stdio`, `--mode proxy`, `--mode auto`, `--mode service`, management commands, exit codes, and shutdown behavior. Define the authoritative owner and expected lifetime for direct STDIO, proxy, auto direct fallback, persistent service, future user host, and future worker roles; signal precedence and typed shutdown/exit reasons; session-scoped edge versus persistent OS-service behavior; and an explicit prohibition on idle-timeout or singleton inference. |
+| BL-224 | Planned | Separate MCP/core runtime from transport and host lifecycle | Transport-neutral server/core wiring with exactly one process-root lifecycle coordinator and no business logic in STDIO, IPC, SCM, or systemd adapters. Transport/host adapters report lifecycle signals but do not perform domain cleanup; root cancellation invokes Operations/Job and Managed Process cleanup through their respective owners, while platform-specific owner monitoring remains behind adapters. |
+| BL-225 | Planned | Define versioned local IPC protocol and compatibility handshake | Framing, protocol version, feature negotiation, correlation, cancellation, errors, limits, disconnects, and proxy/service version mismatch behavior. Bind every client to a connection/session ownership ID; cancel partial connection-owned work on disconnect; optionally negotiate versioned lease/heartbeat semantics only for FlashGate-controlled proxy-service or broker-worker channels; keep the persistent service alive after a normal client disconnect; and require no proprietary MCP heartbeat for direct STDIO. |
 | BL-226 | Planned | Implement Windows Named Pipe transport | Local-only pipe, restrictive ACLs, caller identity from the OS, bounded framing, cancellation, and no trust in proxy-supplied identity |
 | BL-227 | Planned | Implement Linux Unix Domain Socket transport | Local-only socket, restrictive ownership/mode, peer UID/GID/PID credentials, bounded framing, cleanup, and stale-socket handling |
 | BL-228 | Planned | Implement STDIO proxy mode | Present normal MCP STDIO to the client and forward safely to the local service without corrupting stdout or changing public tool contracts |
@@ -390,7 +390,7 @@ available number only and is not an assigned sprint.
 | BL-238 | Planned | Define Variant B user-worker contract and threat model | Specify worker launch/token or UID model, same-binary internal worker mode, broker IPC, environment/groups, lifecycle, quotas, crash recovery, and Windows/Linux differences without implementing it in Version 1.0 |
 | BL-239 | Planned | Bind state, caches, and result resources to execution context | Bind principal, groups, profile, root, backend, service instance/generation, protocol context, and expiry; prohibit cross-principal cache/handle reuse |
 | BL-240 | Later | Implement Variant B per-user worker backend | Post-1.0 broker-managed worker processes under the real user identity with OS resource isolation, native audit attribution, and no shared-process impersonation |
-| BL-241 | Planned | Add multi-client, lifecycle, compatibility, and denial tests | Windows/Linux unit and integration coverage for concurrent clients, disconnects, restart, stale endpoints, shutdown, version mismatch, unauthorized access, and fail-closed auto behavior |
+| BL-241 | Planned | Add multi-client, lifecycle, compatibility, and denial tests | Retain the independent pre-existing acceptance scope for concurrent clients; disconnects; service and host restart; stale transport endpoints; shutdown; general IPC, proxy, and service version mismatch; unauthorized access; and fail-closed `auto` behavior. Add, without substituting for any of those cases, the integrated Windows/Linux host-lifecycle matrix: normal STDIN EOF and transport close; broken pipe; client crash/kill; verified owner death; retained or duplicated pipe handle; long legitimate idle without false positive; OS stop/signal; optional lease expiry plus lease reconnect/version mismatch where relevant; proxy death cleanup of connection-owned service state while the persistent service survives normal client disconnect; bounded Operations/Job cleanup; bounded Managed Child cleanup; PID reuse; stale instance/runtime-registry state; repeated parallel starts/closes; and return to the documented Direct and Service process baselines. After conclusive owner/transport loss and the bounded shutdown window, require zero remaining `DEFINITELY_ORPHANED` session-scoped hosts or owned children. |
 | BL-242 | Planned | Add Windows/Linux CI and release validation for all modes | Build native artifacts, test STDIO/proxy/service adapters where CI permits, verify no interpreter dependency, validate service assets, and retain existing gates |
 | BL-243 | Planned | Document installation, removal, operation, and non-admin deployment | System service, user service/host, portable STDIO, proxy/auto configuration, troubleshooting, rollback, permissions, and explicit current-versus-planned status |
 | BL-244 | Planned | Benchmark direct, proxy, and service modes and define release gate | Startup, steady-state latency, memory, CPU, payload overhead, concurrency, and evidence-based acceptance thresholds before recommending managed mode broadly |
@@ -424,8 +424,14 @@ standard profile, the final native run, the runspace-free wrapper validation,
 and the terminally persisted 225-case fixture replacement all pass. INF-122
 and INF-129 are closed. BL-324 is `Done` with no remaining task work.
 
-Binding remaining queue after BL-324 completion:
+BL-340 is independently complete in SPR-61 after PR #42 merge and remote
+feature-branch cleanup. No BL-340 implementation, review, merge, or remote work
+remains; `INF158-REV-050` is a separate non-blocking infrastructure follow-up.
+
+For historical provenance only, the post-BL-324 queue was recorded as
 `schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal`.
+BL-340 is no longer queued; the Local Work Register audit and any removal remain
+separately authorized work and are not performed by this convergence.
 
 ### SPR-42 technical identity
 
@@ -561,17 +567,18 @@ These tasks originate in the final independent review of PR #21. They are accept
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
 | BL-337 | Planned | Isolate governance fixture execution in one controlled runner process | Each fixture run owns exactly one controlled runner process identified by PID and start identity; deterministic timeouts use bounded kill, wait, and stream drain; terminal evidence proves cleanup, no surviving fixture/validator process, and unchanged repository state. Every terminal case emits one machine-readable per-case ProgressEvent with only technically required fields. Identical events are suppressed; a heartbeat is explicitly typed, emitted only after the configured interval, and never duplicated for the same interval/state. Output occurs only for progress, phase change, status change, or heartbeat. Missing progress instrumentation on a recurring long run is a finding. |
-| BL-338 | Done | Add canonical governance case metadata and deterministic selection | One machine-readable leading inventory owns every case ID, group, tag, supported platform, required capability, and Windows-only dependency marker; no Shell/PowerShell array or second maintained list is canonical. `-ListGroups`, `-ListTags`, `-ListCases`, group/tag selection, and the compatible `-CaseName` path derive from that source. All selectors resolve completely before runner-process start and each selected token resolves to exactly one canonical case. Unknown, duplicate, ambiguous, platform-incompatible, or capability-incomplete selections stop fail-closed with structured diagnostics containing the affected IDs and no redundant summary fields. The deterministic metadata inventory and resolved selection are SHA-256-bound. **Completed:** the 277-case JSON inventory, closed schema, shared resolver, all three list interfaces, CaseName/Group/Tag preflight, platform/capability gating, semantic hashes, structured diagnostics, and permanent focused fixture matrix are implemented and locally validated. The independent full review plus focused delta review closed BL338-REV-001..004. Classic subsequently raised `BL338-CLASSIC-REV-001` because the Windows fixture harness depended on contributor-local Codex-Work/INF-160 files. The bundled correction removes that repository/Hosted-CI dependency, keeps INF-160 at the local Codex caller boundary, and adds permanent repository-only portability coverage. The focused independent Classic delta reviews closed `BL338-CLASSIC-REV-001` and `BL338-CLASSIC-REV-002` with no new finding; `BL338ClassicPreCommitQualityGate=PASS`. Implementation commit `a28953b19d1e3ff51ffdbd12262964787a9252dc` was merged through PR #40 as `b72c29e5d65803b11463f8d6b3d6f304cf510bf6`. The prior native Linux `standard` evidence remains valid because the corrected boundary does not change case semantics or Linux execution. Post-merge CI #122, Metadata Regression #51, and CodeQL #68 passed; BL-338 is `Done` with `OpenFindingCount=0`. BL-337 consumes only the resolved set and remains `Planned`; BL-340 remains unimplemented and `Planned`. |
+| BL-338 | Done | Add canonical governance case metadata and deterministic selection | One machine-readable leading inventory owns every case ID, group, tag, supported platform, required capability, and Windows-only dependency marker; no Shell/PowerShell array or second maintained list is canonical. `-ListGroups`, `-ListTags`, `-ListCases`, group/tag selection, and the compatible `-CaseName` path derive from that source. All selectors resolve completely before runner-process start and each selected token resolves to exactly one canonical case. Unknown, duplicate, ambiguous, platform-incompatible, or capability-incomplete selections stop fail-closed with structured diagnostics containing the affected IDs and no redundant summary fields. The deterministic metadata inventory and resolved selection are SHA-256-bound. **Completed:** the 277-case JSON inventory, closed schema, shared resolver, all three list interfaces, CaseName/Group/Tag preflight, platform/capability gating, semantic hashes, structured diagnostics, and permanent focused fixture matrix are implemented and locally validated. The independent full review plus focused delta review closed BL338-REV-001..004. Classic subsequently raised `BL338-CLASSIC-REV-001` because the Windows fixture harness depended on contributor-local Codex-Work/INF-160 files. The bundled correction removes that repository/Hosted-CI dependency, keeps INF-160 at the local Codex caller boundary, and adds permanent repository-only portability coverage. The focused independent Classic delta reviews closed `BL338-CLASSIC-REV-001` and `BL338-CLASSIC-REV-002` with no new finding; `BL338ClassicPreCommitQualityGate=PASS`. Implementation commit `a28953b19d1e3ff51ffdbd12262964787a9252dc` was merged through PR #40 as `b72c29e5d65803b11463f8d6b3d6f304cf510bf6`. The prior native Linux `standard` evidence remains valid because the corrected boundary does not change case semantics or Linux execution. Post-merge CI #122, Metadata Regression #51, and CodeQL #68 passed; BL-338 is `Done` with `OpenFindingCount=0`. BL-337 consumes only the resolved set and remains `Planned`; BL-340 was not implemented by BL-338 and was completed separately through PR #42. |
 | BL-339 | Done | Provide reusable focused and full governance validation orchestration | **Completed:** implementation and Full Completion passed, and the final independent closure review passed against immutable 19-member package SHA-256 `425A8B4E3D5497C40119E58291E773B25CF02675084653A4C73E685F6ABFB119` (154308 bytes) with no new finding. REV-001 through REV-014 are closed; REV-001/002 retain their prior independent-delta closure and REV-003..014 are `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. `OpenFindingCount=0`; no further BL-339 correction or review cycle is required. PR #34 merged through `26734c333341455a63f79c0f1a956309e54177e0`, and all post-merge CI, Metadata Regression, and CodeQL checks passed. BL-339 has no remaining gate or work. |
-| BL-340 | Planned | Complete governance generator/profile migration | Migrate the unchanged workflow generator and all current reusable governance profiles to the complete BL-339 orchestration contract. New generated records must bind a valid `currentStateGate`; stored schema-version-1 records remain explicitly readable under their historical schema without becoming current readiness evidence. Reuse BL-339 orchestration rather than duplicating its implementation or reopening any BL339-REV finding. **Acceptance:** generator, profile, schema/catalog, transition, compatibility, and documentation triggers are identified; focused positive and fail-closed fixtures cover current-record generation, absent/stale state binding, profile parity, and historical-v1 reads; directly affected governance and documentation gates pass; the task is independently implementable and reviewable. BL-340 is an independent SPR-61 task and is not a new prerequisite for resuming BL-324. |
-| BL-341 | Planned | Define cross-mode host-process ownership and lifecycle | ADR-0017 binds direct STDIO, proxy-edge, and persistent service process owners; connection ownership; owner/transport loss; PID plus start identity; bounded shutdown; orphan classification; instance diagnostics; service persistence; separation from Managed Process and Operations/Jobs; and Windows/Linux lifecycle-test ownership. BL-241 retains integrated multi-client/lifecycle tests and BL-129 retains managed-child cleanup. |
+| BL-340 | Done | Complete governance generator/profile migration | **Completed:** the generator/profile migration and eight-part convergence scope were independently reviewed and committed at head `39665dc861d96317a37a616cad81a4e1a199473e`. Classic merged PR #42 with method `merge` as `b20e8311fd976ca9a87c8a652be3fb631c6d40df` on 2026-08-24; the merge tree is `0290087bedfee7fa7c815dd228fcf2b0a339a246` with parents `2bccab83393c503b20e7878134230574946c9cdd` and the exact reviewed head. The user manually removed the remote feature branch and Classic verified it absent. `OpenFindingCount=0`, and no BL-340 implementation, review, merge, remote, or local implementation work remains. `INF158-REV-050` is a separate non-blocking post-completion infrastructure finding and does not reopen BL-340. |
+| BL-341 | Planned | Implement cross-mode host-process ownership, deterministic shutdown, diagnostics, and orphan prevention | Implement Direct STDIO and proxy/auto-edge lifecycle through one process-root coordinator; platform owner adapters; definitive EOF, transport failure, OS stop, verified owner loss, and explicitly negotiated lease signals; bounded deterministic shutdown; Operations/Job (`BL-094`) and Managed Child (`BL-129`) cleanup through their respective owners; secret-safe instance diagnostics and typed exit classification; PID plus process-start identity or verified OS handle, never PID-only authority; safe stale runtime-registry cleanup; and Windows/Linux behavior. Multiple direct/proxy instances remain legitimate; age, idle time, CPU, request count, or singleton assumptions never authorize termination, and ambiguous live-owner/live-transport cases are `SUSPECTED_STALE`. BL-241 owns complete integrated testability and BL-263 the Version 1.0 release gate. Add no remote listener, interpreter dependency, hidden installation, or automatic elevation. |
 
-BL-340 has a local isolated, uncommitted implementation prepared for independent
-full review. It covers A–H, including exact-commit/push-scope evidence,
-evidence-only and post-merge zero-delta profiles, closed external-input classes,
-task-controller prohibition, partial state invalidation, and direct reuse of the
-unchanged BL-338 resolver. Its canonical status remains `Planned`; no commit,
-push, PR, Hosted-CI, merge, or remote-cleanup state is claimed.
+BL-340 is independently complete. Its implementation covers A–H, including
+exact-commit/push-scope evidence, evidence-only and post-merge zero-delta
+profiles, closed external-input classes, task-controller prohibition, partial
+state invalidation, and direct reuse of the unchanged BL-338 resolver. The exact
+reviewed head `39665dc861d96317a37a616cad81a4e1a199473e` was integrated through
+PR #42 as merge commit `b20e8311fd976ca9a87c8a652be3fb631c6d40df`, and the
+remote feature branch is absent. `OpenFindingCount=0`.
 
 BL-339 is terminal `Done` with Full Completion and final independent review
 `PASS`.
@@ -598,10 +605,12 @@ tree, and file-hash binding; toolchain/platform, execution-context, and selector
 preflights; and standardized Git/PowerShell probes. It uses BL-339 and creates
 no new ID.
 
-BL-341 is the unchanged former BL-340 host-process ownership/lifecycle task
-under ADR-0017. The renumbering and residual-scope extraction are recorded in
+BL-341 is the canonical former BL-340 host-process ownership/lifecycle task
+under ADR-0017. Its current title and SPR-60 placement make the later technical
+implementation owner explicit without changing the historical ID mapping. The
+renumbering and residual-scope extraction remain recorded in
 `docs/backlog-id-migration-2026-08-12.md`; historical evidence retains the IDs
-that were canonical when it was produced.
+and contemporary sprint/title text that were canonical when it was produced.
 
 BL-336 PRE_COMMIT checkpoint: `BL336-VAL-001` and `BL336-VAL-002` remain
 `CLOSED_BY_IMPLEMENTATION_AND_FULL_REVALIDATION`; `BL336-REV-001`,
@@ -651,8 +660,8 @@ packaged final read-only review gate. Ready-for-Review, reviewer requests,
 other PR metadata changes, merge, rebase, and force-push remain prohibited;
 the persistent catalog keeps general remote actions closed.
 
-The highest assigned backlog identifier is `BL-341`. BL-339 is `Done`; BL-340
-and BL-341 are distinct `Planned` tasks.
+The highest assigned backlog identifier is `BL-341`. BL-339 and BL-340 are
+`Done`; BL-341 is the distinct `Planned` task.
 BL-333, BL-334, BL-335, and BL-336 remain `Done`.
 
 PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8`.
@@ -669,8 +678,11 @@ The second-parent history retains the six PR commits
 terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
 three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
-The binding remaining queue is:
+For historical provenance, the queue recorded after PR #27 was:
 `schedule BL-340 independently in SPR-61 → final documentation convergence → Local Work Register dissolution audit → separately authorized Local Work Register removal`.
+BL-340 has since completed independently; final documentation convergence,
+the Local Work Register dissolution audit, and any separately authorized
+removal remain outside BL-340.
 
 ## Cross-epic rules
 

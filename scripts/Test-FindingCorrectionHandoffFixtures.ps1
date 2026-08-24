@@ -1180,7 +1180,8 @@ try {
     $historicalZip = Join-Path $fixtureRoot 'historical.zip'
     New-ZipFromDirectory $historicalDir $historicalZip
     $currentPaths = @(Get-GenericScopePaths -Entry $currentEntries | Sort-Object -Unique)
-    $postimages = @($currentPaths | ForEach-Object { Get-TreePostimage -Root $repo -Tree $previousTree -Path $_ })
+    $historicalBoundPaths = @(Get-GenericScopePaths -Entry @($historicalScopeValue.entries) | Sort-Object -Unique)
+    $postimages = @($historicalBoundPaths | ForEach-Object { Get-TreePostimage -Root $repo -Tree $previousTree -Path $_ })
     $historicalBinding = [pscustomobject][ordered]@{ type='IMMUTABLE_REVIEW_PACKAGE'; historicalPackagePath=$historicalZip; historicalPackageSha256=Get-Hash($historicalZip); historicalManifestSha256=Get-Hash(Join-Path $historicalDir 'MANIFEST.sha256'); historicalPatchSha256=Get-Hash(Join-Path $historicalDir 'current-delta.patch'); historicalScopeInventorySha256=Get-Hash(Join-Path $historicalDir 'scope-inventory.json'); previousReviewedBaselineCommit=$baseline; previousReviewedTree=$previousTree; previousReviewedPathCount=2; previousReviewedPostimages=$postimages }
 
     $commitSource = Join-Path $fixtureRoot 'commit-source'
@@ -1536,6 +1537,8 @@ try {
     Add-Case 'FCH-IMMUTABLE-PACKAGE-PRODUCT-VALIDATOR-PASS' ($snapshotRun.ExitCode -eq 0) $snapshotRun.Output
     Add-Case 'FCH-HISTORICAL-RENAME-SNAPSHOT-PASS' ($snapshotRun.ExitCode -eq 0) $snapshotRun.Output
     Add-Case 'FCH-HISTORICAL-MULTI-ENTRY-PLUS-RENAME-PASS' ($snapshotRun.ExitCode -eq 0) $snapshotRun.Output
+    Add-Case 'FCH-EXPANDED-CORRECTION-SCOPE-OVER-HISTORICAL-REVIEW-PASS' `
+        ($snapshotRun.ExitCode -eq 0 -and $currentPaths.Count -gt $historicalBoundPaths.Count) $snapshotRun.Output
 
     $referencePreviousPostimage = Get-TreePostimage -Root $repo -Tree $previousTree -Path 'reference.txt'
     $renamePreviousPostimage = Get-TreePostimage -Root $repo -Tree $previousTree -Path 'historical-target.txt'

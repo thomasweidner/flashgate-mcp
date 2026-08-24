@@ -39,6 +39,50 @@ Current properties:
 
 All service, proxy, auto, identity-backend, and large-result behavior in this document is planned.
 
+## Planned host ownership and lifecycle contract
+
+| Mode or role | Authoritative owner | Expected lifetime | Definitive loss behavior |
+|---|---|---|---|
+| Direct `stdio` | MCP transport session / client launch | Session-scoped | Bounded shutdown after definitive transport or verified owner loss |
+| `proxy` / proxy path of `auto` | Client-side MCP transport session | Session-scoped lightweight edge | Close service connection, cancel connection-owned work, bounded exit |
+| Direct fallback of `auto` | MCP transport session / client launch | Session-scoped | Same as direct `stdio` |
+| `service` | Windows SCM or Linux systemd | Persistent across clients | Client disconnect does not stop the service |
+| Future user host | User-host supervisor | Policy-persistent | Supervisor lifecycle |
+| Future `worker` | FlashGate broker/service | Broker-owned | Bounded shutdown after verified control-channel or negotiated lease loss |
+
+One process-root lifecycle coordinator receives normal EOF/transport closure,
+unrecoverable pipe failure, supported explicit protocol shutdown, OS
+stop/termination, verified owner/control-channel loss, and explicitly
+negotiated lease expiry. The first definitive signal wins and drives one
+bounded path: stop intake, reject new session/connection work, cancel owned
+work, drain, invoke Operations/Job and Managed Process cleanup through their
+respective owners, terminate only actually owned child trees, remove temporary
+resources, emit bounded secret-safe evidence, and exit within a hard limit.
+
+PID alone is never ownership authority. Process age, idle time, low CPU,
+absence of requests, and apparent duplicate instances are not orphan proof.
+A retained or duplicated pipe handle can delay EOF, a long-lived app server or
+wrapper can outlive a logical agent, and a live proxy-service connection does
+not prove that agent is alive. If owner, transport, and process still appear
+live and no negotiated lease/control contract proves loss, classify the
+instance as `SUSPECTED_STALE` and do not terminate it automatically.
+`DEFINITELY_ORPHANED` requires conclusive ownership and transport evidence.
+
+Direct mode expects one full FlashGate process per active MCP client transport.
+The implemented service model will expect one persistent full service plus one
+lightweight edge proxy per active client transport. Additional workers or
+managed children must be explicitly classified and diagnosable.
+
+The shared-service layer solves repeated heavy startup, multi-client service
+sharing, connection/principal-bound resource cleanup, SCM/systemd supervision,
+and generation-based stale-handle invalidation. It does not prevent a leaked
+edge proxy, prove logical-agent lifetime, force EOF past a retained pipe, or
+make an idle-timeout safe.
+
+BL-341 owns implementation of this contract together with the SPR-60 transport
+and service work. BL-241 owns the complete integrated Windows/Linux validation
+matrix. ADR-0017 is normative.
+
 ## Version 1.0 runtime modes
 
 ### Direct STDIO
@@ -243,8 +287,14 @@ It defines:
 - audit/trace correlation identifiers;
 - graceful shutdown indication;
 - service generation used to invalidate stale handles.
+- connection/session ownership identity and disconnect cancellation;
+- an optional, versioned lease/heartbeat only when both FlashGate-controlled
+  peers explicitly negotiate it.
 
 The IPC protocol is not a second public MCP contract and does not become a remote RPC framework.
+
+Direct STDIO requires no proprietary MCP heartbeat. A normal proxy disconnect
+cleans connection-owned service state but does not stop the persistent service.
 
 Payload-heavy responses follow the single-transmission rule. The proxy must not deserialize and reserialize large content unnecessarily when a bounded forwarding path is possible.
 
@@ -483,6 +533,17 @@ Portable extraction and direct STDIO remain possible without an installer.
 - child-process resource limits where supported;
 - no in-process impersonation path.
 
+BL-241 also covers normal STDIN EOF and transport closure; broken pipe; client
+crash/kill; verified owner death; retained or duplicated pipe handles; long
+legitimate idle without false-positive cleanup; OS stop/signal; optional lease
+expiry and relevant reconnect/version mismatch; proxy-death cleanup of
+connection-owned service state; continued service operation after ordinary
+client disconnect; bounded Operations/Job and Managed Child cleanup; PID
+reuse; stale instance/registry state; repeated parallel starts/closes; return
+to the documented direct/service process baseline; and zero remaining
+`DEFINITELY_ORPHANED` hosts or owned children after conclusive loss plus the
+bounded shutdown window.
+
 ### Compatibility tests
 
 - equal and supported-skew proxy/service versions;
@@ -514,7 +575,7 @@ Version 1.0 also includes the pinned cross-project filesystem benchmark.
 
 ### SPR-59 — architecture, contracts, identity, and security
 
-Backlog: `BL-221`–`BL-225`, `BL-233`–`BL-239`, `BL-166`, and `BL-341`.
+Backlog: `BL-221`–`BL-225`, `BL-233`–`BL-239`, and `BL-166`.
 
 Deliverables:
 
@@ -527,11 +588,10 @@ Deliverables:
 - Variant B contract and threat model;
 - identity-bound state model;
 - audit lifecycle and correlation.
-- cross-mode host-process ownership, instance identity, bounded shutdown, and orphan classification.
 
 ### SPR-60 — transports and Version 1.0 system hosts
 
-Backlog: `BL-226`–`BL-231`.
+Backlog: `BL-226`–`BL-231` and `BL-341`.
 
 Deliverables:
 
@@ -542,6 +602,8 @@ Deliverables:
 - Windows SCM system service;
 - Linux systemd system service;
 - Variant A service-account root execution.
+- cross-mode host-process ownership, deterministic shutdown, instance
+  diagnostics, typed exit classification, and orphan prevention.
 
 `BL-232` user-scoped hosts and `BL-240` user workers remain post-Version-1.0.
 

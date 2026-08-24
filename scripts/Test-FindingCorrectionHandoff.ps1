@@ -1822,9 +1822,29 @@ try {
         }
         $historicalPaths = @(Get-ExpandedScopePaths -Entries $historicalEntriesList)
         $historicalCanonicalPaths = @(Get-CanonicalSet -Value $historicalPaths -Label 'CORRECTION-HISTORICAL-SCOPE-PATHS')
+        $historicalPathCountProperty = $historicalScope.PSObject.Properties['pathCount']
+        $historicalUsesDeclaredPathCount = $null -ne $historicalPathCountProperty
+        $historicalResolvedPathCount = $historicalEntriesList.Count
+        $historicalGenericScopePass = $false
+        if (-not $historicalUsesDeclaredPathCount) {
+            $historicalProfileProperty = $historicalScope.PSObject.Properties['profile']
+            $historicalAllowedPathsProperty = $historicalScope.PSObject.Properties['allowedDeltaPaths']
+            if ($null -ne $historicalProfileProperty -and $null -ne $historicalAllowedPathsProperty) {
+                $historicalAllowedPaths = @(Get-CanonicalSet -Value @($historicalScope.allowedDeltaPaths) `
+                        -Label 'CORRECTION-HISTORICAL-GENERIC-ALLOWED-PATHS')
+                $historicalGenericScopePass = (
+                    [string]$historicalScope.profile -ceq 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW' -and
+                    ($historicalAllowedPaths -join "`n") -ceq ($historicalCanonicalPaths -join "`n")
+                )
+            }
+        }
+        Add-Result -Id 'CORRECTION-HISTORICAL-SCOPE-INTERNAL-PATHCOUNT' -Passed (
+            ($historicalUsesDeclaredPathCount -and [int]$historicalScope.pathCount -eq $historicalEntriesList.Count) -or
+            (-not $historicalUsesDeclaredPathCount -and $historicalGenericScopePass)
+        ) -Evidence "declared=$(if($historicalUsesDeclaredPathCount){$historicalScope.pathCount}else{'ABSENT_GENERIC'});entries=$($historicalEntriesList.Count);paths=$($historicalCanonicalPaths.Count);generic=$historicalGenericScopePass"
         Add-Result -Id 'CORRECTION-HISTORICAL-SCOPE-PREVIOUS-COUNT' -Passed (
             [int]$previousState.previousReviewedPathCount -eq $historicalSemanticEntryCount
-        ) -Evidence "previous=$($previousState.previousReviewedPathCount);semanticEntries=$historicalSemanticEntryCount;paths=$($historicalCanonicalPaths.Count);profile=$historicalPackageProfile"
+        ) -Evidence "previous=$($previousState.previousReviewedPathCount);semanticEntries=$historicalSemanticEntryCount;paths=$($historicalCanonicalPaths.Count);profile=$historicalPackageProfile;resolvedEntries=$historicalResolvedPathCount;generic=$historicalGenericScopePass"
         $historicalPatchPath = Join-Path $context.Root 'historical.patch'
         [System.IO.File]::WriteAllBytes($historicalPatchPath, $historicalEntries['current-delta.patch'])
         Invoke-IsolatedGitText @('read-tree', [string]$previousState.previousReviewedBaselineCommit) | Out-Null
@@ -1842,7 +1862,7 @@ try {
             })
         Assert-EqualSet $historicalCanonicalPaths $historicalInventoryPaths 'CORRECTION-HISTORICAL-SCOPE-PATCH-INVENTORY'
         $boundPostimages = @($previousState.previousReviewedPostimages)
-        Assert-EqualSet @($boundPostimages | ForEach-Object path) $currentPaths 'CORRECTION-PREVIOUS-POSTIMAGE-COVERAGE'
+        Assert-EqualSet @($boundPostimages | ForEach-Object path) $historicalCanonicalPaths 'CORRECTION-PREVIOUS-POSTIMAGE-COVERAGE'
         foreach ($bound in $boundPostimages) {
             $actual = Get-TreePostimage -Tree $previousTree -Path ([string]$bound.path)
             Add-Result -Id ('CORRECTION-PREVIOUS-POSTIMAGE-' + [string]$bound.path) -Passed (
