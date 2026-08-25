@@ -82,3 +82,13 @@ Sprint 3.42 completed the technical rename. The binary is `flashgate-mcp` and th
 ## Amendment - 2026-07-17
 
 ADR-0014 accepts an optional native multi-mode deployment in the same executable. STDIO remains the implemented transport and the required MCP-client-facing transport for direct and proxy operation. A future service process may use Windows Named Pipes or Linux Unix Domain Sockets as an internal local transport between FlashGate processes. This does not authorize remote TCP/HTTP transport and does not change the current no-argument STDIO behavior.
+
+## Amendment - 2026-08-13
+
+Direct STDIO is one session-scoped FlashGate process per client launch and MCP
+transport session. Normal EOF or definitive transport loss initiates the one
+bounded process-root shutdown path. Parent or logical-agent liveness is never
+inferred from PID alone, and multiple simultaneous direct processes are valid
+when they belong to distinct active transports. ADR-0017 is authoritative for
+top-level host ownership, typed lifecycle evidence, safe stale/orphan
+classification, and orphan prevention.

@@ -40,6 +40,174 @@ function Get-OrdinalSortedUniqueStrings {
     return @($set)
 }
 
+function Invoke-BacklogDoneNonRegressionFixtureMatrix {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepositoryRoot,
+        [Parameter(Mandatory)][string]$TemporaryRoot,
+        [Parameter(Mandatory)][string]$ValidatorPath,
+        [Parameter(Mandatory)][string]$GitExecutable,
+        [Parameter(Mandatory)][string]$PowerShellExecutable,
+        [Parameter(Mandatory)][string]$BaselineCommit
+    )
+
+    $fixtureRepositoryRoot = Join-Path $TemporaryRoot 'backlog-done-nonregression-repository'
+    $cloneArguments = @(
+        'clone',
+        '--quiet',
+        '--no-hardlinks',
+        '--',
+        $RepositoryRoot,
+        $fixtureRepositoryRoot
+    )
+    $cloneOutput = @(& $GitExecutable @cloneArguments 2>&1)
+    $cloneExit = $LASTEXITCODE
+    if ($cloneExit -ne 0) {
+        return [pscustomobject]@{
+            Passed = $false
+            Diagnostic = 'cloneExit={0}; output={1}' -f
+                $cloneExit,
+                ($cloneOutput -join [Environment]::NewLine)
+        }
+    }
+
+    $fixtureValidatorPath = Join-Path $fixtureRepositoryRoot 'scripts/Test-GovernanceConsistency.ps1'
+    Copy-Item -LiteralPath $ValidatorPath -Destination $fixtureValidatorPath -Force
+    $backlogPath = Join-Path $fixtureRepositoryRoot 'BACKLOG.md'
+    $baselineBacklogText = [System.IO.File]::ReadAllText(
+        $backlogPath,
+        [System.Text.UTF8Encoding]::new($false, $true)
+    )
+    $rowPattern = '(?m)^\| (BL-(?<number>[0-9]{3})) \| (?<status>Ready|Planned|Later|Blocked|Done|In Progress) \|[^\r\n]*(?:\r?\n|$)'
+    $rowMatches = @([regex]::Matches($baselineBacklogText, $rowPattern))
+    $plannedRow = @($rowMatches | Where-Object { $_.Groups['status'].Value -ceq 'Planned' })[0]
+    $doneRow = @($rowMatches | Where-Object { $_.Groups['status'].Value -ceq 'Done' })[0]
+    if ($null -eq $plannedRow -or $null -eq $doneRow) {
+        return [pscustomobject]@{
+            Passed = $false
+            Diagnostic = 'The fixture baseline requires at least one Planned row and one Done row.'
+        }
+    }
+
+    $obsoleteQueueLiteral = 'schedule BL-' +
+        '340 independently in SPR-61 -> final documentation convergence -> ' +
+        'Local Work Register dissolution audit -> separately authorized Local Work Register removal'
+    $doneRowLineEnding = if ($doneRow.Value.EndsWith("`r`n", [System.StringComparison]::Ordinal)) {
+        "`r`n"
+    }
+    elseif ($doneRow.Value.EndsWith("`n", [System.StringComparison]::Ordinal)) {
+        "`n"
+    }
+    else {
+        ''
+    }
+    $doneRowBody = $doneRow.Value.TrimEnd([char[]]@("`r", "`n"))
+    $doneRowWithChangedText = $doneRowBody.Insert(
+        $doneRowBody.LastIndexOf('|'),
+        'fixture text revised '
+    ) + $doneRowLineEnding
+    $definitions = @(
+        [pscustomobject]@{
+            Name = 'positive-planned-to-done'
+            ExpectedExit = 0
+            Mutation = $baselineBacklogText.Remove($plannedRow.Index, $plannedRow.Length).Insert(
+                $plannedRow.Index,
+                $plannedRow.Value.Replace('| Planned |', '| Done |')
+            )
+        },
+        [pscustomobject]@{
+            Name = 'positive-done-to-done-changed-text'
+            ExpectedExit = 0
+            Mutation = $baselineBacklogText.Remove($doneRow.Index, $doneRow.Length).Insert(
+                $doneRow.Index,
+                $doneRowWithChangedText
+            )
+        },
+        [pscustomobject]@{
+            Name = 'negative-done-to-planned'
+            ExpectedExit = 1
+            Mutation = $baselineBacklogText.Remove($doneRow.Index, $doneRow.Length).Insert(
+                $doneRow.Index,
+                $doneRow.Value.Replace('| Done |', '| Planned |')
+            )
+        },
+        [pscustomobject]@{
+            Name = 'negative-done-missing'
+            ExpectedExit = 1
+            Mutation = $baselineBacklogText.Remove($doneRow.Index, $doneRow.Length)
+        },
+        [pscustomobject]@{
+            Name = 'positive-obsolete-queue-literal-absent'
+            ExpectedExit = 0
+            Mutation = $baselineBacklogText.Replace($obsoleteQueueLiteral, 'retired queue wording')
+        }
+    )
+
+    $caseResults = [System.Collections.Generic.List[object]]::new()
+    foreach ($definition in $definitions) {
+        [System.IO.File]::WriteAllText(
+            $backlogPath,
+            [string]$definition.Mutation,
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        $reportPath = Join-Path $TemporaryRoot ("backlog-$($definition.Name)-report.json")
+        $validatorOutput = @(
+            & $PowerShellExecutable -NoLogo -NoProfile -File $fixtureValidatorPath `
+                -RepositoryRoot $fixtureRepositoryRoot `
+                -TrackedPath 'BACKLOG.md' `
+                -ExpectedBaselineCommit $BaselineCommit `
+                -ReportPath $reportPath 2>&1
+        )
+        $validatorExit = $LASTEXITCODE
+        $report = if (Test-Path -LiteralPath $reportPath -PathType Leaf) {
+            Get-Content -LiteralPath $reportPath -Raw -Encoding UTF8 |
+                ConvertFrom-Json -Depth 100 -DateKind String
+        }
+        else {
+            $null
+        }
+        $doneCheck = if ($null -ne $report) {
+            @(
+                @($report.checks) |
+                    Where-Object { [string]$_.Id -ceq 'BACKLOG-DONE-NONREGRESSION' }
+            )
+        }
+        else {
+            @()
+        }
+        $expectedCheckResult = if ([int]$definition.ExpectedExit -eq 0) { 'PASS' } else { 'FAIL' }
+        $obsoleteLiteralAbsent = (
+            [string]$definition.Name -cne 'positive-obsolete-queue-literal-absent' -or
+            -not ([string]$definition.Mutation).Contains(
+                $obsoleteQueueLiteral,
+                [System.StringComparison]::Ordinal
+            )
+        )
+        $casePassed = (
+            $validatorExit -eq [int]$definition.ExpectedExit -and
+            $doneCheck.Count -eq 1 -and
+            [string]$doneCheck[0].Result -ceq $expectedCheckResult -and
+            $obsoleteLiteralAbsent
+        )
+        $caseResults.Add([pscustomobject]@{
+            Name = [string]$definition.Name
+            ExpectedExit = [int]$definition.ExpectedExit
+            ActualExit = $validatorExit
+            ExpectedCheckResult = $expectedCheckResult
+            ActualCheckResult = if ($doneCheck.Count -eq 1) { [string]$doneCheck[0].Result } else { $null }
+            ObsoleteLiteralAbsent = $obsoleteLiteralAbsent
+            Passed = $casePassed
+            Output = if ($casePassed) { '' } else { $validatorOutput -join [Environment]::NewLine }
+        })
+    }
+
+    return [pscustomobject]@{
+        Passed = @($caseResults | Where-Object { -not $_.Passed }).Count -eq 0
+        Diagnostic = @($caseResults | Where-Object { -not $_.Passed }) |
+            ConvertTo-Json -Depth 10 -Compress
+    }
+}
+
 function Write-StructuredResultAndExit {
     [CmdletBinding()]
     param(
@@ -3616,31 +3784,47 @@ try {
 
     $completeTrackedPathFixtureName = [string]$scopeInventoryFixtureNames[0]
     if ($completeTrackedPathFixtureName -cin $selectedFixtureNames) {
-    $coverageOutput = @(
-        & $pwsh -NoLogo -NoProfile -File $validatorPath `
-            -RepositoryRoot $resolvedRepositoryRoot 2>&1
-    )
-    $coverageExit = $LASTEXITCODE
-    [void]$results.Add([pscustomobject]@{
-        Name = $completeTrackedPathFixtureName
-        ExpectedExit = 0
-        ActualExit = $coverageExit
-        Result = if ($coverageExit -eq 0) { 'PASS' } else { 'FAIL' }
-        Diagnostic = if ($coverageExit -eq 0) { '' } else { ($coverageOutput -join [Environment]::NewLine) }
-    })
-    $lastCompletedFixture = $completeTrackedPathFixtureName
-    if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
-        [System.IO.File]::AppendAllText(
-            $ProgressPath,
-            (([ordered]@{
-                CompletedAt = [DateTimeOffset]::Now.ToString('o')
-                FixtureNumber = $results.Count
-                Name = $lastCompletedFixture
-                Result = $results[$results.Count - 1].Result
-            } | ConvertTo-Json -Compress) + [Environment]::NewLine),
-            [System.Text.UTF8Encoding]::new($false)
+        $coverageOutput = @(
+            & $pwsh -NoLogo -NoProfile -File $validatorPath `
+                -RepositoryRoot $resolvedRepositoryRoot 2>&1
         )
-    }
+        $coverageExit = $LASTEXITCODE
+        $backlogMatrix = Invoke-BacklogDoneNonRegressionFixtureMatrix `
+            -RepositoryRoot $resolvedRepositoryRoot `
+            -TemporaryRoot $temporaryRoot `
+            -ValidatorPath $validatorPath `
+            -GitExecutable $gitExecutable `
+            -PowerShellExecutable $pwsh `
+            -BaselineCommit $actualHead
+        $coveragePassed = $coverageExit -eq 0 -and [bool]$backlogMatrix.Passed
+        [void]$results.Add([pscustomobject]@{
+            Name = $completeTrackedPathFixtureName
+            ExpectedExit = 0
+            ActualExit = if ($coveragePassed) { 0 } else { 1 }
+            Result = if ($coveragePassed) { 'PASS' } else { 'FAIL' }
+            Diagnostic = if ($coveragePassed) {
+                ''
+            }
+            else {
+                (
+                    "coverageExit=$coverageExit; backlogMatrix=$($backlogMatrix.Diagnostic)`n" +
+                    ($coverageOutput -join [Environment]::NewLine)
+                )
+            }
+        })
+        $lastCompletedFixture = $completeTrackedPathFixtureName
+        if (-not [string]::IsNullOrWhiteSpace($ProgressPath)) {
+            [System.IO.File]::AppendAllText(
+                $ProgressPath,
+                (([ordered]@{
+                    CompletedAt = [DateTimeOffset]::Now.ToString('o')
+                    FixtureNumber = $results.Count
+                    Name = $lastCompletedFixture
+                    Result = $results[$results.Count - 1].Result
+                } | ConvertTo-Json -Compress) + [Environment]::NewLine),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+        }
     }
 
     $unclassifiedTrackedPathFixtureName = [string]$scopeInventoryFixtureNames[1]

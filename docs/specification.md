@@ -22,6 +22,24 @@ Version 1.0 shall:
 8. publish an explicit protocol and extension compatibility matrix;
 9. meet the release gate in `BL-263`.
 
+## Host-lifecycle nonfunctional requirements
+
+The accepted target shall assign an explicit authoritative owner and expected
+lifetime to every direct, proxy/auto edge, system service, future user host,
+and future worker role. Session-scoped hosts shall use one process-root
+coordinator and complete deterministic bounded shutdown after a definitive
+signal, including cancellation, drain, owned-child/domain cleanup, temporary
+resource cleanup, and a typed final result.
+
+Instance and exit diagnostics shall be bounded and secret-safe and shall bind
+PID to process start identity or a verified operating-system handle. PID alone
+is not authoritative. Age, idle time, CPU use, active-request count, and
+singleton assumptions shall never independently authorize termination.
+Ambiguous live-owner/live-transport cases shall be classified
+`SUSPECTED_STALE`, not automatically killed. After conclusive ownership or
+transport loss plus the bounded shutdown window, zero
+`DEFINITELY_ORPHANED` session-scoped hosts or owned children may remain.
+
 ## Runtime modes
 
 - `stdio`: direct MCP server in the caller process identity.

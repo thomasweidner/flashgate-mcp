@@ -8,6 +8,14 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Completed BL-340 through PR #42. The independently reviewed head
+  `39665dc861d96317a37a616cad81a4e1a199473e` was integrated by Classic after
+  explicit user approval with merge commit
+  `b20e8311fd976ca9a87c8a652be3fb631c6d40df`; the user then removed the remote
+  feature branch and Classic verified it absent. BL-340 is `Done` with
+  `OpenFindingCount=0`. The separate post-completion infrastructure finding
+  `INF158-REV-050` records Single-Maintainer MERGE applicability and does not
+  reopen or block BL-340.
 - Prepared the local BL-340 governance generator/profile migration for
   independent review. The BL-339 orchestrator now has exact intended-base,
   merge-base, effective-PR-scope/patch, integration-projection, authorized-write
@@ -51,11 +59,18 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   `standard` gate passed with 12 results, 11 validation commands, unchanged
   Windows source, and zero warnings or failures. Post-merge CI #122, Metadata
   Regression #51, and CodeQL #68 all passed on the merge commit; BL-338 is
-  `Done` with `OpenFindingCount=0`. BL-337 and BL-340 remain `Planned` and are
-  not implemented by BL-338.
+  `Done` with `OpenFindingCount=0`. BL-337 remains `Planned`; BL-340 was not
+  implemented by BL-338 and was completed separately through PR #42.
 
 ### Planning
 
+- Formally closed BL-341 planning, architecture, documentation, and review work
+  without runtime implementation. The focused independent delta review passed
+  and closed `BL-341-REV-001`, `BL-341-REV-002`, and `BL-341-REV-003` with no new
+  finding, warning, or failure. BL-341 remains `Planned` in SPR-60 with
+  `RuntimeImplementationStatus=NOT_STARTED / PLANNED`; BL-340 remained a
+  separate task and was later completed through PR #42.
+- Converged ADR-0017 and active host-lifecycle planning without runtime implementation: BL-341 remains `Planned` but now owns the later cross-mode ownership, deterministic shutdown, diagnostics, and orphan-prevention implementation in SPR-60; BL-223/224/225 define its contracts, BL-241 owns the integrated Windows/Linux lifecycle matrix, and BL-263 retains the Version 1.0 release gate. Direct/proxy edges remain session-scoped, services remain persistent, and heuristic idle/PID/singleton termination is prohibited.
 - Defined the Version 1.0 release boundary: canonical `Planned` backlog tasks are required for the initial stable release and `Later` tasks are accepted post-Version-1.0 work.
 - Adopted hybrid per-root service execution identity. Version 1.0 implements dedicated service-account roots (Variant A), defines backend-neutral contracts for later per-user workers (Variant B), and permanently excludes in-process impersonation (Variant C).
 - Added the native multi-mode runtime plan for direct STDIO, proxy, auto, Windows SCM service, and Linux systemd service operation in one native binary. User-scoped persistent hosts and the per-user worker runtime remain post-Version-1.0.

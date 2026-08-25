@@ -423,6 +423,48 @@ Post-Version-1.0 modes:
 
 The endpoint is local-only. No TCP/HTTP/remote-host listener is included. `auto` never installs, elevates, or falls back after managed authorization/policy/version denial.
 
+## Host-process ownership and lifecycle
+
+This section is an accepted Version 1.0 target; BL-341 remains `Planned` and
+the behavior is not implemented yet.
+
+| Mode or role | Authoritative owner | Lifetime | Loss behavior |
+|---|---|---|---|
+| Direct `stdio` | MCP transport session / client launch | Session-scoped | Bounded shutdown after definitive transport or verified owner loss |
+| `proxy` / proxy path of `auto` | Client-side MCP transport session | Session-scoped lightweight edge | Close service connection, cancel connection-owned work, bounded exit |
+| Direct fallback of `auto` | MCP transport session / client launch | Session-scoped | Same as direct `stdio` |
+| `service` | Windows SCM or Linux systemd | Persistent across clients | Normal client disconnect does not stop the service |
+| Future user host | User-host supervisor | Policy-persistent | Supervisor lifecycle |
+| Future worker | FlashGate broker/service | Broker-owned | Bounded shutdown after verified control-channel or negotiated lease loss |
+
+Exactly one transport-neutral process-root lifecycle coordinator receives
+definitive EOF/transport-close, broken-pipe, negotiated protocol shutdown, OS
+stop, verified owner/control-channel loss, and explicitly negotiated lease
+expiry signals. The first signal stores a typed reason, stops intake, cancels
+session/connection-owned work, and performs bounded drain and cleanup. Host
+adapters report signals; Operations/Jobs and Managed Process cleanup remain
+with their respective domain owners and are invoked after root cancellation.
+
+The direct baseline is one full FlashGate process per active MCP client
+transport. The shared-service baseline is one persistent full service plus one
+lightweight edge proxy per active client transport. Multiple processes are not
+an error by themselves; workers and managed children must be explicitly
+classified.
+
+Lifecycle evidence is bounded and secret-safe. It records instance/mode/PID
+plus process-start identity, verified owner state, client identity where
+available, service generation or connection ID, activity/request counts,
+shutdown time/reason, cleanup result, and one of `ACTIVE_SESSION`,
+`EXPECTED_PERSISTENT_SERVICE`, `SHUTTING_DOWN`, `DEFINITELY_ORPHANED`,
+`SUSPECTED_STALE`, `EXITED_CLEANLY`, or `EXITED_FORCED`. PID alone, process
+age, idle/CPU/request-count heuristics, or singleton assumptions never
+authorize termination. Ambiguous live-owner/live-transport cases remain
+`SUSPECTED_STALE` and are not automatically killed.
+
+See [ADR-0017](adr/0017-host-process-ownership-and-lifecycle.md) for the
+normative contract and BL-341 in [BACKLOG.md](../BACKLOG.md) for the later
+technical implementation.
+
 ## Audit and trace architecture
 
 Audit events are bounded, redacted, and correlation-aware. They include both requested caller and effective backend identity where relevant.

@@ -109,6 +109,44 @@ check() {
     fi
 }
 
+failure_reason_matches() {
+    local actual_reason="$1"
+    local expected_reason="$2"
+    local alternative_reason="${3:-}"
+
+    [[ "$actual_reason" == "$expected_reason" ]] ||
+        [[ -n "$alternative_reason" &&
+            "$actual_reason" == "$alternative_reason" ]]
+}
+
+check "$(
+    failure_reason_matches \
+        ReadyChildNotAliveAfterActivated \
+        ReadyChildNotAliveAfterActivated \
+        ReadyChildNotAliveBeforeTimeout &&
+        printf true || printf false
+)" "failure-reason matcher accepts exit after ACTIVATED"
+check "$(
+    failure_reason_matches \
+        ReadyChildNotAliveBeforeTimeout \
+        ReadyChildNotAliveAfterActivated \
+        ReadyChildNotAliveBeforeTimeout &&
+        printf true || printf false
+)" "failure-reason matcher accepts exit before timeout"
+check "$(
+    ! failure_reason_matches \
+        ReadyChildNotAliveAfterRelease \
+        ReadyChildNotAliveAfterActivated \
+        ReadyChildNotAliveBeforeTimeout &&
+        printf true || printf false
+)" "failure-reason matcher rejects an unrelated reason"
+check "$(
+    ! failure_reason_matches \
+        ReadyChildNotAliveBeforeTimeout \
+        ReadyChildNotAliveAfterRelease &&
+        printf true || printf false
+)" "single failure-reason matching remains exact"
+
 wait_for_file() {
     local path="$1"
     local timeout_seconds="$2"
@@ -388,7 +426,7 @@ for race_iteration in 1 2 3; do
         "exit-before-release-${race_iteration}|exit-before-release|ReadyChildNotAlive|15|false|ready|valid"
         "exit-after-release-${race_iteration}|exit-after-release|ReadyChildNotAliveAfterRelease|15|false|ready|valid"
         "exit-after-released-${race_iteration}|exit-after-released|ReadyChildNotAliveBeforeTimeout|15|false|ready|valid"
-        "exit-after-activated-${race_iteration}|exit-after-activated|ReadyChildNotAliveBeforeTimeout|15|false|ready|valid"
+        "exit-after-activated-${race_iteration}|exit-after-activated|ReadyChildNotAliveAfterActivated|15|false|ready|valid|ReadyChildNotAliveBeforeTimeout"
         "exit-after-final-check-${race_iteration}|exit-after-final-check|ReadyChildNotAliveBeforeTimeout|15|false|ready|valid"
         "parent-exit-before-release-${race_iteration}|parent-exit-before-release|ReadyParentNotAlive|15|false|ready|valid"
         "parent-exit-after-released-${race_iteration}|parent-exit-after-released|ReadyParentNotAlive|15|false|ready|valid"
@@ -406,7 +444,8 @@ for negative_ready_spec in "${negative_ready_specs[@]}"; do
         ready_start_timeout \
         release_write_failure \
         record_target \
-        record_variant <<<"$negative_ready_spec"
+        record_variant \
+        alternative_ready_reason <<<"$negative_ready_spec"
     run_ready_barrier \
         "$ready_name" \
         "$ready_mode" \
@@ -432,7 +471,11 @@ for negative_ready_spec in "${negative_ready_specs[@]}"; do
         [[ "$FG_PROCESS_ATTEMPTED" == true &&
             "$FG_PROCESS_STATUS" == FAIL &&
             "$FG_PROCESS_TIMED_OUT" == false &&
-            "$FG_PROCESS_FAILURE_REASON" == "$expected_ready_reason" &&
+            $(failure_reason_matches \
+                "$FG_PROCESS_FAILURE_REASON" \
+                "$expected_ready_reason" \
+                "$alternative_ready_reason" &&
+                printf true || printf false) == true &&
             "$FG_BARRIER_TIMEOUT_AFTER_READY" == false &&
             "$FG_BARRIER_ELAPSED_SECONDS" -lt "$maximum_elapsed_seconds" &&
             "$controlled_child_exited" == true ]] &&
@@ -440,7 +483,7 @@ for negative_ready_spec in "${negative_ready_specs[@]}"; do
     )"
     negative_case_name="${ready_name} fails bounded before timeout activation"
     if [[ "$negative_condition" != true ]]; then
-        negative_case_name+=" [Status=${FG_PROCESS_STATUS};TimedOut=${FG_PROCESS_TIMED_OUT};Reason=${FG_PROCESS_FAILURE_REASON};Expected=${expected_ready_reason};AfterReady=${FG_BARRIER_TIMEOUT_AFTER_READY};Elapsed=${FG_BARRIER_ELAPSED_SECONDS};ChildPid=${FG_BARRIER_CONTROLLED_CHILD_PID};ChildExited=${controlled_child_exited}]"
+        negative_case_name+=" [Status=${FG_PROCESS_STATUS};TimedOut=${FG_PROCESS_TIMED_OUT};Reason=${FG_PROCESS_FAILURE_REASON};Expected=${expected_ready_reason};Alternative=${alternative_ready_reason};AfterReady=${FG_BARRIER_TIMEOUT_AFTER_READY};Elapsed=${FG_BARRIER_ELAPSED_SECONDS};ChildPid=${FG_BARRIER_CONTROLLED_CHILD_PID};ChildExited=${controlled_child_exited}]"
     fi
     check "$negative_condition" "$negative_case_name"
     negative_marker_names+=("$ready_name")

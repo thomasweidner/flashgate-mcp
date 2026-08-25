@@ -33,6 +33,16 @@ ADR-0017 defines process ownership and bounded lifecycle behavior for direct
 STDIO, proxy-edge, and persistent service hosts. It refines lifecycle ownership
 without changing the runtime modes accepted by this ADR.
 
+Direct STDIO, proxy edges, and the direct fallback path of `auto` are
+session-scoped. SCM/systemd services are persistent and operating-system owned;
+a normal client disconnect cancels connection-owned work but does not stop the
+service. The shared-service layer reduces repeated heavy FlashGate starts by
+leaving one lightweight STDIO edge per active client transport, but it cannot
+by itself detect the end of a logical agent, force EOF past retained pipe
+handles, or make idle-timeout cleanup safe. ADR-0017 and BL-341 are mandatory
+lifecycle dependencies of the later BL-226 through BL-231 multi-mode
+implementation.
+
 ## Rationale
 
 One executable minimizes release and operational complexity while preserving a portable path for every user. Explicit process modes allow platform service integration without coupling the local core to SCM, systemd, Named Pipes, Unix sockets, or STDIO. A local-only proxy keeps compatibility with MCP clients that expect to launch a STDIO server.

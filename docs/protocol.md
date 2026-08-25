@@ -126,6 +126,20 @@ The final supported protocol matrix decides whether and how the MCP Tasks Extens
 
 Deprecated MCP Roots, Sampling, and Logging are not architectural dependencies. FlashGate named roots are server configuration and authorization objects, not client-provided trust roots.
 
+## Host lifecycle and connection ownership
+
+EOF or transport close is a host-lifecycle event, not a public tool result.
+Direct STDIO needs no proprietary MCP heartbeat: normal EOF, definitive
+transport failure, supported explicit shutdown, or an OS stop signal enters
+the process-root bounded shutdown path defined by ADR-0017.
+
+Lease or heartbeat behavior is permitted only as internal, versioned, and
+explicitly negotiated IPC between FlashGate-controlled proxy/service or future
+broker/worker peers. It is never silently inferred from public MCP traffic.
+Every proxy connection has a connection/session ownership identity. Disconnect
+cancels and cleans connection-owned work and partial results, but does not stop
+the persistent SCM/systemd service.
+
 ## Limits and backpressure
 
 Every transport enforces bounded:

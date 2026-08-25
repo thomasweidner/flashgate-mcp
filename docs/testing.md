@@ -165,6 +165,19 @@ profiles. The productive
 tree, verifies per-path postimages, applies both patches in isolated Git object
 and index storage, parses the report JSON against
 `finding-correction-report-contract.schema.json`, and validates report parity,
+Historical immutable review packages may use either the legacy declared
+`pathCount` scope or the generic implementation-review scope without that
+field. The latter is accepted only when its profile is explicitly
+`IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` and its `allowedDeltaPaths` exactly
+equal the expanded historical entry paths; missing classification or path
+parity fails closed.
+
+The immutable previous-review postimage set binds exactly those canonical
+historical paths. A directly caused correction may add paths outside that old
+review scope only when their preimages bind to the reconstructed previous tree
+and the correction/current tree parity remains exact. The fixture matrix covers
+this expansion positively and continues to reject historical scope or path
+parity drift.
 
 The focused matrix additionally includes a valid two-finding contract and an
 adversarial union-preserving regression-ID swap. Product validation must reject
@@ -930,6 +943,53 @@ Version 1.0 tests Variant A only:
 - proxy/client stdout remains MCP-only.
 
 Variant B worker tests are post-Version 1.0 and require a separate implementation gate.
+
+### BL-241 additive multi-client and host-process lifecycle matrix
+
+BL-241 retains its independent pre-existing multi-client, lifecycle,
+compatibility, and denial contract. The following cases remain separately
+required and discoverable:
+
+- general concurrent-client behavior;
+- normal and abrupt disconnects;
+- service and host restart;
+- stale transport endpoints;
+- shutdown;
+- general IPC, proxy, and service version mismatch;
+- unauthorized access; and
+- fail-closed `auto` behavior.
+
+The ADR-0017 and BL-341 integrated Windows/Linux host-lifecycle matrix below is
+additive. Retained-pipe, lease, PID-reuse, and parallel-start cases do not
+replace any pre-existing case above. The additional required cases are:
+
+- normal STDIN EOF and normal transport closure;
+- unrecoverable read/write pipe failure and broken pipe;
+- client crash or kill;
+- verified owner-process or control-channel death;
+- retained or duplicated pipe handles that delay EOF;
+- long legitimate idle with no false-positive termination;
+- operating-system stop/termination signal;
+- optional negotiated lease expiry, including relevant reconnect and version
+  mismatch behavior;
+- proxy death cleans connection-owned service state;
+- normal client disconnect leaves the persistent service active;
+- bounded Operations/Job cleanup through its owner;
+- bounded Managed Child cleanup through its owner;
+- PID reuse and process-start-identity mismatch;
+- stale instance/runtime-registry state and deterministic evidence-only cleanup;
+- repeated parallel starts and closes;
+- return to the expected process baseline; and
+- after conclusive owner/transport loss plus the bounded shutdown window, zero
+  remaining `DEFINITELY_ORPHANED` session-scoped hosts or owned children.
+
+The direct-mode oracle is one full FlashGate process per active MCP client
+transport session. Multiple direct processes are valid. The shared-service
+oracle is one persistent full FlashGate service plus one lightweight edge proxy
+per active client transport; further processes must be explicitly classified
+as workers or managed children. Ambiguous live-owner/live-transport cases are
+`SUSPECTED_STALE` and the test must prove no heuristic age, idle, CPU,
+request-count, singleton, PID-only, or registry-only termination.
 
 ### Protocol compatibility tests
 

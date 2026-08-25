@@ -1197,10 +1197,11 @@ try {
         $backlogPath,
         [System.Text.UTF8Encoding]::new($false, $true)
     )
+    $backlogRowPattern = '(?m)^\| (BL-(?<number>[0-9]{3})) \| (?<status>Ready|Planned|Later|Blocked|Done|In Progress) \|'
     $backlogTaskMatches = @(
         [regex]::Matches(
             $backlogText,
-            '(?m)^\| (BL-(?<number>[0-9]{3})) \| (?:Ready|Planned|Later|Blocked|Done|In Progress) \|'
+            $backlogRowPattern
         )
     )
     $backlogTaskIds = @($backlogTaskMatches | ForEach-Object { $_.Groups[1].Value })
@@ -1214,28 +1215,44 @@ try {
         -Passed ($maxBacklogId -ge 335 -and $duplicateBacklogIds.Count -eq 0 -and $missingBacklogNumbers.Count -eq 0) `
         -Message 'Backlog IDs are continuous through BL-335 and unique.' `
         -Evidence ('max={0}; duplicates={1}; missing={2}' -f $maxBacklogId, $duplicateBacklogIdText, $missingBacklogNumberText)
-    Add-GovernanceCheck -Id 'BACKLOG-QUEUE' `
-        -Passed $backlogText.Contains(
-            'schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal',
-            [System.StringComparison]::Ordinal
-        ) `
-        -Message 'Backlog records the exact post-BL-324 queue through separate Local Work Register removal.'
-
     if (-not [string]::IsNullOrWhiteSpace($ExpectedBaselineCommit)) {
-        $baselineBacklog = @(& git -C $resolvedRepositoryRoot show "${ExpectedBaselineCommit}:BACKLOG.md")
+        $baselineBacklogLines = @(& git -C $resolvedRepositoryRoot show "${ExpectedBaselineCommit}:BACKLOG.md")
         $baselineBacklogExit = $LASTEXITCODE
-        foreach ($protectedId in @('BL-340')) {
-            $currentLine = @($backlogText -split '\r?\n' | Where-Object { $_ -match "^\| $protectedId \|" })
-            $baselineLine = @($baselineBacklog | Where-Object { $_ -match "^\| $protectedId \|" })
-            Add-GovernanceCheck -Id "BACKLOG-PROTECTED-$protectedId" `
-                -Passed (
-                    $baselineBacklogExit -eq 0 -and
-                    $currentLine.Count -eq 1 -and
-                    $baselineLine.Count -eq 1 -and
-                    $currentLine[0] -ceq $baselineLine[0]
-                ) `
-                -Message "$protectedId canonical acceptance text is unchanged from the trusted baseline."
+        $baselineBacklogText = $baselineBacklogLines -join "`n"
+        $baselineDoneMatches = if ($baselineBacklogExit -eq 0) {
+            @(
+                [regex]::Matches($baselineBacklogText, $backlogRowPattern) |
+                    Where-Object { $_.Groups['status'].Value -ceq 'Done' }
+            )
         }
+        else {
+            @()
+        }
+        $doneRegressions = [System.Collections.Generic.List[string]]::new()
+        foreach ($baselineDoneMatch in $baselineDoneMatches) {
+            $baselineDoneId = $baselineDoneMatch.Groups[1].Value
+            $currentMatches = @(
+                $backlogTaskMatches |
+                    Where-Object { $_.Groups[1].Value -ceq $baselineDoneId }
+            )
+            if ($currentMatches.Count -ne 1) {
+                $doneRegressions.Add("$baselineDoneId`:current-count=$($currentMatches.Count)")
+            }
+            elseif ($currentMatches[0].Groups['status'].Value -cne 'Done') {
+                $doneRegressions.Add(
+                    "$baselineDoneId`:current-status=$($currentMatches[0].Groups['status'].Value)"
+                )
+            }
+        }
+        Add-GovernanceCheck -Id 'BACKLOG-DONE-NONREGRESSION' `
+            -Passed ($baselineBacklogExit -eq 0 -and $doneRegressions.Count -eq 0) `
+            -Message 'Every backlog item that is Done in the trusted baseline remains present exactly once with status Done.' `
+            -Evidence (
+                'baselineExit={0}; baselineDoneCount={1}; regressions={2}' -f
+                $baselineBacklogExit,
+                $baselineDoneMatches.Count,
+                ([string]::Join(', ', [string[]]$doneRegressions))
+            )
     }
 
     if (-not [string]::IsNullOrWhiteSpace($RuntimeCheckpoint)) {
