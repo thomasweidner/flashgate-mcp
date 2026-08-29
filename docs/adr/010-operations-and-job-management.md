@@ -1,4 +1,4 @@
-# ADR-0010: Operations and Job Management
+# ADR-010: Operations and Job Management
 
 ## Status
 
@@ -37,7 +37,7 @@ The server, not an untrusted worker, controls deadlines. Handles are opaque. Res
 
 ## Implementation Guidance
 
-Build registry and lifecycle semantics without moving domain logic into the manager. Add race, cancellation, timeout, shutdown, Windows, Linux, and security tests. Keep MCP mapping in the adapter and follow ADR-0013.
+Build registry and lifecycle semantics without moving domain logic into the manager. Add race, cancellation, timeout, shutdown, Windows, Linux, and security tests. Keep MCP mapping in the adapter and follow ADR-013.
 
 ## Deferred Decisions
 

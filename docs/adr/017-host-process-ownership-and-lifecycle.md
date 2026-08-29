@@ -1,4 +1,4 @@
-# ADR-0017: Host Process Ownership and Lifecycle
+# ADR-017: Host Process Ownership and Lifecycle
 
 ## Status
 
@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-ADR-0014 accepts direct STDIO, proxy, auto, and operating-system service roles
+ADR-014 accepts direct STDIO, proxy, auto, and operating-system service roles
 in one native executable. The same product can therefore have multiple
 legitimate processes whose owners and lifetimes differ. Three previously
 observed FlashGate processes were no longer available when diagnosis was
@@ -205,9 +205,9 @@ insufficient proof that the original logical agent is alive.
   not own the host.
 - BL-230 and BL-231 own SCM and systemd service integration.
 
-ADR-0015 remains authoritative for execution identity, including the permanent
+ADR-015 remains authoritative for execution identity, including the permanent
 prohibition on in-process impersonation. This ADR governs top-level host-process
-ownership and lifecycle only; it neither replaces ADR-0015 nor weakens its
+ownership and lifecycle only; it neither replaces ADR-015 nor weakens its
 caller/effective-identity and execution-backend boundaries.
 
 The dependency flow is BL-223/BL-224/BL-225 contract definition -> BL-341
@@ -276,9 +276,9 @@ explicitly prohibited and testable.
 
 ## Related documents
 
-- [ADR-0003](0003-stdio-transport.md)
-- [ADR-0014](0014-native-multi-mode-runtime-and-local-service-deployment.md)
-- [ADR-0015](0015-hybrid-service-execution-identity.md)
+- [ADR-003](003-stdio-transport.md)
+- [ADR-014](014-native-multi-mode-runtime-and-local-service-deployment.md)
+- [ADR-015](015-hybrid-service-execution-identity.md)
 - [Architecture](../architecture.md)
 - [Native runtime and service plan](../native-multi-mode-runtime-and-service-plan.md)
 - [Security](../security.md)

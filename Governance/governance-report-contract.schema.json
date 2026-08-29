@@ -33,52 +33,108 @@
     "classicReviewReady",
     "commitPreparationApproved",
     "commitAuthorized",
-    "queue"
+    "queue",
+    "relatedPrimaryIds"
   ],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "taskId": { "const": "BL-333/BL-334" },
-    "status": { "const": "FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW" },
-    "executionMode": { "const": "BUNDLED_CORRECTION" },
-    "reviewStatus": { "const": "AWAITING_FOCUSED_DELTA_REVIEW" },
+    "schemaVersion": {
+      "const": 1
+    },
+    "taskId": {
+      "const": "BL-333"
+    },
+    "status": {
+      "const": "FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW"
+    },
+    "executionMode": {
+      "const": "BUNDLED_CORRECTION"
+    },
+    "reviewStatus": {
+      "const": "AWAITING_FOCUSED_DELTA_REVIEW"
+    },
     "findingIds": {
       "const": [
-        "BL333-BL334-REV-013",
-        "BL333-BL334-REV-015"
+        "BL-333-REV-013",
+        "BL-333-REV-015"
       ]
     },
     "closedFindings": {
       "const": [
-        "BL333-BL334-REV-007",
-        "BL333-BL334-REV-008",
-        "BL333-BL334-REV-010"
+        "BL-333-REV-007",
+        "BL-333-REV-008",
+        "BL-333-REV-010"
       ]
     },
-    "findingStatus": { "const": "CORRECTED_PENDING_DELTA" },
-    "run007Status": { "const": "CORRECTED_PENDING_DELTA" },
-    "requiredReviewMode": { "const": "FOCUSED_INDEPENDENT_DELTA_REVIEW" },
-    "targetFindingCount": { "const": 2 },
-    "correctedFindingCount": { "const": 2 },
-    "pendingDeltaFindingCount": { "const": 2 },
-    "closedFindingCount": { "const": 3 },
-    "openFindingCount": { "const": 0 },
-    "nextAction": {
-      "const": "Perform only the focused independent delta review of BL333-BL334-REV-013 and BL333-BL334-REV-015 with the new verified review package."
+    "findingStatus": {
+      "const": "CORRECTED_PENDING_DELTA"
     },
-    "repositoryPaths": { "$ref": "#/$defs/nonEmptyStringArray" },
-    "referenceOnlyPaths": { "$ref": "#/$defs/nonEmptyStringArray" },
-    "directInterfacePaths": { "$ref": "#/$defs/nonEmptyStringArray" },
-    "regressionTestIds": { "$ref": "#/$defs/nonEmptyStringArray" },
-    "externalPaths": { "$ref": "#/$defs/nonEmptyStringArray" },
-    "correctionPatchArtifact": { "const": "correction-only.patch" },
-    "correctionPatchSha256": { "$ref": "#/$defs/sha256" },
-    "currentDeltaArtifact": { "const": "current-delta.patch" },
-    "currentDeltaSha256": { "$ref": "#/$defs/sha256" },
-    "classicReviewReady": { "const": true },
-    "commitPreparationApproved": { "const": false },
-    "commitAuthorized": { "const": false },
+    "run007Status": {
+      "const": "CORRECTED_PENDING_DELTA"
+    },
+    "requiredReviewMode": {
+      "const": "FOCUSED_INDEPENDENT_DELTA_REVIEW"
+    },
+    "targetFindingCount": {
+      "const": 2
+    },
+    "correctedFindingCount": {
+      "const": 2
+    },
+    "pendingDeltaFindingCount": {
+      "const": 2
+    },
+    "closedFindingCount": {
+      "const": 3
+    },
+    "openFindingCount": {
+      "const": 0
+    },
+    "nextAction": {
+      "const": "Perform only the focused independent delta review of BL-333-REV-013 and BL-333-REV-015 with the new verified review package."
+    },
+    "repositoryPaths": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "referenceOnlyPaths": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "directInterfacePaths": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "regressionTestIds": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "externalPaths": {
+      "$ref": "#/$defs/nonEmptyStringArray"
+    },
+    "correctionPatchArtifact": {
+      "const": "correction-only.patch"
+    },
+    "correctionPatchSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "currentDeltaArtifact": {
+      "const": "current-delta.patch"
+    },
+    "currentDeltaSha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "classicReviewReady": {
+      "const": true
+    },
+    "commitPreparationApproved": {
+      "const": false
+    },
+    "commitAuthorized": {
+      "const": false
+    },
     "queue": {
-      "const": "BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register"
+      "const": "BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence"
+    },
+    "relatedPrimaryIds": {
+      "const": [
+        "BL-334"
+      ]
     }
   },
   "$defs": {
@@ -90,7 +146,10 @@
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
-      "items": { "type": "string", "minLength": 1 }
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
     }
   }
 }

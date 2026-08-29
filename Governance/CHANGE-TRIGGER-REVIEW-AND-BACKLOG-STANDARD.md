@@ -102,7 +102,7 @@ Before adding work:
 3. use the current sequential-numbering rule rather than remembered IDs;
 4. record origin, risk, affected components, acceptance criteria,
    dependencies, platform/release evidence, and blocking effect;
-5. update sprint mapping and the Local Work Register when applicable.
+5. update sprint mapping and `BACKLOG.md` when applicable.
 
 Routine revalidation does not create backlog work. Unfinished independently
 reviewable work must not be hidden inside a completed item.

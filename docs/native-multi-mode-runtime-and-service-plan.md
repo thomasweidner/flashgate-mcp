@@ -4,7 +4,7 @@
 
 **Accepted Version 1.0 target architecture; implementation not started.**
 
-The authoritative service tasks are `BL-221` through `BL-244` plus BL-341 in [BACKLOG.md](../BACKLOG.md), with post-Version-1.0 tasks `BL-232` and `BL-240`. ADR-0014 defines the multi-mode runtime, ADR-0015 defines the hybrid execution-identity architecture, and ADR-0017 defines host-process ownership and lifecycle.
+The authoritative service tasks are `BL-221` through `BL-244` plus BL-341 in [BACKLOG.md](../BACKLOG.md), with post-Version-1.0 tasks `BL-232` and `BL-240`. ADR-014 defines the multi-mode runtime, ADR-015 defines the hybrid execution-identity architecture, and ADR-017 defines host-process ownership and lifecycle.
 
 Version 1.0 delivers direct STDIO and system-service operation with Variant A service-account roots. It includes the interfaces and threat model for Variant B but does not implement user workers or persistent user-scoped hosts.
 
@@ -79,10 +79,9 @@ and generation-based stale-handle invalidation. It does not prevent a leaked
 edge proxy, prove logical-agent lifetime, force EOF past a retained pipe, or
 make an idle-timeout safe.
 
-BL-341 owns implementation of this contract together with the SPR-60 transport
+BL-341 owns implementation of this contract together with the SPR-060 transport
 and service work. BL-241 owns the complete integrated Windows/Linux validation
-matrix. ADR-0017 is normative.
-
+matrix. ADR-017 is normative.
 ## Version 1.0 runtime modes
 
 ### Direct STDIO
@@ -573,7 +572,7 @@ Version 1.0 also includes the pinned cross-project filesystem benchmark.
 
 ## Delivery sequence
 
-### SPR-59 — architecture, contracts, identity, and security
+### SPR-059 — architecture, contracts, identity, and security
 
 Backlog: `BL-221`–`BL-225`, `BL-233`–`BL-239`, and `BL-166`.
 
@@ -589,7 +588,7 @@ Deliverables:
 - identity-bound state model;
 - audit lifecycle and correlation.
 
-### SPR-60 — transports and Version 1.0 system hosts
+### SPR-060 — transports and Version 1.0 system hosts
 
 Backlog: `BL-226`–`BL-231` and `BL-341`.
 
@@ -607,7 +606,7 @@ Deliverables:
 
 `BL-232` user-scoped hosts and `BL-240` user workers remain post-Version-1.0.
 
-### SPR-61 — validation and release readiness
+### SPR-061 — validation and release readiness
 
 Backlog: `BL-241`–`BL-244` plus applicable CI/release/documentation tasks through `BL-263` and `BL-315`.
 
@@ -659,9 +658,9 @@ Any remote transport, product split, or broader provider-isolation mechanism req
 
 ## Related documents
 
-- [ADR-0014](adr/0014-native-multi-mode-runtime-and-local-service-deployment.md)
-- [ADR-0015](adr/0015-hybrid-service-execution-identity.md)
-- [ADR-0017](adr/0017-host-process-ownership-and-lifecycle.md)
+- [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)
+- [ADR-015](adr/015-hybrid-service-execution-identity.md)
+- [ADR-017](adr/017-host-process-ownership-and-lifecycle.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)

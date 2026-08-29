@@ -76,7 +76,7 @@ continued absence of the delayed survivor marker.
 
 BL-248 is `Done`. Its one independent Full Review and the required focused
 Delta Reviews are complete. All six original Full-Review findings are closed;
-`BL248-REV-004` is `CLOSED`, and no BL-248 finding remains open. The final
+`BL-248-REV-004` is `CLOSED`, and no BL-248 finding remains open. The final
 Windows verifier-process contract suite passed `201/201`, the native Linux
 suite passed `206/206`, and the independent focused review of the final
 six-file correction returned `PASS`. CI Run 82 and Metadata Regression Run 11

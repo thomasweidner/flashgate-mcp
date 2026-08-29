@@ -47,7 +47,7 @@ The CI gate fails when the measured value is below the platform-specific minimum
 
 ### Windows
 
-Run from the repository root with PowerShell 7.6.5 on Windows:
+Run from the repository root with PowerShell 7.6.5:
 
 ```powershell
 .\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 71.4

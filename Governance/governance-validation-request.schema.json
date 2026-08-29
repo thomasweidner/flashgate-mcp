@@ -32,7 +32,7 @@
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
-    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "taskId": { "type": "string", "pattern": "^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$" },
     "repository": { "type": "string", "format": "uri", "pattern": "^https://github\\.com/.+\\.git$" },
     "sourceRepositoryRoot": { "$ref": "#/$defs/absolutePath" },
     "worktreeRoot": { "$ref": "#/$defs/absolutePath" },
@@ -114,7 +114,7 @@
       "required": ["powerShellPath", "powerShellVersion", "powerShellSha256", "gitPath", "gitSha256", "executionContext"],
       "properties": {
         "powerShellPath": { "$ref": "#/$defs/absolutePath" },
-        "powerShellVersion": { "enum": ["7.6.4", "7.6.5"] },
+        "powerShellVersion": { "const": "7.6.5" },
         "powerShellSha256": { "$ref": "#/$defs/hash" },
         "gitPath": { "$ref": "#/$defs/absolutePath" },
         "gitSha256": { "$ref": "#/$defs/hash" },
@@ -240,7 +240,7 @@
       "else": {
         "properties": {
           "toolchain": {
-            "properties": { "powerShellVersion": { "const": "7.6.4" } }
+            "properties": { "powerShellVersion": { "const": "7.6.5" } }
           }
         }
       }

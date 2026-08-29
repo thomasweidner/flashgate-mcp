@@ -1,4 +1,4 @@
-# ADR-0001: Use Go
+# ADR-001: Use Go
 
 ## Status
 
@@ -84,7 +84,7 @@ The minimum expected Go version is Go 1.26 or newer.
 
 ## Amendment - 2026-07-10
 
-The public project name is FlashGate MCP. The repository, Go module, binary, and MCP server implementation name (`serverInfo.name`) retain the technical `fileserver-mcp` identifier until Sprint 3.42. This amendment does not change the historical context or the decision to use Go. See ADR-0006 through ADR-0013 for the current identity, architecture, and MCP compatibility direction.
+The public project name is FlashGate MCP. The repository, Go module, binary, and MCP server implementation name (`serverInfo.name`) retain the technical `fileserver-mcp` identifier until Sprint 3.42. This amendment does not change the historical context or the decision to use Go. See ADR-006 through ADR-013 for the current identity, architecture, and MCP compatibility direction.
 
 ## Amendment - 2026-07-11
 

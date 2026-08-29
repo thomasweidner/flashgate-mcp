@@ -4,7 +4,7 @@
 
 **Accepted architecture. Version 1.0 implements Variant A; Variant B is designed but deferred.**
 
-This document refines the native service architecture. ADR-0015 is binding. `BACKLOG.md` remains authoritative for implementation status.
+This document refines the native service architecture. ADR-015 is binding. `BACKLOG.md` remains authoritative for implementation status.
 
 ## Decision summary
 
@@ -248,7 +248,7 @@ Reasons:
 - Linux credential switching in a shared process is not an equivalent safe cross-platform model;
 - worker processes provide a clearer OS security and failure boundary.
 
-No future implementation may add shared-process impersonation without replacing ADR-0015 through a separate explicit security decision.
+No future implementation may add shared-process impersonation without replacing ADR-015 through a separate explicit security decision.
 
 ## State and cache binding
 
@@ -329,7 +329,7 @@ Post-Version-1.0 Variant B tests additionally cover worker identity, session/tok
 
 ## Related documents
 
-- [ADR-0015](adr/0015-hybrid-service-execution-identity.md)
+- [ADR-015](adr/015-hybrid-service-execution-identity.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Security model](security.md)
 - [Architecture](architecture.md)

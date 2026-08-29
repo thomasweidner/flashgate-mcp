@@ -465,7 +465,12 @@ function New-GenericSource {
     $includedEntries = @($scopeEntries | Where-Object inclusionDecision -CEQ 'INCLUDE')
     $excludedEntries = @($scopeEntries | Where-Object inclusionDecision -CEQ 'EXCLUDE')
     if ($includedEntries.Count -eq 0) {
-        throw "Fixture produced no INCLUDE entry. Root=$script:authoritativeRoot Requested=$($IncludedPath -join ',') Observed=$(@($scopeEntries | ForEach-Object path) -join ',')"
+        $requestedPathJson = ConvertTo-Json -InputObject @($IncludedPath) -Compress
+        $observedPathJson = ConvertTo-Json -InputObject @(
+            $scopeEntries | ForEach-Object path
+        ) -Compress
+        throw ('Fixture produced no INCLUDE entry. Root={0} Requested={1} Observed={2}' -f
+            [string]$script:authoritativeRoot, $requestedPathJson, $observedPathJson)
     }
     $allowedDeltaPaths = @(Get-GenericScopePaths -Entry $includedEntries | Sort-Object)
     $excludedDeltaPaths = @(Get-GenericScopePaths -Entry $excludedEntries | Sort-Object)
@@ -594,15 +599,18 @@ function New-GenericSource {
     Write-Utf8 -Path (Join-Path $Path 'completion-report.json') -Text ($completion | ConvertTo-Json -Depth 20)
     Write-Utf8 -Path (Join-Path $Path 'independent-review-evidence.json') -Text ($review | ConvertTo-Json -Depth 20)
     Write-Utf8 -Path (Join-Path $Path 'validation-summary.json') -Text ($validation | ConvertTo-Json -Depth 20)
-    Write-Utf8 -Path (Join-Path $Path 'report.md') -Text @"
-# Generic governance fixture report
-
-$ReportNarrative
-
-<!-- BEGIN GOVERNANCE-REPORT-CONTRACT -->
-$($reportContract | ConvertTo-Json -Depth 20)
-<!-- END GOVERNANCE-REPORT-CONTRACT -->
-"@
+    $reportContractJson = $reportContract | ConvertTo-Json -Depth 20
+    $reportText = @(
+        '# Generic governance fixture report'
+        ''
+        [string]$ReportNarrative
+        ''
+        '<!-- BEGIN GOVERNANCE-REPORT-CONTRACT -->'
+        [string]$reportContractJson
+        '<!-- END GOVERNANCE-REPORT-CONTRACT -->'
+        ''
+    ) -join [Environment]::NewLine
+    Write-Utf8 -Path (Join-Path $Path 'report.md') -Text $reportText
 }
 
 function Invoke-Generator {
@@ -629,7 +637,9 @@ function Invoke-Generator {
         return
     }
     if ($invocation.ExitCode -ne 0) {
-        throw "Generator failed with exit code $($invocation.ExitCode): $($output -join ' | ') | $($invocation.StandardError.Trim())"
+        $outputJson = ConvertTo-Json -InputObject @($output) -Compress
+        throw ('Generator failed with exit code {0}: {1} | {2}' -f
+            [int]$invocation.ExitCode, $outputJson, [string]$invocation.StandardError.Trim())
     }
 }
 
@@ -851,7 +861,11 @@ function Invoke-SchemaFirstNegativeFixtureCases {
 function Invoke-TemporaryGit {
     param([Parameter(Mandatory)][string]$Root, [Parameter(Mandatory)][string[]]$Argument)
     $output = @(& git -C $Root @Argument 2>&1)
-    if ($LASTEXITCODE -ne 0) { throw "Temporary fixture Git command failed: git $($Argument -join ' ') | $($output -join ' | ')" }
+    if ($LASTEXITCODE -ne 0) {
+        $argumentJson = ConvertTo-Json -InputObject @($Argument) -Compress
+        $outputJson = ConvertTo-Json -InputObject @($output) -Compress
+        throw ('Temporary fixture Git command failed: git {0} | {1}' -f $argumentJson, $outputJson)
+    }
     return @($output)
 }
 
@@ -950,13 +964,13 @@ function Invoke-DirectGitEvidenceCases {
         finally{Remove-GenericGitIsolationContext -Context $context}
     }
     Invoke-ExpectedFailureCase -Name 'negative-unknown-name-status-code' -ExpectedCheck 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Operation {
-        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes("X`0docs/[a].md`0");$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
+        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes(('X'+[char]0+'docs/[a].md'+[char]0));$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
     }
     Invoke-ExpectedFailureCase -Name 'negative-duplicate-delta-inventory-entry' -ExpectedCheck 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Operation {
-        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes("M`0docs/[a].md`0M`0docs/[a].md`0");$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
+        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes(('M'+[char]0+'docs/[a].md'+[char]0+'M'+[char]0+'docs/[a].md'+[char]0));$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
     }
     Invoke-ExpectedFailureCase -Name 'negative-rename-delta-target-missing' -ExpectedCheck 'GENERIC-ACTUAL-DELTA-INVENTORY-PARITY' -Operation {
-        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes("R100`0previous.txt`0");$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
+        $bytes=[System.Text.UTF8Encoding]::new($false).GetBytes(('R100'+[char]0+'previous.txt'+[char]0));$null=ConvertFrom-GenericNameStatusZ -Bytes $bytes
     }
     Invoke-ExpectedFailureCase -Name 'negative-repository-path-crlf' -ExpectedCheck 'GENERIC-LITERAL-PATHSPEC-BINDING' -Operation {$null=Assert-GenericRepositoryPath -Path "docs/bad`r`npath.md"}
     Invoke-ExpectedFailureCase -Name 'negative-repository-path-nul' -ExpectedCheck 'GENERIC-LITERAL-PATHSPEC-BINDING' -Operation {$null=Assert-GenericRepositoryPath -Path ('docs/bad'+[char]0+'path.md')}
@@ -1020,7 +1034,8 @@ function Invoke-ArgumentBindingRegressionCases {
                 [string]$capture.authoritativeRepositoryRoot -ceq 'synthetic authoritative repository root' -and
                 $rawPreviousArgumentCount -eq 0
             )
-            $evidence = "count=$($observedValues.Count); exit=$actualExit; previousRawArgCount=$rawPreviousArgumentCount"
+            $evidence = 'count={0}; exit={1}; previousRawArgCount={2}' -f
+                [int]$observedValues.Count, [int]$actualExit, [int]$rawPreviousArgumentCount
         }
         catch {
             $evidence = $_.Exception.Message
@@ -1079,7 +1094,9 @@ try {
             expectedExit = 0
             actualExit = if ($writeCountPass) { 0 } else { 1 }
             expectedFailedCheckId = ''
-            evidence = "PackageWriteAttemptCountMatchCount=$writeCountMatches | $($plainGeneratorOutput -join ' | ')"
+            evidence = ('PackageWriteAttemptCountMatchCount={0} | {1}' -f
+                [int]$writeCountMatches,
+                (ConvertTo-Json -InputObject @($plainGeneratorOutput) -Compress))
         })
     }
     if (Test-CaseSelected -Name 'negative-directory-error-no-zip-write') {
@@ -1206,7 +1223,7 @@ try {
     }
     else {
     $findingSource = Join-Path $temporaryRoot 'source-finding'
-    New-GenericSource -Path $findingSource -TaskId 'BL-336' -FindingIds @('BL336-REAL-001')
+    New-GenericSource -Path $findingSource -TaskId 'BL-336' -FindingIds @('BL-336-REAL-001')
     $findingZip = Join-Path $temporaryRoot 'positive-real-finding.zip'
     Invoke-Generator -Source $findingSource -Package $findingZip -TaskId 'BL-336'
     Invoke-ValidationCase -Name 'positive-real-finding' -Package $findingZip -ExpectedExit 0
@@ -1277,16 +1294,16 @@ try {
     $legacySourcePath = Join-Path $temporaryRoot 'legacy-source.json'
     $legacyOutputPath = Join-Path $temporaryRoot 'legacy-HANDOFF.md'
     $legacy = [ordered]@{
-        schemaVersion=1; taskId='BL-333/BL-334'; correctionMode='BUNDLED_CORRECTION'
+        schemaVersion=1; taskId='BL-333'; relatedPrimaryIds = @('BL-334'); correctionMode='BUNDLED_CORRECTION'
         status='FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW'
-        classicReviewReady=$true; targetFindings=@('BL333-BL334-REV-013','BL333-BL334-REV-015')
-        pendingFindings=@('BL333-BL334-REV-013','BL333-BL334-REV-015')
-        closedFindings=@('BL333-BL334-REV-007','BL333-BL334-REV-008','BL333-BL334-REV-010')
+        classicReviewReady=$true; targetFindings=@('BL-333-REV-013','BL-333-REV-015')
+        pendingFindings=@('BL-333-REV-013','BL-333-REV-015')
+        closedFindings=@('BL-333-REV-007','BL-333-REV-008','BL-333-REV-010')
         run007Status='CORRECTED_PENDING_DELTA'; commitPreparationApproved=$false
         commitAuthorized=$false; requiredReviewMode='FOCUSED_INDEPENDENT_DELTA_REVIEW'
         targetFindingCount=2; correctedFindingCount=2; pendingDeltaFindingCount=2
         closedFindingCount=3; openFindingCount=0
-        nextAction='Perform only the focused independent delta review of BL333-BL334-REV-013 and BL333-BL334-REV-015 with the new verified review package.'
+        nextAction='Perform only the focused independent delta review of BL-333-REV-013 and BL-333-REV-015 with the new verified review package.'
     }
     Write-Utf8 -Path $legacySourcePath -Text ($legacy | ConvertTo-Json -Depth 20)
     $pwsh = (Get-Command pwsh -ErrorAction Stop).Source
@@ -1438,7 +1455,10 @@ try {
     if (@($observedFixtureNames | Where-Object { -not $canonicalFixtureNames.Contains($_) }).Count -ne 0) {
         throw 'Observed fixture results contain a name outside the canonical fixture inventory.'
     }
-    if ($results.Count -ne $expectedObservedCount) { throw "Expected $expectedObservedCount fixtures, observed $($results.Count)." }
+    if ($results.Count -ne $expectedObservedCount) {
+        throw ('Expected {0} fixtures, observed {1}.' -f
+            [int]$expectedObservedCount, [int]$results.Count)
+    }
     if (@($results | Where-Object result -ceq 'FAIL').Count -gt 0) { throw 'One or more generic handoff fixtures failed.' }
     $status = 'PASS'
 }

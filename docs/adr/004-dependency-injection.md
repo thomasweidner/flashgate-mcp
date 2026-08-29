@@ -1,4 +1,4 @@
-# ADR-0004: Use Dependency Injection and Interfaces
+# ADR-004: Use Dependency Injection and Interfaces
 
 ## Status
 
@@ -79,4 +79,4 @@ Further MCP components will follow the same approach.
 
 ## Amendment - 2026-07-10
 
-The public project name is FlashGate MCP; the technical rename remains planned for Sprint 3.42. The dependency-injection decision continues to apply to the domain-separated core, optional Operations/Job Manager, platform adapters, and MCP adapter described by ADR-0007 through ADR-0013.
+The public project name is FlashGate MCP; the technical rename remains planned for Sprint 3.42. The dependency-injection decision continues to apply to the domain-separated core, optional Operations/Job Manager, platform adapters, and MCP adapter described by ADR-007 through ADR-013.

@@ -1,4 +1,4 @@
-# ADR-0009: Capability Profiles and Tool Exposure
+# ADR-009: Capability Profiles and Tool Exposure
 
 ## Status
 

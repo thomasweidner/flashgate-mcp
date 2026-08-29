@@ -32,6 +32,7 @@
       ],
       "dependencyPaths": [
         "scripts/GovernanceValidationOrchestration.psm1",
+        "scripts/GenericGovernanceGitEvidence.ps1",
         "scripts/GovernanceHandoffPublication.psm1",
         "scripts/testdata/Invoke-GovernanceHandoffCandidateDrift.ps1",
         "scripts/testdata/Invoke-GovernanceHandoffPublicationFixtureChild.ps1"

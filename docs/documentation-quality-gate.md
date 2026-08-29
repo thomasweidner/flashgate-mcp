@@ -10,7 +10,7 @@ The earlier temporary `CUR-010` audit finding demonstrated why this distinction 
 
 ## Command
 
-Use PowerShell 7.6.5 on Windows:
+Use PowerShell 7.6.5:
 
 ```powershell
 & {
@@ -166,7 +166,7 @@ Run the gate:
 
 The repository script is the permanent local gate. The dedicated Hosted
 governance job calls the same productive script and fixture matrix under the
-pinned Windows PowerShell 7.6.5 package without duplicating their validation logic.
+pinned PowerShell 7.6.5 package without duplicating their validation logic.
 Merge-result Go testing remains a separate CI responsibility.
 
 CI integration must not silently convert exit code `2` into a documentation failure or ignore it. Infrastructure failure is separately actionable and blocks the gate because no trustworthy audit result was produced.

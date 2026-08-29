@@ -136,9 +136,9 @@ Directory copy is currently unsupported by design.
 
 ## Symlinks
 
-`SPR-36` rejects symlink-based escapes where an existing path, or the nearest existing parent for a create target, resolves outside the configured root.
+`SPR-036` rejects symlink-based escapes where an existing path, or the nearest existing parent for a create target, resolves outside the configured root.
 
-`SPR-37` adds explicit symlink policy enforcement.
+`SPR-037` adds explicit symlink policy enforcement.
 
 Configuration:
 
@@ -184,7 +184,7 @@ When `MCP_ALLOW_HIDDEN_FILES=true`, hidden and dotfile paths are allowed if all 
 
 ## JSON-RPC Boundary
 
-`SPR-38` adds JSON-RPC request validation before MCP dispatch.
+`SPR-038` adds JSON-RPC request validation before MCP dispatch.
 
 Requests must be object-shaped JSON-RPC 2.0 messages. Invalid JSON, invalid request envelopes, unsupported batch requests, invalid IDs, missing methods, and malformed method params are rejected with generic JSON-RPC errors.
 
@@ -198,11 +198,11 @@ Notifications do not receive JSON-RPC responses. `notifications/initialized` is 
 
 Unexpected handler panics are contained at the request boundary and returned as generic Internal error responses when the request requires a response.
 
-Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification is intentionally unchanged in `SPR-45`; BL-203 owns a later complete `isError=true` migration.
+Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification is intentionally unchanged in `SPR-045`; BL-203 owns a later complete `isError=true` migration.
 
 ## Limits and Redaction
 
-`SPR-39` adds configurable hard limits for protocol input, tool arguments, filesystem payloads, and response size.
+`SPR-039` adds configurable hard limits for protocol input, tool arguments, filesystem payloads, and response size.
 
 | Environment variable | Default | Scope |
 |---|---:|---|
@@ -559,8 +559,7 @@ Automatic termination requires conclusive transport and ownership evidence.
 PID alone and registry/state records are never authority. Ambiguous live
 process/transport/owner cases are `SUSPECTED_STALE`, remain diagnostic, and are
 not killed. Instance evidence is bounded and secret-safe; it excludes command
-lines, credentials, and unnecessary host paths. See ADR-0017 and BL-341.
-
+lines, credentials, and unnecessary host paths. See ADR-017 and BL-341.
 ## Version 1.0 Security Acceptance
 
 Version 1.0 cannot release until:
@@ -604,6 +603,6 @@ Remote access or a product/binary split requires a separate ADR and threat model
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
-- [ADR-0014](adr/0014-native-multi-mode-runtime-and-local-service-deployment.md)
-- [ADR-0015](adr/0015-hybrid-service-execution-identity.md)
-- [ADR-0017](adr/0017-host-process-ownership-and-lifecycle.md)
+- [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)
+- [ADR-015](adr/015-hybrid-service-execution-identity.md)
+- [ADR-017](adr/017-host-process-ownership-and-lifecycle.md)

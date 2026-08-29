@@ -1,4 +1,4 @@
-# ADR-0007: Domain-Separated Local System Core
+# ADR-007: Domain-Separated Local System Core
 
 ## Status
 

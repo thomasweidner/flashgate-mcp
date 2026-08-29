@@ -6,7 +6,7 @@ BL-333 supplies the change-trigger, finding-remediation/review-mode, and
 handoff-readiness foundation. BL-334 enforces it through
 `scripts/Test-GovernanceConsistency.ps1`.
 
-Parse every new or changed PowerShell source with PowerShell 7.6.5 on Windows before its
+Parse every new or changed PowerShell source with PowerShell 7.6.5 before its
 first execution. Then run:
 
 ```powershell
@@ -21,7 +21,7 @@ first execution. Then run:
 }
 ```
 
-ADR-0016 and BL-337 through BL-340 define the governance-harness layer.
+ADR-016 and BL-337 through BL-340 define the governance-harness layer.
 
 ### Governance validation orchestration profiles
 
@@ -235,10 +235,10 @@ result data is labelled as contract-fixture data and is never BL-339 execution
 evidence. A correction without a declared publication matrix remains a
 positive compatibility case.
 
-The BL339-REV-001 focused source-binding matrix has 21 cases and covers exact
+The BL-339-REV-001 focused source-binding matrix has 21 cases and covers exact
 and empty status PASS, added tracked/untracked state, missing and status-changed
 paths, content-hash drift, duplicate/case-colliding paths, scope/hash-set
-mismatch, and an independently protected foreign worktree. The BL339-REV-002
+mismatch, and an independently protected foreign worktree. The BL-339-REV-002
 handoff matrix has 19 cases and preserves the existing implementation-review
 and commit-preparation compatibility coverage.
 Their pre-execution contract resolves all selectors before process start,
@@ -346,7 +346,7 @@ unknown or duplicate status records, and CR/LF/NUL paths fail their named gate.
 The `info/alternates` and fixture-only object-divergence paths are constructed
 component by component so the same child hierarchy is exercised on Windows and
 Unix filesystems. A change to this shared Git-evidence helper requires the full
-generic fixture matrix under PowerShell 7.6.5 on Windows and PowerShell 7.6.4 on a native Linux
+generic fixture matrix under PowerShell 7.6.5 on Windows and on a native Linux
 copy below `/home`; the real Unix executable package must run on Linux, and a
 platform-gated synthetic result does not satisfy that end-to-end gate.
 
@@ -384,8 +384,8 @@ explicit ordinal, case-insensitive equality after both absolute paths are
 normalized. Casing-only differences are accepted; different drives,
 directories, subdirectories, filenames, relative paths, and empty values
 remain fail-closed, with no global installation, latest-version resolution, or
-fallback. The productive Windows validator gates the exact `7.6.5` interpreter and
-downloaded package digest; the Windows fixture runner also requires 7.6.5 and launches
+fallback. The productive validator gates the exact `7.6.5` interpreter and
+downloaded package digest; the fixture runner also requires 7.6.5 and launches
 child validators from its current `$PSHOME`.
 
 The fixture matrix exercises the production validator with positive and
@@ -395,7 +395,7 @@ and single-package policies, same-run and deferred-finding bindings,
 byte-exact correction/current-delta
 hashes, strict focused-delta and finding matrices, complete per-finding
 completion parity, exact narrative/report/repository/external/status sets,
-the five canonical external path-to-scope mappings, the strict bounded
+the four canonical external path-to-scope mappings, the strict bounded
 `HANDOFF.md` JSON contract, its exactly-16-key typed visible status block,
 independent counts for all four status/contract markers, rejection of reserved
 control lines outside the visible block, and complete visible/JSON parity,
@@ -842,7 +842,7 @@ Limit and redaction behavior is primarily covered by Go unit tests. Additional l
 
 Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
-The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-46` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
+The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
 
 ### MCP Compatibility Testing
 
@@ -852,7 +852,7 @@ Future protocol or extension support still requires version-negotiation, extensi
 
 ### Benchmarks
 
-`SPR-47` benchmarks performance-sensitive operations including:
+`SPR-047` benchmarks performance-sensitive operations including:
 
 - directory listing
 - file reading
@@ -959,7 +959,7 @@ required and discoverable:
 - unauthorized access; and
 - fail-closed `auto` behavior.
 
-The ADR-0017 and BL-341 integrated Windows/Linux host-lifecycle matrix below is
+The ADR-017 and BL-341 integrated Windows/Linux host-lifecycle matrix below is
 additive. Retained-pipe, lease, PID-reuse, and parallel-start cases do not
 replace any pre-existing case above. The additional required cases are:
 
@@ -990,7 +990,6 @@ per active client transport; further processes must be explicitly classified
 as workers or managed children. Ambiguous live-owner/live-transport cases are
 `SUSPECTED_STALE` and the test must prove no heuristic age, idle, CPU,
 request-count, singleton, PID-only, or registry-only termination.
-
 ### Protocol compatibility tests
 
 Before Version 1.0, publish and test the supported MCP revision matrix:

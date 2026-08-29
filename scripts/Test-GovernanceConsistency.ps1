@@ -152,11 +152,6 @@ function Get-ExpectedExternalGovernanceMappings {
             ActivePath = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Governance\PROJECT-WIDE-REVIEW-AND-VALIDATION-STANDARD.md'
             Scope = 'PROJECT_WIDE_GOVERNANCE_STANDARD'
             PayloadRoot = 'external/project-wide-governance-standard'
-        },
-        [pscustomobject]@{
-            ActivePath = 'C:\Voxtronic\MCP\flashgate-mcp-local-work-register.md'
-            Scope = 'FLASHGATE_LOCAL_WORK_REGISTER'
-            PayloadRoot = 'external/local-work-register'
         }
     )
 }
@@ -737,7 +732,7 @@ function Test-ExternalDeltaPayload {
                         Sort-Object -Unique).Count -eq $actualChanges.Count
             )
             $uniqueScopes = @($actualScopes | Sort-Object -Unique).Count -eq $actualChanges.Count
-            $mappingPass = $actualChanges.Count -eq 5
+            $mappingPass = $actualChanges.Count -eq $expectedMappings.Count
             foreach ($expectedMapping in $expectedMappings) {
                 $matches = @($actualChanges | Where-Object {
                         (Get-NormalizedWindowsGovernancePath -Path ([string]$_.activePath)) -ceq
@@ -751,14 +746,14 @@ function Test-ExternalDeltaPayload {
                 $mappingPass = $mappingPass -and $matches.Count -eq 1
             }
             Add-GovernanceCheck -Id 'EXTERNAL-DELTA-EXACT-COUNT' `
-                -Passed ($actualChanges.Count -eq 5) `
-                -Message 'External-governance manifest contains exactly five entries.'
+                -Passed ($actualChanges.Count -eq $expectedMappings.Count) `
+                -Message 'External-governance manifest contains exactly four canonical entries.'
             Add-GovernanceCheck -Id 'EXTERNAL-DELTA-EXACT-PATH-SET' `
                 -Passed ($exactPathSetPass -and $normalizedPathSetPass -and $uniqueNormalizedPaths) `
                 -Message 'External paths are the exact canonical Windows path set with case-insensitive uniqueness.'
             Add-GovernanceCheck -Id 'EXTERNAL-DELTA-EXACT-SCOPE-SET' `
                 -Passed ($scopeSetPass -and $uniqueScopes) `
-                -Message 'External scopes are the exact unique five-category set.'
+                -Message 'External scopes are the exact unique four-category set.'
             Add-GovernanceCheck -Id 'EXTERNAL-DELTA-PATH-SCOPE-MAPPING' `
                 -Passed $mappingPass `
                 -Message 'Each canonical external path maps one-to-one to its required scope and payload root.'
@@ -1911,18 +1906,19 @@ try {
                 }
 
                 $expectedTargetFindings = @(
-                    'BL333-BL334-REV-013',
-                    'BL333-BL334-REV-015'
+                    'BL-333-REV-013',
+                    'BL-333-REV-015'
                 )
                 $expectedClosedFindings = @(
-                    'BL333-BL334-REV-007',
-                    'BL333-BL334-REV-008',
-                    'BL333-BL334-REV-010'
+                    'BL-333-REV-007',
+                    'BL-333-REV-008',
+                    'BL-333-REV-010'
                 )
+                $expectedRelatedPrimaryIds = @('BL-334')
                 $expectedHandoffStatus =
                     'FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW'
                 $expectedNextAction =
-                    'Perform only the focused independent delta review of BL333-BL334-REV-013 and BL333-BL334-REV-015 with the new verified review package.'
+                    'Perform only the focused independent delta review of BL-333-REV-013 and BL-333-REV-015 with the new verified review package.'
                 $handoffDocumentResult = Test-HandoffDocumentContracts `
                     -Text $embeddedHandoffText `
                     -ContractSchemaPath $handoffContractSchemaPath
@@ -2141,7 +2137,9 @@ try {
                 $expectedExternalScopes = @(
                     $expectedExternalMappings | ForEach-Object { [string]$_.Scope }
                 )
-                $externalMappingParityPass = @($embeddedExternal.changes).Count -eq 5
+                $externalMappingParityPass = (
+                    @($embeddedExternal.changes).Count -eq $expectedExternalMappings.Count
+                )
                 foreach ($expectedExternalMapping in $expectedExternalMappings) {
                     $externalMappingParityPass = $externalMappingParityPass -and @(
                         $embeddedExternal.changes | Where-Object {
@@ -2201,6 +2199,16 @@ try {
                 Add-GovernanceCheck -Id 'RECORD-HANDOFF-FINDING-ID-PARITY' `
                     -Passed $findingIdParityPass `
                     -Message 'All current correction/review contracts contain exactly REV-013 and REV-015.'
+
+                $relatedPrimaryParityPass = (
+                    $null -ne $reportContract -and
+                    $null -ne $handoffContract -and
+                    (Test-OrdinalSetEqual @($reportContract.relatedPrimaryIds) $expectedRelatedPrimaryIds) -and
+                    (Test-OrdinalSetEqual @($handoffContract.relatedPrimaryIds) $expectedRelatedPrimaryIds)
+                )
+                Add-GovernanceCheck -Id 'RECORD-HANDOFF-RELATED-PRIMARY-PARITY' `
+                    -Passed $relatedPrimaryParityPass `
+                    -Message 'Report and handoff contracts preserve BL-334 as the explicit related PrimaryId while BL-333 remains the single task PrimaryId.'
 
                 $allRegressionTests = @(
                     $regressionFindings |
@@ -2330,57 +2338,6 @@ try {
                     -Passed ($narrativePathPass -and $narrativeStatusPass) `
                     -Message 'Narrative report has an exact repository/external path set and contains no stale status statement.'
 
-                $localRegisterChanges = @(
-                    $embeddedExternal.changes |
-                        Where-Object scope -ceq 'FLASHGATE_LOCAL_WORK_REGISTER'
-                )
-                $localRegisterStatusPass = $false
-                if ($localRegisterChanges.Count -eq 1) {
-                    $localRegisterAfterPath = [string]$localRegisterChanges[0].afterPayload
-                    if ($packageEntryBytes.ContainsKey($localRegisterAfterPath)) {
-                        $localRegisterAfter = $strictUtf8.GetString(
-                            [byte[]]$packageEntryBytes[$localRegisterAfterPath]
-                        )
-                        $localRegisterStatusPass = (
-                            $localRegisterAfter.Contains(
-                                $expectedHandoffStatus,
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            $localRegisterAfter.Contains(
-                                [string]$embeddedCompletion.queue,
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            $localRegisterAfter.Contains(
-                                'Commit Preparation remains blocked',
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            $localRegisterAfter.Contains(
-                                'BL-335',
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            $localRegisterAfter.Contains(
-                                'ClosedFindingCount: 3',
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            $localRegisterAfter.Contains(
-                                'PendingDeltaFindingCount: 2',
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            $localRegisterAfter.Contains(
-                                'BL333-BL334-REV-007,BL333-BL334-REV-008,BL333-BL334-REV-010',
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            $localRegisterAfter.Contains(
-                                'BL333-BL334-REV-013,BL333-BL334-REV-015',
-                                [System.StringComparison]::Ordinal
-                            ) -and
-                            -not $localRegisterAfter.Contains(
-                                'independent Full Review, possible bundled correction and focused Delta',
-                                [System.StringComparison]::OrdinalIgnoreCase
-                            )
-                        )
-                    }
-                }
                 $statusCountParityPass = (
                     $null -ne $handoffContract -and
                     [string]$handoffContract.status -ceq $expectedHandoffStatus -and
@@ -2455,12 +2412,11 @@ try {
                     -not [bool]$handoffContract.commitPreparationApproved -and
                     -not [bool]$handoffContract.commitAuthorized -and
                     [bool]$handoffContract.classicReviewReady -eq
-                        [bool]$record.handoff.classicReviewReady -and
-                    $localRegisterStatusPass
+                        [bool]$record.handoff.classicReviewReady
                 )
                 Add-GovernanceCheck -Id 'RECORD-HANDOFF-STATUS-QUEUE-PARITY' `
                     -Passed $reportStatusParityPass `
-                    -Message 'Assignment, completion, report contract, and Local Work Register agree on status, queue, Run-007, and commit-preparation boundary.'
+                    -Message 'Assignment, completion, report contract, and handoff contract agree on status, queue, Run-007, and commit-preparation boundary.'
 
                 $embeddedContractPass = (
                     $assignmentBindingPass -and

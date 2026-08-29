@@ -11,7 +11,7 @@
 - `Later` means accepted post-Version-1.0 work;
 - a task may change milestone only through an explicit backlog and documentation decision.
 
-Version 1.0 is reached after `SPR-61` only when `BL-263` passes.
+Version 1.0 is reached after `SPR-061` only when `BL-263` passes.
 
 ## Version 1.0 product objective
 
@@ -216,4 +216,4 @@ The following remain outside the accepted local Version 1.0 architecture and req
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
-- [ADR-0015: Hybrid service execution identity](adr/0015-hybrid-service-execution-identity.md)
+- [ADR-015: Hybrid service execution identity](adr/015-hybrid-service-execution-identity.md)
