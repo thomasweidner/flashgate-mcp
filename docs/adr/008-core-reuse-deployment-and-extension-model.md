@@ -1,4 +1,4 @@
-# ADR-0008: Core Reuse, Deployment, and FlashGate Module/Provider Model
+# ADR-008: Core Reuse, Deployment, and FlashGate Module/Provider Model
 
 ## Status
 
@@ -33,7 +33,7 @@ All FlashGate modules/providers must pass through common capabilities, root poli
 
 ## Implementation Guidance
 
-Keep interfaces narrow and internal. Document module/provider needs as use cases until a real external provider reaches the decision gate. Treat MCP protocol extensions only in the MCP adapter under ADR-0013.
+Keep interfaces narrow and internal. Document module/provider needs as use cases until a real external provider reaches the decision gate. Treat MCP protocol extensions only in the MCP adapter under ADR-013.
 
 ## Decision Gates
 
@@ -41,4 +41,4 @@ Before the first external FlashGate provider, choose among statically linked ext
 
 ## Amendment - 2026-07-17
 
-ADR-0014 accepts same-executable process roles for direct STDIO, local proxy/auto operation, and operating-system-managed service hosting. This is not a split into independently released product binaries and does not create an MCP-to-MCP or remote microservice architecture. The local IPC boundary is justified specifically by optional SCM/systemd and user-scoped background hosting and remains subject to service authorization, compatibility, benchmark, and threat-model gates.
+ADR-014 accepts same-executable process roles for direct STDIO, local proxy/auto operation, and operating-system-managed service hosting. This is not a split into independently released product binaries and does not create an MCP-to-MCP or remote microservice architecture. The local IPC boundary is justified specifically by optional SCM/systemd and user-scoped background hosting and remains subject to service authorization, compatibility, benchmark, and threat-model gates.

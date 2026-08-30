@@ -1,4 +1,4 @@
-# ADR-0015: Hybrid Service Execution Identity
+# ADR-015: Hybrid Service Execution Identity
 
 ## Status
 
@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-ADR-0014 accepts a local multi-client FlashGate system service. A system service may have different operating-system permissions from the authenticated client, so FlashGate must decide under which OS identity each requested operation runs.
+ADR-014 accepts a local multi-client FlashGate system service. A system service may have different operating-system permissions from the authenticated client, so FlashGate must decide under which OS identity each requested operation runs.
 
 Three models were considered:
 
@@ -125,7 +125,7 @@ The implementation must:
 
 ## Related documents
 
-- [ADR-0014: Native multi-mode runtime](0014-native-multi-mode-runtime-and-local-service-deployment.md)
+- [ADR-014: Native multi-mode runtime](014-native-multi-mode-runtime-and-local-service-deployment.md)
 - [Execution identity backends](../execution-identity-backends.md)
 - [Native runtime and service plan](../native-multi-mode-runtime-and-service-plan.md)
 - [Security model](../security.md)

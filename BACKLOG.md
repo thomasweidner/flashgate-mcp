@@ -15,7 +15,7 @@ FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, local directory `fl
 - Apply the binding change-trigger review in `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`. Reuse completed gates, update coherent open work, and register new independently reviewable work after duplicate search.
 - Complete the current sprint's ID migration document before merge. After merge, dated migration files are immutable history; any later full renumbering creates a new dated migration file and may add a small migration index.
 
-> Neue Aufgaben werden an der fachlich richtigen Position eingefügt. Danach werden alle nachfolgenden BL-IDs repositoryweit fortlaufend umnummeriert.
+> Neue Backlogpunkte erhalten die nächste freie BL-Nummer. Bereits vergebene BL-IDs bleiben stabil; fachliche Tabellenposition und ID sind unabhängig.
 
 ## Status legend
 
@@ -29,11 +29,11 @@ FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, local directory `fl
 
 ## Completed sprint baseline
 
-### SPR-40 - Windows/Linux test matrix and smoke tests
+### SPR-040 - Windows/Linux test matrix and smoke tests
 
 Backlog IDs: `BL-023`, `BL-024`, `BL-025`.
 
-The completed work through `SPR-40` remains historical. The 2026-07-25
+The completed work through `SPR-040` remains historical. The 2026-07-25
 governance migration assigned canonical `SPR-N` identifiers without changing
 task IDs, scope, or status.
 
@@ -49,29 +49,29 @@ The complete legacy mapping is recorded in
 
 | Sprint | Status | Backlog IDs | Scope |
 |---|---|---|---|
-| SPR-41 | Done | BL-026–BL-035 | FlashGate architecture baseline and backlog consolidation |
-| SPR-42 | Done | BL-264–BL-280 | Technical project rename to FlashGate MCP |
-| SPR-43 | Done | BL-281–BL-294 | Pre-1.0 filesystem tool contract cleanup |
-| SPR-44 | Done | BL-174, BL-295–BL-303 | Codex read-only activation preparation |
-| SPR-45 | Done | BL-201 | MCP `CallToolResult` foundation and `structuredContent` |
-| SPR-46 | Done | BL-200 | MCP runtime `outputSchema` integration and parity |
-| SPR-47 | Done | BL-189–BL-199 | Resource, latency, payload, catalog, workflow, and baseline benchmarking |
-| SPR-48 | Planned | BL-202–BL-216, BL-218–BL-220 | Remaining MCP contracts, payload/result architecture, catalog budgets, and native-adapter policy |
-| SPR-49 | Planned | BL-084–BL-099, BL-164 | Operations/Job Manager, identity-bound handles, quotas, fairness, and cleanup |
-| SPR-50 | Planned | BL-036–BL-049 | Efficient filesystem listing, reading, batch inspection, MIME/binary handling, and large-result handoff |
-| SPR-51 | Planned | BL-050–BL-061, BL-063–BL-067 | Targeted edits, conditional writes, bounded filesystem plans, and filesystem integration benchmarks |
-| SPR-52 | Planned | BL-068–BL-080, BL-082 | Filesystem and text search |
-| SPR-53 | Planned | BL-100–BL-111, BL-159–BL-161, BL-171 | Named roots, read-only safe default, capabilities, dynamic tool profiles, and negative authorization tests |
-| SPR-54 | Planned | BL-113, BL-129, BL-162, BL-165 | Process architecture, execution identity, and stateful security model |
-| SPR-55 | Planned | BL-114–BL-118 | Process observation |
-| SPR-56 | Planned | BL-119–BL-126, BL-130–BL-135, BL-252–BL-254 | Managed process execution, output cursors, resource control, race tests, and CI jobs |
-| SPR-57 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170 | Typed allowlisted command execution, OS isolation, redaction, and security tests |
-| SPR-58 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
-| SPR-59 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
-| SPR-60 | Planned | BL-226–BL-231, BL-341 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, Variant A service-account execution, cross-mode host-process ownership, deterministic shutdown, diagnostics, and orphan prevention |
-| SPR-61 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-340 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, task-neutral governance handoffs, reusable fixture/validation orchestration, and governance generator/profile migration |
+| SPR-041 | Done | BL-026–BL-035 | FlashGate architecture baseline and backlog consolidation |
+| SPR-042 | Done | BL-264–BL-280 | Technical project rename to FlashGate MCP |
+| SPR-043 | Done | BL-281–BL-294 | Pre-1.0 filesystem tool contract cleanup |
+| SPR-044 | Done | BL-174, BL-295–BL-303 | Codex read-only activation preparation |
+| SPR-045 | Done | BL-201 | MCP `CallToolResult` foundation and `structuredContent` |
+| SPR-046 | Done | BL-200 | MCP runtime `outputSchema` integration and parity |
+| SPR-047 | Done | BL-189–BL-199 | Resource, latency, payload, catalog, workflow, and baseline benchmarking |
+| SPR-048 | Planned | BL-202–BL-216, BL-218–BL-220 | Remaining MCP contracts, payload/result architecture, catalog budgets, and native-adapter policy |
+| SPR-049 | Planned | BL-084–BL-099, BL-164 | Operations/Job Manager, identity-bound handles, quotas, fairness, and cleanup |
+| SPR-050 | Planned | BL-036–BL-049 | Efficient filesystem listing, reading, batch inspection, MIME/binary handling, and large-result handoff |
+| SPR-051 | Planned | BL-050–BL-061, BL-063–BL-067 | Targeted edits, conditional writes, bounded filesystem plans, and filesystem integration benchmarks |
+| SPR-052 | Planned | BL-068–BL-080, BL-082 | Filesystem and text search |
+| SPR-053 | Planned | BL-100–BL-111, BL-159–BL-161, BL-171 | Named roots, read-only safe default, capabilities, dynamic tool profiles, and negative authorization tests |
+| SPR-054 | Planned | BL-113, BL-129, BL-162, BL-165 | Process architecture, execution identity, and stateful security model |
+| SPR-055 | Planned | BL-114–BL-118 | Process observation |
+| SPR-056 | Planned | BL-119–BL-126, BL-130–BL-135, BL-252–BL-254 | Managed process execution, output cursors, resource control, race tests, and CI jobs |
+| SPR-057 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170 | Typed allowlisted command execution, OS isolation, redaction, and security tests |
+| SPR-058 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
+| SPR-059 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
+| SPR-060 | Planned | BL-226–BL-231, BL-341 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, Variant A service-account execution, cross-mode host-process ownership, deterministic shutdown, diagnostics, and orphan prevention |
+| SPR-061 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-340 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, task-neutral governance handoffs, reusable fixture/validation orchestration, and governance generator/profile migration |
 
-Version 1.0 is reached only after `SPR-61` and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
+Version 1.0 is reached only after `SPR-061` and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
 
 | Post-1.0 workstream | Backlog IDs | Direction |
 |---|---|---|
@@ -79,9 +79,9 @@ Version 1.0 is reached only after `SPR-61` and the release gate in `BL-263`. The
 | Optional accelerators and expanded control | BL-081, BL-083, BL-112, BL-127–BL-128, BL-150, BL-158 | Ripgrep/index, legacy Roots, external PID/input, interactive shell, and network information decision gates |
 | Provider/community ecosystem | BL-169, BL-176, BL-180–BL-188, BL-313 | External provider security, licensing, governance extensions, provider contracts/runtime, and related documentation |
 
-`SPR-44` replaces the former `SPR-41` Codex preparation plan and must use the FlashGate technical names established in `SPR-42` and the cleaned tool names created in `SPR-43`.
+`SPR-044` replaces the former `SPR-041` Codex preparation plan and must use the FlashGate technical names established in `SPR-042` and the cleaned tool names created in `SPR-043`.
 
-The next free sprint identifier is `SPR-62`. It is reserved as the next
+The next free sprint identifier is `SPR-062`. It is reserved as the next
 available number only and is not an assigned sprint.
 
 ## Canonical task catalog
@@ -112,7 +112,7 @@ available number only and is not an assigned sprint.
 | BL-020 | Done | Enforce filesystem operation and response limits | Bounded reads, writes, listing, copy, recursive delete, and responses |
 | BL-021 | Done | Add centralized redaction and safe stderr diagnostics | Secret/host-path redaction, debug gating, and no stdout diagnostics |
 | BL-022 | Done | Add safe defaults for non-developer users | Deny-by-default limits and conservative behavior |
-| BL-023 | Done | Run Linux smoke test in Ubuntu CI | `SPR-40` real STDIO validation |
+| BL-023 | Done | Run Linux smoke test in Ubuntu CI | `SPR-040` real STDIO validation |
 | BL-024 | Done | Run JSON-RPC smoke matrix on Windows and Linux | Default, read-only, and negative variants |
 | BL-025 | Done | Isolate smoke JSONL artifacts per run | Unique files and deterministic cleanup |
 
@@ -314,7 +314,7 @@ available number only and is not an assigned sprint.
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-175 | Done | Confirm current open-source license | Repository and README currently declare GNU GPL v3.0; no license change in `SPR-41` |
+| BL-175 | Done | Confirm current open-source license | Repository and README currently declare GNU GPL v3.0; no license change in `SPR-041` |
 | BL-176 | Later | Review license and distribution compatibility before external module contract | Post-1.0 factual compatibility gate before the first external provider; no legal conclusions in backlog |
 | BL-177 | Planned | Define governance model | Decision authority, releases, and stewardship |
 | BL-178 | Planned | Define maintainer rules | Roles, review, security, and succession |
@@ -348,8 +348,8 @@ available number only and is not an assigned sprint.
 | BL-201 | Done | Add MCP `CallToolResult` foundation and `structuredContent` | All eight successful filesystem tools use one central text-plus-structured wrapper with deterministic parity, strict decoder/wire tests, corrected smokes, and no runtime `outputSchema` |
 | BL-202 | Planned | Review MCP tool annotations | Accurate metadata, never authorization |
 | BL-203 | Planned | Define normalized machine-readable errors | Stable categories without raw OS leakage |
-| BL-204 | Planned | Evaluate official MCP conformance testing and add schema snapshots | `SPR-46` adds full runtime/catalog output-schema parity and `tools/list` wire coverage; official tooling plus full input/output snapshots remain planned |
-| BL-205 | Planned | Add response-size regression tests | `SPR-46` measures `tools/list` payload impact without setting a persistent budget; success/error regression gates remain planned |
+| BL-204 | Planned | Evaluate official MCP conformance testing and add schema snapshots | `SPR-046` adds full runtime/catalog output-schema parity and `tools/list` wire coverage; official tooling plus full input/output snapshots remain planned |
+| BL-205 | Planned | Add response-size regression tests | `SPR-046` measures `tools/list` payload impact without setting a persistent budget; success/error regression gates remain planned |
 | BL-206 | Planned | Document local deterministic work principle | Prefer local copy/edit/hash/search over model retransmission |
 | BL-207 | Planned | Define Version 1.0 MCP protocol matrix | Keep core version-independent; retain `2025-11-25` until newer revisions are final and implemented; test every advertised revision and breaking upgrade path |
 | BL-208 | Planned | Define MCP extension-negotiation and stateless-adapter strategy | Official identifiers, capability negotiation, 2026 stateless-core adaptation, cache/TTL semantics, downgrade/mismatch tests, and no authorization implication |
@@ -379,7 +379,7 @@ available number only and is not an assigned sprint.
 | BL-227 | Planned | Implement Linux Unix Domain Socket transport | Local-only socket, restrictive ownership/mode, peer UID/GID/PID credentials, bounded framing, cleanup, and stale-socket handling |
 | BL-228 | Planned | Implement STDIO proxy mode | Present normal MCP STDIO to the client and forward safely to the local service without corrupting stdout or changing public tool contracts |
 | BL-229 | Planned | Implement automatic service discovery and safe STDIO fallback | Prefer explicitly configured/system/user endpoints; no elevation or installation; fallback only when no managed endpoint is present, never after authorization, policy, or compatibility rejection |
-| BL-230 | Planned | Implement Windows SCM service host, identity, and management | Real Windows Service Control Manager lifecycle, restricted service identity, install/uninstall/start/stop/status, graceful shutdown, and recovery policy. Register the user-facing SCM display name exactly as `FlashGate MCP`; the binding spelling uses uppercase `F` and `G`, one space between `FlashGate` and `MCP`, and all-uppercase `MCP`. Keep the executable filename `flashgate-mcp.exe` and explicitly distinguish the SCM service name, SCM display name, SCM service description, executable image name, PE `ProductName`, PE `FileDescription`, and MCP `serverInfo.name` (`flashgate`). Do not unintentionally change the Go module, repository name, MCP implementation name, configuration names, endpoint or protocol identifiers, installation paths, or release artifact names. Install the SCM service only from a controlled Windows artifact carrying the existing canonical product metadata. Validate the visible and technical identities in Services, PowerShell/SCM queries, and the relevant Task Manager views, and document which Windows surface displays which identity. Reuse the completed BL-246 metadata gates; do not rename technical identifiers unless separately required and approved. |
+| BL-230 | Planned | Implement Windows SCM service host, identity, and management | Real Windows Service Control Manager lifecycle, restricted service identity, install/uninstall/start/stop/status, graceful shutdown, and recovery policy. Register the user-facing SCM display name exactly as `FlashGate MCP`; the binding spelling uses uppercase `F` and `G`, one space between `FlashGate` and `MCP`, and all-uppercase `MCP`. Keep the executable filename `flashgate-mcp.exe` and explicitly distinguish the SCM service name, SCM display name, SCM service description, executable image name, PE `ProductName`, PE `FileDescription`, and MCP `serverInfo.name` (`flashgate`). Do not unintentionally change the Go module, repository name, MCP implementation name, configuration names, endpoint or protocol identifiers, installation paths, or release artifact names. Install the SCM service only from a controlled Windows artifact carrying the existing canonical product metadata. Validate the visible and technical identities in Services, PowerShell/SCM queries, and the relevant Task Manager views, and document which Windows surface displays which identity. Reuse the completed BL-246 metadata gates; do not rename technical identifiers unless separately required and approved. **Pre-implementation contract complete:** PR #32 merged the SCM identity/documentation contract and PR #33 merged the post-BL-230 governance registration. Those documentation and coordination completions did not implement the Windows service host, lifecycle, restricted identity, management commands, recovery policy, or platform validation; BL-230 therefore remains `Planned`. |
 | BL-231 | Planned | Implement Linux systemd system service | Unit, dedicated restricted account, Unix socket/runtime directories, journald, hardening directives, install/uninstall/start/stop/status, and graceful shutdown |
 | BL-232 | Later | Add user-scoped background modes | Post-1.0 Linux `systemd --user` service and Windows per-user host; direct STDIO remains the non-admin Version 1.0 path |
 | BL-233 | Planned | Define configuration precedence, endpoint discovery, and log destinations | CLI/environment/config precedence, system/user paths, endpoint names, timeouts, fallback policy, stdout purity, journald/Event Log/user logs, and secret-safe diagnostics |
@@ -402,18 +402,18 @@ available number only and is not an assigned sprint.
 | BL-245 | Planned | Add release notes or tag-based release workflow | Release maturity after technical rename |
 | BL-246 | Done | Embed native Windows file and product metadata | Generate and embed deterministic Windows `VERSIONINFO` and the FlashGate application icon in x64 and ARM64 binaries; expose product name, description, company, copyright, original filename, internal name, numeric file version, and full SemVer product version from the canonical build-information source; validate PE architecture, Explorer properties, exact release-archive contents, checksums, reproducibility, and host/credential leak absence. |
 | BL-247 | Done | Define and publish native Linux binary and package metadata | Expose the shared canonical identity through compact/verbose CLI output, Go build/VCS information, ELF headers and Go build IDs for native x64 and cross-built ARM64; publish deterministic TAR.GZ artifacts with exact contents and checksums; keep extended attributes non-authoritative and defer `.deb`, `.rpm`, and systemd metadata until those distribution assets are approved. |
-| BL-248 | Done | Add artifact verification | Reuse the canonical `internal/version`, build, manifest, icon, releaseaudit, and platform-verifier paths; validate real Windows/Linux x64 and cross-built ARM64 binaries and ZIP/TAR.GZ packages, including version/help, product/platform/architecture metadata, exact inventories, checksums, two-build reproducibility, leak scans, structured results, and focused negative cases. PR #25 was merged on 2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`; CI Run 82 and Metadata Regression Run 11 succeeded. The final Windows contract suite passed `201/201`, the native Linux contract suite passed `206/206`, all six original findings including `BL248-REV-004` are closed, and no BL-248 finding remains open. Durable evidence is preserved and the local preparation workspace is removed. |
+| BL-248 | Done | Add artifact verification | Reuse the canonical `internal/version`, build, manifest, icon, releaseaudit, and platform-verifier paths; validate real Windows/Linux x64 and cross-built ARM64 binaries and ZIP/TAR.GZ packages, including version/help, product/platform/architecture metadata, exact inventories, checksums, two-build reproducibility, leak scans, structured results, and focused negative cases. PR #25 was merged on 2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`; CI Run 82 and Metadata Regression Run 11 succeeded. The final Windows contract suite passed `201/201`, the native Linux contract suite passed `206/206`, all six original findings including `BL-248-REV-004` are closed, and no BL-248 finding remains open. Durable evidence is preserved and the local preparation workspace is removed. |
 | BL-249 | Planned | Run benchmark suite in CI | Stable selection and artifacted results |
 | BL-250 | Planned | Compare benchmark baselines in CI | Budgets from `BL-199` |
-| BL-251 | Done | Validate PowerShell and Bash scripts | Deterministic Windows validation is complete for the dynamic 54-file inventory (32 PowerShell, 22 Bash): PowerShell 7.6.4 parser, exact Git Bash syntax, UTF-8/line-ending/shebang rules, no-mutation checks, 21/21 persistent PowerShell harness cases, and Windows/native-Ubuntu CI wiring. The bounded-process result carries the PID captured directly after process start, so the timeout regression proves termination of the concrete process without depending on child-authored PID-file timing; process-tree termination and stream draining remain bounded and fail closed. The native Bash harness reports cleanup truthfully and includes a controlled cleanup-negative case. Native `standard` run `bl251-review-findings-closure-20260802-100200` passed all twelve ordered commands with 0 warnings and 0 failures. Independent review `BL-251-focused-independent-delta-review-20260802-102407.md` passed with 0 warnings/0 failures and closed `BL251-REV-001` through `BL251-REV-004` as `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. Independent PID review `BL-251-pid-focused-independent-delta-review-20260802-121605.md` also passed with 0 warnings/0 failures and closed `BL251-PRECOMMIT-REV-001` as `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`; the earlier BL-251 review findings remain closed. The exact commit, remote push, Draft PR, Hosted CI, and focused independent review of the documentation correction are complete. The final independent PR review found the documentation-only Minor finding `PR30-REV-001`; it is `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. Merge remains separately authorized. INF-122 and INF-129 remain closed, BL-324 remains planned, the focused wrapper validation passed `12/12`, and the reusable terminal governance evidence remains `225/225 PASS`. |
+| BL-251 | Done | Validate PowerShell and Bash scripts | Deterministic Windows validation is complete for the dynamic 54-file inventory (32 PowerShell, 22 Bash): PowerShell 7.6.4 parser, exact Git Bash syntax, UTF-8/line-ending/shebang rules, no-mutation checks, 21/21 persistent PowerShell harness cases, and Windows/native-Ubuntu CI wiring. The bounded-process result carries the PID captured directly after process start, so the timeout regression proves termination of the concrete process without depending on child-authored PID-file timing; process-tree termination and stream draining remain bounded and fail closed. The native Bash harness reports cleanup truthfully and includes a controlled cleanup-negative case. Native `standard` run `bl251-review-findings-closure-20260802-100200` passed all twelve ordered commands with 0 warnings and 0 failures. Independent review `BL-251-focused-independent-delta-review-20260802-102407.md` passed with 0 warnings/0 failures and closed `BL-251-REV-001` through `BL-251-REV-004` as `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. Independent PID review `BL-251-pid-focused-independent-delta-review-20260802-121605.md` also passed with 0 warnings/0 failures and closed `BL-251-REV-005` as `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`; the earlier BL-251 review findings remain closed. PR #30 merged the exact reviewed head as `bce854678d08bf5e5dd82f63a554b19318583925`; post-merge hosted checks, local synchronization, branch/workspace cleanup, and the focused documentation correction review are complete. `PR30-REV-001` is `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`; INF-122 and INF-129 remain closed. BL-324 was a separate later task and its subsequent state does not alter BL-251 acceptance. The focused wrapper validation passed `12/12`, and the reusable terminal governance evidence remains `225/225 PASS`. |
 | BL-252 | Planned | Run race detector for stateful components | Execute Go race detection against jobs, process registry, output buffers, cancellation, and shutdown; provide the reusable race-test command and failure gate consumed by CI tasks such as `BL-254` |
 | BL-253 | Planned | Add Windows/Linux process CI jobs | Dedicated CI matrix for process observation and managed lifecycle behavior on supported Windows and Linux runners; reuse implementation tests from the process packages rather than redefining them |
 | BL-254 | Planned | Add Operations/Job CI jobs | Dedicated CI execution for the Operations/Job integration suite from `BL-098`, including cancellation, timeout, cleanup, leak checks, and the race gate from `BL-252`; this task owns workflow orchestration, not duplicate test implementation |
-| BL-255 | Planned | Verify FlashGate release artifact names | After `SPR-42`, including archives and summaries |
+| BL-255 | Planned | Verify FlashGate release artifact names | After `SPR-042`, including archives and summaries |
 | BL-256 | Planned | Enforce profile-specific catalog and initialization budgets | `tools/list`, tool count, schema bytes/tokens, server instructions, deterministic ordering, and fingerprint regression |
 | BL-257 | Planned | Run schema snapshot checks in CI | Contract changes require explicit review |
 | BL-258 | Planned | Run payload and response-efficiency tests in CI | Prevent unbounded contracts, duplicate heavy payloads, excessive wire amplification, and result-resource regressions |
-| BL-259 | Planned | Search repository for legacy names after `SPR-42` | Allow only migration/history exceptions |
+| BL-259 | Planned | Search repository for legacy names after `SPR-042` | Allow only migration/history exceptions |
 | BL-260 | Planned | Keep standard test/vet/lint/build gates | Preserve formatting, vet, tests, separate Windows/Linux coverage gates and artifacts, lint, and build validation; active thresholds remain authoritative in `.github/workflows/ci.yml` |
 | BL-261 | Planned | Add reproducible cross-project efficiency benchmark | Compare pinned FlashGate, official Node.js filesystem, selected native Rust filesystem, and selected Go filesystem servers on identical host/corpus/workflows without claiming unmeasured superiority |
 | BL-262 | Planned | Add native release supply-chain evidence | Checksums, Windows signing plan, Linux artifact/package signing plan, SBOM, build provenance, dependency inventory, reproducible-build comparison, and atomic rollback; no silent auto-update |
@@ -424,21 +424,18 @@ standard profile, the final native run, the runspace-free wrapper validation,
 and the terminally persisted 225-case fixture replacement all pass. INF-122
 and INF-129 are closed. BL-324 is `Done` with no remaining task work.
 
-BL-340 is independently complete in SPR-61 after PR #42 merge and remote
+BL-340 is independently complete in SPR-061 after PR #42 merge and remote
 feature-branch cleanup. No BL-340 implementation, review, merge, or remote work
 remains; `INF158-REV-050` is a separate non-blocking infrastructure follow-up.
 
-For historical provenance only, the post-BL-324 queue was recorded as
-`schedule BL-340 independently in SPR-61 -> final documentation convergence -> Local Work Register dissolution audit -> separately authorized Local Work Register removal`.
-BL-340 is no longer queued; the Local Work Register audit and any removal remain
-separately authorized work and are not performed by this convergence.
 
-### SPR-42 technical identity
+
+### SPR-042 technical identity
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-264 | Done | Rename local folder to `flashgate-mcp` | Manually completed before `SPR-42` implementation |
-| BL-265 | Done | Rename GitHub repository to `flashgate-mcp` | Manually completed before `SPR-42` implementation |
+| BL-264 | Done | Rename local folder to `flashgate-mcp` | Manually completed before `SPR-042` implementation |
+| BL-265 | Done | Rename GitHub repository to `flashgate-mcp` | Manually completed before `SPR-042` implementation |
 | BL-266 | Done | Update Git remote URL | Remote verified with fetch and redirect checks |
 | BL-267 | Done | Update Go module and imports | Current module `github.com/thomasweidner/flashgate-mcp`; the former owner path is retained only in historical migration records |
 | BL-268 | Done | Rename binary to `flashgate-mcp` | Windows/Linux build and usage updated |
@@ -455,7 +452,7 @@ separately authorized work and are not performed by this convergence.
 | BL-279 | Done | Document manual repository rename action | See dated migration note: clean-main/origin/auth/target/remote preconditions; GitHub rename, remote/default/folder actions and separate technical branch; view/remote/fetch/main/reachability/redirect/history/path verification; failure/rollback without force-pushes or old-name reuse |
 | BL-280 | Done | Keep rename sprint functionally neutral | No feature or tool-contract changes mixed in |
 
-### SPR-43 pre-1.0 tool contract cleanup
+### SPR-043 pre-1.0 tool contract cleanup
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
@@ -474,7 +471,7 @@ separately authorized work and are not performed by this convergence.
 | BL-293 | Done | Update tool docs, client examples, and catalog | README, current architecture/security/testing docs, tool docs, conventions, catalog, ADR amendments, and migration coordinated |
 | BL-294 | Done | Document breaking changes in changelog | Breaking pre-1.0 cleanup documented with no alias or artificial deprecation compatibility |
 
-### SPR-44 Codex read-only activation preparation
+### SPR-044 Codex read-only activation preparation
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
@@ -497,7 +494,7 @@ separately authorized work and are not performed by this convergence.
 | BL-306 | Planned | Keep BACKLOG updated each sprint | Canonical IDs, sprint refs, migration rule, completed status |
 | BL-307 | Planned | Maintain FlashGate project identity reference | Name, tagline, scope, transition, planned identifiers |
 | BL-308 | Planned | Maintain architecture and ADRs | Current/target/planned/deferred separation |
-| BL-309 | Planned | Document benchmark method and baselines | `SPR-45` documents the tool-result-contract subset and single-machine noise limits; broader benchmark documentation remains planned |
+| BL-309 | Planned | Document benchmark method and baselines | `SPR-045` documents the tool-result-contract subset and single-machine noise limits; broader benchmark documentation remains planned |
 | BL-310 | Planned | Document capabilities, profiles, and named roots | Configuration and security model |
 | BL-311 | Planned | Document Operations/Job Manager | Handles, states, limits, lifecycle, cleanup |
 | BL-312 | Planned | Document process and execution security | Handles, PIDs, allowlists, isolation, redaction |
@@ -517,7 +514,7 @@ These tasks originate in the independent review of PR #15. They are intentionall
 | BL-319 | Planned | Record verifiable benchmark build and host provenance | **Origin/severity:** independent review of PR #15, Major. **Components:** baseline schema, authoritative controller, build preparation, host gate and reports. **Risk:** committed measurements cannot be tied cryptographically to the measured binary, source/build inputs, controller, workspace, or accepted host-load interval. **Acceptance:** record and validate binary, source/build-input, controller and workspace identities/hashes plus preparation and measurement timestamps, authoritative preflight evidence, and final host-gate evidence; reject incomplete or mismatched provenance. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 | BL-320 | Planned | Add native Linux race and cross-platform benchmark-policy CI gates | **Origin/severity:** independent review of PR #15, Major. **Components:** GitHub Actions, Windows/Linux policy scripts, window tests, native Linux `go test -race`. **Risk:** platform-specific symlink, reparse, policy-window, and race regressions may merge without executing the relevant native coverage. **Acceptance:** CI runs native Linux race coverage, Windows and Linux output/baseline policy tests, and both measurement-window suites with deterministic pass/fail artifacts; documented exceptions must fail the release gate rather than silently skip required coverage. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 | BL-321 | Planned | Derive Linux clock ticks instead of assuming 100 Hz | **Origin/severity:** independent review of PR #15, Minor. **Components:** Linux process/resource collector in `internal/benchmark`. **Risk:** CPU-time values are wrong on systems whose `_SC_CLK_TCK` differs from 100. **Acceptance:** obtain the platform value through a supported native mechanism without a shell, handle lookup failure explicitly, and test conversion with non-100 values. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
-| BL-322 | Planned | Reconcile BL-190 and BL-198 final status documentation | **Origin/severity:** independent review of PR #15, Minor. **Components:** `BACKLOG.md`, `SPR-47` report, related benchmark history/current-state documentation. **Risk:** steering state and sprint evidence disagree about whether baseline collection and validation are complete. **Acceptance:** after the authoritative merge decision, establish one canonical current status for BL-190 and BL-198, update current steering documents consistently, and preserve historical documents or append a dated correction instead of rewriting history. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
+| BL-322 | Planned | Reconcile BL-190 and BL-198 final status documentation | **Origin/severity:** independent review of PR #15, Minor. **Components:** `BACKLOG.md`, `SPR-047` report, related benchmark history/current-state documentation. **Risk:** steering state and sprint evidence disagree about whether baseline collection and validation are complete. **Acceptance:** after the authoritative merge decision, establish one canonical current status for BL-190 and BL-198, update current steering documents consistently, and preserve historical documents or append a dated correction instead of rewriting history. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 | BL-323 | Planned | Correct benchmark coverage claims for copy and search | **Origin/severity:** independent review of PR #15, Minor. **Components:** `docs/testing.md`, benchmark inventory and future filesystem/search benchmark work. **Risk:** testing documentation claims Copy and Search benchmarks that do not yet exist, overstating coverage. **Acceptance:** inventory implemented benchmark cases, make current documentation match that inventory, and describe copy/search only as planned until executable coverage and tests exist. **Timing:** separate work after merge of PR #15; not fixed by the blocker change. |
 
 ### GitHub dependency maintenance follow-up
@@ -554,20 +551,20 @@ These tasks originate in the final independent review of PR #21. They are accept
 |---|---|---|---|
 | BL-333 | Done | Establish change-trigger, review-mode, and handoff governance | **Completed:** the canonical change-trigger, review-mode, finding-remediation, readiness, report, and handoff foundation is implemented and independently reviewed. PR #27 merged through regular merge commit `e42d57d57ea075640c9b123a533057bcac3861b8`; its second parent preserves all six PR commits at `c9b54c9be0cc96d9fc7f81841e28dc7a9b89fc74`, and merge/head trees plus all 26/26 paths are identical. REV-007, REV-008, REV-010, REV-013, REV-015, `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` are closed with no remaining BL-333/BL-334 or PR27-EXACT finding. Post-merge CI, Metadata Regression, and CodeQL passed; exact-head/workflow-source parity, PowerShell 7.6.4, 1,051 governance checks with zero errors, and 198/198 fixtures passed. Durable evidence is retained and the five complete temporary review packages remain preserved because none is a redundant disposable copy. No runtime or product logic changed. |
 | BL-334 | Done | Enforce change-trigger, finding-remediation, and handoff governance | **Completed:** fail-closed enforcement covers diff-derived triggers, checkpoints, immutable review modes, actual correction/current-delta bytes, exact finding and status parity, strict schemas, external path mappings, bounded handoff/readiness, commit preparation, and authoritative Hosted-CI provenance. PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8` with two-parent, tree, six-commit, and 26/26 path parity. REV-007, REV-008, REV-010, REV-013, and REV-015 remain `CLOSED_BY_INDEPENDENT_REVIEW`; RUN-007 remains `CORRECTED_AND_INDEPENDENTLY_REVIEWED`; `PR27-EXACT-REV-001`, `PR27-EXACT-REV-002`, and `PR27-EXACT-REV-003` remain `CLOSED_BY_INDEPENDENT_EXACT_COMMIT_REVIEW`. The finding and exact-review queues are empty. Post-merge Hosted CI passed with PowerShell 7.6.4, 1,051/0 governance, and 198/198 fixtures. Durable evidence is secured, controlled cleanup removed no sole-copy review package, and runtime/product logic remain unchanged. |
-| BL-335 | Done | Migrate FlashGate reference-bound legacy Temp objects to local Temp | **Completed:** `TMP-001`, `TMP-004`, `TMP-016`, and `TMP-059` were copied to `<CodexTempRoot>` and `REF-005` through `REF-007` were atomically rebound with a complete productive reference backup. Productive migration, focused function validation, and the concrete isolated rollback rehearsal passed. The four original source objects were then removed as one controlled source-removal assignment; final read-only evidence confirms `SourceObjectCountAfter=0`, four unchanged productive targets, three unchanged active target references, an unchanged productive backup, no quarantine remainder, parser/hash/manifest parity, and a clean repository before this governance convergence. `BL335-D-VAL-012` is `CLOSED_BY_INDEPENDENT_REVIEW_VALIDATION_CONTROL_INTERFERENCE`: the only failed post-removal activity gate observed the concurrently running plaintext Codex monitor, while the identical post-monitor diagnostic was processes/tasks/shortcuts/exclusive-probe failures `0/0/0/0`. No BL-335 finding remains open. Durable evidence is in the BL-335 Freigabe B, Freigabe C, VAL-008, and Freigabe D reports under `Codex-Work\Reports`. |
+| BL-335 | Done | Migrate FlashGate reference-bound legacy Temp objects to local Temp | **Completed:** `TMP-001`, `TMP-004`, `TMP-016`, and `TMP-059` were copied to `<CodexTempRoot>` and `REF-005` through `REF-007` were atomically rebound with a complete productive reference backup. Productive migration, focused function validation, and the concrete isolated rollback rehearsal passed. The four original source objects were then removed as one controlled source-removal assignment; final read-only evidence confirms `SourceObjectCountAfter=0`, four unchanged productive targets, three unchanged active target references, an unchanged productive backup, no quarantine remainder, parser/hash/manifest parity, and a clean repository before this governance convergence. `BL-335-VAL-012` is `CLOSED_BY_INDEPENDENT_REVIEW_VALIDATION_CONTROL_INTERFERENCE`: the only failed post-removal activity gate observed the concurrently running plaintext Codex monitor, while the identical post-monitor diagnostic was processes/tasks/shortcuts/exclusive-probe failures `0/0/0/0`. No BL-335 finding remains open. Durable evidence is in the BL-335 Freigabe B, Freigabe C, VAL-008, and Freigabe D reports under `Codex-Work\Reports`. |
 
 ### Governance handoff generalization follow-up
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-336 | Done | Generalize governance handoff contracts and commit-preparation validation | **Completed:** explicit task-neutral `GENERIC_COMMIT_PREPARATION` and isolated `FINDING_CORRECTION` profiles now bind complete repository, scope, patch, inventory, manifest, validation, review, and report evidence while preserving the historical BL-333/BL-334 contracts and all fail-closed path, UTF-8, independence, and readiness gates. Windows and native Linux validation under PowerShell 7.6.4 passed, including 31/31 focused and 85/85 generic cases; the historical 225-case matrix remains compatible. The focused independent Exact-Head Delta Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b` passed with no new findings, warnings, or failures. `BL336-PR31-REV-001` through `BL336-PR31-REV-004` are `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`; `OpenFindingCount: 0`. The final status commit is documentation-only and introduces no MCP runtime or product behavior change. **Sequence:** BL-230 integration may resume before BL-324. |
+| BL-336 | Done | Generalize governance handoff contracts and commit-preparation validation | **Completed:** explicit task-neutral `GENERIC_COMMIT_PREPARATION` and isolated `FINDING_CORRECTION` profiles now bind complete repository, scope, patch, inventory, manifest, validation, review, and report evidence while preserving the historical BL-333/BL-334 contracts and all fail-closed path, UTF-8, independence, and readiness gates. Windows and native Linux validation under PowerShell 7.6.4 passed, including 31/31 focused and 85/85 generic cases; the historical 225-case matrix remains compatible. The focused independent Exact-Head Delta Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b` passed with no new findings, warnings, or failures. `BL-336-PR-31-REV-001` through `BL-336-PR-31-REV-004` are `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; `BL-336-PR-31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`; `OpenFindingCount: 0`. The final status commit is documentation-only and introduces no MCP runtime or product behavior change. **Sequence:** BL-230 integration may resume before BL-324. |
 
 ### Post-BL-230 governance and host-lifecycle follow-up
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-337 | Planned | Isolate governance fixture execution in one controlled runner process | Each fixture run owns exactly one controlled runner process identified by PID and start identity; deterministic timeouts use bounded kill, wait, and stream drain; terminal evidence proves cleanup, no surviving fixture/validator process, and unchanged repository state. Every terminal case emits one machine-readable per-case ProgressEvent with only technically required fields. Identical events are suppressed; a heartbeat is explicitly typed, emitted only after the configured interval, and never duplicated for the same interval/state. Output occurs only for progress, phase change, status change, or heartbeat. Missing progress instrumentation on a recurring long run is a finding. |
-| BL-338 | Done | Add canonical governance case metadata and deterministic selection | One machine-readable leading inventory owns every case ID, group, tag, supported platform, required capability, and Windows-only dependency marker; no Shell/PowerShell array or second maintained list is canonical. `-ListGroups`, `-ListTags`, `-ListCases`, group/tag selection, and the compatible `-CaseName` path derive from that source. All selectors resolve completely before runner-process start and each selected token resolves to exactly one canonical case. Unknown, duplicate, ambiguous, platform-incompatible, or capability-incomplete selections stop fail-closed with structured diagnostics containing the affected IDs and no redundant summary fields. The deterministic metadata inventory and resolved selection are SHA-256-bound. **Completed:** the 277-case JSON inventory, closed schema, shared resolver, all three list interfaces, CaseName/Group/Tag preflight, platform/capability gating, semantic hashes, structured diagnostics, and permanent focused fixture matrix are implemented and locally validated. The independent full review plus focused delta review closed BL338-REV-001..004. Classic subsequently raised `BL338-CLASSIC-REV-001` because the Windows fixture harness depended on contributor-local Codex-Work/INF-160 files. The bundled correction removes that repository/Hosted-CI dependency, keeps INF-160 at the local Codex caller boundary, and adds permanent repository-only portability coverage. The focused independent Classic delta reviews closed `BL338-CLASSIC-REV-001` and `BL338-CLASSIC-REV-002` with no new finding; `BL338ClassicPreCommitQualityGate=PASS`. Implementation commit `a28953b19d1e3ff51ffdbd12262964787a9252dc` was merged through PR #40 as `b72c29e5d65803b11463f8d6b3d6f304cf510bf6`. The prior native Linux `standard` evidence remains valid because the corrected boundary does not change case semantics or Linux execution. Post-merge CI #122, Metadata Regression #51, and CodeQL #68 passed; BL-338 is `Done` with `OpenFindingCount=0`. BL-337 consumes only the resolved set and remains `Planned`; BL-340 was not implemented by BL-338 and was completed separately through PR #42. |
+| BL-337 | Planned | Isolate governance fixture execution in one controlled runner process | Each fixture run owns exactly one controlled runner process identified by PID and start identity; deterministic timeouts use bounded kill, wait, and stream drain; terminal evidence proves cleanup, no surviving fixture/validator process, and unchanged repository state. Every terminal case emits one machine-readable per-case ProgressEvent with only technically required fields. Identical events are suppressed; a heartbeat is explicitly typed, emitted only after the configured interval, and never duplicated for the same interval/state. Output occurs only for progress, phase change, status change, or heartbeat. Missing progress instrumentation on a recurring long run is a finding. BL-337 consumes exactly the canonical case set resolved by BL-338 and maintains no second selector inventory or independent selection source. |
+| BL-338 | Done | Add canonical governance case metadata and deterministic selection | One machine-readable leading inventory owns every case ID, group, tag, supported platform, required capability, and Windows-only dependency marker; no Shell/PowerShell array or second maintained list is canonical. `-ListGroups`, `-ListTags`, `-ListCases`, group/tag selection, and the compatible `-CaseName` path derive from that source. All selectors resolve completely before runner-process start and each selected token resolves to exactly one canonical case. Required pre-run results are `RequestedSelectorCount > 0 -> ResolvedCaseCount > 0`, `UnresolvedSelectorCount = 0`, `DuplicateSelectorCount = 0`, `AmbiguousSelectorCount = 0`, `PlatformIncompatibleSelectorCount = 0`, and `CapabilityIncompleteSelectorCount = 0`. Any violation yields `RunnerProcessStartCount = 0` and `ValidationExecutionCount = 0` with structured diagnostics naming every affected ID. The deterministic metadata inventory and resolved selection are SHA-256-bound. **Completed:** the 277-case JSON inventory, closed schema, shared resolver, all three list interfaces, CaseName/Group/Tag preflight, platform/capability gating, semantic hashes, structured diagnostics, and permanent focused fixture matrix are implemented and locally validated. The independent full review plus focused delta review closed BL-338-REV-001..004. Classic subsequently raised `BL-338-REV-002` because the Windows fixture harness depended on contributor-local Codex-Work/INF-160 files. The bundled correction removes that repository/Hosted-CI dependency, keeps INF-160 at the local Codex caller boundary, and adds permanent repository-only portability coverage. The focused independent Classic delta reviews closed `BL-338-REV-002` and `BL-338-REV-003` with no new finding; `BL338ClassicPreCommitQualityGate=PASS`. Implementation commit `a28953b19d1e3ff51ffdbd12262964787a9252dc` was merged through PR #40 as `b72c29e5d65803b11463f8d6b3d6f304cf510bf6`. The prior native Linux `standard` evidence remains valid because the corrected boundary does not change case semantics or Linux execution. Post-merge CI #122, Metadata Regression #51, and CodeQL #68 passed; BL-338 is `Done` with `OpenFindingCount=0`. BL-337 consumes only the resolved set and remains `Planned`; BL-340 was not implemented by BL-338 and was completed separately through PR #42. |
 | BL-339 | Done | Provide reusable focused and full governance validation orchestration | **Completed:** implementation and Full Completion passed, and the final independent closure review passed against immutable 19-member package SHA-256 `425A8B4E3D5497C40119E58291E773B25CF02675084653A4C73E685F6ABFB119` (154308 bytes) with no new finding. REV-001 through REV-014 are closed; REV-001/002 retain their prior independent-delta closure and REV-003..014 are `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. `OpenFindingCount=0`; no further BL-339 correction or review cycle is required. PR #34 merged through `26734c333341455a63f79c0f1a956309e54177e0`, and all post-merge CI, Metadata Regression, and CodeQL checks passed. BL-339 has no remaining gate or work. |
 | BL-340 | Done | Complete governance generator/profile migration | **Completed:** the generator/profile migration and eight-part convergence scope were independently reviewed and committed at head `39665dc861d96317a37a616cad81a4e1a199473e`. Classic merged PR #42 with method `merge` as `b20e8311fd976ca9a87c8a652be3fb631c6d40df` on 2026-08-24; the merge tree is `0290087bedfee7fa7c815dd228fcf2b0a339a246` with parents `2bccab83393c503b20e7878134230574946c9cdd` and the exact reviewed head. The user manually removed the remote feature branch and Classic verified it absent. `OpenFindingCount=0`, and no BL-340 implementation, review, merge, remote, or local implementation work remains. `INF158-REV-050` is a separate non-blocking post-completion infrastructure finding and does not reopen BL-340. |
 | BL-341 | Planned | Implement cross-mode host-process ownership, deterministic shutdown, diagnostics, and orphan prevention | Implement Direct STDIO and proxy/auto-edge lifecycle through one process-root coordinator; platform owner adapters; definitive EOF, transport failure, OS stop, verified owner loss, and explicitly negotiated lease signals; bounded deterministic shutdown; Operations/Job (`BL-094`) and Managed Child (`BL-129`) cleanup through their respective owners; secret-safe instance diagnostics and typed exit classification; PID plus process-start identity or verified OS handle, never PID-only authority; safe stale runtime-registry cleanup; and Windows/Linux behavior. Multiple direct/proxy instances remain legitimate; age, idle time, CPU, request count, or singleton assumptions never authorize termination, and ambiguous live-owner/live-transport cases are `SUSPECTED_STALE`. BL-241 owns complete integrated testability and BL-263 the Version 1.0 release gate. Add no remote listener, interpreter dependency, hidden installation, or automatic elevation. |
@@ -579,6 +576,59 @@ state invalidation, and direct reuse of the unchanged BL-338 resolver. The exact
 reviewed head `39665dc861d96317a37a616cad81a4e1a199473e` was integrated through
 PR #42 as merge commit `b20e8311fd976ca9a87c8a652be3fb631c6d40df`, and the
 remote feature branch is absent. `OpenFindingCount=0`.
+
+BL-341 planning and contract closure is complete: `PlanningStatus=COMPLETE`,
+`ArchitectureContractStatus=COMPLETE`, `DocumentationContractStatus=COMPLETE`,
+and `IndependentReviewStatus=PASS / COMPLETE`. The focused independent delta
+review closed `BL-341-REV-001`, `BL-341-REV-002`, and `BL-341-REV-003` with no new
+finding, warning, or failure. The table status intentionally remains `Planned`:
+`RuntimeImplementationStatus=NOT_STARTED / PLANNED`, and the separate technical
+implementation remains assigned to BL-341 in SPR-060. This closure does not
+reorder the queue or change BL-340.
+
+#### Historical BL-340 convergence scope and dependencies
+
+BL-340 was the sole project owner for the completed generator/profile
+migration. The eight areas below are retained as historical completion-contract
+context and define no remaining BL-340 work:
+
+- **A. Generic Exact-Commit / Intended-Base / Push-Scope Profile.** Before
+  Stage/Commit it resolves and binds the intended base, merge base, effective
+  future PR scope and patch, isolated integration projection, approved write
+  set, and protected foreign state. Required results are
+  `IntendedBaseResult`, `MergeBaseResult`, `EffectivePRScopeResult`,
+  `EffectivePRPatchHash`, `IntegrationProjectionResult`,
+  `AuthorizedWriteSetResult`, and `ForeignProtectedStateResult`.
+- **B. Evidence-only Focused Review Profile.** Supports an empty repository
+  delta with new external/read-only evidence and an independent review without
+  fabricating a correction patch.
+- **C. Post-Merge Closure Profile.** Reuses hash-bound passing merge evidence
+  and runs only the external readback plus directly affected status, backlog,
+  changelog, governance, and documentation gates.
+- **D. Canonical Package-/Manifest Generator.** Reuses one implementation for
+  manifest, inventory, ordinal sorting, strict UTF-8, path/collision/link
+  safety, fresh staging, ZIP creation, reopen, and SHA-256 validation whenever
+  no new package contract is introduced.
+- **E. External-/Ignored-Input Readiness Gate.** Resolves, classifies,
+  hash-binds, and verifies every required versioned, ignored, Git-excluded, or
+  external input before the first expensive child or runner starts.
+- **F. Executable Task-Controller Prohibition.** When a permanent profile plus
+  request data expresses the task, `GeneratedTaskControllerFileCount = 0` and
+  `GeneratedTaskControllerLineCount = 0`; a true contract gap must be explicit.
+- **G. Partial State Rebind / Invalidation Map.** Each transition declares
+  exactly which state components it invalidates and reuses unchanged
+  hash-/commit-/tree-/scope-/package-bound evidence.
+- **H. Zero-Selection Integration.** BL-340 consumes the BL-338-resolved case
+  set and cannot start a focused run when a requested selector set resolves to
+  zero or otherwise violates the BL-338 acceptance contract.
+
+| Upstream / consumer | Strength | Canonical dependency |
+|---|---|---|
+| INF-160 and INF-161 -> technical BL-340 execution | `RECOMMENDED` | Use the canonical sandbox/identity route and PowerShell authoring contract before technical execution; registration does not turn either into a silent hard block. |
+| INF-158 -> BL-340 Remote Publish / Ready / Merge | `REQUIRED` | The one-shot remote lifecycle contract must exist before those remote boundaries; purely local BL-340 work may stop at the publish gate. |
+| INF-159 -> BL-340 Partial Rebind / context efficiency | `CONSUME_IF_AVAILABLE` | Reuse `CurrentStateProjection`, `InvalidationMap`, evidence reuse, and workflow metrics when the contract is available; do not create competing infrastructure. |
+| BL-338 -> BL-340 selector-dependent scope | `REQUIRED` | Consume the one canonical resolved case set; BL-340 owns no second selection source. |
+| INF-130/131 and INF-126/127 -> BL-340 | `NON_BLOCKING` | Status/governance audit and migration do not technically block BL-340 while BL-340 performs no status migration. |
 
 BL-339 is terminal `Done` with Full Completion and final independent review
 `PASS`.
@@ -606,15 +656,15 @@ preflights; and standardized Git/PowerShell probes. It uses BL-339 and creates
 no new ID.
 
 BL-341 is the canonical former BL-340 host-process ownership/lifecycle task
-under ADR-0017. Its current title and SPR-60 placement make the later technical
+under ADR-017. Its current title and SPR-060 placement make the later technical
 implementation owner explicit without changing the historical ID mapping. The
 renumbering and residual-scope extraction remain recorded in
 `docs/backlog-id-migration-2026-08-12.md`; historical evidence retains the IDs
 and contemporary sprint/title text that were canonical when it was produced.
 
-BL-336 PRE_COMMIT checkpoint: `BL336-VAL-001` and `BL336-VAL-002` remain
-`CLOSED_BY_IMPLEMENTATION_AND_FULL_REVALIDATION`; `BL336-REV-001`,
-`BL336-REV-002`, and `BL336-REV-003` remain
+BL-336 PRE_COMMIT checkpoint: `BL-336-VAL-001` and `BL-336-VAL-002` remain
+`CLOSED_BY_IMPLEMENTATION_AND_FULL_REVALIDATION`; `BL-336-REV-001`,
+`BL-336-REV-002`, and `BL-336-REV-003` remain
 `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. The private and undeclared host-path
 negatives now use one closed seven-class factory and assemble deterministic
 synthetic values only at fixture runtime. All seven re-signed packages reach
@@ -629,9 +679,9 @@ scope, internal-validator, and unchanged external-validator gates pass.
 The trusted repository, baseline object, current HEAD, branch, complete
 relevant Git status, tracked/staged state, mode, length, SHA-256, and
 INCLUDE/EXCLUDE decisions remain bound to the isolated worktree. The earlier
-BL-336 findings remain closed. PR #31 findings `BL336-PR31-REV-001`,
-`BL336-PR31-REV-002`, `BL336-PR31-REV-003`, and
-`BL336-PR31-REV-004` are
+BL-336 findings remain closed. PR #31 findings `BL-336-PR-31-REV-001`,
+`BL-336-PR-31-REV-002`, `BL-336-PR-31-REV-003`, and
+`BL-336-PR-31-REV-004` are
 `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`; therefore
 `OpenFindingCount: 0` and BL-336 is `Done`. The corrections add
 baseline-bound tracked deletions, source/target-bound tracked renames,
@@ -640,7 +690,7 @@ temporary object writes, real-object inventory parity, literal pathspecs,
 actual NUL-separated delta parity, EXCLUDE prohibition, and the corresponding
 positive and fail-closed negative packages. Alternate and fixture-divergence
 paths are assembled component by component with no compound backslash child
-literal. `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`. The
+literal. `BL-336-PR-31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`. The
 PRE_COMMIT revalidation passes the 85/85 generic fixtures on Windows and
 natively on Linux under PowerShell 7.6.4, including the real Unix executable
 end-to-end case; the 31/31 focused matrix passes on both platforms. Historical
@@ -678,11 +728,7 @@ The second-parent history retains the six PR commits
 terminal successful; exact-head and workflow-source parity, PowerShell 7.6.4,
 1,051/0 governance, and 198/198 fixtures passed. All earlier findings and all
 three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
-For historical provenance, the queue recorded after PR #27 was:
-`schedule BL-340 independently in SPR-61 → final documentation convergence → Local Work Register dissolution audit → separately authorized Local Work Register removal`.
-BL-340 has since completed independently; final documentation convergence,
-the Local Work Register dissolution audit, and any separately authorized
-removal remain outside BL-340.
+
 
 ## Cross-epic rules
 
@@ -695,7 +741,7 @@ removal remain outside BL-340.
 - Global limits are insufficient for service mode; per-principal quotas and fair scheduling are mandatory.
 - Native Go/OS APIs are preferred. External programs require typed no-shell definitions and evidence; interpreter-based adapters are excluded from Version 1.0.
 - Operations/jobs are optional lifecycle infrastructure; short synchronous operations may run directly and domain logic/ownership stays outside the manager.
-- Benchmarks and threat models must justify separate product binaries, indexes, or external adapters/providers. The same-binary local service IPC accepted by ADR-0014 still requires its defined security, compatibility, and benchmark release gates.
+- Benchmarks and threat models must justify separate product binaries, indexes, or external adapters/providers. The same-binary local service IPC accepted by ADR-014 still requires its defined security, compatibility, and benchmark release gates.
 - FlashGate modules/providers and MCP protocol extensions are separate concepts and contracts.
 - Deprecated MCP Roots is never the foundation of named-root authorization.
 - MCP annotations never replace server-side authorization.

@@ -15,7 +15,7 @@ assignment-specific override. When exactly one payload file is required, that
 file may be transferred directly without a ZIP. When more than one payload
 file is required, the handoff is exactly one ZIP archive. Package members are
 never requested, uploaded, or transferred separately. Task-related names
-begin with the identifier confirmed in the leading Local Work Register.
+begin with the canonical identifier confirmed in `BACKLOG.md` and the current assignment scope.
 
 Before any ZIP is created, a ZIP-free machine-readable readiness gate must pass
 against the converged fachliche, documentation, Windows/Linux (when required),
@@ -232,7 +232,7 @@ The authoritative external artifact gate is:
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Scripts\Test-ClassicReviewArtifact.ps1
 ```
 
-Binding invocation under Windows PowerShell 7.6.5:
+Binding invocation under PowerShell 7.6.5:
 
 ```powershell
 & {
@@ -305,7 +305,7 @@ and defines the task-neutral generic contract separately.
   target findings, per-finding
   status/evidence, direct interfaces, regression tests, and no unknown fields;
 - external manifest, payloads, completion report, report contract, and
-  narrative path section contain exactly five canonical external paths and
+  narrative path section contain exactly four canonical external paths and
   scopes with the required one-to-one mapping. Windows-normalized,
   case-insensitive duplicate paths, scope swaps, missing/extra scopes, and
   alternate spellings fail closed;

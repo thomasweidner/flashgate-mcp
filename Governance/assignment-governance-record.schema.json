@@ -41,76 +41,142 @@
           {
             "properties": {
               "documentationConsistencyResult": {
-                "enum": ["PASS", "PASS_WITH_WARNINGS"]
+                "enum": [
+                  "PASS",
+                  "PASS_WITH_WARNINGS"
+                ]
               }
             },
-            "required": ["documentationConsistencyResult"]
+            "required": [
+              "documentationConsistencyResult"
+            ]
           },
           {
             "properties": {
               "review": {
-                "properties": { "focusedValidationResult": { "const": "PASS" } },
-                "required": ["focusedValidationResult"]
+                "properties": {
+                  "focusedValidationResult": {
+                    "const": "PASS"
+                  }
+                },
+                "required": [
+                  "focusedValidationResult"
+                ]
               }
             },
-            "required": ["review"]
+            "required": [
+              "review"
+            ]
           },
           {
             "properties": {
               "handoff": {
                 "anyOf": [
                   {
-                    "properties": { "required": { "const": true } },
-                    "required": ["required"]
+                    "properties": {
+                      "required": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "required"
+                    ]
                   },
                   {
-                    "properties": { "classicReviewReady": { "const": true } },
-                    "required": ["classicReviewReady"]
+                    "properties": {
+                      "classicReviewReady": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "classicReviewReady"
+                    ]
                   }
                 ]
               }
             },
-            "required": ["handoff"]
+            "required": [
+              "handoff"
+            ]
           },
           {
             "properties": {
               "commitPreparation": {
                 "anyOf": [
                   {
-                    "properties": { "allFindingsClosed": { "const": true } },
-                    "required": ["allFindingsClosed"]
+                    "properties": {
+                      "allFindingsClosed": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "allFindingsClosed"
+                    ]
                   },
                   {
-                    "properties": { "independentDeltaReviewComplete": { "const": true } },
-                    "required": ["independentDeltaReviewComplete"]
+                    "properties": {
+                      "independentDeltaReviewComplete": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "independentDeltaReviewComplete"
+                    ]
                   },
                   {
-                    "properties": { "scopeVerified": { "const": true } },
-                    "required": ["scopeVerified"]
+                    "properties": {
+                      "scopeVerified": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "scopeVerified"
+                    ]
                   },
                   {
-                    "properties": { "validationPassed": { "const": true } },
-                    "required": ["validationPassed"]
+                    "properties": {
+                      "validationPassed": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "validationPassed"
+                    ]
                   },
                   {
-                    "properties": { "commitAuthorized": { "const": true } },
-                    "required": ["commitAuthorized"]
+                    "properties": {
+                      "commitAuthorized": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "commitAuthorized"
+                    ]
                   }
                 ]
               }
             },
-            "required": ["commitPreparation"]
+            "required": [
+              "commitPreparation"
+            ]
           }
         ]
       },
-      "then": { "required": ["currentStateGate"] }
+      "then": {
+        "required": [
+          "currentStateGate"
+        ]
+      }
     }
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
     "recordReadinessClass": { "const": "CURRENT" },
     "recordedAt": { "type": "string", "format": "date-time" },
-    "taskId": { "type": "string", "pattern": "^(?:BL-[0-9]{3})(?:/BL-[0-9]{3})?$" },
+    "taskId": {
+      "type": "string",
+      "pattern": "^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$"
+    },
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "currentCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
@@ -142,8 +208,12 @@
         "BLOCKED_PENDING_DECISION"
       ]
     },
-    "currentStateGate": { "$ref": "#/$defs/currentStateGate" },
-    "triggeredDomains": { "$ref": "#/$defs/stringArray" },
+    "currentStateGate": {
+      "$ref": "#/$defs/currentStateGate"
+    },
+    "triggeredDomains": {
+      "$ref": "#/$defs/stringArray"
+    },
     "observedTriggers": {
       "type": "array",
       "uniqueItems": true,
@@ -166,60 +236,152 @@
         ]
       }
     },
-    "affectedContinuousGates": { "$ref": "#/$defs/stringArray" },
-    "existingBacklogCoverage": { "$ref": "#/$defs/stringArray" },
+    "affectedContinuousGates": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "existingBacklogCoverage": {
+      "$ref": "#/$defs/stringArray"
+    },
     "duplicateSearch": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["performed", "sources", "result"],
+      "required": [
+        "performed",
+        "sources",
+        "result"
+      ],
       "properties": {
-        "performed": { "type": "boolean" },
-        "sources": { "$ref": "#/$defs/stringArray" },
-        "result": { "enum": ["NO_DUPLICATE", "EXISTING_ITEM_REUSED", "NOT_REQUIRED"] }
+        "performed": {
+          "type": "boolean"
+        },
+        "sources": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "result": {
+          "enum": [
+            "NO_DUPLICATE",
+            "EXISTING_ITEM_REUSED",
+            "NOT_REQUIRED"
+          ]
+        }
       }
     },
-    "repeatedChecks": { "$ref": "#/$defs/stringArray" },
-    "checksNotRequired": { "$ref": "#/$defs/stringArray" },
-    "newBacklogItems": { "$ref": "#/$defs/stringArray" },
-    "updatedBacklogOrRegisterEntries": { "$ref": "#/$defs/stringArray" },
-    "deferredTriggerItems": { "$ref": "#/$defs/stringArray" },
+    "repeatedChecks": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "checksNotRequired": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "newBacklogItems": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "updatedBacklogOrRegisterEntries": {
+      "$ref": "#/$defs/stringArray"
+    },
+    "deferredTriggerItems": {
+      "$ref": "#/$defs/stringArray"
+    },
     "decisionBoundaries": {
       "type": "array",
-      "items": { "$ref": "#/$defs/decisionBoundary" }
+      "items": {
+        "$ref": "#/$defs/decisionBoundary"
+      }
     },
-    "releaseImpact": { "type": "string", "minLength": 1 },
-    "documentationConsistencyResult": { "enum": ["PASS", "PASS_WITH_WARNINGS", "FAIL", "PENDING"] },
-    "review": { "$ref": "#/$defs/review" },
-    "handoff": { "$ref": "#/$defs/handoff" },
-    "hostedCI": { "$ref": "#/$defs/hostedCI" },
-    "commitPreparation": { "$ref": "#/$defs/commitPreparation" },
-    "focusedDelta": { "$ref": "#/$defs/focusedDelta" }
+    "releaseImpact": {
+      "type": "string",
+      "minLength": 1
+    },
+    "documentationConsistencyResult": {
+      "enum": [
+        "PASS",
+        "PASS_WITH_WARNINGS",
+        "FAIL",
+        "PENDING"
+      ]
+    },
+    "review": {
+      "$ref": "#/$defs/review"
+    },
+    "handoff": {
+      "$ref": "#/$defs/handoff"
+    },
+    "hostedCI": {
+      "$ref": "#/$defs/hostedCI"
+    },
+    "commitPreparation": {
+      "$ref": "#/$defs/commitPreparation"
+    },
+    "focusedDelta": {
+      "$ref": "#/$defs/focusedDelta"
+    },
+    "relatedPrimaryIds": {
+      "minItems": 1,
+      "items": {
+        "pattern": "^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$",
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "type": "array"
+    }
   },
   "$defs": {
     "currentStateGate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["result", "repositoryIdentityBound", "commitAndBranchBound", "completeStatusBound", "scopeAndIdsBound", "parallelWorktreesBound"],
+      "required": [
+        "result",
+        "repositoryIdentityBound",
+        "commitAndBranchBound",
+        "completeStatusBound",
+        "scopeAndIdsBound",
+        "parallelWorktreesBound"
+      ],
       "properties": {
-        "result": { "const": "PASS" },
-        "repositoryIdentityBound": { "const": true },
-        "commitAndBranchBound": { "const": true },
-        "completeStatusBound": { "const": true },
-        "scopeAndIdsBound": { "const": true },
-        "parallelWorktreesBound": { "const": true }
+        "result": {
+          "const": "PASS"
+        },
+        "repositoryIdentityBound": {
+          "const": true
+        },
+        "commitAndBranchBound": {
+          "const": true
+        },
+        "completeStatusBound": {
+          "const": true
+        },
+        "scopeAndIdsBound": {
+          "const": true
+        },
+        "parallelWorktreesBound": {
+          "const": true
+        }
       }
     },
     "stringArray": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "uniqueItems": true
     },
     "decisionBoundary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "type", "cause", "evidence", "blocking", "owner", "nextAction"],
+      "required": [
+        "id",
+        "type",
+        "cause",
+        "evidence",
+        "blocking",
+        "owner",
+        "nextAction"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
         "type": {
           "enum": [
             "PRODUCT_DECISION",
@@ -231,11 +393,25 @@
             "SCOPE_DECISION"
           ]
         },
-        "cause": { "type": "string", "minLength": 1 },
-        "evidence": { "type": "string", "minLength": 1 },
-        "blocking": { "type": "boolean" },
-        "owner": { "type": "string", "minLength": 1 },
-        "nextAction": { "type": "string", "minLength": 1 }
+        "cause": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blocking": {
+          "type": "boolean"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nextAction": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "finding": {
@@ -255,8 +431,18 @@
         "boundaryType"
       ],
       "properties": {
-        "id": { "type": "string", "minLength": 1 },
-        "severity": { "enum": ["BLOCKER", "MAJOR", "MINOR", "NOTE"] },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "BLOCKER",
+            "MAJOR",
+            "MINOR",
+            "NOTE"
+          ]
+        },
         "disposition": {
           "enum": [
             "OPEN",
@@ -266,15 +452,40 @@
             "CLOSED_BY_INDEPENDENT_REVIEW"
           ]
         },
-        "evidence": { "type": "string", "minLength": 1 },
-        "cause": { "type": "string", "minLength": 1 },
-        "correction": { "type": "string" },
-        "regressionEvidenceIds": { "$ref": "#/$defs/stringArray" },
-        "affectedPaths": { "$ref": "#/$defs/stringArray" },
-        "nonFileBoundary": { "type": ["string", "null"] },
-        "boundaryId": { "type": ["string", "null"] },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cause": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correction": {
+          "type": "string"
+        },
+        "regressionEvidenceIds": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "affectedPaths": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "nonFileBoundary": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "boundaryId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "boundaryType": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "enum": [
             null,
             "PRODUCT_DECISION",
@@ -307,19 +518,64 @@
         "independentDeltaReviewRequired"
       ],
       "properties": {
-        "repositoryMutationAllowed": { "type": "boolean" },
-        "externalMutationAllowed": { "type": "boolean" },
-        "findingFixesPerformed": { "type": "boolean" },
-        "reviewerIndependencePreserved": { "type": "boolean" },
-        "originalFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-        "discoveredInRunFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-        "correctedInRunFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-        "deferredFindings": { "type": "array", "items": { "$ref": "#/$defs/finding" } },
-        "stopConditionsEncountered": { "$ref": "#/$defs/stringArray" },
-        "selfReviewIterations": { "type": "integer", "minimum": 0 },
-        "permanentRegressionEvidence": { "$ref": "#/$defs/stringArray" },
-        "focusedValidationResult": { "enum": ["PASS", "PASS_WITH_WARNINGS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
-        "independentDeltaReviewRequired": { "type": "boolean" }
+        "repositoryMutationAllowed": {
+          "type": "boolean"
+        },
+        "externalMutationAllowed": {
+          "type": "boolean"
+        },
+        "findingFixesPerformed": {
+          "type": "boolean"
+        },
+        "reviewerIndependencePreserved": {
+          "type": "boolean"
+        },
+        "originalFindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "discoveredInRunFindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "correctedInRunFindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "deferredFindings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/finding"
+          }
+        },
+        "stopConditionsEncountered": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "selfReviewIterations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "permanentRegressionEvidence": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "focusedValidationResult": {
+          "enum": [
+            "PASS",
+            "PASS_WITH_WARNINGS",
+            "FAIL",
+            "PENDING",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "independentDeltaReviewRequired": {
+          "type": "boolean"
+        }
       }
     },
     "handoff": {
@@ -340,18 +596,78 @@
         "canonicalValidatorResult"
       ],
       "properties": {
-        "required": { "type": "boolean" },
-        "package": { "type": ["string", "null"] },
-        "artifacts": { "$ref": "#/$defs/stringArray" },
-        "scopeInventoryResult": { "enum": ["PASS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
-        "patchCompletenessResult": { "enum": ["PASS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
-        "manifestResult": { "enum": ["PASS", "FAIL", "PENDING", "NOT_APPLICABLE"] },
-        "missingArtifacts": { "$ref": "#/$defs/stringArray" },
-        "classicReviewReady": { "type": "boolean" },
-        "canonicalValidatorPath": { "type": ["string", "null"] },
-        "canonicalValidatorSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-        "canonicalValidatorExitCode": { "type": ["integer", "null"], "minimum": 0, "maximum": 2 },
-        "canonicalValidatorResult": { "enum": ["PASS", "FAIL", "ERROR", "PENDING", "NOT_APPLICABLE"] }
+        "required": {
+          "type": "boolean"
+        },
+        "package": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "artifacts": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "scopeInventoryResult": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "PENDING",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "patchCompletenessResult": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "PENDING",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "manifestResult": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "PENDING",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "missingArtifacts": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "classicReviewReady": {
+          "type": "boolean"
+        },
+        "canonicalValidatorPath": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "canonicalValidatorSha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "canonicalValidatorExitCode": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 2
+        },
+        "canonicalValidatorResult": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "ERROR",
+            "PENDING",
+            "NOT_APPLICABLE"
+          ]
+        }
       }
     },
     "hostedCI": {
@@ -369,27 +685,83 @@
         "headSha"
       ],
       "properties": {
-        "required": { "type": "boolean" },
-        "sourceVerified": { "type": "boolean" },
-        "sources": { "$ref": "#/$defs/stringArray" },
-        "workflowCommit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
-        "runId": { "type": ["string", "null"], "pattern": "^[1-9][0-9]*$" },
-        "runAttempt": { "type": ["integer", "null"], "minimum": 1 },
-        "event": { "type": ["string", "null"] },
-        "ref": { "type": ["string", "null"] },
-        "headSha": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" }
+        "required": {
+          "type": "boolean"
+        },
+        "sourceVerified": {
+          "type": "boolean"
+        },
+        "sources": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "workflowCommit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "runId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[1-9][0-9]*$"
+        },
+        "runAttempt": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "event": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "headSha": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$"
+        }
       }
     },
     "commitPreparation": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["allFindingsClosed", "independentDeltaReviewComplete", "scopeVerified", "validationPassed", "commitAuthorized"],
+      "required": [
+        "allFindingsClosed",
+        "independentDeltaReviewComplete",
+        "scopeVerified",
+        "validationPassed",
+        "commitAuthorized"
+      ],
       "properties": {
-        "allFindingsClosed": { "type": "boolean" },
-        "independentDeltaReviewComplete": { "type": "boolean" },
-        "scopeVerified": { "type": "boolean" },
-        "validationPassed": { "type": "boolean" },
-        "commitAuthorized": { "const": false }
+        "allFindingsClosed": {
+          "type": "boolean"
+        },
+        "independentDeltaReviewComplete": {
+          "type": "boolean"
+        },
+        "scopeVerified": {
+          "type": "boolean"
+        },
+        "validationPassed": {
+          "type": "boolean"
+        },
+        "commitAuthorized": {
+          "const": false
+        }
       }
     },
     "focusedDelta": {
@@ -411,19 +783,79 @@
         "referenceOnlyPaths"
       ],
       "properties": {
-        "previousReviewPackage": { "type": ["string", "null"], "minLength": 1 },
-        "priorReviewBaselineSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-        "correctionStartCommit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" },
-        "correctionPatchArtifact": { "type": ["string", "null"], "enum": [null, "correction-only.patch"] },
-        "correctionPatchSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-        "currentDeltaArtifact": { "type": ["string", "null"], "enum": [null, "current-delta.patch"] },
-        "currentDeltaSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
-        "correctionOnlyPaths": { "$ref": "#/$defs/stringArray" },
-        "reviewedFindingIds": { "$ref": "#/$defs/stringArray" },
-        "directInterfacePaths": { "$ref": "#/$defs/stringArray" },
-        "regressionEvidenceIds": { "$ref": "#/$defs/stringArray" },
-        "allowedDeltaPaths": { "$ref": "#/$defs/stringArray" },
-        "referenceOnlyPaths": { "$ref": "#/$defs/stringArray" }
+        "previousReviewPackage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "priorReviewBaselineSha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "correctionStartCommit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "correctionPatchArtifact": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "correction-only.patch"
+          ]
+        },
+        "correctionPatchSha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "currentDeltaArtifact": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            null,
+            "current-delta.patch"
+          ]
+        },
+        "currentDeltaSha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "correctionOnlyPaths": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "reviewedFindingIds": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "directInterfacePaths": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "regressionEvidenceIds": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "allowedDeltaPaths": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "referenceOnlyPaths": {
+          "$ref": "#/$defs/stringArray"
+        }
       }
     }
   }

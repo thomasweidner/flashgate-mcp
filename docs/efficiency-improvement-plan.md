@@ -157,7 +157,7 @@ Resource support is an adapter feature. Core domains return local result referen
 
 Profiles minimize both privilege and model context.
 
-Initial planning budgets are deliberately conservative and must be confirmed by `SPR-47` benchmarks:
+Initial planning budgets are deliberately conservative and must be confirmed by `SPR-047` benchmarks:
 
 | Profile | Planning target |
 |---|---:|
@@ -259,7 +259,7 @@ Version 1.0 implementation preference:
 
 PowerShell or shell scripts may remain development, installation, smoke, or administrator tooling. They are not runtime dependencies of the FlashGate core/service.
 
-Governance validation follows ADR-0016. Reusable orchestration performs cheap
+Governance validation follows ADR-016. Reusable orchestration performs cheap
 current-state, toolchain, parser, parameter, Temp, sandbox, and harness
 preflights before expensive matrices. It converges with focused root-cause and
 component checks, completes documentation, and then performs exactly one full
@@ -367,5 +367,5 @@ The efficiency architecture is accepted only when:
 - [Benchmark documentation](../benchmarks/README.md)
 - [Architecture](architecture.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
-- [ADR-0012](adr/0012-resource-token-efficiency-and-pre-1-0-contracts.md)
+- [ADR-012](adr/012-resource-token-efficiency-and-pre-1-0-contracts.md)
 - [Authoritative backlog](../BACKLOG.md)

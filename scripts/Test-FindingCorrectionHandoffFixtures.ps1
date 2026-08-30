@@ -369,7 +369,7 @@ function New-IndependentReviewOutcome {
                 [ordered]@{ id = $_; disposition = 'CLOSED_BY_INDEPENDENT_DELTA_REVIEW' }
             }
         })
-    $taskComponent = $TaskId.Replace('-', '')
+    $taskComponent = $TaskId
     $nextFinding = $OpenFindingIds[0].Replace('-', '_')
     Write-Json $LiteralPath ([ordered]@{
             schemaVersion = 1
@@ -987,7 +987,7 @@ function Invoke-Generator {
 function Convert-ToTwoFindingParityFixture {
     param(
         [Parameter(Mandatory)][string]$Directory,
-        [string[]]$FindingIds = @('BL339-REV-003', 'BL339-REV-004'),
+        [string[]]$FindingIds = @('BL-339-REV-003', 'BL-339-REV-004'),
         [string[]]$TestIds = @('FCH-PER-FINDING-CONTRACT-A', 'FCH-PER-FINDING-CONTRACT-B')
     )
 
@@ -1185,7 +1185,7 @@ try {
     $historicalBinding = [pscustomobject][ordered]@{ type='IMMUTABLE_REVIEW_PACKAGE'; historicalPackagePath=$historicalZip; historicalPackageSha256=Get-Hash($historicalZip); historicalManifestSha256=Get-Hash(Join-Path $historicalDir 'MANIFEST.sha256'); historicalPatchSha256=Get-Hash(Join-Path $historicalDir 'current-delta.patch'); historicalScopeInventorySha256=Get-Hash(Join-Path $historicalDir 'scope-inventory.json'); previousReviewedBaselineCommit=$baseline; previousReviewedTree=$previousTree; previousReviewedPathCount=2; previousReviewedPostimages=$postimages }
 
     $commitSource = Join-Path $fixtureRoot 'commit-source'
-    $commitContract = New-SyntheticSource -Directory $commitSource -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL339-REV-003' -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree -PreviousMode COMMIT -HistoricalPackagePath $historicalZip -HistoricalBinding $historicalBinding
+    $commitContract = New-SyntheticSource -Directory $commitSource -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL-339-REV-003' -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree -PreviousMode COMMIT -HistoricalPackagePath $historicalZip -HistoricalBinding $historicalBinding
     $preflight = Join-Path $fixtureRoot 'commit-preflight'
     $preflightRun = Invoke-Generator $commitSource $repo 'BL-339' $commitContract.CurrentPaths $preflight Preflight
     if (-not $PublicationEvidenceOnly) {
@@ -1416,7 +1416,7 @@ try {
     Add-Case 'FCH-PUBLICATION-EVIDENCE-OPTIONAL-COMPATIBILITY-PASS' ($preflightRun.ExitCode -eq 0)
 
     $publicationSource = Copy-Artifact $commitSource 'publication-source'
-    Add-PublicationEvidenceToSource $publicationSource 'BL339-REV-003'
+    Add-PublicationEvidenceToSource $publicationSource 'BL-339-REV-003'
     $publicationPreflight = Join-Path $fixtureRoot 'publication-preflight'
     $publicationRun = Invoke-Generator $publicationSource $repo 'BL-339' $commitContract.CurrentPaths $publicationPreflight Preflight
     Add-Case 'FCH-PUBLICATION-EVIDENCE-VALID-PASS' ($publicationRun.ExitCode -eq 0) $publicationRun.Output
@@ -1531,7 +1531,7 @@ try {
     Add-Case 'FCH-SYNTHETIC-ZIP-INTERNAL-FINAL-STATE' ([string]$zipCompletion.artifactLifecycleState -ceq 'FINAL_REVIEW_PACKAGE' -and [bool]$zipCompletion.classicReviewReady)
 
     $snapshotSource = Join-Path $fixtureRoot 'snapshot-source'
-    $snapshotContract = New-SyntheticSource -Directory $snapshotSource -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL339-REV-004' -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree -PreviousMode IMMUTABLE_REVIEW_PACKAGE -HistoricalPackagePath $historicalZip -HistoricalBinding $historicalBinding
+    $snapshotContract = New-SyntheticSource -Directory $snapshotSource -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL-339-REV-004' -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree -PreviousMode IMMUTABLE_REVIEW_PACKAGE -HistoricalPackagePath $historicalZip -HistoricalBinding $historicalBinding
     $snapshotPreflight = Join-Path $fixtureRoot 'snapshot-preflight'
     $snapshotRun = Invoke-Generator $snapshotSource $repo 'BL-339' $snapshotContract.CurrentPaths $snapshotPreflight Preflight
     Add-Case 'FCH-IMMUTABLE-PACKAGE-PRODUCT-VALIDATOR-PASS' ($snapshotRun.ExitCode -eq 0) $snapshotRun.Output
@@ -1588,7 +1588,7 @@ try {
     }
     $genericHistoricalSource = Join-Path $fixtureRoot 'generic-historical-valid-source'
     $genericHistoricalContract = New-SyntheticSource -Directory $genericHistoricalSource `
-        -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL339-REV-004' `
+        -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL-339-REV-004' `
         -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $previousTree `
         -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes `
         -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree `
@@ -1702,7 +1702,7 @@ try {
         }
         $variantSource = Join-Path $fixtureRoot ('source-' + $genericHistoricalCase.Id.ToLowerInvariant())
         $variantContract = New-SyntheticSource -Directory $variantSource -RepositoryRoot $repo `
-            -TaskId 'BL-339' -FindingId 'BL339-REV-004' -BaselineCommit $baseline `
+            -TaskId 'BL-339' -FindingId 'BL-339-REV-004' -BaselineCommit $baseline `
             -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes `
             -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries `
             -CorrectionEntries $correctionEntries -CurrentTree $currentTree `
@@ -1732,7 +1732,7 @@ try {
         }
         $variantSource = Join-Path $fixtureRoot ('source-' + $historicalFailureCase.Id.ToLowerInvariant())
         $variantContract = New-SyntheticSource -Directory $variantSource -RepositoryRoot $repo -TaskId 'BL-339' `
-            -FindingId 'BL339-REV-004' -BaselineCommit $baseline -PreviousCommit $previousCommit `
+            -FindingId 'BL-339-REV-004' -BaselineCommit $baseline -PreviousCommit $previousCommit `
             -PreviousTree $previousTree -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes `
             -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree `
             -PreviousMode IMMUTABLE_REVIEW_PACKAGE -HistoricalPackagePath $variant.Zip -HistoricalBinding $variantBinding
@@ -1766,7 +1766,7 @@ try {
     }
 
     $historicalSource = Join-Path $fixtureRoot 'historical-commit-source'
-    $historicalContract = New-SyntheticSource -Directory $historicalSource -RepositoryRoot $repo -TaskId 'BL-334' -FindingId 'BL333-BL334-REV-013' -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree -PreviousMode COMMIT -HistoricalPackagePath $historicalZip -HistoricalBinding $historicalBinding
+    $historicalContract = New-SyntheticSource -Directory $historicalSource -RepositoryRoot $repo -TaskId 'BL-334' -FindingId 'BL-334-REV-013' -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries -CorrectionEntries $correctionEntries -CurrentTree $currentTree -PreviousMode COMMIT -HistoricalPackagePath $historicalZip -HistoricalBinding $historicalBinding
     $historicalPreflight = Join-Path $fixtureRoot 'historical-commit-preflight'
     $historicalRun = Invoke-Generator $historicalSource $repo 'BL-334' $historicalContract.CurrentPaths $historicalPreflight Preflight
     Add-Case 'FCH-HISTORICAL-BL333-BL334-COMMIT-PRODUCT-PASS' ($historicalRun.ExitCode -eq 0) $historicalRun.Output
@@ -1776,7 +1776,7 @@ try {
         [ordered]@{ Id='FCH-REPORT-WRONG-CURRENT-PATCH-SHA-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-ReportContract(Join-Path $d 'report.md');$j.currentFeaturePatch.sha256='f'*64;Write-ReportContract(Join-Path $d 'report.md')$j } },
         [ordered]@{ Id='FCH-REPORT-WRONG-CORRECTION-PATCH-SHA-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-ReportContract(Join-Path $d 'report.md');$j.correctionOnlyPatch.sha256='f'*64;Write-ReportContract(Join-Path $d 'report.md')$j } },
         [ordered]@{ Id='FCH-REPORT-MISSING-FINDING-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-ReportContract(Join-Path $d 'report.md');$j.findingIds=@();$j.findingDispositions=@();Write-ReportContract(Join-Path $d 'report.md')$j } },
-        [ordered]@{ Id='FCH-REPORT-FOREIGN-FINDING-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-ReportContract(Join-Path $d 'report.md');$j.findingIds=@($j.findingIds+'BL340-REV-001');$base=$j.findingDispositions[0];$j.findingDispositions=@($j.findingDispositions+[pscustomobject]@{id='BL340-REV-001';severity=$base.severity;previousStatus=$base.previousStatus;status=$base.status;disposition=$base.disposition;correction=$base.correction;affectedPaths=$base.affectedPaths;regressionTestIds=$base.regressionTestIds;evidenceReferences=$base.evidenceReferences;producerStatus='CORRECTED_PENDING_DELTA_REVIEW';reviewerStatus='OPEN_PENDING_FOCUSED_INDEPENDENT_DELTA_REVIEW'});Write-ReportContract(Join-Path $d 'report.md')$j } },
+        [ordered]@{ Id='FCH-REPORT-FOREIGN-FINDING-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-ReportContract(Join-Path $d 'report.md');$j.findingIds=@($j.findingIds+'BL-340-REV-001');$base=$j.findingDispositions[0];$j.findingDispositions=@($j.findingDispositions+[pscustomobject]@{id='BL-340-REV-001';severity=$base.severity;previousStatus=$base.previousStatus;status=$base.status;disposition=$base.disposition;correction=$base.correction;affectedPaths=$base.affectedPaths;regressionTestIds=$base.regressionTestIds;evidenceReferences=$base.evidenceReferences;producerStatus='CORRECTED_PENDING_DELTA_REVIEW';reviewerStatus='OPEN_PENDING_FOCUSED_INDEPENDENT_DELTA_REVIEW'});Write-ReportContract(Join-Path $d 'report.md')$j } },
         [ordered]@{ Id='FCH-PER-FINDING-REGRESSION-CORRECTION-MATRIX-MISMATCH-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-Json(Join-Path $d 'finding-correction-matrix.json');$j.findings[0].regressionTestIds=@($j.findings[0].regressionTestIds+'GHP-FOREIGN-PER-FINDING');Write-Json(Join-Path $d 'finding-correction-matrix.json')$j } },
         [ordered]@{ Id='FCH-PER-FINDING-REGRESSION-MATRIX-MISMATCH-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-Json(Join-Path $d 'finding-regression-matrix.json');$j.findings[0].regressionTests[0].id='FCH-FOREIGN-PER-FINDING';Write-Json(Join-Path $d 'finding-regression-matrix.json')$j } },
         [ordered]@{ Id='FCH-PER-FINDING-REGRESSION-LEDGER-MISMATCH-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-Json(Join-Path $d 'finding-ledger.json');$j.findings[0].permanentRegressions=@($j.findings[0].permanentRegressions+'FCH-FOREIGN-PER-FINDING');Write-Json(Join-Path $d 'finding-ledger.json')$j } },
@@ -1807,7 +1807,7 @@ try {
         [ordered]@{ Id='FCH-PREPOST-HASH-BINDING-REJECTED'; Base=$preflight; Mutate={ param($d) $j=Read-Json(Join-Path $d 'correction-scope-inventory.json');$j.entries[0].currentCorrectedSha256='f'*64;Write-Json(Join-Path $d 'correction-scope-inventory.json')$j } }
         [ordered]@{ Id='FCH-DUPLICATE-TOP-LEVEL-JSON-REJECTED'; Base=$preflight; Mutate={ param($d) $p=Join-Path $d 'validation-summary.json';$t=[System.IO.File]::ReadAllText($p,$utf8);$t=$t -replace '"schemaVersion": 1,',('"schemaVersion": 1,'+"`n"+'  "schemaVersion": 1,');Write-Utf8 $p $t } },
         [ordered]@{ Id='FCH-DUPLICATE-NESTED-JSON-REJECTED'; Base=$preflight; Mutate={ param($d) $p=Join-Path $d 'previous-review-binding.json';$t=[System.IO.File]::ReadAllText($p,$utf8);$t=$t -replace '"type": "COMMIT",',('"type": "COMMIT",'+"`n"+'    "type": "COMMIT",');Write-Utf8 $p $t } },
-        [ordered]@{ Id='FCH-DUPLICATE-FINDING-OBJECT-REJECTED'; Base=$preflight; Mutate={ param($d) $p=Join-Path $d 'finding-ledger.json';$t=[System.IO.File]::ReadAllText($p,$utf8);$t=$t -replace '"id": "BL339-REV-003",',('"id": "BL339-REV-003",'+"`n"+'      "id": "BL339-REV-003",');Write-Utf8 $p $t } },
+        [ordered]@{ Id='FCH-DUPLICATE-FINDING-OBJECT-REJECTED'; Base=$preflight; Mutate={ param($d) $p=Join-Path $d 'finding-ledger.json';$t=[System.IO.File]::ReadAllText($p,$utf8);$t=$t -replace '"id": "BL-339-REV-003",',('"id": "BL-339-REV-003",'+"`n"+'      "id": "BL-339-REV-003",');Write-Utf8 $p $t } },
         [ordered]@{ Id='FCH-DUPLICATE-REPORT-TOP-LEVEL-REJECTED'; Base=$preflight; Mutate={ param($d) $p=Join-Path $d 'report.md';$t=[System.IO.File]::ReadAllText($p,$utf8);$t=$t -replace '"schemaVersion": 1,',('"schemaVersion": 1,'+"`n"+'  "schemaVersion": 1,');Write-Utf8 $p $t } },
         [ordered]@{ Id='FCH-DUPLICATE-REPORT-NESTED-REJECTED'; Base=$preflight; Mutate={ param($d) $p=Join-Path $d 'report.md';$t=[System.IO.File]::ReadAllText($p,$utf8);$t=$t -replace '"stateType": "COMMIT",',('"stateType": "COMMIT",'+"`n"+'    "stateType": "COMMIT",');Write-Utf8 $p $t } },
         [ordered]@{ Id='FCH-TRAILING-JSON-PAYLOAD-REJECTED'; Base=$preflight; Mutate={ param($d) $p=Join-Path $d 'validation-summary.json';$t=[System.IO.File]::ReadAllText($p,$utf8);Write-Utf8 $p ($t+'{}') } },
@@ -1822,7 +1822,7 @@ try {
     }
 
     $foreign = Copy-Artifact $preflight 'mutant-foreign-task-finding'
-    $foreignId = 'BL340-REV-001'
+    $foreignId = 'BL-340-REV-001'
     $j=Read-Json(Join-Path $foreign 'assignment-record.json');$j.findingIds=@($foreignId);Write-Json(Join-Path $foreign 'assignment-record.json')$j
     $j=Read-Json(Join-Path $foreign 'completion-report.json');$j.findingIds=@($foreignId);Write-Json(Join-Path $foreign 'completion-report.json')$j
     $j=Read-Json(Join-Path $foreign 'finding-correction-matrix.json');$j.findings[0].id=$foreignId;Write-Json(Join-Path $foreign 'finding-correction-matrix.json')$j
@@ -1861,7 +1861,7 @@ try {
         -PreviousReviewPackageSha256 $focusedPreviousHash `
         -TransitiveFullReviewBaselineSha256 $transitiveFullHash `
         -ReviewedCurrentDeltaSha256 (Get-Hash (Join-Path $focusedPreviousContent 'current-delta.patch')) `
-        -FindingIds @('BL339-REV-003', 'BL339-REV-004') -OpenFindingIds @('BL339-REV-004')
+        -FindingIds @('BL-339-REV-003', 'BL-339-REV-004') -OpenFindingIds @('BL-339-REV-004')
 
     $passOutcomePath = Join-Path $fixtureRoot 'generalized-pass-outcome.json'
     $passOutcomeHash = New-GeneralizedIndependentReviewOutcome -LiteralPath $passOutcomePath `
@@ -1870,7 +1870,7 @@ try {
         -TransitiveFullReviewBaselineSha256 $transitiveFullHash `
         -ReviewedCurrentDeltaSha256 (Get-Hash (Join-Path $focusedPreviousContent 'current-delta.patch')) `
         -ReviewedCorrectionPatchSha256 (Get-Hash (Join-Path $focusedPreviousContent 'correction-only.patch')) `
-        -TargetFindingIds @('BL339-REV-003', 'BL339-REV-004') `
+        -TargetFindingIds @('BL-339-REV-003', 'BL-339-REV-004') `
         -InheritedClosedFindingIds @() -DirectInterfaceOutcomes @() -ReviewResult PASS
     Add-Case 'FCH-GENERALIZED-PASS-ZERO-OPEN-OUTCOME-SCHEMA-PASS' `
         (Test-IndependentReviewOutcomeSchema $passOutcomePath) $passOutcomeHash
@@ -1882,8 +1882,8 @@ try {
         -TransitiveFullReviewBaselineSha256 $transitiveFullHash `
         -ReviewedCurrentDeltaSha256 (Get-Hash (Join-Path $focusedPreviousContent 'current-delta.patch')) `
         -ReviewedCorrectionPatchSha256 (Get-Hash (Join-Path $focusedPreviousContent 'correction-only.patch')) `
-        -TargetFindingIds @('BL339-REV-003', 'BL339-REV-004') `
-        -OpenTargetFindingIds @('BL339-REV-004') -InheritedClosedFindingIds @() `
+        -TargetFindingIds @('BL-339-REV-003', 'BL-339-REV-004') `
+        -OpenTargetFindingIds @('BL-339-REV-004') -InheritedClosedFindingIds @() `
         -DirectInterfaceOutcomes @() -ReviewResult FAIL_WITH_FINDINGS
     Add-Case 'FCH-GENERALIZED-FAIL-WITH-ONE-FINDING-SCHEMA-PASS' `
         (Test-IndependentReviewOutcomeSchema $oneFindingOutcomePath)
@@ -1895,8 +1895,8 @@ try {
         -TransitiveFullReviewBaselineSha256 $transitiveFullHash `
         -ReviewedCurrentDeltaSha256 (Get-Hash (Join-Path $focusedPreviousContent 'current-delta.patch')) `
         -ReviewedCorrectionPatchSha256 (Get-Hash (Join-Path $focusedPreviousContent 'correction-only.patch')) `
-        -TargetFindingIds @('BL339-REV-003', 'BL339-REV-004') `
-        -OpenTargetFindingIds @('BL339-REV-004') -NewFindingIds @('BL339-REV-006') `
+        -TargetFindingIds @('BL-339-REV-003', 'BL-339-REV-004') `
+        -OpenTargetFindingIds @('BL-339-REV-004') -NewFindingIds @('BL-339-REV-006') `
         -InheritedClosedFindingIds @() -DirectInterfaceOutcomes @() `
         -ReviewResult FAIL_WITH_FINDINGS
     Add-Case 'FCH-GENERALIZED-FAIL-WITH-MULTIPLE-FINDINGS-SCHEMA-PASS' `
@@ -1911,9 +1911,9 @@ try {
         -TransitiveFullReviewBaselineSha256 $transitiveFullHash `
         -ReviewedCurrentDeltaSha256 (Get-Hash (Join-Path $focusedPreviousContent 'current-delta.patch')) `
         -ReviewedCorrectionPatchSha256 (Get-Hash (Join-Path $focusedPreviousContent 'correction-only.patch')) `
-        -TargetFindingIds @('BL339-REV-003', 'BL339-REV-004') `
-        -OpenTargetFindingIds @('BL339-REV-004') -InheritedClosedFindingIds @() `
-        -DirectInterfaceOutcomes @([ordered]@{ id='BL339-CORR-001'; disposition='CLOSED' }) `
+        -TargetFindingIds @('BL-339-REV-003', 'BL-339-REV-004') `
+        -OpenTargetFindingIds @('BL-339-REV-004') -InheritedClosedFindingIds @() `
+        -DirectInterfaceOutcomes @([ordered]@{ id='BL-339-CORR-001'; disposition='CLOSED' }) `
         -ReviewResult FAIL_WITH_FINDINGS
     Add-Case 'FCH-GENERALIZED-DIRECT-INTERFACE-OUTCOME-PRESENT-PASS' `
         (Test-IndependentReviewOutcomeSchema $directOutcomePath)
@@ -1961,7 +1961,7 @@ try {
     }
     $focusedToFocusedSource = Join-Path $fixtureRoot 'focused-to-focused-source'
     $focusedToFocusedContract = New-SyntheticSource -Directory $focusedToFocusedSource `
-        -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL339-REV-004' `
+        -RepositoryRoot $repo -TaskId 'BL-339' -FindingId 'BL-339-REV-004' `
         -BaselineCommit $baseline -PreviousCommit $previousCommit -PreviousTree $focusedPreviousTree `
         -CurrentPatch $nextCurrentPatchBytes -CorrectionPatch $nextCorrectionPatchBytes `
         -CurrentEntries $nextCurrentEntries -CorrectionEntries $nextCorrectionEntries `
@@ -2033,14 +2033,14 @@ try {
     }
     $thirdCorrectionSource = Join-Path $fixtureRoot 'third-correction-source'
     $null = New-SyntheticSource -Directory $thirdCorrectionSource -RepositoryRoot $repo `
-        -TaskId 'BL-339' -FindingId 'BL339-REV-006' -BaselineCommit $baseline `
+        -TaskId 'BL-339' -FindingId 'BL-339-REV-006' -BaselineCommit $baseline `
         -PreviousCommit $previousCommit -PreviousTree $focusedSecondTree `
         -CurrentPatch $thirdCurrentPatchBytes -CorrectionPatch $thirdCorrectionPatchBytes `
         -CurrentEntries $thirdCurrentEntries -CorrectionEntries $thirdCorrectionEntries `
         -CurrentTree $thirdCurrentTree -PreviousMode IMMUTABLE_REVIEW_PACKAGE `
         -HistoricalPackagePath $focusedSecondZip -HistoricalBinding $focusedSecondBinding
     Convert-ToTwoFindingParityFixture -Directory $thirdCorrectionSource `
-        -FindingIds @('BL339-REV-006', 'BL339-REV-007') `
+        -FindingIds @('BL-339-REV-006', 'BL-339-REV-007') `
         -TestIds @('FCH-RECURSIVE-REV006', 'FCH-RECURSIVE-REV007')
 
     $secondOutcomePath = Join-Path $fixtureRoot 'focused-second-independent-outcome.json'
@@ -2052,9 +2052,9 @@ try {
         -TransitiveFullReviewBaselineSha256 $transitiveFullHash `
         -ReviewedCurrentDeltaSha256 (Get-Hash (Join-Path $focusedToFocusedSource 'current-delta.patch')) `
         -ReviewedCorrectionPatchSha256 (Get-Hash (Join-Path $focusedToFocusedSource 'correction-only.patch')) `
-        -TargetFindingIds @('BL339-REV-004') `
-        -NewFindingIds @('BL339-REV-006', 'BL339-REV-007') `
-        -InheritedClosedFindingIds @('BL339-REV-003') -DirectInterfaceOutcomes @() `
+        -TargetFindingIds @('BL-339-REV-004') `
+        -NewFindingIds @('BL-339-REV-006', 'BL-339-REV-007') `
+        -InheritedClosedFindingIds @('BL-339-REV-003') -DirectInterfaceOutcomes @() `
         -ReviewResult FAIL_WITH_FINDINGS
     Add-IndependentReviewOutcomeToSource -Directory $thirdCorrectionSource `
         -OutcomePath $secondOutcomePath -OutcomeSha256 $secondOutcomeHash
@@ -2074,7 +2074,7 @@ try {
 
     $producerForgedSource = Copy-Artifact $thirdCorrectionSource 'producer-forged-reviewer-finding'
     Convert-ToTwoFindingParityFixture -Directory $producerForgedSource `
-        -FindingIds @('BL339-REV-006', 'BL339-REV-008') `
+        -FindingIds @('BL-339-REV-006', 'BL-339-REV-008') `
         -TestIds @('FCH-RECURSIVE-REV006', 'FCH-PRODUCER-FORGED-REV008')
     $producerForgedValidation = Invoke-ProductValidator $producerForgedSource $repo `
         -IndependentReviewOutcomePath $secondOutcomePath `
@@ -2083,7 +2083,7 @@ try {
         ($producerForgedValidation.ExitCode -ne 0) $producerForgedValidation.Output
 
     $omittedOpenSource = Copy-Artifact $thirdCorrectionSource 'producer-omitted-open-finding'
-    Set-SingleSourceFindingId $omittedOpenSource 'BL339-REV-006'
+    Set-SingleSourceFindingId $omittedOpenSource 'BL-339-REV-006'
     $omittedOpenValidation = Invoke-ProductValidator $omittedOpenSource $repo `
         -IndependentReviewOutcomePath $secondOutcomePath `
         -ExpectedIndependentReviewOutcomeSha256 $secondOutcomeHash
@@ -2093,7 +2093,7 @@ try {
     $generalizedMutationCases = @(
         [ordered]@{
             Id='FCH-GENERALIZED-OPEN-CLOSED-OVERLAP-REJECTED'
-            Mutate={ param($j) $j.openFindingIds=@($j.openFindingIds + 'BL339-REV-004') }
+            Mutate={ param($j) $j.openFindingIds=@($j.openFindingIds + 'BL-339-REV-004') }
         },
         [ordered]@{
             Id='FCH-GENERALIZED-UNKNOWN-DISPOSITION-REJECTED'
@@ -2101,7 +2101,7 @@ try {
         },
         [ordered]@{
             Id='FCH-GENERALIZED-PRODUCER-DISPOSITION-CONTRADICTION-REJECTED'
-            Mutate={ param($j) $j.targetFindingOutcomes[0].disposition='OPEN_INCOMPLETE_CORRECTION';$j.openFindingIds=@($j.openFindingIds+'BL339-REV-004');$j.closedFindingIds=@($j.closedFindingIds|Where-Object{$_ -cne 'BL339-REV-004'}) }
+            Mutate={ param($j) $j.targetFindingOutcomes[0].disposition='OPEN_INCOMPLETE_CORRECTION';$j.openFindingIds=@($j.openFindingIds+'BL-339-REV-004');$j.closedFindingIds=@($j.closedFindingIds|Where-Object{$_ -cne 'BL-339-REV-004'}) }
         }
     )
     foreach ($generalizedCase in $generalizedMutationCases) {
@@ -2119,7 +2119,7 @@ try {
     $directPresentOutcomePath = Join-Path $fixtureRoot 'focused-second-direct-present-outcome.json'
     $directPresentOutcome = Read-Json $secondOutcomePath
     $directPresentOutcome.directInterfaceOutcomes = @(
-        [pscustomobject][ordered]@{ id='BL339-CORR-001'; disposition='CLOSED' }
+        [pscustomobject][ordered]@{ id='BL-339-CORR-001'; disposition='CLOSED' }
     )
     Write-Json $directPresentOutcomePath $directPresentOutcome
     $directPresentOutcomeHash = (Get-Hash $directPresentOutcomePath).ToUpperInvariant()
@@ -2195,10 +2195,10 @@ try {
         [ordered]@{ Id='FCH-OUTCOME-PREVIOUS-PACKAGE-SHA-REJECTED'; Mutate={ param($j) $j.previousReviewPackageSha256='F'*64 } },
         [ordered]@{ Id='FCH-OUTCOME-REVIEWED-CURRENT-DELTA-SHA-REJECTED'; Mutate={ param($j) $j.reviewedCurrentDeltaSha256='F'*64 } },
         [ordered]@{ Id='FCH-OUTCOME-TRANSITIVE-FULL-SHA-REJECTED'; Mutate={ param($j) $j.transitiveFullReviewBaselineSha256='F'*64 } },
-        [ordered]@{ Id='FCH-OUTCOME-FINDING-UNIVERSE-MISMATCH-REJECTED'; Mutate={ param($j) $j.findingOutcomes[0].id='BL339-REV-099';$j.closedFindingIds[0]='BL339-REV-099' } },
+        [ordered]@{ Id='FCH-OUTCOME-FINDING-UNIVERSE-MISMATCH-REJECTED'; Mutate={ param($j) $j.findingOutcomes[0].id='BL-339-REV-099';$j.closedFindingIds[0]='BL-339-REV-099' } },
         [ordered]@{ Id='FCH-OUTCOME-UNKNOWN-DISPOSITION-REJECTED'; Mutate={ param($j) $j.findingOutcomes[0].disposition='UNKNOWN' } },
         [ordered]@{ Id='FCH-OUTCOME-DUPLICATE-FINDING-ID-REJECTED'; Mutate={ param($j) $duplicate=($j.findingOutcomes[0]|ConvertTo-Json|ConvertFrom-Json);$duplicate|Add-Member -NotePropertyName reviewFinding -NotePropertyValue 'duplicate id' -Force;$j.findingOutcomes=@($j.findingOutcomes+$duplicate) } },
-        [ordered]@{ Id='FCH-OUTCOME-OPEN-CLOSED-SET-MISMATCH-REJECTED'; Mutate={ param($j) $j.openFindingIds=@('BL339-REV-003') } },
+        [ordered]@{ Id='FCH-OUTCOME-OPEN-CLOSED-SET-MISMATCH-REJECTED'; Mutate={ param($j) $j.openFindingIds=@('BL-339-REV-003') } },
         [ordered]@{ Id='FCH-OUTCOME-REVIEWER-NOT-INDEPENDENT-REJECTED'; Mutate={ param($j) $j.reviewerRole='PRODUCER' } },
         [ordered]@{ Id='FCH-OUTCOME-WRONG-ARTIFACT-TYPE-REJECTED'; Mutate={ param($j) $j.artifactType='PRODUCER_REVIEW_OUTCOME' } }
     )
@@ -2216,7 +2216,7 @@ try {
     }
 
     $closedRetarget = Copy-Artifact $focusedToFocusedSource 'focused-to-focused-closed-retarget'
-    Set-SingleSourceFindingId $closedRetarget 'BL339-REV-003'
+    Set-SingleSourceFindingId $closedRetarget 'BL-339-REV-003'
     $closedRetargetValidation = Invoke-ProductValidator $closedRetarget $repo `
         -IndependentReviewOutcomePath $outcomePath `
         -ExpectedIndependentReviewOutcomeSha256 $outcomeHash
@@ -2286,9 +2286,17 @@ try {
     catch {
         $null = New-Item -ItemType Junction -Path $outcomeLinkPath -Target $fixtureRoot
     }
-    $outcomeLinkValidation = Invoke-ProductValidator $focusedToFocusedSource $repo `
-        -IndependentReviewOutcomePath $outcomeLinkPath `
-        -ExpectedIndependentReviewOutcomeSha256 $outcomeHash
+    try {
+        $outcomeLinkValidation = Invoke-ProductValidator $focusedToFocusedSource $repo `
+            -IndependentReviewOutcomePath $outcomeLinkPath `
+            -ExpectedIndependentReviewOutcomeSha256 $outcomeHash
+    }
+    catch {
+        $outcomeLinkValidation = [pscustomobject]@{
+            ExitCode = 1
+            Output = 'TERMINATING_REJECTION: ' + $_.Exception.Message
+        }
+    }
     Add-Case 'FCH-OUTCOME-LINK-REPARSE-REJECTED' `
         ($outcomeLinkValidation.ExitCode -ne 0) $outcomeLinkValidation.Output
 

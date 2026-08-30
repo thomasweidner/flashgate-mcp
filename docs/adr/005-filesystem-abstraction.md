@@ -1,4 +1,4 @@
-# ADR-0005: Filesystem Abstraction
+# ADR-005: Filesystem Abstraction
 
 ## Status
 
@@ -97,7 +97,7 @@ Directory copy is intentionally unsupported in the initial implementation.
 
 ## Amendment - 2026-07-10
 
-The public project name is FlashGate MCP; the technical rename remains planned for Sprint 3.42. Read-only tool registration, centralized limits, and redacted stderr diagnostics are now implemented. The current `copy_path` tool copies files only; directory copy remains planned work. See ADR-0006 through ADR-0013 for the current architecture, security, and MCP compatibility direction.
+The public project name is FlashGate MCP; the technical rename remains planned for Sprint 3.42. Read-only tool registration, centralized limits, and redacted stderr diagnostics are now implemented. The current `copy_path` tool copies files only; directory copy remains planned work. See ADR-006 through ADR-013 for the current architecture, security, and MCP compatibility direction.
 
 ## Amendment - 2026-07-11
 

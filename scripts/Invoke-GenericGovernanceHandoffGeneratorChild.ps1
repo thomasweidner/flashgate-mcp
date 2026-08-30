@@ -29,10 +29,10 @@ try {
         }
     }
     elseif ($IsLinux) {
-        $expectedLinuxPowerShellPath = '/home/weidnerthomas/voxtronic/tools/powershell/7.6.4/pwsh'
-        $expectedLinuxPowerShellSha256 = '12E9F5223179BA9059948E9B49640D174BA78CF029433D5BAC832500278C0915'
-        if ($powerShellVersion -cne '7.6.4') {
-            throw "Native Linux PowerShell 7.6.4 is required; actual=$powerShellVersion"
+        $expectedLinuxPowerShellPath = '/home/weidnerthomas/voxtronic/tools/powershell/7.6.5/pwsh'
+        $expectedLinuxPowerShellSha256 = 'D989CD1AB2EAD1BE3331DB2EEF38D209759128981873E6300653DF27BC7246C5'
+        if ($powerShellVersion -cne '7.6.5') {
+            throw "Native Linux PowerShell 7.6.5 is required; actual=$powerShellVersion"
         }
         $actualLinuxPowerShellPath = (Get-Process -Id $PID).Path
         if ($actualLinuxPowerShellPath -cne $expectedLinuxPowerShellPath) {

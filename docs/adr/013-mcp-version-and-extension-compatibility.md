@@ -1,4 +1,4 @@
-# ADR-0013: MCP Version and Extension Compatibility
+# ADR-013: MCP Version and Extension Compatibility
 
 ## Status
 

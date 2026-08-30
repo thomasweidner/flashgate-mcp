@@ -327,7 +327,7 @@ The backend-neutral boundary is implemented before the service so Variant B can 
 
 All authorization-sensitive handles, cursors, caches, resources, temporary data, and cancellation rights are bound to principal, profile, root, backend, and service generation.
 
-See [Execution Identity Backends](execution-identity-backends.md) and ADR-0015.
+See [Execution Identity Backends](execution-identity-backends.md) and ADR-015.
 
 ## MCP compatibility boundary
 
@@ -461,10 +461,9 @@ age, idle/CPU/request-count heuristics, or singleton assumptions never
 authorize termination. Ambiguous live-owner/live-transport cases remain
 `SUSPECTED_STALE` and are not automatically killed.
 
-See [ADR-0017](adr/0017-host-process-ownership-and-lifecycle.md) for the
+See [ADR-017](adr/017-host-process-ownership-and-lifecycle.md) for the
 normative contract and BL-341 in [BACKLOG.md](../BACKLOG.md) for the later
 technical implementation.
-
 ## Audit and trace architecture
 
 Audit events are bounded, redacted, and correlation-aware. They include both requested caller and effective backend identity where relevant.
@@ -559,5 +558,5 @@ Remote transport, product splitting, interpreter-based core operation, or unrest
 - [Execution identity backends](execution-identity-backends.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [ADR directory](adr/)
-- [ADR-0016: Governance fixture harness execution architecture](adr/0016-governance-fixture-harness-execution-architecture.md)
-- [ADR-0017: Host process ownership and lifecycle](adr/0017-host-process-ownership-and-lifecycle.md)
+- [ADR-016: Governance fixture harness execution architecture](adr/016-governance-fixture-harness-execution-architecture.md)
+- [ADR-017: Host process ownership and lifecycle](adr/017-host-process-ownership-and-lifecycle.md)

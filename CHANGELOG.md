@@ -34,7 +34,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   the 277-case inventory. The Windows CI package is pinned to the official
   `PowerShell-7.6.5-win-x64.zip` SHA-256. No Git integration or remote mutation
   is included in this uncommitted review handoff.
-- Corrected the BL-338 Classic review finding `BL338-CLASSIC-REV-001`: the
+- Corrected the BL-338 Classic review finding `BL-338-REV-002`: the
   repository fixture harness no longer imports contributor-local Codex-Work or
   INF-160 files, accepts optional validated executable/capability inputs, and
   performs a fail-closed portable process preflight for Hosted CI. A permanent
@@ -42,8 +42,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   selector zero-execution, capability metadata, and the CI invocation. INF-160
   remains the local Codex caller-boundary route; BL-337 and BL-340 scope is
   unchanged. The focused independent Classic delta reviews closed
-  `BL338-CLASSIC-REV-001` and the report-convergence finding
-  `BL338-CLASSIC-REV-002` with no new finding;
+  `BL-338-REV-002` and the report-convergence finding
+  `BL-338-REV-003` with no new finding;
   `BL338ClassicPreCommitQualityGate=PASS`. The reviewed implementation commit
   `a28953b19d1e3ff51ffdbd12262964787a9252dc` was merged through PR #40 as
   `b72c29e5d65803b11463f8d6b3d6f304cf510bf6`.
@@ -55,7 +55,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   optional caller-validated executable bindings,
   execution descriptors whose IDs derive from the inventory, and a permanent
   38-case selector matrix. The independent full review and focused delta
-  review closed BL338-REV-001..004 with no open finding. The final native Linux
+  review closed BL-338-REV-001..004 with no open finding. The final native Linux
   `standard` gate passed with 12 results, 11 validation commands, unchanged
   Windows source, and zero warnings or failures. Post-merge CI #122, Metadata
   Regression #51, and CodeQL #68 all passed on the merge commit; BL-338 is
@@ -67,16 +67,17 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Formally closed BL-341 planning, architecture, documentation, and review work
   without runtime implementation. The focused independent delta review passed
   and closed `BL-341-REV-001`, `BL-341-REV-002`, and `BL-341-REV-003` with no new
-  finding, warning, or failure. BL-341 remains `Planned` in SPR-60 with
+  finding, warning, or failure. BL-341 remains `Planned` in SPR-060 with
   `RuntimeImplementationStatus=NOT_STARTED / PLANNED`; BL-340 remained a
   separate task and was later completed through PR #42.
-- Converged ADR-0017 and active host-lifecycle planning without runtime implementation: BL-341 remains `Planned` but now owns the later cross-mode ownership, deterministic shutdown, diagnostics, and orphan-prevention implementation in SPR-60; BL-223/224/225 define its contracts, BL-241 owns the integrated Windows/Linux lifecycle matrix, and BL-263 retains the Version 1.0 release gate. Direct/proxy edges remain session-scoped, services remain persistent, and heuristic idle/PID/singleton termination is prohibited.
+- Converged ADR-017 and active host-lifecycle planning without runtime implementation: BL-341 remains `Planned` but now owns the later cross-mode ownership, deterministic shutdown, diagnostics, and orphan-prevention implementation in SPR-060; BL-223/224/225 define its contracts, BL-241 owns the integrated Windows/Linux lifecycle matrix, and BL-263 retains the Version 1.0 release gate. Direct/proxy edges remain session-scoped, services remain persistent, and heuristic idle/PID/singleton termination is prohibited.
+- Converged the Codex workflow-efficiency follow-up into canonical owners without implementation: BL-337 now consumes only BL-338's resolved case set; BL-338 has explicit non-zero, complete, unambiguous, platform/capability-compatible selector gates before runner start; and BL-340 owns the eight-part generator/profile migration scope with explicit `REQUIRED`, `RECOMMENDED`, `CONSUME_IF_AVAILABLE`, and `NON_BLOCKING` dependencies on INF-158 through INF-161 and the existing governance owners. BL-339 remains terminally complete; BL-341 is unchanged, and no new backlog ID was created.
 - Defined the Version 1.0 release boundary: canonical `Planned` backlog tasks are required for the initial stable release and `Later` tasks are accepted post-Version-1.0 work.
 - Adopted hybrid per-root service execution identity. Version 1.0 implements dedicated service-account roots (Variant A), defines backend-neutral contracts for later per-user workers (Variant B), and permanently excludes in-process impersonation (Variant C).
 - Added the native multi-mode runtime plan for direct STDIO, proxy, auto, Windows SCM service, and Linux systemd service operation in one native binary. User-scoped persistent hosts and the per-user worker runtime remain post-Version-1.0.
 - Added payload-class result contracts, single-transmission rules for large content, opaque identity-bound result resources, wire-amplification metrics, profile catalog/instruction budgets, deterministic catalog fingerprints, and bounded server instructions.
 - Added Version 1.0 plans for per-principal quotas and fair scheduling, typed no-shell command definitions, native OS adapter precedence, audit lifecycle/correlation, MCP 2026 compatibility preparation, supply-chain evidence, and a pinned cross-project efficiency benchmark.
-- Added ADR-0015, Version 1.0 scope, execution-identity backend, efficiency-improvement, comparative-review, runtime/service, protocol, specification, and roadmap documentation.
+- Added ADR-015, Version 1.0 scope, execution-identity backend, efficiency-improvement, comparative-review, runtime/service, protocol, specification, and roadmap documentation.
 - Expanded the canonical backlog to the continuous range `BL-001` through `BL-335`; the current renumbering through `BL-324` is documented in [Backlog ID migration - 2026-07-20](docs/backlog-id-migration-2026-07-20.md), layered over the immutable earlier migration records. PR #16 adds `BL-325` through `BL-329`, the final PR #21 review adds `BL-330` through `BL-332`, BL-333/BL-334 provide governance foundation and enforcement, and INF-121 registers BL-335 without changing existing canonical IDs.
 - Migrated current sprint identifiers to standalone `SPR-N` values. Former suffix-based entries now have independent IDs, subsequent entries shift without changing backlog assignments, and the complete mapping is recorded in [Sprint ID migration - 2026-07-25](docs/sprint-id-migration-2026-07-25.md).
 
@@ -86,7 +87,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 - See [fail-closed root configuration](docs/fail-closed-root-configuration-2026-07-11.md). Clients must set an explicit absolute root; development CWD use requires the new opt-in.
 - See [filesystem tool contract cleanup](docs/filesystem-tool-contract-cleanup-2026-07-11.md). The old pre-1.0 tool names were removed without aliases; clients and smoke tests must use the eight-tool baseline.
-- `SPR-43` does not change `MCP_*` names, root defaults, capability policy, or the MCP protocol revision.
+- `SPR-043` does not change `MCP_*` names, root defaults, capability policy, or the MCP protocol revision.
 - See [technical rename to FlashGate](docs/technical-rename-to-flashgate-2026-07-11.md).
 - No MCP tool-contract or runtime-security change was made; existing `MCP_*` variables remain unchanged.
 
@@ -105,7 +106,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   REV-001 through REV-014 closed and immutable review-package SHA-256
   `425A8B4E3D5497C40119E58291E773B25CF02675084653A4C73E685F6ABFB119`
   preserved. Extracted the still-planned workflow-generator/profile migration
-  as BL-340 and renumbered the unchanged ADR-0017 host-process ownership and
+  as BL-340 and renumbered the unchanged ADR-017 host-process ownership and
   lifecycle task from BL-340 to BL-341. This planning migration changes no
   product behavior and leaves historical reports, evidence, and package names
   unchanged.
@@ -185,8 +186,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   porcelain-v2 working-tree status, exact case-safe scope/file-hash sets, and
   separately protected worktrees fail-closed. Corrected final ZIP attempt
   telemetry so the first write-capable open counts even when it fails and is
-  never retried automatically. Independent findings `BL339-REV-001` and
-  `BL339-REV-002` were `CORRECTED_PENDING_DELTA_REVIEW` at that checkpoint and
+  never retried automatically. Independent findings `BL-339-REV-001` and
+  `BL-339-REV-002` were `CORRECTED_PENDING_DELTA_REVIEW` at that checkpoint and
   are now closed by the prior independent delta review; no replacement review
   package was created in that correction.
 
@@ -209,29 +210,29 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   final ZIP write and reopens or discards the immutable result. BL-337, BL-338,
   and the remaining BL-339 scope stay planned.
 
-- Registered BL-337 through BL-340. ADR-0016 binds governance fixture-harness
+- Registered BL-337 through BL-340. ADR-016 binds governance fixture-harness
   process isolation, canonical case metadata, progress, and reusable validation
-  orchestration; ADR-0017 binds direct STDIO, proxy-edge, and service host
+  orchestration; ADR-017 binds direct STDIO, proxy-edge, and service host
   process ownership and bounded lifecycle behavior.
 - Documented `BL-341` as an intentional non-registration because shared hosting,
   proxy/discovery, per-client isolation, fairness, resource sharing, lifecycle
-  tests, efficiency gates, and host ownership are already assigned to ADR-0014,
-  BL-092, BL-221 through BL-244, BL-340, and ADR-0017.
+  tests, efficiency gates, and host ownership are already assigned to ADR-014,
+  BL-092, BL-221 through BL-244, BL-340, and ADR-017.
 - Added canonical validation telemetry, warning accounting, ZIP-free readiness,
   and fresh-package generation contracts for governance handoffs.
 
 - Closed BL-336 after a finding-free focused independent Exact-Head Delta
   Review of technical head `8f29ee8e0b8c841b204506b32fbb617648f5bf4b`.
-  `BL336-PR31-REV-001` through `BL336-PR31-REV-004` are
+  `BL-336-PR-31-REV-001` through `BL-336-PR-31-REV-004` are
   `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`,
-  `BL336-PR31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`, and
+  `BL-336-PR-31-WARN-001` is `CLOSED_BY_PR_METADATA_CONVERGENCE`, and
   `OpenFindingCount` is zero. The final closure commit changes only
   documentation and status sources; the independently reviewed technical bytes
   remain unchanged and the new Exact Head receives a separate read-only gate.
 
 - Registered BL-336 and added explicit task-neutral governance handoff profiles. `GENERIC_COMMIT_PREPARATION` supports finding-free commit-preparation evidence without correction-only artifacts, while the isolated `FINDING_CORRECTION` profile preserves the historical BL-333/BL-334 contracts and fail-closed gates.
-- Closed BL-336 independent-review findings `BL336-REV-001` through
-  `BL336-REV-003` by replacing narrative-token profile detection with typed
+- Closed BL-336 independent-review findings `BL-336-REV-001` through
+  `BL-336-REV-003` by replacing narrative-token profile detection with typed
   profile/member isolation, binding repository/baseline/HEAD/branch/status and
   per-path scope metadata across all generic evidence, and enforcing exact
   artifact-classified cross-platform host-path references. Private and
@@ -240,7 +241,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   re-signed negative package still fails only the unchanged host-path gate.
   The generic matrix now contains 52 cases while the 225-case legacy matrix
   remains unchanged.
-- Addressed the repeated-review remainder `BL336-REV-002` by validating every
+- Addressed the repeated-review remainder `BL-336-REV-002` by validating every
   generic scope entry against the trusted isolated worktree's repository,
   baseline object, HEAD, branch, complete Porcelain-v2 status, tracked/staged
   state, mode, byte length, and SHA-256. INCLUDE paths must equal the patch
@@ -248,7 +249,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   the patch. Nine semantic mismatch packages are fully re-signed and assert
   their specific repository, staged-path, or authoritative-scope failure gate.
 
-- Corrected PR #31 finding `BL336-PR31-REV-001` by replacing the flat generic
+- Corrected PR #31 finding `BL-336-PR-31-REV-001` by replacing the flat generic
   scope state with disjoint postimage, deletion, and rename forms. Baseline
   preimages and current postimages are byte-bound, unstaged rename pairing uses
   a temporary alternate index while complete Porcelain-v2 and `staged=false`
@@ -259,8 +260,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW` on technical head
   `8f29ee8e0b8c841b204506b32fbb617648f5bf4b`.
 
-- Corrected PR #31 findings `BL336-PR31-REV-002` and
-  `BL336-PR31-REV-003` in the shared generic Git-evidence path. Temporary
+- Corrected PR #31 findings `BL-336-PR-31-REV-002` and
+  `BL-336-PR-31-REV-003` in the shared generic Git-evidence path. Temporary
   indices now write new objects only to a unique temporary object database
   with a canonical alternate to the real database; complete real-object
   inventories remain identical and cleanup fails closed. All repository paths
@@ -274,7 +275,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   with zero warnings or errors; the seven directly affected historical
   fail-closed check-ID cases also pass 7/7.
 
-- Corrected PR #31 finding `BL336-PR31-REV-004` by constructing the temporary
+- Corrected PR #31 finding `BL-336-PR-31-REV-004` by constructing the temporary
   object database's `info/alternates` path and the fixture-only object-inventory
   divergence marker component by component. The complete affected scripts no
   longer contain a compound backslash child literal in `Join-Path`. Native
@@ -283,7 +284,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   untracked-mode matrix 31/31, and passes the full generic matrix 85/85. The
   four PR findings are
   `CLOSED_BY_FOCUSED_INDEPENDENT_EXACT_HEAD_DELTA_REVIEW`;
-  `BL336-PR31-WARN-001` remains closed by PR metadata convergence.
+  `BL-336-PR-31-WARN-001` remains closed by PR metadata convergence.
 
 - Implemented the BL-251 deterministic shell-validation foundation: dynamic
   tracked-and-intended PowerShell/Bash inventory, PowerShell 7.6.4 parsing,
@@ -295,14 +296,14 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   regression proves cleanup of that concrete process even when the child is
   terminated before an optional PID-file write. Independent focused delta review
   `BL-251-focused-independent-delta-review-20260802-102407.md` passed with
-  0 warnings/0 failures and closed `BL251-REV-001` through `BL251-REV-004` as
+  0 warnings/0 failures and closed `BL-251-REV-001` through `BL-251-REV-004` as
   `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`: the external scope
   is delivered as qualified Before/After evidence, bounded-process termination
   and stream draining fail closed, Bash cleanup status is truthful with a
   controlled negative probe, and current documentation uses neutral focused-
   validation terminology. The subsequent focused independent PID review
   `BL-251-pid-focused-independent-delta-review-20260802-121605.md` passed with
-  0 warnings/0 failures and closed `BL251-PRECOMMIT-REV-001` as
+  0 warnings/0 failures and closed `BL-251-REV-005` as
   `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`; no BL-251 review finding remains open.
   Native run
   `bl251-review-findings-closure-20260802-100200` passed all twelve standard
@@ -385,18 +386,18 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
   remains the sole complete package for its review stage. This
   documentation-only finalization changes no runtime or product logic.
   BL-335 is the next planned and not-started queue step, followed by BL-251,
-  BL-324, final documentation convergence, and Local Work Register removal.
+  BL-324 and final documentation convergence.
 - Completed BL-335 after the productive migration, focused function
   validation, concrete isolated rollback rehearsal, and controlled source
   removal all passed their applicable gates. The final physical inventory has
   zero original source objects, four unchanged productive targets, three
   unchanged active target references, an unchanged productive reference
-  backup, and no quarantine remainder. `BL335-D-VAL-012` is
+  backup, and no quarantine remainder. `BL-335-VAL-012` is
   `CLOSED_BY_INDEPENDENT_REVIEW_VALIDATION_CONTROL_INTERFERENCE`: a concurrent
   plaintext monitoring command caused the post-removal gate observation, and
   the identical diagnostic after that monitor ended was `0/0/0/0`. No BL-335
   finding remains open; after completion of BL-251, the remaining local queue
-  is BL-324, final documentation convergence, and Local Work Register removal.
+  is BL-324 and final documentation convergence.
 - Hardened governance with immutable adaptive same-assignment remediation
   budgets of 12 cycles for new/materially rebuilt artifacts, 6 for established
   validated artifacts, and 0 automatic retries after the first productive
@@ -412,25 +413,25 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Added deterministic Windows ZIP and Linux TAR.GZ artifacts for x64 and ARM64; every release matrix path now builds twice and gates upload on exact contents, SHA-256, binary/archive/checksum/inventory reproducibility, and machine-readable host/credential leak checks.
 - Added tag-gated release and metadata-regression workflows plus permanent build, validation, and decision documentation.
 - Added one shared SemVer/`SOURCE_DATE_EPOCH` fixture contract, linked-worktree-aware Bash builds, fail-closed native validation roots, and manifest-verified Git inventory snapshots with traversal- and special-entry-safe TAR extraction.
-- Completed and merged BL-248 artifact verification through PR #25 on 2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`. CI Run 82 and Metadata Regression Run 11 succeeded; the final Windows contract suite passed `201/201`, the final native Linux contract suite passed `206/206`, and all six original Full-Review findings, including `BL248-REV-004`, are closed with no open BL-248 finding. The completed contracts are documented in [Artifact verification](docs/artifact-verification.md).
+- Completed and merged BL-248 artifact verification through PR #25 on 2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`. CI Run 82 and Metadata Regression Run 11 succeeded; the final Windows contract suite passed `201/201`, the final native Linux contract suite passed `206/206`, and all six original Full-Review findings, including `BL-248-REV-004`, are closed with no open BL-248 finding. The completed contracts are documented in [Artifact verification](docs/artifact-verification.md).
 - Added `scripts/Test-GoCoverage.ps1`, separate Windows/Linux text, HTML, profile, log, and JSON coverage reports, 14-day per-platform CI artifacts, README guidance, and `docs/development/code-coverage.md`.
-- `SPR-47` adds the development-only `cmd/benchmark` STDIO runner, Win32 and Linux procfs process metrics, ten machine-readable reference workflows, result schema `flashgate-benchmark/v1`, local budget evaluation, and diagnostic PowerShell/Bash launch scripts. Authoritative platform baselines use a separate two-phase prebuilt controller after Windows and native Linux preparation on the same clean implementation commit.
-- `SPR-45` adds explicit `TextContent` and `CallToolResult` protocol DTOs, a strict project-local decoder with legacy unwrapped negative fixtures, full success/error wire tests, and reproducible tool-result serialization benchmarks.
+- `SPR-047` adds the development-only `cmd/benchmark` STDIO runner, Win32 and Linux procfs process metrics, ten machine-readable reference workflows, result schema `flashgate-benchmark/v1`, local budget evaluation, and diagnostic PowerShell/Bash launch scripts. Authoritative platform baselines use a separate two-phase prebuilt controller after Windows and native Linux preparation on the same clean implementation commit.
+- `SPR-045` adds explicit `TextContent` and `CallToolResult` protocol DTOs, a strict project-local decoder with legacy unwrapped negative fixtures, full success/error wire tests, and reproducible tool-result serialization benchmarks.
 - A dated benchmark baseline records historical, text-only, and text-plus-structured payload/runtime/allocation costs without CI budgets.
 
-- `SPR-44` categorized startup configuration errors, exit-code tests, Windows/Linux startup-negative smokes, and a Codex read-only activation/rollback guide.
+- `SPR-044` categorized startup configuration errors, exit-code tests, Windows/Linux startup-negative smokes, and a Codex read-only activation/rollback guide.
 - FlashGate MCP project identity and transition documentation.
-- `SPR-41` architecture baseline.
+- `SPR-041` architecture baseline.
 - Vendor-neutral open-source and FlashGate module/provider direction, separated from MCP protocol extensions.
 - Accepted Operations and Job Manager target architecture.
 - ADRs for project identity, domain-separated core, deployment/modules/providers, capability profiles, operations/jobs, managed processes/commands, resource/token efficiency, and MCP version/extension compatibility.
 - Backlog ID migration documentation for the continuous `BL-001` sequence.
-- `SPR-38` JSON-RPC request validation and error behavior hardening.
-- `SPR-39` configurable hard limits, redacted diagnostics, and secrets-aware behavior.
-- `SPR-40` Windows/Linux JSON-RPC smoke-test matrix coverage.
-- `SPR-37` hidden, UNC, symlink, junction, and reparse policy enforcement.
-- `SPR-36` root, realpath, and traversal hardening for filesystem access.
-- `SPR-35` read-only tool capability gating for filesystem MCP tools.
+- `SPR-038` JSON-RPC request validation and error behavior hardening.
+- `SPR-039` configurable hard limits, redacted diagnostics, and secrets-aware behavior.
+- `SPR-040` Windows/Linux JSON-RPC smoke-test matrix coverage.
+- `SPR-037` hidden, UNC, symlink, junction, and reparse policy enforcement.
+- `SPR-036` root, realpath, and traversal hardening for filesystem access.
+- `SPR-035` read-only tool capability gating for filesystem MCP tools.
 - Initial Go module setup.
 - Project structure for a professional MCP server implementation.
 - Immutable configuration package.
@@ -502,23 +503,23 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - CI now enforces separate repository-wide Go statement-coverage gates of 71.4% on Windows and 70.6% on Linux. The values are evaluated independently, and `summary.json` reports threshold failures consistently as `FAIL`.
 - Non-authoritative benchmark output now binds the validated parent through `os.Root`, writes and syncs an exclusive temporary file through that stable handle, and publishes with a handle-relative rename that never follows the final target; all diagnostic names, final symlinks/reparse points, protected-directory aliases, and late output/protected-directory exchanges fail closed.
 - Registered the eight Major/Minor findings deferred from the independent PR #15 review as canonical post-merge tasks `BL-316` through `BL-323` without implementing them in the blocker fix.
-- `SPR-47` keeps functional serialization coverage active under race while evaluating allocation budgets only without race instrumentation; legacy baseline-record flags now fail closed in favor of the authoritative two-phase prebuilt workflow.
-- `SPR-47` physically resolves Windows diagnostic output parents to block junction/reparse aliases into versioned baseline paths and validates both platform artifacts together across provenance, budgets, resources, process outcomes, and deterministic fields.
-- `SPR-47` review corrections enforce clean-only versioned baselines, complete MCP initialization with `notifications/initialized`, validate exact profile/workflow measurement sets, activate all six serialization budgets, preserve partial Linux metrics, harden host-path redaction and cleanup, and define ordinary reads as `read_bytes` without `scanned_bytes`.
-- `SPR-47` establishes a reproducible Windows/Linux resource, startup, latency, payload, filesystem-counter, call-count, and approximate-token benchmark baseline without changing public MCP tool contracts.
+- `SPR-047` keeps functional serialization coverage active under race while evaluating allocation budgets only without race instrumentation; legacy baseline-record flags now fail closed in favor of the authoritative two-phase prebuilt workflow.
+- `SPR-047` physically resolves Windows diagnostic output parents to block junction/reparse aliases into versioned baseline paths and validates both platform artifacts together across provenance, budgets, resources, process outcomes, and deterministic fields.
+- `SPR-047` review corrections enforce clean-only versioned baselines, complete MCP initialization with `notifications/initialized`, validate exact profile/workflow measurement sets, activate all six serialization budgets, preserve partial Linux metrics, harden host-path redaction and cleanup, and define ordinary reads as `read_bytes` without `scanned_bytes`.
+- `SPR-047` establishes a reproducible Windows/Linux resource, startup, latency, payload, filesystem-counter, call-count, and approximate-token benchmark baseline without changing public MCP tool contracts.
 - Existing tool-result serialization fixtures now retain their historical/text/text-plus-structured measurements while also pinning full JSON-RPC response bytes; direct `tools/call` and both `tools/list` profiles have dedicated in-process benchmarks.
 - Deterministic wire/counter regression budgets are hard local gates, while startup, latency, RSS/working-set, and CPU budgets remain soft review warnings; full CI benchmark execution and comparison stay deferred to BL-249 and BL-250.
-- `SPR-46` exposes runtime `outputSchema` for all eight filesystem tools, with deep parity to catalog `resultSchema` and no changes to tool names or successful domain results.
-- `SPR-45` wraps every successful filesystem `tools/call` result in an MCP 2025-11-25 `CallToolResult` with one compact JSON `TextContent` block and the same domain object in `structuredContent`.
+- `SPR-046` exposes runtime `outputSchema` for all eight filesystem tools, with deep parity to catalog `resultSchema` and no changes to tool names or successful domain results.
+- `SPR-045` wraps every successful filesystem `tools/call` result in an MCP 2025-11-25 `CallToolResult` with one compact JSON `TextContent` block and the same domain object in `structuredContent`.
 - All eight filesystem tools use one central adapter wrapper; internal filesystem and domain result types remain protocol-independent.
 - Windows and Bash positive STDIO smokes now strictly validate the outer `CallToolResult` and assert domain values through `structuredContent`.
 - The existing safe JSON-RPC tool-error contract remains unchanged; normalized `isError=true` migration stays planned under BL-203.
 - Runtime output schemas describe successful `structuredContent` only; the existing JSON-RPC error contract remains unchanged.
-- `SPR-44` requires an explicit absolute `MCP_ROOT`; missing, empty, whitespace-only, and general relative roots now fail closed before tool registration or JSON-RPC processing.
+- `SPR-044` requires an explicit absolute `MCP_ROOT`; missing, empty, whitespace-only, and general relative roots now fail closed before tool registration or JSON-RPC processing.
 - `MCP_ROOT=.` now requires the explicit lowercase `MCP_ALLOW_CWD_ROOT=true` development opt-in and emits one safe stderr warning.
 - Root startup validates existence, policy, canonical resolution, and directory type before exposing tools.
 - Codex, Claude Desktop, and general STDIO read-only activation examples now require `MCP_READ_ONLY=true` and remain preparation only.
-- `SPR-43` replaces the pre-1.0 filesystem tool contract with the exact baseline `list_directory`, `read_file`, `get_path_info`, `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path`.
+- `SPR-043` replaces the pre-1.0 filesystem tool contract with the exact baseline `list_directory`, `read_file`, `get_path_info`, `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path`.
 - Tool arguments are decoded strictly: unknown properties, trailing JSON values, wrong types, missing required fields, and blank required paths are rejected.
 - `get_path_info` reports genuine missing paths as successful `exists:false` results, `create_directory` reports the actual `created` state, and `move_path` safely covers same-volume move and rename.
 - `copy_path` is explicitly file-only; directory copy remains planned work.
@@ -527,14 +528,14 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Binary renamed to `flashgate-mcp`; scripts, workflows, release artifacts, tests, and documentation updated.
 - MCP server implementation name (`serverInfo.name`) changed to `flashgate`.
 - Local project folder, clone instructions, and remote instructions updated.
-- Public project name changed from Fileserver MCP to FlashGate MCP; the technical repository, module, binary, MCP server implementation name (`serverInfo.name`), scripts, workflows, and catalog remained unchanged until `SPR-42`.
+- Public project name changed from Fileserver MCP to FlashGate MCP; the technical repository, module, binary, MCP server implementation name (`serverInfo.name`), scripts, workflows, and catalog remained unchanged until `SPR-042`.
 - Backlog consolidated into one canonical continuously numbered task catalog without a separate `BL-D` series.
-- Former `SPR-41` Codex read-only preparation shifted to `SPR-44`.
+- Former `SPR-041` Codex read-only preparation shifted to `SPR-044`.
 - Architecture expanded toward a domain-separated local system core while clearly distinguishing current and planned components.
 - Long-running or managed work is planned to use an optional shared Operations/Job runtime service without changing domain ownership; short synchronous domain operations do not require it.
 - Pre-1.0 tool contracts are explicitly allowed to change before a stable external contract exists.
 - Vendor-neutral open-source core and optional FlashGate module/provider direction documented without selecting a runtime model; MCP protocol extensions are treated separately.
-- `SPR-41` review corrections align planning with SEP-1613, SEP-2133, SEP-2577, SEP-2663, and MCP `2025-11-25` implementation-name semantics.
+- `SPR-041` review corrections align planning with SEP-1613, SEP-2133, SEP-2577, SEP-2663, and MCP `2025-11-25` implementation-name semantics.
 - Roadmap clarified as a high-level pointer to authoritative `BACKLOG.md` planning.
 - Unknown tool names in `tools/call`, including read-only-gated write tools, now return generic JSON-RPC Invalid params errors instead of Method not found.
 - `MCP_MAX_FILE_SIZE` is now a hard server cap for `read_file`; client `maxBytes` can reduce but not increase it.
@@ -577,16 +578,16 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Security
 
-- `SPR-44` prevents implicit process-working-directory exposure, rejects file roots, keeps startup stdout empty, and redacts startup failures to safe categories.
+- `SPR-044` prevents implicit process-working-directory exposure, rejects file roots, keeps startup stdout empty, and redacts startup failures to safe categories.
 - Read-only STDIO smokes reject all five write tool names, and negative smokes reject all five removed legacy names with the same generic Invalid params contract.
-- `SPR-38` validates JSON-RPC envelopes before dispatch, rejects unsupported batches, suppresses responses for notifications, prevents `tools/call` notification execution, serializes unknown IDs as `id:null`, and converts handler panics to generic Internal error responses.
-- `SPR-39` bounds JSON-RPC messages, tool arguments, filesystem operation payloads, recursive delete scope, and serialized responses with generic limit errors.
-- `SPR-39` adds centralized redaction before debug diagnostics reach stderr.
-- `SPR-36` adds effective path validation through `PathGuard` using evaluated existing paths and evaluated nearest existing parents for create targets.
-- `SPR-36` rejects symlink-based filesystem escapes that resolve outside the configured root.
-- `SPR-36` maps security/path denials to generic invalid-params tool errors without exposing host paths.
-- `SPR-35` enforces `MCP_READ_ONLY=true` at tool registration time by exposing only `list_files`, `read_file`, `stat_path`, and `exists_path`.
-- `SPR-35` prevents direct `tools/call` execution of write-capable tools in read-only mode because those tools are not registered.
+- `SPR-038` validates JSON-RPC envelopes before dispatch, rejects unsupported batches, suppresses responses for notifications, prevents `tools/call` notification execution, serializes unknown IDs as `id:null`, and converts handler panics to generic Internal error responses.
+- `SPR-039` bounds JSON-RPC messages, tool arguments, filesystem operation payloads, recursive delete scope, and serialized responses with generic limit errors.
+- `SPR-039` adds centralized redaction before debug diagnostics reach stderr.
+- `SPR-036` adds effective path validation through `PathGuard` using evaluated existing paths and evaluated nearest existing parents for create targets.
+- `SPR-036` rejects symlink-based filesystem escapes that resolve outside the configured root.
+- `SPR-036` maps security/path denials to generic invalid-params tool errors without exposing host paths.
+- `SPR-035` enforces `MCP_READ_ONLY=true` at tool registration time by exposing only `list_files`, `read_file`, `stat_path`, and `exists_path`.
+- `SPR-035` prevents direct `tools/call` execution of write-capable tools in read-only mode because those tools are not registered.
 - Filesystem paths are resolved through a sandbox root.
 - Absolute user paths are rejected.
 - Parent directory traversal is rejected.

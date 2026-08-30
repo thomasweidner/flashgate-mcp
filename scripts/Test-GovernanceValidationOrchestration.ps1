@@ -38,7 +38,9 @@ function Invoke-RequiredGit {
 
     $output = @(& git -C $Root @Argument 2>&1)
     if ($LASTEXITCODE -ne 0) {
-        throw ('Git fixture command failed: git {0}; {1}' -f [string]::Join(' ', [string[]]$Argument), [string]::Join(' | ', [string[]]$output))
+        throw ('Git fixture command failed: git {0}; {1}' -f
+            [string]::Join(' ', [string[]]$Argument),
+            [string]::Join(' | ', [string[]]$output))
     }
     return $output
 }
@@ -164,7 +166,11 @@ try {
     $selectorMetadata = Read-GovernanceCaseMetadata `
         -Path (Join-Path $resolvedRepositoryRoot 'Governance/governance-case-metadata.json') `
         -SchemaPath (Join-Path $resolvedRepositoryRoot 'Governance/governance-case-metadata.schema.json')
-    $selectorHash = [string]$selectorMetadata.MetadataInventorySHA256
+    if (-not [bool]$selectorMetadata.ReadyToResolveSelectors -or
+        [string]::IsNullOrWhiteSpace([string]$selectorMetadata.MetadataInventorySHA256)) {
+        throw 'Canonical selector metadata is not ready for orchestration fixture request generation.'
+    }
+    $selectorHash = ([string]$selectorMetadata.MetadataInventorySHA256).ToLowerInvariant()
     $powerShellPath = [System.IO.Path]::GetFullPath((Get-Process -Id $PID).Path)
     $gitPath = [System.IO.Path]::GetFullPath((Get-Command git -CommandType Application | Select-Object -First 1).Source)
     $resultSchema = Join-Path $resolvedRepositoryRoot 'Governance/governance-validation-result.schema.json'
@@ -238,7 +244,7 @@ try {
             groups = @()
             tags = @()
             targetPlatform = if ($IsWindows) { 'windows' } else { 'linux' }
-            availableCapabilities = @('git', $(if ($IsWindows) { 'powershell-7.6.5' } else { 'powershell-7.6.4' }))
+            availableCapabilities = @('git', 'powershell-7.6.5')
         }
         exactCommit = $null
         stateComponents = @(

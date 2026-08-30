@@ -1,4 +1,4 @@
-# ADR-0012: Resource/Token Efficiency and Pre-1.0 Contracts
+# ADR-012: Resource/Token Efficiency and Pre-1.0 Contracts
 
 ## Status
 

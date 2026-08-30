@@ -2,7 +2,7 @@
 
 ## Naming and exposure
 
-Tool names use stable lower-case snake case and describe the user-visible operation. The `SPR-43` baseline is:
+Tool names use stable lower-case snake case and describe the user-visible operation. The `SPR-043` baseline is:
 
 ```text
 list_directory
@@ -79,7 +79,7 @@ Internal classification uses `not_found`, `already_exists`, `access_denied`, `in
 
 ## Compatibility
 
-FlashGate MCP is pre-1.0 and was not productively deployed when `SPR-43` cleaned the contract. Removed names have no alias or deprecation layer. Clients must update their calls and discovery expectations as described in the dated migration.
+FlashGate MCP is pre-1.0 and was not productively deployed when `SPR-043` cleaned the contract. Removed names have no alias or deprecation layer. Clients must update their calls and discovery expectations as described in the dated migration.
 
 ## Version 1.0 planned conventions
 

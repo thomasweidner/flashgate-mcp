@@ -16,7 +16,7 @@
   "required": ["schemaVersion", "taskId", "repository", "baselineCommit", "currentCommit", "branch", "transitionType", "profile", "status", "classicReviewReady", "findingIds", "reviewStatus", "commitAuthorized", "scopeInventorySha256", "taskPatchSha256", "currentDeltaSha256", "allowedDeltaPaths", "excludedDeltaPaths", "nextAction"],
   "properties": {
     "schemaVersion": { "const": 1 },
-    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "taskId": { "type": "string", "pattern": "^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$" },
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },

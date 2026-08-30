@@ -19,7 +19,7 @@ type DecodedCallToolResult struct {
 }
 
 // DecodeCallToolResult validates the exact CallToolResult subset emitted by
-// FlashGate SPR-45. It is not a generic MCP decoder: it requires one text
+// FlashGate SPR-045. It is not a generic MCP decoder: it requires one text
 // block plus structuredContent and rejects optional fields such as _meta.
 func DecodeCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
 	if !isJSONObject(raw) {

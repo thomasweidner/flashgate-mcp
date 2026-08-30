@@ -73,11 +73,10 @@ The system service separates the authenticated caller from the effective OS exec
 
 Host-process lifecycle is also planned, not implemented. Direct and proxy/auto
 edge processes are session-scoped, while SCM/systemd services persist across
-client disconnects. ADR-0017 defines the owner matrix, one bounded process-root
+client disconnects. ADR-017 defines the owner matrix, one bounded process-root
 shutdown coordinator, secret-safe instance/exit diagnostics, and the strict
 `SUSPECTED_STALE` versus `DEFINITELY_ORPHANED` boundary. BL-341 owns the later
 runtime implementation and BL-241 its integrated Windows/Linux validation.
-
 ## Open-Source, Modules, and Protocol Extensions
 
 FlashGate MCP is developed as a general, vendor-neutral open-source project. The core must not require Voxtronic paths, internal systems, proprietary dependencies, organization secrets, or company-specific permissions.
@@ -131,7 +130,7 @@ Path validation uses two stages:
 
 Individual tools do not bypass the filesystem abstraction and do not call host filesystem APIs directly. This keeps path validation centralized and testable.
 
-`SPR-37` adds deny-by-default policy enforcement for hidden paths, UNC paths, symlinks, and Windows reparse points:
+`SPR-037` adds deny-by-default policy enforcement for hidden paths, UNC paths, symlinks, and Windows reparse points:
 
 ```text
 MCP_ALLOW_HIDDEN_FILES=false
@@ -147,7 +146,7 @@ Security and path denials are mapped to generic invalid-path tool errors without
 
 ### Limits and diagnostics
 
-`SPR-39` adds conservative hard limits:
+`SPR-039` adds conservative hard limits:
 
 | Environment variable | Default | Purpose |
 |---|---:|---|
@@ -166,7 +165,7 @@ All limit values must be positive integers.
 
 ### Read-only mode
 
-`SPR-35` adds read-only enforcement for MCP tool discovery and direct tool calls.
+`SPR-035` adds read-only enforcement for MCP tool discovery and direct tool calls.
 
 Enable read-only mode with:
 
@@ -204,7 +203,7 @@ A machine-readable MCP tool catalog is available at:
 docs/mcp-tool-catalog.json
 ```
 
-Preparation for a later, separately approved Codex read-only activation is documented in [docs/codex-read-only-activation.md](docs/codex-read-only-activation.md). `SPR-44` does not modify Codex configuration or register FlashGate as an MCP server.
+Preparation for a later, separately approved Codex read-only activation is documented in [docs/codex-read-only-activation.md](docs/codex-read-only-activation.md). `SPR-044` does not modify Codex configuration or register FlashGate as an MCP server.
 
 The catalog contains tool names, descriptions, input schemas, domain `resultSchema` values, the central `CallToolResult` envelope description, and common error behavior. Runtime output schemas are exposed for the current tools. Version 1.0 also adds profile-specific catalog/instruction budgets, deterministic ordering, and catalog fingerprints.
 
@@ -390,7 +389,7 @@ Porcelain-v2 status and `staged=false` remain separate mandatory evidence. The
 authoritative binary patch includes both rename sides and is byte-equal to both
 packaged patches.
 
-Run the documentation consistency gate with PowerShell 7.6.5 on Windows:
+Run the documentation consistency gate with PowerShell 7.6.5:
 
 ```powershell
 .\scripts\Test-DocumentationConsistency.ps1
@@ -399,7 +398,7 @@ Run the documentation consistency gate with PowerShell 7.6.5 on Windows:
 The detailed checklist and exit-code contract are documented in [docs/documentation-quality-gate.md](docs/documentation-quality-gate.md).
 
 Validate the complete PowerShell and Bash entry-point inventory on Windows
-with the required Windows PowerShell 7.6.5 and Git Bash runtimes:
+with the required PowerShell 7.6.5 and Git Bash runtimes:
 
 ```powershell
 & {
@@ -548,7 +547,7 @@ The smoke scripts create per-run JSONL request and response files under `build/`
 
 ## Resource, Latency, and Payload Benchmarks
 
-`SPR-47` adds a versioned local benchmark system for process startup, end-to-end workflow latency, idle and peak working set, process CPU time, Go allocations, request/result/response sizes, filesystem counters, `tools/list` size, MCP call counts, and a coarse byte-based token orientation.
+`SPR-047` adds a versioned local benchmark system for process startup, end-to-end workflow latency, idle and peak working set, process CPU time, Go allocations, request/result/response sizes, filesystem counters, `tools/list` size, MCP call counts, and a coarse byte-based token orientation.
 
 Run the standard Windows benchmark after normal validation:
 
@@ -600,22 +599,24 @@ Metadata Regression Run 11 succeeded, the final Windows and native Linux
 contract suites passed `201/201` and `206/206`, respectively, and all six
 original findings are closed with no open BL-248 finding. BL-333/BL-334 and
 BL-335 and BL-251 are complete. The canonical orchestrator binds PowerShell
-7.6.4, the native Linux `standard` gate passes, and the final runspace-free
+7.6.5, the native Linux `standard` gate passes, and the final runspace-free
 wrapper plus atomically persisted child result prove `225/225` governance
 fixtures with zero failures, skips, warnings, timeouts, cleanup errors, or
 repository mutation. The Windows shell harness passes 21/21 cases and obtains
 the bounded child PID directly from the process-start result, so its timeout
 cleanup evidence no longer depends on child-authored PID-file timing. The PID
 correction passed focused independent delta review with no warnings or
-failures, and `BL251-PRECOMMIT-REV-001` is closed. The exact commit, remote
+failures, and `BL-251-REV-005` is closed. The exact commit, remote
 push, Draft PR, Hosted CI, and focused independent review of the documentation
 correction are complete. `PR30-REV-001` is
 `CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. BL-324 is complete: PR #36 merged the
 exact reviewed two-path Dependabot configuration, post-merge CI, Metadata
 Regression, CodeQL, and both initial Dependabot ecosystem runs passed,
 Dependabot Alerts and unpaused Security Updates are enabled, and automatic
-merging remains disabled. BL-340 has a local isolated implementation prepared
-for independent full review; it is not committed, published, merged, or `Done`.
+merging remains disabled. BL-340 is complete through PR #42 with `OpenFindingCount=0`; no BL-340
+implementation, review, merge, remote, or local implementation work remains.
+BL-341 remains `Planned` and owns the later cross-mode host-process lifecycle
+runtime implementation.
 
 ## Basic Usage
 

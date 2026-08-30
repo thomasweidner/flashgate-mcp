@@ -653,14 +653,13 @@ function Get-ExpandedScopePaths {
 
 function Test-FindingIdTaskBinding {
     param([Parameter(Mandatory)][string]$TaskId, [Parameter(Mandatory)][string]$FindingId)
-    $taskComponent = $TaskId.Replace('-', '')
     $reviewIndex = $FindingId.LastIndexOf('-REV-', [System.StringComparison]::Ordinal)
     if ($reviewIndex -le 0) { return $false }
     $prefix = $FindingId.Substring(0, $reviewIndex)
-    $components = @([regex]::Matches($prefix, '(?:^|-)(?<task>BL[0-9]{3})(?=-|$)') | ForEach-Object {
+    $components = @([regex]::Matches($prefix, '(?:^|-)(?<task>BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,}))(?=-|$)') | ForEach-Object {
             $_.Groups['task'].Value
         })
-    return $taskComponent -cin $components
+    return $TaskId -cin $components
 }
 
 function Assert-FindingSetForTask {

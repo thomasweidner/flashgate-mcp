@@ -1,4 +1,4 @@
-# ADR-0006: FlashGate Project Identity and Open-Source Scope
+# ADR-006: FlashGate Project Identity and Open-Source Scope
 
 ## Status
 
@@ -31,7 +31,7 @@ A public name can be adopted without mixing high-risk mechanical renames into th
 
 ## Security Impact
 
-Module/provider origin never weakens the shared security model. No company secret, path, permission, or infrastructure value belongs in the core. MCP protocol extensions are a separate negotiated wire-protocol concept governed by ADR-0013.
+Module/provider origin never weakens the shared security model. No company secret, path, permission, or infrastructure value belongs in the core. MCP protocol extensions are a separate negotiated wire-protocol concept governed by ADR-013.
 
 ## Implementation Guidance
 
@@ -41,7 +41,7 @@ Use FlashGate MCP for the public project. Use `fileserver-mcp` only when describ
 
 - final public-release governance details
 - FlashGate module/provider contract and runtime model
-- MCP protocol-extension compatibility, governed by ADR-0013
+- MCP protocol-extension compatibility, governed by ADR-013
 - technical rename execution, reserved for Sprint 3.42
 
 ## Amendment - 2026-07-11

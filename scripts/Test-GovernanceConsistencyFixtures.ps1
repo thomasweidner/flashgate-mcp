@@ -40,6 +40,22 @@ function Get-OrdinalSortedUniqueStrings {
     return @($set)
 }
 
+function Resolve-ExistingCanonicalPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$LiteralPath)
+
+    try {
+        $resolvedPath = (Resolve-Path -LiteralPath $LiteralPath -ErrorAction Stop).ProviderPath
+        return [System.IO.Path]::GetFullPath($resolvedPath).TrimEnd(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar
+        )
+    }
+    catch {
+        return $null
+    }
+}
+
 function Invoke-BacklogDoneNonRegressionFixtureMatrix {
     [CmdletBinding()]
     param(
@@ -51,15 +67,123 @@ function Invoke-BacklogDoneNonRegressionFixtureMatrix {
         [Parameter(Mandatory)][string]$BaselineCommit
     )
 
+    $repositoryRootFull = Resolve-ExistingCanonicalPath -LiteralPath $RepositoryRoot
+    $temporaryRootFull = Resolve-ExistingCanonicalPath -LiteralPath $TemporaryRoot
     $fixtureRepositoryRoot = Join-Path $TemporaryRoot 'backlog-done-nonregression-repository'
-    $cloneArguments = @(
-        'clone',
-        '--quiet',
-        '--no-hardlinks',
-        '--',
-        $RepositoryRoot,
-        $fixtureRepositoryRoot
+    $fixtureRepositoryRootFull = [System.IO.Path]::GetFullPath($fixtureRepositoryRoot)
+    if ($null -eq $repositoryRootFull -or $null -eq $temporaryRootFull) {
+        return [pscustomobject]@{
+            Passed = $false
+            Diagnostic = 'RepositoryRoot and TemporaryRoot must resolve to existing canonical paths.'
+        }
+    }
+    $temporaryRootPrefix = $temporaryRootFull + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $fixtureRepositoryRootFull.StartsWith(
+            $temporaryRootPrefix,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) {
+        return [pscustomobject]@{
+            Passed = $false
+            Diagnostic = 'Fixture repository path escapes the canonical temporary root.'
+        }
+    }
+
+    $initialSafeDirectory = 'safe.directory=' + $repositoryRootFull.Replace('\', '/')
+    $topLevelOutput = @(
+        & $GitExecutable -c $initialSafeDirectory -C $repositoryRootFull `
+            rev-parse --show-toplevel 2>&1
     )
+    $topLevelExit = $LASTEXITCODE
+    $gitDirectoryOutput = @(
+        & $GitExecutable -c $initialSafeDirectory -C $repositoryRootFull `
+            rev-parse --git-dir 2>&1
+    )
+    $gitDirectoryExit = $LASTEXITCODE
+    $gitCommonDirectoryOutput = @(
+        & $GitExecutable -c $initialSafeDirectory -C $repositoryRootFull `
+            rev-parse --git-common-dir 2>&1
+    )
+    $gitCommonDirectoryExit = $LASTEXITCODE
+    if ($topLevelExit -ne 0 -or $gitDirectoryExit -ne 0 -or $gitCommonDirectoryExit -ne 0 -or
+        $topLevelOutput.Count -ne 1 -or $gitDirectoryOutput.Count -ne 1 -or
+        $gitCommonDirectoryOutput.Count -ne 1) {
+        return [pscustomobject]@{
+            Passed = $false
+            Diagnostic = 'Unable to resolve the exact Git top-level, git-dir, and git-common-dir.'
+        }
+    }
+
+    $repositoryTopLevel = Resolve-ExistingCanonicalPath -LiteralPath ([string]$topLevelOutput[0])
+    $gitDirectoryReported = [string]$gitDirectoryOutput[0]
+    $gitCommonDirectoryReported = [string]$gitCommonDirectoryOutput[0]
+    $gitDirectoryPath = if ([System.IO.Path]::IsPathRooted($gitDirectoryReported)) {
+        $gitDirectoryReported
+    }
+    else {
+        Join-Path $repositoryRootFull $gitDirectoryReported
+    }
+    $gitCommonDirectoryPath = if ([System.IO.Path]::IsPathRooted($gitCommonDirectoryReported)) {
+        $gitCommonDirectoryReported
+    }
+    else {
+        Join-Path $repositoryRootFull $gitCommonDirectoryReported
+    }
+    $gitDirectory = Resolve-ExistingCanonicalPath -LiteralPath $gitDirectoryPath
+    $gitCommonDirectory = Resolve-ExistingCanonicalPath -LiteralPath $gitCommonDirectoryPath
+    if ($null -eq $repositoryTopLevel -or $null -eq $gitDirectory -or
+        $null -eq $gitCommonDirectory -or
+        -not $repositoryTopLevel.Equals(
+            $repositoryRootFull,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) {
+        return [pscustomobject]@{
+            Passed = $false
+            Diagnostic = 'Resolved Git topology does not match the requested repository root.'
+        }
+    }
+
+    $sharedWorktreeAdminRoot = Join-Path $gitCommonDirectory 'worktrees'
+    $sharedWorktreeAdminPrefix = $sharedWorktreeAdminRoot.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
+    $gitDirectoryAllowed = (
+        $gitDirectory.Equals(
+            $gitCommonDirectory,
+            [System.StringComparison]::OrdinalIgnoreCase
+        ) -or
+        $gitDirectory.StartsWith(
+            $sharedWorktreeAdminPrefix,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )
+    )
+    if (-not $gitDirectoryAllowed) {
+        return [pscustomobject]@{
+            Passed = $false
+            Diagnostic = 'Resolved git-dir escapes the common repository or its shared-worktree admin root.'
+        }
+    }
+
+    $cloneArguments = [System.Collections.Generic.List[string]]::new()
+    $safeDirectories = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($safeDirectory in @($repositoryTopLevel, $gitDirectory, $gitCommonDirectory)) {
+        if ($safeDirectories.Add($safeDirectory)) {
+            $cloneArguments.Add('-c')
+            $cloneArguments.Add('safe.directory=' + $safeDirectory.Replace('\', '/'))
+        }
+    }
+    foreach ($cloneArgument in @(
+            'clone',
+            '--quiet',
+            '--no-hardlinks',
+            '--',
+            $repositoryTopLevel,
+            $fixtureRepositoryRootFull
+        )) {
+        $cloneArguments.Add($cloneArgument)
+    }
     $cloneOutput = @(& $GitExecutable @cloneArguments 2>&1)
     $cloneExit = $LASTEXITCODE
     if ($cloneExit -ne 0) {
@@ -91,7 +215,7 @@ function Invoke-BacklogDoneNonRegressionFixtureMatrix {
 
     $obsoleteQueueLiteral = 'schedule BL-' +
         '340 independently in SPR-61 -> final documentation convergence -> ' +
-        'Local Work Register dissolution audit -> separately authorized Local Work Register removal'
+        'retired coordination tail'
     $doneRowLineEnding = if ($doneRow.Value.EndsWith("`r`n", [System.StringComparison]::Ordinal)) {
         "`r`n"
     }
@@ -285,7 +409,7 @@ function New-BaseRecord {
         schemaVersion = 1
         recordReadinessClass = $script:CurrentRecordReadinessClass
         recordedAt = '2026-07-29T00:00:00+02:00'
-        taskId = 'BL-333/BL-334'
+        taskId = 'BL-333'; relatedPrimaryIds = @('BL-334')
         repository = 'https://github.com/thomasweidner/flashgate-mcp.git'
         baselineCommit = $actualHead
         currentCommit = $actualHead
@@ -602,17 +726,17 @@ function New-ClassicFixturePackage {
         Get-FileHash -LiteralPath $ValidatorPath -Algorithm SHA256
     ).Hash.ToLowerInvariant()
     $expectedFindingIds = @(
-        'BL333-BL334-REV-013',
-        'BL333-BL334-REV-015'
+        'BL-333-REV-013',
+        'BL-333-REV-015'
     )
     $closedFindingIds = @(
-        'BL333-BL334-REV-007',
-        'BL333-BL334-REV-008',
-        'BL333-BL334-REV-010'
+        'BL-333-REV-007',
+        'BL-333-REV-008',
+        'BL-333-REV-010'
     )
     $handoffStatus = 'FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW'
-    $nextAction = 'Perform only the focused independent delta review of BL333-BL334-REV-013 and BL333-BL334-REV-015 with the new verified review package.'
-    $queue = 'BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register'
+    $nextAction = 'Perform only the focused independent delta review of BL-333-REV-013 and BL-333-REV-015 with the new verified review package.'
+    $queue = 'BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence'
     $referenceOnlyPaths = @('README.md')
     $directInterfacePaths = @($ChangedPaths | Select-Object -First 1)
     $previousReviewPackage = Join-Path $Root 'previous-focused-review.zip'
@@ -685,11 +809,6 @@ function New-ClassicFixturePackage {
             Slug = 'project-wide-governance-standard'
             Scope = 'PROJECT_WIDE_GOVERNANCE_STANDARD'
             ActivePath = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Governance\PROJECT-WIDE-REVIEW-AND-VALIDATION-STANDARD.md'
-        },
-        [pscustomobject]@{
-            Slug = 'local-work-register'
-            Scope = 'FLASHGATE_LOCAL_WORK_REGISTER'
-            ActivePath = 'C:\Voxtronic\MCP\flashgate-mcp-local-work-register.md'
         }
     )
     $externalChanges = @(
@@ -697,21 +816,7 @@ function New-ClassicFixturePackage {
             $relativeRoot = 'external/' + $definition.Slug
             [void][System.IO.Directory]::CreateDirectory((Join-Path $staging $relativeRoot))
             $beforeText = "fixture before $($definition.Scope)`n"
-            $afterText = if ($definition.Scope -ceq 'FLASHGATE_LOCAL_WORK_REGISTER') {
-                @"
-Status: FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW
-$queue
-ClosedFindingCount: 3
-PendingDeltaFindingCount: 2
-ClosedFindings: BL333-BL334-REV-007,BL333-BL334-REV-008,BL333-BL334-REV-010
-PendingFindings: BL333-BL334-REV-013,BL333-BL334-REV-015
-Commit Preparation remains blocked pending the focused independent delta review.
-BL-335 remains blocked.
-"@
-            }
-            else {
-                "fixture after $($definition.Scope)`n"
-            }
+            $afterText = "fixture after $($definition.Scope)`n"
             $beforePath = Join-Path $staging ($relativeRoot + '/before.txt')
             $afterPath = Join-Path $staging ($relativeRoot + '/after.txt')
             $diffPath = Join-Path $staging ($relativeRoot + '/change.patch')
@@ -763,7 +868,7 @@ BL-335 remains blocked.
         $utf8
     )
 
-    $Record.taskId = 'BL-333/BL-334'
+    $Record.taskId = 'BL-333'; $Record.relatedPrimaryIds = @('BL-334')
     $Record.executionMode = 'BUNDLED_CORRECTION'
     $Record.checkpoint = 'SPRINT_CLOSE'
     $Record.review.repositoryMutationAllowed = $true
@@ -993,7 +1098,7 @@ BL-335 remains blocked.
 
     $reportContract = [ordered]@{
         schemaVersion = 1
-        taskId = 'BL-333/BL-334'
+        taskId = 'BL-333'; relatedPrimaryIds = @('BL-334')
         status = $handoffStatus
         executionMode = 'BUNDLED_CORRECTION'
         reviewStatus = 'AWAITING_FOCUSED_DELTA_REVIEW'
@@ -1036,7 +1141,7 @@ END_GOVERNANCE_REPORT_CONTRACT
     [System.IO.File]::WriteAllText((Join-Path $staging 'report.md'), $reportText, $utf8)
     $handoffContract = [ordered]@{
         schemaVersion = 1
-        taskId = 'BL-333/BL-334'
+        taskId = 'BL-333'; relatedPrimaryIds = @('BL-334')
         correctionMode = 'BUNDLED_CORRECTION'
         status = $handoffStatus
         classicReviewReady = $true
@@ -1320,7 +1425,7 @@ function New-MutatedFixturePackage {
             'REPORT_MISSING_BLOCK',
             'REPORT_DOUBLE_BLOCK',
             'REPORT_DUMMY_JSON',
-            'LOCAL_REGISTER_STALE_STATUS'
+            'EXTERNAL_GOVERNANCE_PAYLOAD_DRIFT'
         )]
         [string]$Mutation
     )
@@ -1473,7 +1578,16 @@ function New-MutatedFixturePackage {
         'PATH_CASE_DUPLICATE' {
             $external = Get-Content -LiteralPath $externalManifestPath -Raw -Encoding UTF8 |
                 ConvertFrom-Json -Depth 100 -DateKind String
-            $external.changes[4].activePath = 'C:\USERS\THOMASW\.CODEX\AGENTS.MD'
+            $collisionTarget = @($external.changes | Where-Object {
+                    [string]$_.scope -ceq 'GLOBAL_CODEX_RULES'
+                })
+            $collisionSource = @($external.changes | Where-Object {
+                    [string]$_.scope -ceq 'PROJECT_WIDE_GOVERNANCE_STANDARD'
+                })
+            if ($collisionTarget.Count -ne 1 -or $collisionSource.Count -ne 1) {
+                throw 'PATH_CASE_DUPLICATE requires exactly one target and one source governance scope.'
+            }
+            $collisionSource[0].activePath = ([string]$collisionTarget[0].activePath).ToUpperInvariant()
             [System.IO.File]::WriteAllText(
                 $externalManifestPath,
                 ($external | ConvertTo-Json -Depth 100),
@@ -1489,13 +1603,13 @@ function New-MutatedFixturePackage {
         'HANDOFF_TARGET_MISMATCH' {
             Update-FixtureHandoffContract -HandoffPath $handoffPath -Mutation {
                 param($contract)
-                $contract.targetFindings = @('BL333-BL334-REV-013')
+                $contract.targetFindings = @('BL-333-REV-013')
             }
         }
         'HANDOFF_CLOSED_MISMATCH' {
             Update-FixtureHandoffContract -HandoffPath $handoffPath -Mutation {
                 param($contract)
-                $contract.closedFindings = @('BL333-BL334-REV-007')
+                $contract.closedFindings = @('BL-333-REV-007')
             }
         }
         'HANDOFF_RUN_MISMATCH' {
@@ -1569,8 +1683,8 @@ function New-MutatedFixturePackage {
         'HANDOFF_VISIBLE_PENDING_MISMATCH' {
             $handoffText = Get-Content -LiteralPath $handoffPath -Raw -Encoding UTF8
             $handoffText = $handoffText.Replace(
-                'PendingFindings: BL333-BL334-REV-013,BL333-BL334-REV-015',
-                'PendingFindings: BL333-BL334-REV-013'
+                'PendingFindings: BL-333-REV-013,BL-333-REV-015',
+                'PendingFindings: BL-333-REV-013'
             )
             [System.IO.File]::WriteAllText($handoffPath, $handoffText, $utf8)
         }
@@ -1732,7 +1846,7 @@ function New-MutatedFixturePackage {
         }
         'MISSING_EXTERNAL' {
             Remove-Item -LiteralPath (
-                Join-Path $staging 'external/local-work-register/after.txt'
+                Join-Path $staging 'external/project-wide-governance-standard/after.txt'
             ) -Force
             $refreshManifest = $false
         }
@@ -1875,7 +1989,7 @@ function New-MutatedFixturePackage {
                 ConvertFrom-Json -Depth 100 -DateKind String
             $extraFinding = $matrix.findings[0] | ConvertTo-Json -Depth 100 |
                 ConvertFrom-Json -Depth 100 -DateKind String
-            $extraFinding.id = 'BL333-BL334-REV-999'
+            $extraFinding.id = 'BL-333-REV-999'
             $matrix.findings = @($matrix.findings) + @($extraFinding)
             [System.IO.File]::WriteAllText($correctionMatrixPath, ($matrix | ConvertTo-Json -Depth 100), $utf8)
         }
@@ -1908,7 +2022,7 @@ function New-MutatedFixturePackage {
                 ConvertFrom-Json -Depth 100 -DateKind String
             $unknown = $matrix.findings[0] | ConvertTo-Json -Depth 100 |
                 ConvertFrom-Json -Depth 100 -DateKind String
-            $unknown.id = 'BL333-BL334-REV-999'
+            $unknown.id = 'BL-333-REV-999'
             $matrix.findings = @($matrix.findings) + @($unknown)
             [System.IO.File]::WriteAllText($regressionMatrixPath, ($matrix | ConvertTo-Json -Depth 100), $utf8)
         }
@@ -2050,14 +2164,11 @@ function New-MutatedFixturePackage {
             )
             [System.IO.File]::WriteAllText($reportPath, $reportText, $utf8)
         }
-        'LOCAL_REGISTER_STALE_STATUS' {
-            $localPath = Join-Path $staging 'external/local-work-register/after.txt'
-            $localText = Get-Content -LiteralPath $localPath -Raw -Encoding UTF8
-            $localText = $localText.Replace(
-                'FOURTH_BUNDLED_CORRECTION_COMPLETE_AWAITING_FOCUSED_DELTA_REVIEW',
-                'independent Full Review, possible bundled correction and focused Delta'
-            )
-            [System.IO.File]::WriteAllText($localPath, $localText, $utf8)
+        'EXTERNAL_GOVERNANCE_PAYLOAD_DRIFT' {
+            $externalPath = Join-Path $staging 'external/project-wide-governance-standard/after.txt'
+            $externalText = Get-Content -LiteralPath $externalPath -Raw -Encoding UTF8
+            $externalText += "unexpected fixture drift`n"
+            [System.IO.File]::WriteAllText($externalPath, $externalText, $utf8)
         }
     }
 
@@ -2110,7 +2221,7 @@ function New-CompletionFixture {
     $report | Add-Member -NotePropertyName reviewStatus -NotePropertyValue 'AWAITING_FOCUSED_DELTA_REVIEW'
     $report | Add-Member -NotePropertyName run007Status -NotePropertyValue 'CORRECTED_PENDING_DELTA'
     $report | Add-Member -NotePropertyName queue -NotePropertyValue (
-        'BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence -> remove Local Work Register'
+        'BL-333/BL-334 -> BL-335 -> BL-251 -> BL-324 -> final documentation convergence'
     )
     $report | Add-Member -NotePropertyName scopeInventorySha256 -NotePropertyValue (
         (Get-FileHash -LiteralPath $scopePath -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -2120,7 +2231,7 @@ function New-CompletionFixture {
     )
     $report | Add-Member -NotePropertyName findingStatus -NotePropertyValue @(
         [ordered]@{
-            id = 'BL333-BL334-REV-007'
+            id = 'BL-333-REV-007'
             severity = 'MAJOR'
             status = 'CORRECTED_PENDING_DELTA'
             disposition = 'CORRECTED'
@@ -2296,15 +2407,8 @@ try {
     }
     if (@($AvailableCapability).Count -eq 0) {
         $portableCapabilities = [System.Collections.Generic.List[string]]::new()
-        $requiredPowerShellCapability = if ($actualTargetPlatform -ceq 'windows') {
-            'powershell-7.6.5'
-        }
-        else {
-            'powershell-7.6.4'
-        }
-        $requiredPowerShellVersion = if ($actualTargetPlatform -ceq 'windows') { '7.6.5' } else { '7.6.4' }
-        if ($PSVersionTable.PSVersion.ToString() -ceq $requiredPowerShellVersion) {
-            $portableCapabilities.Add($requiredPowerShellCapability)
+        if ($PSVersionTable.PSVersion.ToString() -ceq '7.6.5') {
+            $portableCapabilities.Add('powershell-7.6.5')
             $powerShellCapabilitySource = 'PORTABLE_PROCESS_PREFLIGHT'
         }
         $portableGit = Get-Command git -CommandType Application -ErrorAction SilentlyContinue
@@ -2320,13 +2424,7 @@ try {
         $resolvedAvailableCapability = @(
             Get-OrdinalSortedUniqueStrings -Value $AvailableCapability
         )
-        $requiredPowerShellCapability = if ($actualTargetPlatform -ceq 'windows') {
-            'powershell-7.6.5'
-        }
-        else {
-            'powershell-7.6.4'
-        }
-        $powerShellCapabilitySource = if ($requiredPowerShellCapability -cin $resolvedAvailableCapability) {
+        $powerShellCapabilitySource = if ('powershell-7.6.5' -cin $resolvedAvailableCapability) {
             'CALLER_SUPPLIED_VALIDATED_CAPABILITY'
         }
         else {
@@ -2449,7 +2547,7 @@ try {
     $temporaryBase = [System.IO.Path]::GetTempPath()
     $temporaryRoot = Join-Path $temporaryBase ('flashgate-governance-fixtures-' + [guid]::NewGuid().ToString('N'))
     [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
-    $requiredPowerShellVersion = if ($actualTargetPlatform -ceq 'windows') { '7.6.5' } else { '7.6.4' }
+    $requiredPowerShellVersion = '7.6.5'
     $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
     if ($actualPowerShellVersion -cne $requiredPowerShellVersion) {
         throw "PowerShell $requiredPowerShellVersion is required; actual=$actualPowerShellVersion"
@@ -2507,10 +2605,10 @@ try {
     $delta.focusedDelta.currentDeltaSha256 = 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
     $delta.focusedDelta.correctionOnlyPaths = @('Governance/change-trigger-catalog.json')
     $delta.focusedDelta.allowedDeltaPaths = @('Governance/change-trigger-catalog.json')
-    $delta.focusedDelta.reviewedFindingIds = @('BL333-BL334-REV-001')
+    $delta.focusedDelta.reviewedFindingIds = @('BL-333-REV-001')
     $delta.focusedDelta.regressionEvidenceIds = @('REG-FOCUSED-001')
     $delta.review.originalFindings = @(
-        New-Finding -Id 'BL333-BL334-REV-001' -Disposition 'CORRECTED'
+        New-Finding -Id 'BL-333-REV-001' -Disposition 'CORRECTED'
     )
     [void]$cases.Add([pscustomobject]@{
             Name = $canonicalFixtureNames[$cases.Count]
@@ -2528,7 +2626,7 @@ try {
     $preCommit.review.focusedValidationResult = 'PASS'
     $preCommit.review.independentDeltaReviewRequired = $false
     $preCommit.handoff.required = $true
-    $preCommit.handoff.package = 'BL-333-BL-334-handoff.zip'
+    $preCommit.handoff.package = 'BL-333-handoff.zip'
     $preCommit.handoff.artifacts = @('HANDOFF.md', 'report.md', 'changes.patch', 'scope-inventory.json', 'MANIFEST.sha256')
     $preCommit.handoff.scopeInventoryResult = 'PASS'
     $preCommit.handoff.patchCompletenessResult = 'PASS'
@@ -3000,7 +3098,7 @@ try {
             'REPORT_MISSING_BLOCK',
             'REPORT_DOUBLE_BLOCK',
             'REPORT_DUMMY_JSON',
-            'LOCAL_REGISTER_STALE_STATUS'
+            'EXTERNAL_GOVERNANCE_PAYLOAD_DRIFT'
         )) {
         $mutatedPackage = New-MutatedFixturePackage -Root $temporaryRoot `
             -SourcePackage $classicFixture.PackagePath -Mutation $packageMutation

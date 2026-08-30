@@ -22,7 +22,7 @@
           "required": ["previousReviewPackageSha256", "findingOutcomes"],
           "properties": {
             "reviewResult": { "const": "FAIL_WITH_FINDING" },
-            "nextAction": { "pattern": "^CORRECT_BL[0-9]{3}_REV_[0-9]{3}_AND_REQUEST_FOCUSED_INDEPENDENT_DELTA_REVIEW$" }
+            "nextAction": { "pattern": "^CORRECT_BL_(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})_REV_0*[1-9][0-9]*_AND_REQUEST_FOCUSED_INDEPENDENT_DELTA_REVIEW$" }
           }
         },
         {
@@ -58,7 +58,7 @@
   "properties": {
     "schemaVersion": { "const": 1 },
     "artifactType": { "const": "INDEPENDENT_FOCUSED_DELTA_REVIEW_OUTCOME" },
-    "taskId": { "type": "string", "pattern": "^BL-[0-9]{3}$" },
+    "taskId": { "type": "string", "pattern": "^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$" },
     "repository": { "const": "https://github.com/thomasweidner/flashgate-mcp.git" },
     "baselineCommit": { "$ref": "#/$defs/commit" },
     "currentCommit": { "$ref": "#/$defs/commit" },
@@ -93,7 +93,7 @@
         "type": "object", "additionalProperties": false,
         "required": ["id", "disposition"],
         "properties": {
-          "id": { "type": "string", "pattern": "^BL[0-9]{3}-CORR-[0-9]{3}$" },
+          "id": { "type": "string", "pattern": "^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})-CORR-0*[1-9][0-9]*$" },
           "disposition": { "const": "CLOSED" }
         }
       }
@@ -144,7 +144,7 @@
     "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "outcomeHash": { "type": "string", "pattern": "^[0-9A-F]{64}$" },
-    "outcomeFindingId": { "type": "string", "pattern": "^BL[0-9]{3}-REV-[0-9]{3}$" },
+    "outcomeFindingId": { "type": "string", "pattern": "^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})-REV-0*[1-9][0-9]*$" },
     "outcomeFindingIds": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/outcomeFindingId" } },
     "path": { "type": "string", "pattern": "^(?![A-Za-z]:|/|\\\\|.*(?:^|/)\\.\\.(?:/|$)).+$" },
     "pathArray": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/path" } },

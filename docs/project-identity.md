@@ -25,7 +25,7 @@ Unrestricted host access, free-form remote shell behavior, implicit network expo
 
 The project is intended to be a general, vendor-neutral open-source project. Its core has no mandatory Voxtronic-specific paths, tools, proprietary systems, permissions, secrets, or infrastructure values.
 
-Public, community, vendor, organization-internal, and Voxtronic-specific **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. `SPR-41` defines no module/provider contract, identifier syntax, or runtime model.
+Public, community, vendor, organization-internal, and Voxtronic-specific **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. `SPR-041` defines no module/provider contract, identifier syntax, or runtime model.
 
 An **MCP protocol extension** is a separate negotiated addition to the MCP wire protocol and follows the official vendor-prefix/slash identifier contract, for example `io.modelcontextprotocol/tasks`. FlashGate modules/providers do not automatically define or implement MCP protocol extensions.
 

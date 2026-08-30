@@ -131,7 +131,7 @@ Deprecated MCP Roots, Sampling, and Logging are not architectural dependencies. 
 EOF or transport close is a host-lifecycle event, not a public tool result.
 Direct STDIO needs no proprietary MCP heartbeat: normal EOF, definitive
 transport failure, supported explicit shutdown, or an OS stop signal enters
-the process-root bounded shutdown path defined by ADR-0017.
+the process-root bounded shutdown path defined by ADR-017.
 
 Lease or heartbeat behavior is permitted only as internal, versioned, and
 explicitly negotiated IPC between FlashGate-controlled proxy/service or future
@@ -139,7 +139,6 @@ broker/worker peers. It is never silently inferred from public MCP traffic.
 Every proxy connection has a connection/session ownership identity. Disconnect
 cancels and cleans connection-owned work and partial results, but does not stop
 the persistent SCM/systemd service.
-
 ## Limits and backpressure
 
 Every transport enforces bounded:
@@ -166,5 +165,5 @@ The supported protocol/extension matrix is a released artifact. A specification 
 - [Efficiency plan](efficiency-improvement-plan.md)
 - [Runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Execution identity backends](execution-identity-backends.md)
-- [ADR-0013](adr/0013-mcp-version-and-extension-compatibility.md)
-- [ADR-0014](adr/0014-native-multi-mode-runtime-and-local-service-deployment.md)
+- [ADR-013](adr/013-mcp-version-and-extension-compatibility.md)
+- [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)

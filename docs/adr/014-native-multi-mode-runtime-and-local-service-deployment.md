@@ -1,4 +1,4 @@
-# ADR-0014: Native Multi-Mode Runtime and Local Service Deployment
+# ADR-014: Native Multi-Mode Runtime and Local Service Deployment
 
 ## Status
 
@@ -27,9 +27,9 @@ The local service transport is an internal versioned IPC protocol. It may carry 
 
 `auto` performs no installation, privilege elevation, UAC prompt, or sudo request. It may fall back to direct STDIO when no managed endpoint is present. It must not silently bypass a present endpoint after authorization denial, policy rejection, protocol incompatibility, or a configured fail-closed condition.
 
-The service derives caller identity from operating-system peer information. Proxy-supplied identity claims are never authoritative. The service enforces capabilities, roots, read/write policy, limits, concurrency, operation ownership, redaction, and audit policy for every client. ADR-0015 resolves service execution identity: Version 1.0 uses dedicated service-account roots, backend interfaces reserve a future per-user worker path, and in-process impersonation is prohibited. Endpoint ACLs, caller authorization, per-principal quotas, and execution-context binding require approved threat models before implementation.
+The service derives caller identity from operating-system peer information. Proxy-supplied identity claims are never authoritative. The service enforces capabilities, roots, read/write policy, limits, concurrency, operation ownership, redaction, and audit policy for every client. ADR-015 resolves service execution identity: Version 1.0 uses dedicated service-account roots, backend interfaces reserve a future per-user worker path, and in-process impersonation is prohibited. Endpoint ACLs, caller authorization, per-principal quotas, and execution-context binding require approved threat models before implementation.
 
-ADR-0017 defines process ownership and bounded lifecycle behavior for direct
+ADR-017 defines process ownership and bounded lifecycle behavior for direct
 STDIO, proxy-edge, and persistent service hosts. It refines lifecycle ownership
 without changing the runtime modes accepted by this ADR.
 
@@ -39,10 +39,9 @@ a normal client disconnect cancels connection-owned work but does not stop the
 service. The shared-service layer reduces repeated heavy FlashGate starts by
 leaving one lightweight STDIO edge per active client transport, but it cannot
 by itself detect the end of a logical agent, force EOF past retained pipe
-handles, or make idle-timeout cleanup safe. ADR-0017 and BL-341 are mandatory
+handles, or make idle-timeout cleanup safe. ADR-017 and BL-341 are mandatory
 lifecycle dependencies of the later BL-226 through BL-231 multi-mode
 implementation.
-
 ## Rationale
 
 One executable minimizes release and operational complexity while preserving a portable path for every user. Explicit process modes allow platform service integration without coupling the local core to SCM, systemd, Named Pipes, Unix sockets, or STDIO. A local-only proxy keeps compatibility with MCP clients that expect to launch a STDIO server.
@@ -109,7 +108,7 @@ The following details remain implementation decisions within this accepted direc
 - exact CLI subcommand syntax for service/user-host management;
 - exact endpoint names and configuration paths;
 - internal IPC framing/envelope format;
-- exact dedicated Windows/Linux service-account form and ACL deployment model within ADR-0015;
+- exact dedicated Windows/Linux service-account form and ACL deployment model within ADR-015;
 - future per-user worker launch/session/resource-isolation model;
 - post-Version-1.0 Windows per-user host startup mechanism;
 - proxy/service compatibility window and upgrade order;
@@ -117,10 +116,10 @@ The following details remain implementation decisions within this accepted direc
 
 ## Related Documents
 
-- [ADR-0003: Use STDIO Transport](0003-stdio-transport.md)
-- [ADR-0008: Core Reuse, Deployment, and FlashGate Module/Provider Model](0008-core-reuse-deployment-and-extension-model.md)
-- [ADR-0015: Hybrid Service Execution Identity](0015-hybrid-service-execution-identity.md)
-- [ADR-0017: Host Process Ownership and Lifecycle](0017-host-process-ownership-and-lifecycle.md)
+- [ADR-003: Use STDIO Transport](003-stdio-transport.md)
+- [ADR-008: Core Reuse, Deployment, and FlashGate Module/Provider Model](008-core-reuse-deployment-and-extension-model.md)
+- [ADR-015: Hybrid Service Execution Identity](015-hybrid-service-execution-identity.md)
+- [ADR-017: Host Process Ownership and Lifecycle](017-host-process-ownership-and-lifecycle.md)
 - [Architecture](../architecture.md)
 - [Security model](../security.md)
 - [Native multi-mode runtime and service plan](../native-multi-mode-runtime-and-service-plan.md)
