@@ -16,8 +16,8 @@ env:
   POWERSHELL_765_SHA256: 32EB8F6CDCE08F86E987D625A2733E54AC3E289AE7E1621B14C0B5BCEC2434EA
 
 jobs:
-  governance:
-    name: Governance (exact PR head)
+  project-quality:
+    name: Project quality (exact PR head)
     runs-on: windows-latest
 
     steps:
@@ -90,7 +90,8 @@ jobs:
             $actualHash = $null
           }
 
-      - name: Bind governance to exact commit and PowerShell 7.6.5
+      - name: Legacy governance orchestration (disabled by Slim Governance)
+        if: ${{ false }}
         shell: pwsh
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -252,6 +253,7 @@ jobs:
             }
 
             .\scripts\Test-GovernanceConsistencyFixtures.ps1 `
+              -WorkingPath $env:RUNNER_TEMP `
               -CanonicalArtifactValidatorPath (Join-Path $PWD 'scripts\Test-ClassicReviewArtifact.ps1')
             if ($LASTEXITCODE -ne 0) {
               throw 'Governance fixture matrix failed.'
@@ -266,8 +268,9 @@ jobs:
       - name: Validate PowerShell and Bash scripts on Windows
         shell: pwsh
         run: |
+          .\scripts\Test-DocumentationConsistency.ps1
           .\scripts\Test-ShellScripts.ps1
-          .\scripts\Test-ShellScripts.Tests.ps1
+          .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $env:RUNNER_TEMP
 
   test:
     name: Test (${{ matrix.platform }})

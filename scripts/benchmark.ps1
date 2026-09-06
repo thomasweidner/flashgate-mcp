@@ -6,7 +6,7 @@ param(
 )
 
 if ($RecordBaseline) {
-    throw 'Authoritative baseline recording is not supported by scripts/benchmark.ps1. Use the documented two-phase prebuilt workflow in the local benchmark workspace C:\Voxtronic\Codex\Temp\Benchmarks.'
+    throw 'Authoritative baseline recording is not supported by scripts/benchmark.ps1. Use the documented two-phase prebuilt workflow in an explicitly bound task-local benchmark workspace.'
 }
 
 Set-StrictMode -Version Latest

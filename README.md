@@ -314,27 +314,26 @@ flashgate-mcp --version --verbose
 
 ## Testing and Quality Checks
 
-FlashGate governance is defined by the
-[change-trigger](Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md),
-[finding-remediation](Governance/FINDING-REMEDIATION-AND-REVIEW-MODE-STANDARD.md),
-and [handoff-readiness](Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md)
-standards. Validate their catalog, schema, enforcement rules, and focused
-positive/negative fixtures with:
+FlashGate uses a thin
+[change-trigger adapter](Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md)
+and inherits the central Slim Governance security and authorization boundaries.
+Normal development validation is `DIRECTLY_AFFECTED_FIRST`; it keeps product,
+Go, coverage, lint, build, release, metadata, platform, shell and security gates
+without requiring the legacy Generic-Handoff/V3/V4 meta matrices.
 
 ```powershell
 & {
-    .\scripts\Test-GovernanceConsistency.ps1
-    .\scripts\Test-GovernanceConsistencyFixtures.ps1
-    .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
+    $workRoot = $env:FLASHGATE_WORK_ROOT
+    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
+    .\scripts\Test-DocumentationConsistency.ps1
+    .\scripts\Test-ShellScripts.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $workRoot
 }
 ```
 
-Hosted Windows CI explicitly executes the versioned
-`scripts/Test-ClassicReviewArtifact.ps1` mirror. The mirror is a byte-bound
-execution copy of the external canonical validator, not a competing governance
-source. The fixture runner defaults to this script-relative mirror, still
-accepts an explicit validator path, and fails closed on byte divergence whenever
-the external canonical validator is locally available.
+The remaining governance-fixture discussion in this section is retained only as
+`LEGACY_COMPATIBILITY_ONLY` history. Those scripts are not normal Product-CI
+blockers and receive no new project consumers.
 
 The legacy fixture runner continues to expect 225 result cases. The BL-336
 generic-profile harness adds 85 positive and negative cases without replacing
@@ -402,8 +401,10 @@ with the required PowerShell 7.6.5 and Git Bash runtimes:
 
 ```powershell
 & {
+    $workRoot = $env:FLASHGATE_WORK_ROOT
+    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
     .\scripts\Test-ShellScripts.ps1
-    .\scripts\Test-ShellScripts.Tests.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $workRoot
 }
 ```
 
@@ -572,7 +573,7 @@ The standard diagnostic mode records one `first_process_start` and 30 `subsequen
 
 Detailed counter semantics, platform behavior, reference workflows, result schema, baseline, and hard-versus-soft budgets are documented in [`benchmarks/README.md`](benchmarks/README.md). The approximation `approx_tokens_bytes4 = ceil(UTF-8 bytes / 4)` is not model-specific and is not suitable for billing.
 
-Versioned baselines are recorded only from clean isolated checkouts of the same implementation commit using the documented two-phase prebuilt workflow. Validation and builds finish before a minimum 180-second quiet period, one authoritative three-block host preflight, direct measurement with prepared binaries, an intermediate gate, and a final host gate. Windows work remains below `C:\Voxtronic\Codex\Temp\Benchmarks`; native Linux work remains under `/home`; synchronized and Windows-mounted Linux paths are prohibited until post-gate archival. The legacy `-RecordBaseline` and `--record-baseline` wrapper flags fail closed and cannot create baselines. Ordinary local runs may use a dirty tree and record that provenance explicitly.
+Versioned baselines are recorded only from clean isolated checkouts of the same implementation commit using the documented two-phase prebuilt workflow. Validation and builds finish before a minimum 180-second quiet period, one authoritative three-block host preflight, direct measurement with prepared binaries, an intermediate gate, and a final host gate. The caller supplies an explicit task-bound Windows workspace on local nonsynchronized storage; native Linux work remains under `/home`. No personal global benchmark path is project authority. The legacy `-RecordBaseline` and `--record-baseline` wrapper flags fail closed and cannot create baselines. Ordinary local runs may use a dirty tree and record that provenance explicitly.
 
 `cmd/benchmark` is development-only. Diagnostic wrappers build it locally; authoritative runs invoke a separately prepared binary. It is not included in release artifacts.
 

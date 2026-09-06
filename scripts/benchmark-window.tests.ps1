@@ -1,8 +1,10 @@
 [CmdletBinding()]
-param()
+param([string]$WorkingPath)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
+$WorkRoot = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
 . (Join-Path $PSScriptRoot 'benchmark-window.ps1')
 
 $Failures = [System.Collections.Generic.List[string]]::new()
@@ -59,8 +61,7 @@ try {
     }
     Test-Condition $AllowedAccepted 'allowed record precheck'
 
-    $TemporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) ('flashgate-window-test-' + [guid]::NewGuid().ToString('N'))
-    New-Item -ItemType Directory -Path $TemporaryDirectory | Out-Null
+    $TemporaryDirectory = New-FlashGateScratchDirectory -WorkingPath $WorkRoot -Prefix 'benchmark-window-test'
     $Candidate = Join-Path $TemporaryDirectory 'candidate.json'
     $Existing = Join-Path $TemporaryDirectory 'baseline.json'
     [IO.File]::WriteAllText($Candidate, 'candidate')
@@ -82,8 +83,7 @@ catch {
 }
 finally {
     if ($null -ne $TemporaryDirectory -and (Test-Path -LiteralPath $TemporaryDirectory -PathType Container)) {
-        Get-ChildItem -LiteralPath $TemporaryDirectory -File | Remove-Item -Force
-        Remove-Item -LiteralPath $TemporaryDirectory
+        Remove-FlashGateScratchDirectory -Path $TemporaryDirectory -WorkingPath $WorkRoot -Prefix 'benchmark-window-test'
     }
     [pscustomobject]@{
         Status       = $(if ($Failures.Count -eq 0) { 'PASS' } else { 'FAIL' })

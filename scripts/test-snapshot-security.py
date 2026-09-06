@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -16,12 +17,22 @@ from pathlib import Path
 
 
 VALIDATOR = Path(__file__).with_name("validate-snapshot.py")
+sys.dont_write_bytecode = True
+WORK_ROOT_HELPER_PATH = Path(__file__).with_name("task-bound-work-root.py")
+WORK_ROOT_SPEC = importlib.util.spec_from_file_location(
+    "flashgate_task_bound_work_root", WORK_ROOT_HELPER_PATH
+)
+if WORK_ROOT_SPEC is None or WORK_ROOT_SPEC.loader is None:
+    raise RuntimeError(f"unable to load helper: {WORK_ROOT_HELPER_PATH}")
+WORK_ROOT_HELPER = importlib.util.module_from_spec(WORK_ROOT_SPEC)
+WORK_ROOT_SPEC.loader.exec_module(WORK_ROOT_HELPER)
 
 
 class SnapshotSecurityTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(
-            prefix="flashgate-snapshot-security-"
+            prefix="flashgate-snapshot-security-",
+            dir=WORK_ROOT_HELPER.resolve_validation_work_root(),
         )
         self.root = Path(self.temporary.name)
         self.sentinel = self.root / "outside-sentinel"

@@ -82,7 +82,14 @@ if python3 "$safety_helper" remove \
     errors+=("exchanged target component unexpectedly passed")
 fi
 
-if ! python3 "$python_safety_test" >/dev/null 2>&1; then
+python_work_root="$test_root/python-work"
+mkdir -m 700 -- "$python_work_root"
+if ! FLASHGATE_TASK_ROOT="$test_root" \
+    FLASHGATE_WORK_ROOT="$python_work_root" \
+    TEMP="$python_work_root" \
+    TMP="$python_work_root" \
+    TMPDIR="$python_work_root" \
+    python3 "$python_safety_test" >/dev/null 2>&1; then
     errors+=("descriptor-bound base-component exchange test failed")
 fi
 

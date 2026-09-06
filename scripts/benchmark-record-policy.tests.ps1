@@ -1,8 +1,10 @@
 [CmdletBinding()]
-param()
+param([string]$WorkingPath)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
+$WorkRoot = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
 
 $Failures = [System.Collections.Generic.List[string]]::new()
 $Notes = [System.Collections.Generic.List[string]]::new()
@@ -65,7 +67,7 @@ function Test-BlockedCanonicalPath {
 }
 
 try {
-    $TemporaryDirectory = Join-Path ([IO.Path]::GetTempPath()) ('flashgate-record-policy-test-' + [guid]::NewGuid().ToString('N'))
+    $TemporaryDirectory = New-FlashGateScratchDirectory -WorkingPath $WorkRoot -Prefix 'record-policy-test'
     $FakeRepository = Join-Path $TemporaryDirectory 'repo'
     $FakeScripts = Join-Path $FakeRepository 'scripts'
     $FakeBenchmarks = Join-Path $FakeRepository 'benchmarks'
@@ -235,7 +237,7 @@ finally {
         }
     }
     if ($null -ne $TemporaryDirectory -and (Test-Path -LiteralPath $TemporaryDirectory -PathType Container)) {
-        Remove-Item -LiteralPath $TemporaryDirectory -Recurse -Force
+        Remove-FlashGateScratchDirectory -Path $TemporaryDirectory -WorkingPath $WorkRoot -Prefix 'record-policy-test'
     }
 }
 

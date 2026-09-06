@@ -18,6 +18,11 @@ NATIVE_SAFETY_HELPER="$FG_NATIVE_SAFETY_HELPER"
 # shellcheck source=native-validation-safety.sh
 source "$FG_NATIVE_SAFETY"
 flashgate_prepare_work_root
+export FLASHGATE_TASK_ROOT="$NATIVE_VALIDATION_BASE"
+export FLASHGATE_WORK_ROOT="$NATIVE_WORK_ROOT"
+export TEMP="$NATIVE_WORK_ROOT"
+export TMP="$NATIVE_WORK_ROOT"
+export TMPDIR="$NATIVE_WORK_ROOT"
 
 native_root="$NATIVE_WORK_ROOT"
 repo_dir="$native_root/repository"

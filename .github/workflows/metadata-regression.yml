@@ -88,6 +88,7 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Test-VerifierProcess.ps1 `
+            -WorkingPath $env:RUNNER_TEMP `
             -RealWindowsX64Binary "build/metadata-1/windows_x64/flashgate-mcp.exe" `
             -ExpectedProductVersion $env:METADATA_TEST_VERSION `
             -ExpectedFileVersion $env:METADATA_TEST_FILE_VERSION `

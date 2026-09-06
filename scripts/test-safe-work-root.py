@@ -13,12 +13,20 @@ from unittest import mock
 
 
 HELPER_PATH = Path(__file__).with_name("safe-work-root.py")
+WORK_ROOT_HELPER_PATH = Path(__file__).with_name("task-bound-work-root.py")
 sys.dont_write_bytecode = True
 SPEC = importlib.util.spec_from_file_location("flashgate_safe_work_root", HELPER_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"unable to load helper: {HELPER_PATH}")
 HELPER = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(HELPER)
+WORK_ROOT_SPEC = importlib.util.spec_from_file_location(
+    "flashgate_task_bound_work_root", WORK_ROOT_HELPER_PATH
+)
+if WORK_ROOT_SPEC is None or WORK_ROOT_SPEC.loader is None:
+    raise RuntimeError(f"unable to load helper: {WORK_ROOT_HELPER_PATH}")
+WORK_ROOT_HELPER = importlib.util.module_from_spec(WORK_ROOT_SPEC)
+WORK_ROOT_SPEC.loader.exec_module(WORK_ROOT_HELPER)
 
 
 @unittest.skipUnless(
@@ -30,7 +38,8 @@ SPEC.loader.exec_module(HELPER)
 class SafeWorkRootTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory(
-            prefix="flashgate-safe-work-root-"
+            prefix="flashgate-safe-work-root-",
+            dir=WORK_ROOT_HELPER.resolve_validation_work_root(),
         )
         self.root = Path(self.temporary.name)
         self.home = self.root / "home"

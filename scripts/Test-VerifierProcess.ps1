@@ -10,10 +10,13 @@ param(
     [ValidateSet('', 'true', 'false')]
     [string] $ExpectedModified = '',
     [ValidateRange(1970, 9999)]
-    [int] $ExpectedCopyrightYear = 1970
+    [int] $ExpectedCopyrightYear = 1970,
+    [string] $WorkingPath
 )
 
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
+$WorkRoot = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
 $RootPath = Split-Path -Parent $PSScriptRoot
 $ProcessLibrary = Join-Path $PSScriptRoot 'VerifierProcess.ps1'
 $ProcessHelper = Join-Path `
@@ -25,10 +28,9 @@ $Cases = [System.Collections.Generic.List[string]]::new()
 $BarrierFiles = [System.Collections.Generic.List[string]]::new()
 $BarrierDirectories = [System.Collections.Generic.List[string]]::new()
 $ExitCode = 1
-$TempRoot = Join-Path `
-    ([IO.Path]::GetTempPath()) `
-    ('flashgate-verifier-contract-' + [Guid]::NewGuid().ToString('N'))
+$TempRoot = New-FlashGateScratchDirectory -WorkingPath $WorkRoot -Prefix 'verifier-contract'
 $PreviousTestMode = $env:FLASHGATE_VERIFIER_TEST_MODE
+$AnsiEscapePattern = ([string][char]27) + '\[[0-9;]*m'
 
 function Test-Condition {
     param(
@@ -699,7 +701,7 @@ try {
                 "AfterReady=$($Barrier.TimeoutStartedAfterReady);" +
                 "ElapsedMs=$($BarrierCase.ElapsedMilliseconds);" +
                 "ChildPid=$($BarrierCase.ControlledChildPid);" +
-                "ChildExited=$ControlledChildExited;" +
+                ('ChildExited={0};' -f $ControlledChildExited) +
                 "Stderr=$($ProcessResult.Stderr)]"
             )
         }
@@ -859,7 +861,7 @@ try {
             @CommonArguments 2>&1
         $PositiveExit = $LASTEXITCODE
         $PositiveText = ($PositiveOutput | Out-String) -replace `
-            "`e\[[0-9;]*m", `
+            $AnsiEscapePattern, `
             ''
         Test-Condition `
             (
@@ -1107,7 +1109,7 @@ try {
             -TestLaunchMarkerPath $StaticMarker 2>&1
         $StaticExit = $LASTEXITCODE
         $StaticText = ($StaticOutput | Out-String) -replace `
-            "`e\[[0-9;]*m", `
+            $AnsiEscapePattern, `
             ''
         Test-Condition `
             (
@@ -1130,7 +1132,7 @@ try {
             @CommonArguments 2>&1
         $MissingExit = $LASTEXITCODE
         $MissingText = ($MissingOutput | Out-String) -replace `
-            "`e\[[0-9;]*m", `
+            $AnsiEscapePattern, `
             ''
         Test-Condition `
             (
@@ -1149,7 +1151,7 @@ try {
                 @CommonArguments 2>&1
             $ArmExit = $LASTEXITCODE
             $ArmText = ($ArmOutput | Out-String) -replace `
-                "`e\[[0-9;]*m", `
+                $AnsiEscapePattern, `
                 ''
             Test-Condition `
                 (
@@ -1189,7 +1191,7 @@ finally {
         }
     }
     if (Test-Path -LiteralPath $TempRoot -PathType Container) {
-        Remove-Item -LiteralPath $TempRoot -Force
+        Remove-FlashGateScratchDirectory -Path $TempRoot -WorkingPath $WorkRoot -Prefix 'verifier-contract'
     }
 
     [pscustomobject]@{

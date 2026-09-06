@@ -1,11 +1,11 @@
 [CmdletBinding()]
-param()
+param([string]$WorkingPath)
 
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
+$WorkRoot = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
 $SnapshotScript = Join-Path $PSScriptRoot 'New-GitSnapshot.ps1'
-$TestRoot = Join-Path `
-    ([IO.Path]::GetTempPath()) `
-    "flashgate-git-snapshot-test-$([guid]::NewGuid().ToString('N'))"
+$TestRoot = New-FlashGateScratchDirectory -WorkingPath $WorkRoot -Prefix 'git-snapshot-test'
 $Repository = Join-Path $TestRoot 'repository'
 $Output = Join-Path $TestRoot 'output'
 $Errors = [Collections.Generic.List[string]]::new()
@@ -16,7 +16,7 @@ function Invoke-GitRequired {
 
     $Result = @(& git.exe -C $Repository @Arguments 2>&1)
     if ($LASTEXITCODE -ne 0) {
-        throw "git $($Arguments -join ' ') failed: $($Result -join ' ')"
+        throw ('git {0} failed: {1}' -f ($Arguments -join ' '), ($Result -join ' '))
     }
 }
 
@@ -139,18 +139,8 @@ catch {
     $Errors.Add($_.Exception.Message)
 }
 finally {
-    if (
-        (Test-Path -LiteralPath $TestRoot -PathType Container) -and
-        $TestRoot.StartsWith(
-            [IO.Path]::GetFullPath([IO.Path]::GetTempPath()),
-            [StringComparison]::OrdinalIgnoreCase
-        ) -and
-        [IO.Path]::GetFileName($TestRoot).StartsWith(
-            'flashgate-git-snapshot-test-',
-            [StringComparison]::Ordinal
-        )
-    ) {
-        Remove-Item -LiteralPath $TestRoot -Recurse -Force
+    if (Test-Path -LiteralPath $TestRoot -PathType Container) {
+        Remove-FlashGateScratchDirectory -Path $TestRoot -WorkingPath $WorkRoot -Prefix 'git-snapshot-test'
     }
 
     [pscustomobject]@{

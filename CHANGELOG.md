@@ -8,6 +8,20 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Converged BL-343 to the Slim Governance project adapter. Product, Go,
+  coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
+  security gates remain active, while Generic Handoff, Commit Preparation,
+  governance publication and V3/V4 meta-orchestration are no longer normal
+  FlashGate CI blockers. The 47-path working-tree state was freshly rebased;
+  INF168-REV-007 has four current equivalent documentation dispositions and six
+  Slim-Governance-superseded Heavy dispositions. No stage, commit, remote
+  mutation or product restart is part of M3b.
+- Added BL-342 task-bound scratch routing for active PowerShell and Python
+  validation producers. Callers now provide an explicit `WorkingPath` or
+  process-local `FLASHGATE_WORK_ROOT`; optional `FLASHGATE_TASK_ROOT`
+  confinement, safe path-chain validation, bounded cleanup, child-process
+  `TEMP`/`TMP`/`TMPDIR` binding, CI wiring, and focused fail-closed regressions
+  prevent FlashGate validation artifacts from escaping into OS Temp.
 - Completed BL-340 through PR #42. The independently reviewed head
   `39665dc861d96317a37a616cad81a4e1a199473e` was integrated by Classic after
   explicit user approval with merge commit

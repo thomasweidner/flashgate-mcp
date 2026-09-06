@@ -3,13 +3,14 @@
 [CmdletBinding(PositionalBinding = $false)]
 param(
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot),
-    [string]$WorkingPath = [System.IO.Path]::GetTempPath(),
+    [string]$WorkingPath,
     [string]$ResultPath
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
 $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
 
 function Invoke-HarnessProbe {
@@ -89,12 +90,8 @@ $hardcodedContributorInfrastructurePathCount = -1
 
 try {
     $repository = [System.IO.Path]::GetFullPath($RepositoryRoot)
-    $working = [System.IO.Path]::GetFullPath($WorkingPath)
-    if (-not (Test-Path -LiteralPath $working -PathType Container)) {
-        throw 'WorkingPath must be an existing directory.'
-    }
-    $temporaryRoot = Join-Path $working ('hosted-ci-portability-' + [guid]::NewGuid().ToString('N'))
-    [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
+    $working = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
+    $temporaryRoot = New-FlashGateScratchDirectory -WorkingPath $working -Prefix 'hosted-ci-portability'
     $harnessPath = Join-Path $repository 'scripts/Test-GovernanceConsistencyFixtures.ps1'
     $validatorPath = Join-Path $repository 'scripts/Test-ClassicReviewArtifact.ps1'
     $workflowPath = Join-Path $repository '.github/workflows/ci.yml'
@@ -194,9 +191,8 @@ finally {
     try {
         if ($null -ne $temporaryRoot -and (Test-Path -LiteralPath $temporaryRoot -PathType Container)) {
             $resolvedTemporaryRoot = [System.IO.Path]::GetFullPath($temporaryRoot)
-            $resolvedWorking = [System.IO.Path]::GetFullPath($WorkingPath)
             if (-not $resolvedTemporaryRoot.StartsWith(
-                    $resolvedWorking.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+                    $working.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
                         [System.IO.Path]::DirectorySeparatorChar,
                     [System.StringComparison]::OrdinalIgnoreCase
                 ) -or
@@ -206,7 +202,7 @@ finally {
                 )) {
                 throw 'Temporary portability root failed its bounded cleanup check.'
             }
-            Remove-Item -LiteralPath $resolvedTemporaryRoot -Recurse -Force
+            Remove-FlashGateScratchDirectory -Path $resolvedTemporaryRoot -WorkingPath $working -Prefix 'hosted-ci-portability'
         }
         $cleanupResult = 'PASS'
     }

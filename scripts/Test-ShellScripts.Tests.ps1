@@ -1,13 +1,15 @@
 #requires -Version 7.6
 [CmdletBinding()]
-param()
+param([string]$WorkingPath)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
+$WorkRoot = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
 
 $modulePath = Join-Path $PSScriptRoot 'ShellValidation.psm1'
 $gitBashPath = 'C:\Program Files\Git\bin\bash.exe'
-$testRoot = Join-Path ([IO.Path]::GetTempPath()) ("BL-251 shell validation tests {0}" -f [guid]::NewGuid().ToString('N'))
+$testRoot = New-FlashGateScratchDirectory -WorkingPath $WorkRoot -Prefix 'shell-validation-tests'
 $failures = [System.Collections.Generic.List[string]]::new()
 $passCount = 0
 $testCount = 0
@@ -217,17 +219,8 @@ catch {
 finally {
     $cleanupFailure = $null
     try {
-        $resolvedTestRoot = [IO.Path]::GetFullPath($testRoot)
-        $resolvedTempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-        if (-not $resolvedTestRoot.StartsWith($resolvedTempRoot, [StringComparison]::OrdinalIgnoreCase)) {
-            throw "Test root is outside the system temp root: $resolvedTestRoot"
-        }
-        if (Test-Path -LiteralPath $resolvedTestRoot) {
-            $item = Get-Item -LiteralPath $resolvedTestRoot -Force
-            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
-                throw "Test root is a reparse point: $resolvedTestRoot"
-            }
-            Remove-Item -LiteralPath $resolvedTestRoot -Recurse -Force
+        if (Test-Path -LiteralPath $testRoot) {
+            Remove-FlashGateScratchDirectory -Path $testRoot -WorkingPath $WorkRoot -Prefix 'shell-validation-tests'
         }
     }
     catch {

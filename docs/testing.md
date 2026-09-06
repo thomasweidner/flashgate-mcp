@@ -1,6 +1,34 @@
 # Testing
 
-## Governance enforcement
+## Slim project validation
+
+FlashGate inherits the central Slim Governance security and authorization
+boundaries through its thin project adapter. Normal development uses
+`DIRECTLY_AFFECTED_FIRST`, reuses valid unchanged evidence, and runs affected
+product, Go, coverage, lint, build, release, metadata, Windows/Linux, shell,
+PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
+Commit-Preparation, publication and V3/V4 governance matrices are not normal
+Product-CI requirements.
+
+Run the focused project documentation and shell gates with a caller-provided
+task-bound work root:
+
+```powershell
+& {
+    $workRoot = $env:FLASHGATE_WORK_ROOT
+    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
+    .\scripts\Test-DocumentationConsistency.ps1
+    .\scripts\Test-ShellScripts.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $workRoot
+}
+```
+
+## Legacy governance enforcement reference
+
+The historical governance-orchestration material below, through `Test Commands`,
+is `LEGACY_COMPATIBILITY_ONLY`. It documents accepted prior work but creates no
+normal development, CI, handoff or commit-preparation gate and receives no new
+consumers.
 
 BL-333 supplies the change-trigger, finding-remediation/review-mode, and
 handoff-readiness foundation. BL-334 enforces it through
@@ -11,15 +39,21 @@ first execution. Then run:
 
 ```powershell
 & {
+    $workRoot = $env:FLASHGATE_WORK_ROOT
+    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
     .\scripts\Test-GovernanceConsistency.ps1
-    .\scripts\Test-GovernanceCaseSelectionFixtures.ps1
-    .\scripts\Test-GovernanceConsistencyFixtures.ps1
-    .\scripts\Test-GenericGovernanceHandoffFixtures.ps1
-    .\scripts\Test-ImplementationReviewHandoffFixtures.ps1
-    .\scripts\Test-GovernanceValidationOrchestration.ps1
+    .\scripts\Test-GovernanceCaseSelectionFixtures.ps1 -WorkingPath $workRoot
+    .\scripts\Test-GovernanceConsistencyFixtures.ps1 -WorkingPath $workRoot
+    .\scripts\Test-GenericGovernanceHandoffFixtures.ps1 -WorkingPath $workRoot
+    .\scripts\Test-ImplementationReviewHandoffFixtures.ps1 -WorkingPath $workRoot
+    .\scripts\Test-GovernanceValidationOrchestration.ps1 -WorkingPath $workRoot
     .\scripts\Test-DocumentationConsistency.ps1
 }
 ```
+
+Scratch-producing PowerShell tests require an explicit `-WorkingPath` or the
+equivalent process-local `FLASHGATE_WORK_ROOT`. The root must already exist;
+when `FLASHGATE_TASK_ROOT` is bound it must be a safe descendant of that task root.
 
 ADR-016 and BL-337 through BL-340 define the governance-harness layer.
 
@@ -104,12 +138,18 @@ input, scope excess, foreign drift/hunks, or a nonreproducible projection fails
 before subordinate validation.
 
 The request carries task data, not generated controller code. The authoritative
-task-controller inventory is scanned below the fixed
-`.governance-task-controllers` root derived from the already bound worktree;
-request declarations are expectations only. Undeclared actual controllers,
+task-controller inventory scans the already bound worktree; the fixed
+`.governance-task-controllers` area remains task-controller-specific and cannot
+claim permanent-profile treatment. Request declarations are expectations only. Undeclared actual controllers,
 declaration/inventory drift, task-specific executables, outside-root paths,
 unknown exceptions, and counter drift fail before subordinate execution.
-Versioned helpers below `scripts/` remain valid permanent profiles. Subordinate results are strict UTF-8 and
+Versioned helpers below `scripts/` remain valid permanent profiles. Before the
+first stage mutation, `commit-preparation` may also accept an explicitly declared
+untracked `PERMANENT_PROFILE` below `scripts/` only when authoritative Git state
+is exactly untracked and unstaged and the request's exact scope, file hash,
+generic scope inventory, independent finding-free review, patch, and current
+dependency bindings all agree. No other profile, undeclared PowerShell file,
+exception ID, or caller Boolean can activate that path. Subordinate results are strict UTF-8 and
 schema/version/profile/hash bound before use.
 Unchanged PASS evidence is reused only when every declared dependency hash
 matches; changed source, toolchain, selector, or other dependency invalidates
@@ -136,6 +176,10 @@ set before subordinate execution. Current workflow records carry
 `recordReadinessClass=CURRENT` and a passing `currentStateGate`; historical
 schema-version-1 records remain readable under their historical schema but are
 not current readiness evidence.
+Current records also separate `ChangeTriggerReviewResult`, `NewWorkDecision`,
+and `RegistrationStatus`. Pending registrations carry an `UNALLOCATED` candidate;
+registered identifiers require canonical-write and readback evidence with exact
+identifier parity.
 
 `Test-ImplementationReviewHandoffFixtures.ps1` is the focused permanent matrix
 for all generic review transitions. It covers a valid directory and ZIP, absent prior
@@ -533,8 +577,10 @@ change repository status or script bytes:
 
 ```powershell
 & {
+    $workRoot = $env:FLASHGATE_WORK_ROOT
+    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
     .\scripts\Test-ShellScripts.ps1
-    .\scripts\Test-ShellScripts.Tests.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $workRoot
 }
 ```
 
@@ -1067,7 +1113,7 @@ See [Efficiency Improvement Plan](efficiency-improvement-plan.md), [Execution Id
 On the primary Windows development host, an authoritative benchmark attempt is
 blocked unless its Windows working area is below:
 
-`C:\Voxtronic\Codex\Temp\Benchmarks`
+an explicit caller-provided task-bound workspace on local nonsynchronized storage
 
 Before the attempt, verify that the root is a fixed local NTFS path, contains no
 reparse point, and is not below OneDrive, Dropbox, a redirected user directory,

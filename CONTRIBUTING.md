@@ -1,18 +1,19 @@
 # Contributing to FlashGate MCP
 
-## Governance checkpoints
+## Slim governance checkpoints
 
-Before implementing, after a material scope change, before commit, at sprint
-close, and for release candidate/stable release work, create or update an
-assignment governance record according to
-[the change-trigger standard](Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md).
-CI and release records are generated ephemerally by
-`scripts/New-GovernanceWorkflowRecord.ps1`. Run
-`scripts/Test-GovernanceConsistency.ps1` and
-`scripts/Test-GovernanceConsistencyFixtures.ps1` when catalog, schema,
-governance source, validator, or workflow behavior changes. Independent full
-and focused delta reviews are read-only; correction happens only in
-`BUNDLED_CORRECTION`.
+Before implementation, after a material scope change, and before a local Git
+action, read the current project state and apply the thin
+[change-trigger adapter](Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md).
+Register only genuinely new work and claim registration only after canonical
+`BACKLOG.md` write plus readback. Validation is `DIRECTLY_AFFECTED_FIRST`:
+reuse valid unchanged evidence and run product, Go, coverage, lint, build,
+release, metadata, platform, shell and security gates only when affected.
+Independent review remains read-only when real technical risk requires it.
+
+The historical profile, handoff, publication and commit-preparation details
+below, through the next `Scope` section, are `LEGACY_COMPATIBILITY_ONLY`. They
+document accepted past work but do not create a normal development or CI gate.
 
 Same-assignment remediation is bounded to 12 correction/revalidation cycles
 for new or materially rebuilt artifacts and 6 for established validated
@@ -24,7 +25,7 @@ budget boundary is reached. End or redact external monitors before final
 activity gates; no time-varying check may occur between the final gate and the
 first productive write.
 
-Classic receives exactly one handoff file. One required file may be transferred
+Historically, Classic received exactly one handoff file. One required file may be transferred
 directly; multiple required files must be rebuilt and validated as one ZIP,
 never as separately uploaded package members. See
 [the handoff standard](Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md).
@@ -191,8 +192,10 @@ also require the deterministic shell gates. On Windows, use PowerShell 7.6.5:
 
 ```powershell
 & {
+    $workRoot = $env:FLASHGATE_WORK_ROOT
+    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
     .\scripts\Test-ShellScripts.ps1
-    .\scripts\Test-ShellScripts.Tests.ps1
+    .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $workRoot
 }
 ```
 
