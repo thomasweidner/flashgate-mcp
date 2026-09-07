@@ -34,10 +34,14 @@ param(
 
     [Parameter(Mandatory)]
     [ValidateRange(1970, 9999)]
-    [int] $ExpectedCopyrightYear
+    [int] $ExpectedCopyrightYear,
+
+    [string] $WorkingPath
 )
 
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
+$WorkRoot = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
 $RootPath = Split-Path -Parent $PSScriptRoot
 $MetadataScript = Join-Path $RootPath 'scripts\Test-WindowsMetadata.ps1'
 $InputValidationScript = Join-Path `
@@ -100,10 +104,8 @@ function Invoke-ProcessRequired {
     }
 
     if ($ProcessExitCode -ne 0) {
-        throw (
-            "$FilePath $($Arguments -join ' ') failed with exit code " +
-            "${ProcessExitCode}: $StandardError $StandardOutput"
-        )
+        throw ('{0} {1} failed with exit code {2}: {3} {4}' -f
+            $FilePath, ($Arguments -join ' '), $ProcessExitCode, $StandardError, $StandardOutput)
     }
 
     return $StandardOutput
@@ -162,10 +164,7 @@ try {
         throw 'Checksum filename does not match the release contract.'
     }
 
-    $ExtractionRoot = Join-Path (
-        [IO.Path]::GetTempPath()
-    ) "flashgate-release-validate-$([guid]::NewGuid().ToString('N'))"
-    $null = New-Item -ItemType Directory -Path $ExtractionRoot
+    $ExtractionRoot = New-FlashGateScratchDirectory -WorkingPath $WorkRoot -Prefix 'release-validate'
     $ArchiveUnderTest = Join-Path $ExtractionRoot $ExpectedArchiveName
     $ChecksumUnderTest = "$ArchiveUnderTest.sha256"
     Copy-Item -LiteralPath $ArchivePath -Destination $ArchiveUnderTest
@@ -213,10 +212,8 @@ try {
     }
 
     if (($ActualEntries -join "`n") -cne ($ExpectedEntries -join "`n")) {
-        throw (
-            "Unexpected ZIP content. Expected: $($ExpectedEntries -join ', '); " +
-            "found: $($ActualEntries -join ', ')"
-        )
+        throw ('Unexpected ZIP content. Expected: {0}; found: {1}' -f
+            ($ExpectedEntries -join ', '), ($ActualEntries -join ', '))
     }
 
     try {
@@ -349,7 +346,7 @@ try {
             -not [string]::IsNullOrWhiteSpace($ExtractionRoot) -and
             (Test-Path -LiteralPath $ExtractionRoot)
         ) {
-            Remove-Item -LiteralPath $ExtractionRoot -Recurse -Force
+            Remove-FlashGateScratchDirectory -Path $ExtractionRoot -WorkingPath $WorkRoot -Prefix 'release-validate'
         }
     }
 
@@ -364,15 +361,8 @@ finally {
         -not [string]::IsNullOrWhiteSpace($ExtractionRoot) -and
         (Test-Path -LiteralPath $ExtractionRoot)
     ) {
-        try {
-            Remove-Item -LiteralPath $ExtractionRoot -Recurse -Force
-        }
-        catch {
-            $Errors.Add(
-                "Failed to remove controlled validation directory: $($_.Exception.Message)"
-            )
-            $ExitCode = 1
-        }
+        $Errors.Add("Controlled validation directory remains after fail-closed cleanup: $ExtractionRoot")
+        $ExitCode = 1
     }
     $Result.WarningCount = $Warnings.Count
     $Result.ErrorCount = $Errors.Count

@@ -1,174 +1,75 @@
-# FlashGate Change-Trigger Review and Backlog Registration Standard
+# FlashGate Slim Change-Trigger and Backlog Adapter
 
 **Status:** Binding
-**Tasks:** BL-333 foundation, BL-334 enforcement, BL-336 handoff-profile generalization, and BL-340 profile migration
-**Machine-readable source:** [change-trigger-catalog.json](change-trigger-catalog.json)
+**Owner:** BL-343
+**Global authority:** `Codex-Work/Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`
+**Adapter model:** `SLIM_PROJECT_ADAPTER`
 
 ## Purpose
 
-Every FlashGate assignment classifies material change at the checkpoints
-defined below. Completed backlog items remain `Done`; their permanent gates
-are reused. Existing open work is extended only while the acceptance boundary
-remains coherent. New independently reviewable work is registered without
-waiting for a user reminder.
+This file contains only FlashGate-specific trigger, owner, validation, and
+backlog rules. It inherits the central Slim Governance security,
+authorization, continuation, review, and registration-truth boundaries without
+copying their workflow state machines or handoff contracts.
 
-## Required checkpoints
+## Project checkpoints
 
-| Checkpoint | Required review |
-|---|---|
-| `ASSIGNMENT_START` | Classify intended scope, affected domains, existing backlog coverage, continuous gates, and decision boundaries before implementation. |
-| `MATERIAL_SCOPE_CHANGE` | Repeat classification when a changed requirement, implementation fact, or finding materially expands the scope. |
-| `PRE_COMMIT` | Prove gate disposition, duplicate search, backlog/status/documentation consistency, handoff readiness, and commit-preparation state. |
-| `SPRINT_CLOSE` | Reconcile acceptance evidence and continuous governance obligations without repeating unaffected matrices. |
-| `RELEASE_CANDIDATE` | Review every release-relevant trigger and verify the authoritative Hosted CI sources. |
-| `STABLE_RELEASE` | Reconfirm release-wide trigger coverage against the exact candidate commit and accepted CI evidence. |
+Apply this adapter at assignment start, after a material scope change, before a
+local Git action, at sprint close, and for release-candidate or stable-release
+work. Each checkpoint reads the current repository, relevant project
+authorities, and `BACKLOG.md` before deciding.
 
-An assignment record conforming to
-[assignment-governance-record.schema.json](assignment-governance-record.schema.json)
-is mandatory at each applicable checkpoint. A material scope change creates a
-new record; it does not rewrite the earlier checkpoint record.
+A new backlog item is required only for genuinely new, independently owned
+product, architecture, security, platform, release, dependency, or durable
+project work. Same-owner correction, report or handoff repair, focused
+revalidation, and lifecycle progress do not create another item.
 
-### Current-state gate and assignment separation
+`NEW_WORK_REGISTERED` may be claimed only after the canonical `BACKLOG.md` write
+has succeeded and the identifier, title, scope, status, and owner have been read
+back. A planned candidate or narrative statement is not registration evidence.
+Completed owners remain `Done` and are not reopened merely because their active
+enforcement artifacts are later simplified or superseded.
 
-Before architecture, backlog, ADR, or implementation decisions, the assignment
-records a current-state gate. It binds repository identity, baseline/current
-commit, branch, complete relevant index/working/untracked state, authorized
-scope, ID inventory, and parallel-worktree state. A stale or incomplete binding
-blocks dependent decisions instead of being filled by an implementation
-assumption.
+## FlashGate validation adapter
 
-The main assignment and a reusable generic enabler are separate records when
-they have different acceptance criteria, owners, schedules, or review evidence.
-The main assignment may depend on an existing enabler; it does not silently
-absorb or mark that enabler complete.
+Validation follows `DIRECTLY_AFFECTED_FIRST`. Reuse valid unchanged evidence
+and run only affected project gates:
 
-## Trigger handling
+- Go formatting, vet, unit/integration tests, Windows/Linux coverage, lint and
+  build;
+- product, MCP, protocol, filesystem and security contracts;
+- platform-specific Windows/Linux behavior;
+- release, metadata, shell and PowerShell 7.6.5 checks when their sources are
+  affected;
+- focused documentation consistency for active project statements.
 
-The catalog is exhaustive for the current governance contract. A trigger may
-be derived from repository paths, an explicit event, or both. Diff-derived
-triggers are the minimum set: assignments must add event-derived triggers
-that are not visible from paths alone.
+Product or integration work is blocked only by a real correctness, security,
+data-integrity, credential, external/remote mutation, destructive-action,
+technical-reproducibility, scope, architecture, or authorization boundary.
+Meta, report, history, presentation, handoff, lifecycle, unchanged-evidence, or
+time-only deviations are not product blockers unless the artifact itself is
+the current technical authority.
 
-Changed paths are canonical repository-relative forward-slash paths. Empty
-entries, absolute Windows or Unix paths, UNC paths, drive prefixes, `.` or `..`
-segments, doubled separators, backslashes, control characters, and any input
-whose normalized representation differs from the supplied value fail closed.
-Every relevant tracked production, workflow, governance, script, security,
-build, release, and documentation path maps to at least one DIFF trigger.
-Explicit exclusions are machine-readable, narrowly scoped, and justified.
-`NO_TRIGGER` is permitted only for an actually empty changed-path set or a
-cataloged non-material exclusion; an unknown non-empty path set fails.
+## Git and external boundary
 
-For each observed trigger:
+Normal Local Git uses a read-only repository/branch/scope check, relevant
+project gates, explicit action-scoped user approval, exact paths, staged
+readback and a separate commit approval. It does not require a V3/V4 state
+binding, Target-State Envelope, Derived Grant, Stage Receipt, Local Prep
+Handoff, or Heavy Authorization Package.
 
-1. identify the affected continuous gates;
-2. search `BACKLOG.md` and current decision/security/testing sources for a
-   duplicate;
-3. reuse an existing gate when the accepted contract is unchanged;
-4. update an open backlog item when the new requirement remains within its
-   coherent acceptance boundary;
-5. register a new item when it introduces a separately reviewable capability,
-   contract, platform, security boundary, artifact/release obligation,
-   persistent gate, or deferred risk;
-6. record release impact and all deliberately omitted checks.
+Push, PR or merge writes, remote cleanup, credentials, and other external
+actions remain separately authorized and retain their applicable fail-closed
+security contracts. Force remains prohibited.
 
-Review, CI, incident, and field findings use the same procedure. A finding is
-not exempt merely because it appeared late in the lifecycle.
+## Legacy compatibility
 
-## Decision boundaries and mandatory stop
+The repository may continue to contain historical Generic Handoff, Finding
+Correction, Commit Preparation, publication, orchestration, and V3/V4 fixtures.
+They are `LEGACY_COMPATIBILITY_ONLY`, receive no new project consumers, and are
+not normal Product-CI or development blockers. Their physical retirement is a
+later consumer-cutover decision.
 
-Stop and request a separate decision when proceeding requires a new:
-
-- `PRODUCT_DECISION`
-- `ARCHITECTURE_DECISION`
-- `SECURITY_DECISION`
-- `PLATFORM_DECISION`
-- `DEPENDENCY_DECISION`
-- `RELEASE_DECISION`
-- `SCOPE_DECISION`
-
-The assignment record names the boundary, evidence, blocking effect, owner,
-and next action. A boundary may not be converted into an implementation
-assumption. Directly related issues that do not cross one of these boundaries
-are handled under the same-run remediation standard.
-
-## Backlog registration
-
-Before adding work:
-
-1. read the current canonical catalog in `BACKLOG.md`;
-2. search titles, acceptance notes, related ADRs, security documents, testing
-   guidance, and recent findings for equivalent scope;
-3. use the current sequential-numbering rule rather than remembered IDs;
-4. record origin, risk, affected components, acceptance criteria,
-   dependencies, platform/release evidence, and blocking effect;
-5. update sprint mapping and `BACKLOG.md` when applicable.
-
-Routine revalidation does not create backlog work. Unfinished independently
-reviewable work must not be hidden inside a completed item.
-
-## Assignment and report contract
-
-Every applicable record and completion report provides:
-
-- `RecordedAt`, `Repository`, `BaselineCommit`, and `Branch`
-- `ExecutionMode`
-- `Checkpoint`
-- `ChangeTriggerReviewResult`
-- `TriggeredDomains`
-- `ObservedTriggers`
-- `AffectedContinuousGates`
-- `ExistingBacklogCoverage`
-- `DuplicateSearch`
-- `RepeatedChecks`
-- `ChecksNotRequired`
-- `NewBacklogItems`
-- `UpdatedBacklogOrRegisterEntries`
-- `DeferredTriggerItems`
-- `DecisionBoundaries`
-- `ReleaseImpact`
-- `DocumentationConsistencyResult`
-- the review/remediation fields from the finding standard;
-- the readiness fields from the handoff standard.
-
-Assignment records conform to
-[assignment-governance-record.schema.json](assignment-governance-record.schema.json).
-The machine-readable completion report conforms to
-[completion-report.schema.json](completion-report.schema.json). Correction
-handoffs additionally conform to
-[finding-correction-matrix.schema.json](finding-correction-matrix.schema.json),
-[finding-regression-matrix.schema.json](finding-regression-matrix.schema.json),
-[publication-regression-evidence.schema.json](publication-regression-evidence.schema.json),
-[publication-regression-expected-execution-input-binding.schema.json](publication-regression-expected-execution-input-binding.schema.json),
-[publication-regression-result.schema.json](publication-regression-result.schema.json),
-[publication-regression-matrix-catalog.schema.json](publication-regression-matrix-catalog.schema.json),
-[focused-delta-review-record.schema.json](focused-delta-review-record.schema.json),
-and [governance-report-contract.schema.json](governance-report-contract.schema.json).
-A narrative Markdown report contains exactly one bounded strict JSON contract;
-it is not a substitute for the machine-readable records. Records and reports
-bind repository, baseline, current commit, actual correction/current-delta
-bytes, workflow commit, run identity, run attempt, event, ref, and head SHA to
-trusted expected values supplied outside the data being validated.
-
-`ChangeTriggerReviewResult` is one of `NO_TRIGGER`,
-`EXISTING_GATES_REQUIRED`, `EXISTING_BACKLOG_UPDATED`,
-`NEW_BACKLOG_REGISTERED`, or `BLOCKED_PENDING_DECISION`.
-
-BL-336 is registered in the machine-readable catalog as the accepted follow-up
-for task-neutral handoff profiles. The pre-registration classification
-`NEW_BACKLOG_REQUIRED` becomes the canonical persisted result
-`NEW_BACKLOG_REGISTERED` once the backlog and catalog entries exist.
-
-BL-340 adds no new trigger vocabulary. Current generated records use the same
-catalog and must carry `recordReadinessClass=CURRENT` plus a passing
-`currentStateGate`. Historical schema-version-1 records remain readable through
-their versioned schema, but absence of that current readiness class prevents
-their reuse as current checkpoint evidence.
-
-## Enforcement
-
-[`../scripts/Test-GovernanceConsistency.ps1`](../scripts/Test-GovernanceConsistency.ps1)
-fails closed when the catalog, standards, schema, assignment record, derived
-diff triggers, backlog continuity, handoff state, or Hosted CI source evidence
-is inconsistent. Its focused fixture matrix includes positive and negative
-mode, trigger, boundary, checkpoint, finding, and handoff cases.
+BL-337 is terminally superseded by this adapter. BL-330 remains `Planned` for
+the small FlashGate-specific status-legend and validator-parity decision; that
+project detail is not silently claimed as resolved by central governance.

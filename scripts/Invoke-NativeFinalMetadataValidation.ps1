@@ -3,15 +3,16 @@ param(
     [string] $RootPath = (Split-Path -Parent $PSScriptRoot),
     [string] $DistroName = 'Ubuntu-24.04',
     [Parameter(Mandatory)]
-    [string] $OutputRoot
+    [string] $OutputRoot,
+    [string] $WorkingPath
 )
 
 $ErrorActionPreference = 'Stop'
+Import-Module (Join-Path $PSScriptRoot 'TaskBoundWorkRoot.psm1') -Force
+$WorkRoot = Resolve-FlashGateWorkRoot -WorkingPath $WorkingPath
 
 $Timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$WorkingDirectory = Join-Path `
-    ([IO.Path]::GetTempPath()) `
-    "flashgate-native-final-$([guid]::NewGuid().ToString('N'))"
+$WorkingDirectory = New-FlashGateScratchDirectory -WorkingPath $WorkRoot -Prefix 'native-final'
 $SnapshotPath = Join-Path $WorkingDirectory 'working-tree.tar'
 $SnapshotManifestPath = Join-Path $WorkingDirectory 'working-tree.manifest.json'
 $DriverPath = Join-Path $WorkingDirectory 'native-final-driver.sh'
@@ -55,7 +56,8 @@ function Invoke-ExternalRequired {
     $Output = @(& $FilePath @Arguments 2>&1)
     $ExitCode = $LASTEXITCODE
     if ($ExitCode -ne 0) {
-        throw "$FilePath $($Arguments -join ' ') failed with exit code ${ExitCode}: $($Output -join ' ')"
+        throw ('{0} {1} failed with exit code {2}: {3}' -f
+            $FilePath, ($Arguments -join ' '), $ExitCode, ($Output -join ' '))
     }
     return $Output
 }
@@ -127,10 +129,10 @@ try {
             Out-String
     ).Trim()
     if (-not (Test-Path -LiteralPath $GitCommonDirectory -PathType Container)) {
-        throw "Git common directory not found: $GitCommonDirectory"
+        throw ('Git common directory not found: {0}' -f $GitCommonDirectory)
     }
     if ($HeadCommit -notmatch '^[0-9a-f]{40}$') {
-        throw "Unexpected Git HEAD format: $HeadCommit"
+        throw ('Unexpected Git HEAD format: {0}' -f $HeadCommit)
     }
 
     New-Item -ItemType Directory -Path $OutputRoot -Force | Out-Null
@@ -216,14 +218,14 @@ try {
             '--'
             'env'
             "FG_WINDOWS_REPO=$RootWslPath"
-            "FG_GIT_COMMON_DIR=$GitCommonDirectoryWslPath"
-            "FG_HEAD_COMMIT=$HeadCommit"
+            ('FG_GIT_COMMON_DIR={0}' -f $GitCommonDirectoryWslPath)
+            ('FG_HEAD_COMMIT={0}' -f $HeadCommit)
             "FG_SNAPSHOT_TAR=$SnapshotWslPath"
             "FG_SNAPSHOT_MANIFEST=$SnapshotManifestWslPath"
             "FG_SNAPSHOT_VALIDATOR=$SnapshotValidatorWslPath"
             "FG_NATIVE_SAFETY=$SafetyLibraryWslPath"
             "FG_NATIVE_SAFETY_HELPER=$SafetyHelperWslPath"
-            "FG_OUTPUT_DIR=$OutputWslPath"
+            ('FG_OUTPUT_DIR={0}' -f $OutputWslPath)
             "FG_RUN_ID=$RunId"
             "FG_DISTRO_NAME=$DistroName"
             'bash'
@@ -270,19 +272,9 @@ catch {
     $Errors.Add($_.Exception.Message)
 }
 finally {
-    if (
-        (Test-Path -LiteralPath $WorkingDirectory -PathType Container) -and
-        $WorkingDirectory.StartsWith(
-            [IO.Path]::GetFullPath([IO.Path]::GetTempPath()),
-            [StringComparison]::OrdinalIgnoreCase
-        ) -and
-        [IO.Path]::GetFileName($WorkingDirectory).StartsWith(
-            'flashgate-native-final-',
-            [StringComparison]::Ordinal
-        )
-    ) {
+    if (Test-Path -LiteralPath $WorkingDirectory -PathType Container) {
         try {
-            Remove-Item -LiteralPath $WorkingDirectory -Recurse -Force
+            Remove-FlashGateScratchDirectory -Path $WorkingDirectory -WorkingPath $WorkRoot -Prefix 'native-final'
         }
         catch {
             $Errors.Add(

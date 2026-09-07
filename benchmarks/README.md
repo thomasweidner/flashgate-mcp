@@ -125,8 +125,8 @@ binaries. Run a 15-second intermediate gate before Linux and a final host gate
 before copying, hashing, verifying, or archiving results.
 
 The Windows source bundle, checkout, prepared binaries, output, logs, verification,
-and controller stay below `C:\Voxtronic\Codex\Temp\Benchmarks` on local fixed NTFS
-storage without reparse points. OneDrive, Dropbox, redirected folders, network
+and controller stay below an explicit caller-provided task-bound workspace on
+local fixed NTFS storage without reparse points. OneDrive, Dropbox, redirected folders, network
 shares, and other synchronized paths are prohibited during the measured phase.
 The Linux checkout and temporary output stay on native ext4 under `/home`, never
 under `/mnt` or `/media`. OneDrive archival occurs only after the final host gate.
@@ -226,13 +226,13 @@ The Version 1.0 gate in `BL-263` requires approved hard budgets for deterministi
 ## Primary Windows host workspace isolation
 
 Authoritative performance and baseline attempts on the primary Windows
-development host use the local workspace:
-
-`C:\Voxtronic\Codex\Temp\Benchmarks`
+development host use an explicit caller-provided task-bound workspace on local
+nonsynchronized NTFS storage. No personal global benchmark path is project
+authority.
 
 The source bundle, Windows checkout, prepared binaries, output JSON files, logs,
 verification evidence, and measurement controller must remain below that local
-root until both platform measurements and the final host-load gate are complete.
+workspace until both platform measurements and the final host-load gate are complete.
 
 OneDrive, Dropbox, redirected profile folders, network shares, and other
 synchronized locations are not valid measurement workspaces. Final reports and
