@@ -1,448 +1,614 @@
-# FlashGate MCP — Mobile / Codex Cloud Queue
+# FlashGate MCP — Mobile / Codex Cloud Work Catalog
 
 ## 1. Purpose and authority
 
-`MOBILE.md` is a derived execution queue for bounded FlashGate work in Codex Cloud while the Windows development host is unavailable.
+`MOBILE.md` defines the FlashGate work that may be prepared in Codex Cloud while the Windows development host is unavailable.
 
-It is **not** a second backlog authority.
+It is a **derived Cloud execution catalog**, not a second backlog authority.
 
-Canonical authority remains, in this order:
+Canonical authority remains:
 
-1. the current repository `BACKLOG.md`;
-2. `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`;
-3. `CONTRIBUTING.md` and the directly affected technical documentation;
-4. this file only for mobile task selection, branch isolation, and Cloud/Windows handoff rules.
+1. repository root `AGENTS.md`;
+2. `Governance/CLOUD-CODEX-GOVERNANCE.md`;
+3. `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`;
+4. current repository `BACKLOG.md`;
+5. `CONTRIBUTING.md`, ADRs, security/testing documentation, and the affected code;
+6. this file only for Cloud eligibility, task selection, dependency stacking, publication, and Windows handoff.
 
-If this file conflicts with a current canonical source, stop with `STALE_MOBILE_QUEUE` and do not adapt the contract autonomously.
+`MOBILE.md` cannot weaken or override `AGENTS.md` or the Cloud governance capsule.
 
-Do not create a new BL identifier from this file. Do not change sprint assignment or milestone semantics from this file.
+If this file conflicts with a canonical source, the canonical source wins. Stop with `STALE_MOBILE_CATALOG` when the conflict affects scope, dependencies, security, acceptance, or publication.
 
-## 2. Activation gate
+Do not create new BL IDs, change sprint assignment, change `Planned`/`Later` milestone semantics, or mark a task `Done` from the mobile workflow.
 
-The queue was derived from the current local FlashGate post-M3c baseline:
-
-- Required baseline ancestor: `f9383ca664e38b93ac6331b312e9327806be43f7`
-- Baseline subject: `Converge FlashGate to slim governance`
-- M3b: complete
-- M3c: complete
-- FlashGate product restart: allowed
-- PowerShell target standard for later Windows/native-Linux validation: `pwsh` 7.6.5
-
-At authoring time, GitHub `main` was still `750638676dcfae19cbcf4a79961fa91aa89b8adc` and did not contain the required baseline.
-
-**No queue task may start until all activation checks pass:**
-
-1. `origin/main` contains `f9383ca664e38b93ac6331b312e9327806be43f7` as an ancestor.
-2. `MOBILE.md` is present on `origin/main`.
-3. The current `BACKLOG.md` still contains the selected BL row exactly once.
-4. The selected task is still `Planned`.
-5. Its title and acceptance contract have not materially changed from the task summary in this file.
-6. No current canonical rule introduces a new hard dependency or stop boundary.
-
-If 1 or 2 fails:
-
-`Status=BLOCKED_MOBILE_BASELINE_NOT_PUBLISHED`
-
-If 3–6 fails:
-
-`Status=STALE_MOBILE_ENTRY`
-
-Do not work around either state.
-
-## 3. Mobile queue base
-
-For the active queue, derive one immutable sibling-branch base:
+### Protocol
 
 ```text
-MOBILE_QUEUE_BASE = latest commit reachable from origin/main that changed MOBILE.md
-```
-
-Before the first mobile task, verify that `MOBILE_QUEUE_BASE` contains the required baseline ancestor above.
-
-Every mobile task branch MUST start from exactly `MOBILE_QUEUE_BASE`, not from another mobile task branch and not from a later moving `main`.
-
-If `MOBILE.md` is changed on `main` after mobile work has begun, stop with `STALE_MOBILE_QUEUE` until Classic/Windows reviews the new queue base.
-
-This makes all vacation branches independent siblings and defers their integration order to Windows.
-
-## 4. How to select the next task
-
-Process the queue strictly from top to bottom.
-
-For each row:
-
-1. Check the exact remote branch name read-only.
-2. If it is absent, that row is the next task.
-3. If it exists, inspect it read-only:
-   - it must descend from the active `MOBILE_QUEUE_BASE`;
-   - its final task commit must contain the trailers defined below;
-   - `Mobile-Task` must equal the row ID;
-   - `Mobile-State` must be `CLOUD_IMPLEMENTATION_COMPLETE`;
-   - `Mobile-Queue-Base` must equal the active queue base.
-4. A valid completed branch is skipped.
-5. An existing branch that does not satisfy all checks is a collision:
-   `Status=MOBILE_BRANCH_COLLISION`.
-   Do not overwrite, amend, force-push, delete, or reuse it.
-
-A pushed valid task branch is therefore the durable mobile completion marker. `MOBILE.md` itself is not edited after each task.
-
-## 5. Per-task authorization boundary
-
-Each task requires a fresh user instruction. A previous task authorization never carries forward.
-
-A minimal mobile authorization is:
-
-> Führe den nächsten Task aus MOBILE.md aus. Implementierung ist für genau diesen Task freigegeben. Lokale Git-Mutationen für genau einen Task-Branch, Stage und einen Commit sind freigegeben. Genau ein nicht-erzwungener Push dieses Task-Branches ist freigegeben. Kein PR, Merge, Tag, Release, Branch-Delete oder Write auf main.
-
-This authorization is task-scoped only.
-
-Before the first Git write, complete all deterministic read-only preflights that can be known in advance.
-
-Before the first remote write, complete the implementation, focused validation, consolidated validation, exact diff/scope review, and staged readback.
-
-Hard-one-shot behavior applies:
-
-- first writable Git action consumes the Git authorization;
-- first remote push consumes the remote authorization;
-- no blind or automatic retry after a failed Git/remote write;
-- report the failure and stop.
-
-No force push.
-
-## 6. Cloud implementation contract
-
-For every selected task:
-
-1. Read the current canonical BL row and affected repository sources before changing anything.
-2. Stay inside that BL acceptance contract.
-3. Do not silently implement another backlog task.
-4. Do not introduce a new product, architecture, security, platform, dependency, release, or scope decision.
-5. If such a decision is required, stop with:
-   `Status=BLOCKED_DECISION_REQUIRED`.
-6. Do not install tooling or dependencies unless separately authorized.
-7. Do not use credentials or modify GitHub settings.
-8. Do not create a PR, merge, tag, release, or delete a branch.
-9. Do not modify `MOBILE.md` from a task branch.
-10. Keep the canonical BL status `Planned` during Cloud preparation.
-11. Do not mark the task `Done` in `BACKLOG.md`.
-12. Do not update completion-only `CHANGELOG.md` state merely because the Cloud candidate is ready.
-13. Do not fabricate Windows, WSL, native-Linux, PowerShell, service, SCM, systemd, hardware, credential, or local-governance evidence that the Cloud environment did not actually execute.
-14. Repository-visible task artifacts/reports are forbidden unless the canonical BL acceptance explicitly requires them.
-
-### Validation funnel
-
-Use:
-
-1. parser/focused/root-cause tests first;
-2. bounded correction cycles;
-3. one consolidated repository-appropriate final validation;
-4. `git diff --check`;
-5. exact scope/readback before Stage;
-6. staged readback plus `git diff --cached --check`;
-7. one final commit;
-8. one non-force push.
-
-For the established FlashGate repository, maximum material self-remediation cycles: `6`.
-
-Use repository-provided tools already available in the Cloud environment. If `pwsh` 7.6.5 or another required local tool is unavailable, do not install a replacement silently; record that validation for Windows finalization.
-
-## 7. Branch and commit contract
-
-Each row owns exactly one branch.
-
-The branch must be created from `MOBILE_QUEUE_BASE` using the exact branch name from the queue.
-
-A successful Cloud candidate has exactly one final task commit above the queue base.
-
-Commit message format:
-
-```text
-<BL-ID>: <concise task subject>
-
-Mobile-Task: <BL-ID>
-Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
-Mobile-Queue-Base: <full SHA>
+Mobile-Queue: FLASHGATE-MOBILE-V3
+Publication: CODEX_CLOUD_MANAGED_OPEN_PR
+Merge-During-Mobile: NO
 Windows-Finalization: REQUIRED
 ```
 
-Do not amend after a successful push.
+## 2. Cloud governance activation
 
-Any correction required after the successful push is a Windows/Classic integration concern unless the user separately authorizes a new mobile correction contract.
+Before task discovery or implementation, verify that the selected repository/base contains:
 
-## 8. Ordered mobile queue
+- root `AGENTS.md`;
+- `Governance/CLOUD-CODEX-GOVERNANCE.md`;
+- `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`;
+- current `BACKLOG.md`;
+- this `MOBILE.md`.
 
-Effort scale:
+Read the first three governance sources before selecting work.
 
-- `XS` — narrow documentation or mechanical consistency change
-- `S` — focused code/test change
-- `M` — multi-file implementation/test change
-- `M+` — broader contract-alignment work, still bounded
-- Open BL dependencies count only **unfinished canonical backlog predecessors required to implement this row**.
+If the tracked Cloud governance router or capsule is absent, unreadable, or internally contradictory:
 
-| Order | ID | Exact branch | Effort | Open BL dependencies | Cloud class | Windows finalization | Integration collision |
-|---:|---|---|---|---:|---|---|---|
-| 1 | BL-206 | `mobile/bl-206-local-deterministic-work` | XS | 0 | Docs | Required | Low |
-| 2 | BL-323 | `mobile/bl-323-benchmark-coverage-claims` | XS | 0 | Docs/inventory | Required | Medium |
-| 3 | BL-331 | `mobile/bl-331-arm64-runner-documentation` | S | 0 | Docs/current-state verification | Required | Medium |
-| 4 | BL-202 | `mobile/bl-202-mcp-tool-annotations` | S | 0 | Metadata/tests | Required | Low |
-| 5 | BL-327 | `mobile/bl-327-deterministic-benchmark-diagnostics` | S | 0 | Go/tests | Required | Medium |
-| 6 | BL-329 | `mobile/bl-329-baseline-filename-identity` | S | 0 | Go/tests | Required | Medium |
-| 7 | BL-036 | `mobile/bl-036-tools-call-filesystem-tests` | M | 0 | Go tests | Required | Low |
-| 8 | BL-326 | `mobile/bl-326-strict-benchmark-unicode` | M | 0 | Go/decoder tests | Required | Medium |
-| 9 | BL-325 | `mobile/bl-325-benchmark-schema-alignment` | M+ | 0 | Schema/Go/tests | Required | High |
-| 10 | BL-317 | `mobile/bl-317-workflow-output-semantics` | M+ | 0 | Benchmark contract/tests | Required | Medium |
+`Status=BLOCKED_CLOUD_GOVERNANCE_UNAVAILABLE`
 
-The ordering deliberately favors small, already-decided, repository-contained work. The benchmark cluster is later because several branches may touch neighboring test/decoder files; they remain sibling branches and MUST NOT consume each other.
+Do not compensate by assuming the missing local `Codex-Work/Governance` content from memory.
 
-## 9. Task contracts
+The Cloud capsule is intentionally a bounded projection. Every candidate is rebound against the complete current local governance during Windows finalization.
 
-### 1 — BL-206 — Document local deterministic work principle
+## 3. Core model — no global task order
 
-**Canonical intent:** Prefer local copy/edit/hash/search over model retransmission.
+There is **no mandatory global execution order**.
 
-Cloud scope:
+The numerical order in `BACKLOG.md`, sprint order, epic order, and the order of tables in this file are not a Mobile execution queue.
 
-- identify the current canonical contributor/development documentation owner;
-- add the smallest clear documentation delta expressing the existing deterministic-local-work principle;
-- keep it guidance only;
-- do not change product behavior, security policy, protocol contracts, or tooling dependencies;
-- avoid spreading duplicate wording across many documents.
+Tasks may be:
 
-If no single clear documentation owner can be derived from current repository structure, stop with `BLOCKED_DECISION_REQUIRED`.
+- implemented independently from current `main`;
+- implemented in parallel;
+- prepared before lower-numbered tasks;
+- stacked on another open Mobile task when the implementation genuinely consumes that task.
 
-Cloud completion requires a coherent documentation diff and available repository documentation checks.
+A task is blocked only by a real canonical/technical dependency, missing required source/evidence, a decision boundary, or a Cloud capability boundary.
 
-Windows finalization: run current local documentation/governance gates and integrate the branch.
+### Default selection when the user says only "next task"
 
----
+Enumerate all eligible open tasks and choose the best candidate using these preferences, not hard gates:
 
-### 2 — BL-323 — Correct benchmark coverage claims for copy and search
+1. `Planned` before `Later`;
+2. Cloud mode `A` before `B` before `C`;
+3. no prerequisite before a stack-ready prerequisite before a blocked prerequisite;
+4. lower effort before higher effort;
+5. lower expected Windows residual before higher residual;
+6. lower expected branch/diff collision before higher collision.
 
-**Canonical intent:** Current documentation must not claim Copy/Search benchmark coverage that does not exist.
+Do **not** choose by BL number alone.
 
-Cloud scope:
+The user may name any eligible task or epic and override this preference order.
 
-- inventory executable benchmark cases from the repository;
-- make `docs/testing.md` and directly affected current benchmark documentation match the executable inventory;
-- describe Copy/Search as planned unless executable coverage actually exists;
-- do not implement Copy/Search benchmarks in this task;
-- do not rewrite immutable historical evidence.
+## 4. Cloud modes
 
-Cloud completion requires documentation to match the current executable benchmark inventory.
+| Mode | Meaning | Mobile completion |
+|---|---|---|
+| `A — CLOUD_IMPLEMENTABLE` | Repository-contained code/docs/tests can be substantially implemented and validated in Cloud | Open PR candidate; Windows finalization still required |
+| `B — CLOUD_IMPLEMENTABLE_PLATFORM_FINAL` | Meaningful implementation is possible in Cloud, but Windows/native-host/service/real-OS validation is essential | Open PR candidate with explicit deferred validations |
+| `C — CLOUD_ANALYSIS_OR_CONTRACT` | Cloud can perform architecture, threat-model, design, investigation, or draft work, but an owner/external decision may be required before implementation/final completion | Open PR only if the canonical task itself permits a bounded documentation/design delta; otherwise return analysis without PR |
+| `D — CONTINUOUS_OR_FINAL_GATE` | Valid Cloud work may contribute, but the BL item is continuous, release-wide, or integration-wide and should not normally own a vacation PR by itself | Consume from other tasks; do not auto-select standalone |
+| `X — NOT_AUTONOMOUS_MOBILE` | Required evidence/authority is unavailable or the work is primarily an external/local decision/action | Do not auto-select |
 
-Windows finalization: local documentation validation and integration.
+`A` does **not** mean Windows validation can be skipped. It means the Cloud candidate itself can be meaningfully completed.
 
----
+## 5. Repository and publication boundary
 
-### 3 — BL-331 — Align ARM64 validation documentation with the implemented runner model
+A local Git remote is not required.
 
-**Canonical intent:** Current behavior is x64-hosted cross-compilation plus static ARM64 validation; native ARM64 execution is future/conditional unless current repository evidence proves otherwise.
+`no Git remote configured` is non-blocking when Codex Cloud can:
 
-Cloud scope:
+- read `thomasweidner/flashgate-mcp`;
+- read the relevant base branch;
+- inspect current GitHub pull-request state through the managed repository integration;
+- publish the completed candidate through the managed open-PR action.
 
-- reconcile the current decision, build/release metadata, testing, and manual-validation documentation;
-- clearly distinguish current from target behavior;
-- do not change build or CI behavior;
-- do not claim native ARM64 runner execution without repository evidence;
-- no build/CI matrix rerun is required for the Cloud candidate unless behavior is unexpectedly changed, in which case stop rather than expand scope.
+Do not configure:
 
-Windows finalization: documentation/governance checks and integration.
+- `git remote`;
+- PAT/token credentials;
+- SSH keys;
+- GitHub Apps;
+- repository settings;
+- alternate network or credential workarounds.
 
----
-
-### 4 — BL-202 — Review MCP tool annotations
-
-**Canonical intent:** Tool annotations must accurately describe behavior and must never act as authorization.
-
-Cloud scope:
-
-- inventory current tool annotations and actual tool behavior;
-- correct only demonstrably inaccurate annotation metadata;
-- add/update focused tests proving metadata consistency where the current test structure supports it;
-- do not alter authorization, capability, root, or risk-policy behavior;
-- do not invent new annotation semantics.
-
-If accurate annotation values require a new policy or protocol decision not already determined by current code/contracts, stop with `BLOCKED_DECISION_REQUIRED`.
-
-Windows finalization: full relevant MCP/catalog validation and integration.
-
----
-
-### 5 — BL-327 — Make benchmark hard-failure diagnostics deterministic
-
-**Canonical intent:** All missing/unknown hard measurement and budget diagnostics plus final aggregation must be deterministically ordered.
-
-Cloud scope:
-
-- remove remaining Go-map-order nondeterminism from hard-failure diagnostics;
-- preserve diagnostic meaning and failure semantics;
-- add multi-error tests that evaluate fresh instances repeatedly;
-- do not change benchmark budgets, measurements, or pass/fail policy.
-
-Cloud validation: focused benchmark tests followed by consolidated Go validation available in the environment.
-
-Windows finalization: current Windows/native-Linux benchmark regression gates and integration.
-
----
-
-### 6 — BL-329 — Bind platform baseline filenames to embedded identity
-
-**Canonical intent:** Fixed baseline filenames must agree with embedded OS/architecture identity.
-
-Cloud scope:
-
-- derive expected OS/architecture from each fixed required platform baseline filename;
-- compare expected identity with embedded identity before map insertion;
-- add swapped-content negative coverage;
-- do not remeasure or modify baseline measurement data;
-- do not broaden platform support.
-
-Cloud validation: focused loader/identity tests followed by consolidated Go validation.
-
-Windows finalization: current platform/baseline validation and integration.
-
----
-
-### 7 — BL-036 — Add filesystem tests through MCP `tools/call`
-
-**Canonical intent:** Add `tools/call` coverage for read, write, list, info, missing-path, and security cases.
-
-Cloud scope:
-
-- test the current implemented filesystem contracts through the real MCP `tools/call` path;
-- reuse current tool names/contracts established by the completed pre-1.0 cleanup;
-- include positive and negative/security cases required by BL-036;
-- this is a test task, not authorization to change filesystem product behavior.
-
-If a new test exposes a product defect whose correction exceeds the direct test-enablement scope, preserve the failing evidence and stop with `BLOCKED_PRODUCT_FINDING_REQUIRED`.
-
-Cloud validation: focused MCP tests, then consolidated Go validation.
-
-Windows finalization: Windows/Linux MCP/path/security revalidation and integration.
-
----
-
-### 8 — BL-326 — Reject malformed Unicode in strict benchmark JSON
-
-**Canonical intent:** Invalid raw UTF-8 and unpaired UTF-16 surrogate escapes are malformed; legitimate U+FFFD text remains valid.
-
-Cloud scope:
-
-- reject invalid raw UTF-8;
-- reject unpaired surrogate escapes;
-- retain legitimate U+FFFD;
-- retain escaped-property duplicate detection;
-- add positive and negative fixtures at relevant nesting levels;
-- do not add an external dependency without a separate dependency decision.
-
-Cloud validation: focused strict-decoder/mutation tests, then consolidated Go validation.
-
-Windows finalization: full benchmark validation and integration.
-
----
-
-### 9 — BL-325 — Align benchmark JSON Schema and Go representations
-
-**Canonical intent:** Published schema and Go/runtime acceptance must be equivalent for exit statuses, numeric representation/ranges, and current nested constraints.
-
-Cloud scope:
-
-- inventory current schema and runtime constraints;
-- align mechanically where the current authoritative runtime/schema contract makes the intended rule unambiguous;
-- add deterministic drift tests for required/type/enum/pattern/minimum/additional-properties and relevant nested rules;
-- do not silently choose between materially conflicting plausible contracts.
-
-If equivalence requires a new contract choice rather than mechanical reconciliation, stop with `BLOCKED_DECISION_REQUIRED` and identify the exact mismatch.
-
-Cloud validation: schema/decoder drift tests, then consolidated Go validation.
-
-Windows finalization: full schema, benchmark, release-gate and platform validation plus integration.
-
----
-
-### 10 — BL-317 — Gate deterministic workflow semantics independently of output size
-
-**Canonical intent:** Missing or reduced useful output must fail even if byte/counter ceilings appear more efficient.
-
-Cloud scope:
-
-- validate every existing deterministic minimum/exact workflow contract;
-- include `expected_read_bytes` and `expected_entries`;
-- reject absent or reduced useful output;
-- add negative artifacts/fixtures proving output loss fails;
-- do not redefine benchmark budgets or create new benchmark domains.
-
-Cloud validation: focused workflow/artifact tests, then consolidated benchmark/Go validation.
-
-Windows finalization: authoritative Windows/native-Linux benchmark gates and integration.
-
-## 10. Explicitly excluded from autonomous mobile execution
-
-These are intentionally not in the queue even when some code could technically be written in Cloud.
-
-### Missing repository-local authority
-
-- `BL-322` — requires the SPR-047 report and related historical/current-state evidence not fully present in the GitHub repository.
-
-### New decision required
-
-- `BL-330` — requires an owner decision on the canonical `In Progress` status contract.
-- `BL-328` — requires justified new resource limits.
-- `BL-321` — requires a supported Linux clock-tick mechanism/platform choice.
-- `BL-205` — response-size regression policy is not sufficiently bounded here to invent a threshold autonomously.
-- architecture/threat-model/policy tasks throughout Search, Process, Command Execution, Service/IPC, provider/runtime, and release design.
-
-### Local/platform evidence is central
-
-- `BL-318`–`BL-320` — authoritative benchmark workspace/provenance/native policy and CI gates.
-- `BL-332` — explicitly Windows/WSL native-validation hygiene.
-- `BL-341` — Windows/Linux host-process ownership/lifecycle integration.
-- Windows SCM, systemd, native service identity, permissions, ACL, owner, installation, credential, and signing work.
-
-### Dependency-chain or closure-gate work
-
-- CI tasks whose required implementation owners are not yet complete.
-- Version 1.0 release boundary work such as `BL-263`.
-- continuous documentation/status gates such as `BL-305`, `BL-306`, and `BL-315`.
-- verification-only closure tasks that may produce no independent implementation diff are not used as vacation branches.
-
-Anything not listed in section 8 is **out of scope for autonomous execution through this file**.
-
-## 11. Windows return and integration contract
-
-Mobile branches are preparation candidates, not canonical completion.
-
-After the vacation, process branches under Windows one at a time, normally in the same queue order:
-
-1. fetch/read all mobile branches without modifying them;
-2. verify branch ancestry, one-commit contract, trailers, diff, and task scope;
-3. bind the then-current local `AGENTS.md`, `Codex-Work\Governance`, canonical `BACKLOG.md`, leading registers, and current repository state;
-4. independently review the candidate;
-5. rebase/cherry-pick/integrate only after the applicable explicit Git approval;
-6. run the complete task-specific Windows/native-Linux/PowerShell 7.6.5 validation funnel;
-7. remediate only directly caused in-scope findings within the local continuation policy;
-8. update canonical `BACKLOG.md`, `CHANGELOG.md`, status/docs as required only when integration truth supports it;
-9. commit/push/PR/merge only with the then-applicable explicit approvals;
-10. delete local/remote mobile branches only after verified integration and separate cleanup authorization.
-
-A Cloud branch must never be treated as proof that Windows finalization is complete.
-
-## 12. Required Cloud final response
-
-For every mobile task, end with:
+If managed PR publication is unavailable after implementation:
 
 ```text
-Status              : CLOUD_IMPLEMENTATION_COMPLETE | CLOUD_NO_CHANGE_REVIEW_REQUIRED | BLOCKED_...
-TaskID              : BL-xxx
-Branch              : mobile/bl-...
-MobileQueueBase     : <sha>
-CommitSha           : <sha-or-NONE>
-PushState           : PUSHED_ONCE | NOT_PUSHED
-CloudValidation     : <concise result>
-WindowsFinalization : REQUIRED
-WarningCount        : <n>
-FailureCount        : <n>
-NextAction          : <next exact boundary>
+Status=BLOCKED_CLOUD_PR_PUBLICATION_UNAVAILABLE
 ```
 
-`CLOUD_IMPLEMENTATION_COMPLETE` means only that the isolated Cloud candidate passed the Cloud-available checks and was pushed once to its task branch. It never means `Done` in the canonical backlog.
+Do not fall back to manual push.
+
+## 6. Dynamic task discovery
+
+Before selecting work:
+
+1. confirm `AGENTS.md` and `Governance/CLOUD-CODEX-GOVERNANCE.md` were read for this task;
+2. read current `BACKLOG.md`;
+3. consider only canonical rows with status `Planned` or `Later`;
+4. map the BL ID through the capability catalog;
+5. inspect existing Mobile V3 PRs;
+6. inspect real dependencies from the backlog, code, contracts, and existing Mobile PRs;
+7. determine effort and likely Windows residual from the current repository state;
+8. select an eligible candidate using the preference model unless the user named one.
+
+A valid Mobile V3 candidate PR contains:
+
+```text
+Mobile-Queue: FLASHGATE-MOBILE-V3
+Mobile-Task: BL-xxx
+Mobile-Mode: A|B|C
+Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
+Mobile-Depends-On: NONE|BL-xxx[,BL-yyy...]
+Windows-Finalization: REQUIRED
+Merge-Allowed: NO
+```
+
+An open valid PR means that task already has a Cloud candidate and is not selected again.
+
+If a matching task has:
+
+- multiple competing Mobile PRs → `MOBILE_PR_COLLISION`;
+- a closed unmerged Mobile PR → `MOBILE_PR_CLOSED_REVIEW_REQUIRED`;
+- a merged Mobile PR before Windows finalization → `MOBILE_POLICY_VIOLATION_MERGED_PR`.
+
+## 7. Dependency and stacked-PR contract
+
+Dependencies are **not** a reason to omit a task from `MOBILE.md`.
+
+### 7.1 Independent task
+
+If the task does not consume an unintegrated Mobile predecessor:
+
+```text
+task branch base = current main
+PR base          = main
+```
+
+### 7.2 Task consuming one Mobile predecessor
+
+If BL-B genuinely requires the unintegrated implementation of BL-A:
+
+```text
+main
+  \
+   BL-A branch ---- open PR A
+          \
+           BL-B branch ---- open stacked PR B
+```
+
+For BL-B:
+
+```text
+task branch base = current head of BL-A
+PR base          = BL-A head branch
+Mobile-Depends-On: BL-A
+```
+
+This keeps BL-B's PR diff limited to BL-B rather than duplicating BL-A.
+
+Neither PR is merged during Mobile work.
+
+### 7.3 Longer chain
+
+A chain is allowed:
+
+```text
+main -> BL-A -> BL-B -> BL-C
+```
+
+Each PR targets its direct predecessor branch and records the complete dependency list relevant to Windows integration.
+
+### 7.4 Multiple independent prerequisites
+
+Do not automatically synthesize a merge branch from two unrelated open Mobile PRs.
+
+If BL-C requires BL-A and BL-B and those heads are not already in one ancestry chain:
+
+```text
+Status=BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
+```
+
+Choose another eligible task. Windows can combine the prerequisites later, or the user can separately authorize a synthesis strategy.
+
+### 7.5 Dependency truth
+
+The dependency hints in this file are advisory Mobile planning hints. They do not create new canonical backlog dependencies.
+
+Before stacking, verify the dependency from the current code/contracts.
+
+## 8. Per-task authorization
+
+Each Mobile task needs a fresh task-scoped instruction.
+
+Preferred short instruction:
+
+> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
+
+The instruction authorizes for exactly one selected task:
+
+- read-only discovery and dependency analysis;
+- implementation or bounded design work allowed by its Cloud mode;
+- up to 6 material in-scope correction cycles;
+- Cloud-available validation;
+- one managed publication attempt producing one open PR.
+
+It does not authorize:
+
+- merging or closing any Mobile PR;
+- deleting branches;
+- tags/releases;
+- GitHub settings/rules/secrets;
+- manual remote/credential configuration;
+- installations or dependencies not separately approved;
+- implementation of another BL task merely because it is nearby.
+
+## 9. Common implementation contract
+
+For every task:
+
+1. re-read its canonical BL row;
+2. inspect affected code, tests, docs, ADRs, security and change-trigger rules;
+3. identify actual prerequisites;
+4. do not silently cross a product/security/architecture decision boundary;
+5. keep the canonical backlog status unchanged;
+6. do not mark Cloud work as canonical completion;
+7. do not fabricate Windows/WSL/systemd/SCM/native-host evidence;
+8. keep the candidate branch task-pure except for directly caused in-scope corrections;
+9. run focused tests before broad validation;
+10. inspect the complete final diff and `git diff --check` when local Git supports it;
+11. publish one open PR only after the Cloud candidate is internally coherent.
+
+If a product defect is discovered outside direct scope:
+
+```text
+Status=BLOCKED_PRODUCT_FINDING_REQUIRED
+```
+
+If a new decision is required:
+
+```text
+Status=BLOCKED_DECISION_REQUIRED
+```
+
+## 10. Complete Cloud capability catalog
+
+Every current `Planned` or `Later` row in the ranges below is represented. `Done` rows are never re-opened.
+
+### 10.1 Filesystem epic — BL-036–BL-067
+
+**All `BL-036–BL-067` are Mobile eligible.**
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-036–BL-057` | `A` | MCP tests, pagination/cursors, listing, range reads, metadata, streaming/read contracts, batch operations, targeted edits, atomic/conditional/dry-run/append/plans |
+| `BL-058` | `B` | Cross-volume semantics can be coded/tested synthetically; real Windows/filesystem finalization required |
+| `BL-059` | `A` | Conflict strategy |
+| `BL-060–BL-061` | `B` | Directory move/copy/size; long-running/job/platform behavior needs Windows/native finalization |
+| `BL-062–BL-065` | `A` | Disk usage, write modes, job integration, plan threat model; `BL-064` may stack on Job Manager |
+| `BL-066–BL-067` | `B` | Cross-platform integration tests and representative benchmark corpus need later host validation |
+
+Dependency hints:
+
+- cursor/listing cluster: `BL-038` → `BL-037` → `BL-039/040/049`;
+- read cluster: `BL-041/042/043/045` feed `BL-044/046/047/048`;
+- write cluster: `BL-050/051/052/053/054/055/059` feed `BL-056/057/060/063/065`;
+- long-running filesystem work may consume `BL-084–099` through `BL-064`.
+
+### 10.2 Search epic — BL-068–BL-083
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-068–BL-080`, `BL-082` | `A` | Entire pure-Go baseline search workstream is Cloud-suitable |
+| `BL-081` (`Later`) | `B` | Optional ripgrep adapter; external binary/version/security final validation deferred |
+| `BL-083` (`Later`) | `C` | Index decision requires benchmark/privacy/lifecycle evidence |
+
+Dependency hints:
+
+- `BL-068` is the search model/threat-model foundation;
+- `BL-082` is the portable pure-Go baseline;
+- path/name/metadata/text/regex/filter/limit/context/binary work can be split into separate Mobile branches where contracts permit;
+- `BL-079` pagination should consume the stable ordering semantics produced by the search implementation it paginates.
+
+### 10.3 Operations and Job Manager — BL-084–BL-099
+
+**All `BL-084–BL-099` are Mobile eligible.**
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-084–BL-097` | `A` | Registry, handles, states, cancellation, deadlines, counters, result TTL, cleanup, quotas, fairness, shutdown, leak handling, domain ownership, execution rules |
+| `BL-098` | `B` | Cross-platform integration suite; Cloud can implement/run available Linux tests, Windows finalization required |
+| `BL-099` | `B` | Security/race coverage can run in Cloud where available; Windows race/lifecycle finalization remains |
+
+Suggested stack spine when useful:
+
+`BL-084/086` → `BL-085` → `BL-087/088/089` → `BL-090/091` → `BL-092/093` → `BL-094/095` → `BL-098/099`.
+
+This is not a mandatory global order.
+
+### 10.4 Named roots, capabilities and profiles — BL-100–BL-112
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-100–BL-111` | `A` | Capability model, named roots, root IDs, profiles, per-root policy/limits/types/reparse/capabilities/process working directory, dynamic registration, negative tests |
+| `BL-112` (`Later`) | `C` | Legacy MCP Roots only after a supported-client compatibility decision |
+
+Dependency hints:
+
+`BL-100/101` are natural foundations; `BL-102–109` layer root/profile policy; `BL-110/111` consume the effective model. Security enforcement/testing connects to `BL-159–161`.
+
+### 10.5 Process epic — BL-113–BL-135
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-113–BL-126`, `BL-129–BL-133` | `A` | Threat model, observation contracts, registry, handles, lifecycle, start/wait/output/buffers/stop, cleanup, limits and redaction can be developed in Cloud |
+| `BL-127–BL-128` (`Later`) | `C` | External PID control / process input require explicit high-risk policy decisions |
+| `BL-134–BL-135` | `B` | Windows/Linux adapters and lifecycle/race/restart tests require platform finalization |
+
+Natural foundations:
+
+- observation: `BL-113/162` → `BL-114–118`;
+- managed processes: `BL-119–126` → `BL-129–135`;
+- process authorization consumes capabilities/roots from `BL-100–111` and security owners.
+
+### 10.6 Command execution — BL-136–BL-152
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-136–BL-145`, `BL-148–BL-149`, `BL-151` | `A` | Threat model, typed commands, no-shell args, roots, timeouts, output, result schema, managed-engine wrapper, environment/redaction, budgets, identity, single-engine invariant |
+| `BL-146` | `B` | Windows isolation requires Windows final validation |
+| `BL-147` | `B` | Linux isolation can be developed in Cloud but still needs native/security final validation |
+| `BL-150` (`Later`) | `C` | Interactive shell remains a separate high-risk decision |
+| `BL-152` | `B` | Complete Windows/Linux execution security matrix requires both platforms |
+
+`BL-143` must consume the Managed Process Engine rather than create a second engine.
+
+### 10.7 System information — BL-153–BL-158
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-153–BL-157` | `A` | Controlled system info, scoped disk usage, environment filtering, field selection/redaction, `system.read` |
+| `BL-158` (`Later`) | `C` | Restricted network information requires privacy-sensitive decision |
+
+`BL-154` consumes `BL-062`.
+
+### 10.8 Security — BL-159–BL-173
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-159–BL-167`, `BL-170–BL-173` | `A` | Server-side capability enforcement/tests, policy models, job security, threat models, audit, redaction, residual-risk docs, annotation negatives, workflow pinning, security policy |
+| `BL-168` | `B` | Least-privilege validation requires real server/child-process platform evidence |
+| `BL-169` (`Later`) | `C` | Provider security boundaries depend on the post-1.0 provider contract |
+
+Security rows may stack on the domain implementation they secure.
+
+### 10.9 Open-source governance and provider ecosystem — BL-176–BL-188
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-176` (`Later`) | `C` | Factual license/distribution compatibility analysis only; no autonomous legal conclusion |
+| `BL-177–BL-179` | `C` | Governance, maintainer and contribution rules can be drafted/researched, but owner decisions may be required |
+| `BL-180` (`Later`) | `A` | Code of Conduct documentation |
+| `BL-181–BL-188` (`Later`) | `C` | Provider contract, identifiers, metadata, capabilities, classifications, trust/distribution and runtime model are architecture/decision work |
+
+These are Cloud-eligible architecture/documentation tasks but should not be silently converted into product implementation.
+
+### 10.10 Efficiency and MCP contracts — BL-202–BL-220
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-202–BL-203`, `BL-205–BL-206`, `BL-212–BL-214`, `BL-216`, `BL-218–BL-219` | `A` | Repo-contained metadata/error/tests/docs/schema/payload/efficiency/resource/catalog work |
+| `BL-204` | `C` | Official conformance tooling may require current external tooling/evidence |
+| `BL-207–BL-208` | `C` | Protocol matrix and extension/stateless strategy are contract/architecture work |
+| `BL-209` | `C` | Final MCP Tasks compatibility is an explicit decision |
+| `BL-210` | `A` | Mapping implementation/design once Operations/Job and Tasks decision are available |
+| `BL-211` | `C` | Fallback contract decision |
+| `BL-215` | `C` | Catalog/initialization budgets require justified Version-1.0 thresholds |
+| `BL-217` (`Later`) | `A` | Conditional/not-modified contracts after fingerprint/cache foundations |
+| `BL-220` | `C` | Native adapter/no-interpreter policy; implementation only after contract is clear |
+
+Important cross-dependencies include `BL-084–099`, `BL-048`, and result-resource work.
+
+### 10.11 Native multi-mode runtime and service deployment — BL-221–BL-244
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-221–BL-223`, `BL-225`, `BL-233`, `BL-235`, `BL-238` | `C` | Architecture, lifecycle, IPC/configuration and execution-identity contracts |
+| `BL-224`, `BL-228`, `BL-236`, `BL-239`, `BL-243` | `A` | Transport-neutral refactoring, proxy, interfaces/context binding and documentation are strong Cloud candidates |
+| `BL-226` | `B` | Windows Named Pipe implementation; Windows ACL/caller identity finalization required |
+| `BL-227` | `B` | Unix socket implementation; native peer-credential/service finalization required |
+| `BL-229` | `B` | Auto discovery/fallback implementation with later cross-mode host validation |
+| `BL-230` | `B` | Windows SCM service host can be coded/cross-built in Cloud; real SCM/service/identity/Task Manager validation is Windows-only |
+| `BL-231` | `B` | systemd assets/host can be prepared; real systemd/account/hardening lifecycle requires native host |
+| `BL-232` (`Later`) | `B` | User-scoped Windows/Linux background modes |
+| `BL-234`, `BL-237` | `B` | Real OS caller/service-account identity and ACL enforcement need platform validation |
+| `BL-240` (`Later`) | `B` | Per-user worker backend needs real OS identity/isolation finalization |
+| `BL-241–BL-242` | `B` | Integrated lifecycle/platform matrix and all-mode CI/release validation |
+| `BL-244` | `B` | Harness/benchmark work can be prepared, but authoritative thresholds require real modes/hosts |
+
+Natural stack:
+
+`BL-221–225` contracts → transports/proxy/discovery → service hosts/identity → lifecycle matrix/CI/benchmarks.
+
+Parallel work inside that structure is allowed when it does not consume unfinished contracts.
+
+### 10.12 CI, release and quality — BL-245, BL-249–BL-263
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-245`, `BL-249–BL-250`, `BL-252`, `BL-255–BL-259` | `A` | Workflows, benchmark comparison, race gates, artifact-name/schema/payload/catalog checks, legacy-name scan |
+| `BL-253–BL-254` | `B` | Windows/Linux process and Operations/Job CI depend on their implementation suites |
+| `BL-260` | `D` | Continuous standard gate; normally changed only when another task legitimately triggers it |
+| `BL-261` | `B` | Cross-project benchmark can be prepared, but authoritative identical-host/external-server evidence is deferred |
+| `BL-262` | `B` | SBOM/provenance/checksum plans can be prepared; signing/credential/atomic-release evidence remains external/local |
+| `BL-263` | `D` | Version 1.0 final release boundary; do not auto-select before the required implementation/integration truth exists |
+
+Completed artifact tasks `BL-246–248` and `BL-251` remain closed.
+
+### 10.13 Documentation and client compatibility — BL-305–BL-315
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-305–BL-306`, `BL-315` | `D` | Continuous steering-document maintenance; update as triggered by real task truth rather than as arbitrary standalone Mobile work |
+| `BL-307–BL-312`, `BL-314` | `A` | Identity, architecture, benchmark, roots/capabilities, Job Manager, process/execution security and smoke-test docs |
+| `BL-313` (`Later`) | `A` | Provider ecosystem documentation after the provider contracts it describes exist |
+
+### 10.14 Independent-review follow-ups — BL-317–BL-332
+
+| IDs | Mode | Notes |
+|---|---|---|
+| `BL-317` | `A` | Workflow useful-output semantics |
+| `BL-318–BL-319` | `B` | Corpus-parent and host/build provenance logic can be implemented; authoritative Windows/native-host evidence later |
+| `BL-320` | `B` | Native race/cross-platform policy CI can be authored and Hosted-CI-tested; complete platform evidence later |
+| `BL-321` | `B` | Linux clock-tick implementation can be developed/tested in Cloud; stop if a new dependency/platform contract decision is required |
+| `BL-322` | `X` | Acceptance requires SPR-047/historical evidence not fully repository-contained |
+| `BL-323`, `BL-325–BL-327`, `BL-329`, `BL-331` | `A` | Bounded repo-contained review follow-ups |
+| `BL-328` | `C` | Resource limits require justified limit decisions before silently selecting concrete thresholds |
+| `BL-330` | `C` | Canonical `In Progress` status contract requires owner decision |
+| `BL-332` | `B` | Contributor-path cleanup can be coded; Windows/WSL leak-validation finalization required |
+
+### 10.15 Cross-mode host lifecycle — BL-341
+
+| ID | Mode | Notes |
+|---|---|---|
+| `BL-341` | `B` | Architecture contract is already complete; runtime implementation can be prepared in Cloud, with Windows/Linux owner-loss, shutdown and orphan finalization after return |
+
+### 10.16 Excluded completed work
+
+All `Done` tasks are excluded automatically, including the completed foundations, rename/tool-cleanup/Codex-preparation work and `BL-324`, `BL-333–340`, `BL-342–344`.
+
+No Mobile task may reopen them.
+
+## 11. Epic-level collision and priority guidance
+
+This is guidance, not ordering.
+
+### Low collision / good parallel starts
+
+Typical candidates include:
+
+- focused documentation tasks;
+- independent review follow-ups;
+- isolated tests;
+- architecture/threat-model contracts;
+- distinct domain foundations such as Search model, Job Registry, Capability model, Process threat model, Command threat model;
+- System Information work;
+- independent benchmark validator corrections.
+
+### Medium collision
+
+Tasks touching:
+
+- common MCP registry/schema files;
+- shared filesystem contracts;
+- benchmark decoder/types;
+- shared policy/configuration;
+- common documentation.
+
+Prefer stacking when one candidate directly consumes another.
+
+### High collision
+
+Tasks modifying:
+
+- central server routing;
+- shared root/capability model;
+- managed process engine;
+- execution identity;
+- service lifecycle coordinator;
+- broad CI workflows.
+
+Avoid unrelated parallel branches that rewrite the same shared abstraction.
+
+## 12. Windows return and integration
+
+After vacation, enumerate all open PRs carrying:
+
+```text
+Mobile-Queue: FLASHGATE-MOBILE-V3
+```
+
+Process dependency roots before stacked children.
+
+For each candidate:
+
+1. verify exact PR base/head and dependency markers;
+2. inspect complete diff and Mobile ancestry;
+3. bind current local `AGENTS.md`, governance and local canonical state;
+4. independently review the candidate;
+5. run complete Windows/native-Linux/PowerShell 7.6.5 validation;
+6. correct directly caused in-scope findings;
+7. integrate or retarget stacked PRs only with then-applicable Git/remote approval;
+8. update `BACKLOG.md`, `CHANGELOG.md`, docs/status only from verified integration truth;
+9. merge/close the Mobile PR only after Windows finalization;
+10. delete branches only after successful integration and separate cleanup approval.
+
+A Cloud PR is evidence of a candidate, never evidence that the BL item is `Done`.
+
+## 13. Required Mobile PR format
+
+Title:
+
+```text
+[MOBILE][BL-xxx] <canonical task title>
+```
+
+Body:
+
+```text
+Mobile-Queue: FLASHGATE-MOBILE-V3
+Mobile-Task: BL-xxx
+Mobile-Mode: A|B|C
+Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
+Mobile-Depends-On: NONE|BL-xxx[,BL-yyy...]
+Mobile-Base-Ref: <main-or-parent-mobile-branch>
+Windows-Finalization: REQUIRED
+Merge-Allowed: NO
+```
+
+Also state:
+
+- Cloud validations actually run;
+- Windows/native validations deferred;
+- warnings/findings;
+- scope and explicit non-goals.
+
+The PR remains open.
+
+## 14. Required Cloud final response
+
+```text
+Status              : CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN | CLOUD_ANALYSIS_COMPLETE | CLOUD_NO_CHANGE_REVIEW_REQUIRED | BLOCKED_...
+TaskID              : BL-xxx
+CloudMode            : A | B | C
+PreferredBranch      : mobile/bl-xxx-...
+ActualHeadBranch     : <branch-or-NONE>
+PullRequest          : <OPEN #number/url-or-NONE>
+PRBase               : <main-or-parent-mobile-branch>
+MobileDependsOn      : NONE | BL-...
+CloudValidation      : <result>
+DeferredValidation   : <Windows/native work>
+RemoteConfiguration  : NOT_REQUIRED_UNCHANGED
+WindowsFinalization  : REQUIRED
+WarningCount         : <n>
+FailureCount         : <n>
+NextAction           : <exact boundary>
+```
+
+## 15. Minimal phone prompts
+
+### Automatic candidate
+
+> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
+
+### Named epic
+
+> Wähle einen geeigneten noch offenen Task aus dem Filesystem-Epic gemäß `MOBILE.md` V3 und führe genau diesen Mobile-Task aus.
+
+Replace `Filesystem` with `Search`, `Operations/Job`, `Process`, `Command Execution`, `MCP Contracts`, `Multi-Mode` or another catalog section.
+
+### Named task
+
+> Führe `BL-xxx` gemäß `MOBILE.md` V3 aus. Nutze bei echter technischer Abhängigkeit einen gestapelten Mobile-PR. Kein Merge.
+
