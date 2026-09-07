@@ -11,15 +11,23 @@ Canonical authority remains, in this order:
 1. the current repository `BACKLOG.md`;
 2. `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`;
 3. `CONTRIBUTING.md` and the directly affected technical documentation;
-4. this file only for mobile task selection, branch isolation, and Cloud/Windows handoff rules.
+4. this file only for mobile task selection, branch isolation, Cloud publication, and Cloud/Windows handoff rules.
 
 If this file conflicts with a current canonical source, stop with `STALE_MOBILE_QUEUE` and do not adapt the contract autonomously.
 
 Do not create a new BL identifier from this file. Do not change sprint assignment or milestone semantics from this file.
 
+### Mobile publication model
+
+- Queue protocol: `FLASHGATE-MOBILE-V2`
+- Publication model: `CODEX_CLOUD_MANAGED_OPEN_PR`
+- One mobile task = one isolated Cloud candidate = one dedicated head branch = one **open** pull request.
+- Mobile pull requests are never merged, closed, rebased onto another mobile branch, or deleted during the vacation workflow.
+- Windows finalization remains mandatory before integration.
+
 ## 2. Activation gate
 
-The queue was derived from the current local FlashGate post-M3c baseline:
+The queue requires the validated FlashGate slim-governance baseline:
 
 - Required baseline ancestor: `f9383ca664e38b93ac6331b312e9327806be43f7`
 - Baseline subject: `Converge FlashGate to slim governance`
@@ -28,86 +36,109 @@ The queue was derived from the current local FlashGate post-M3c baseline:
 - FlashGate product restart: allowed
 - PowerShell target standard for later Windows/native-Linux validation: `pwsh` 7.6.5
 
-At authoring time, GitHub `main` was still `750638676dcfae19cbcf4a79961fa91aa89b8adc` and did not contain the required baseline.
+A local Git remote is **not** an activation requirement for Codex Cloud.
 
-**No queue task may start until all activation checks pass:**
+The message `no Git remote configured` is non-blocking when all of the following are true:
 
-1. `origin/main` contains `f9383ca664e38b93ac6331b312e9327806be43f7` as an ancestor.
-2. `MOBILE.md` is present on `origin/main`.
-3. The current `BACKLOG.md` still contains the selected BL row exactly once.
-4. The selected task is still `Planned`.
-5. Its title and acceptance contract have not materially changed from the task summary in this file.
-6. No current canonical rule introduces a new hard dependency or stop boundary.
+1. the Cloud task is attached to repository `thomasweidner/flashgate-mcp`;
+2. the repository-integrated source can read the current default branch `main`;
+3. the current `main` contains the required baseline above;
+4. this `MOBILE.md` revision is visible from `main`;
+5. the current `BACKLOG.md` still contains the selected BL row exactly once;
+6. the selected task is still `Planned`;
+7. its title and acceptance contract have not materially changed from the task summary in this file;
+8. no current canonical rule introduces a new hard dependency or stop boundary;
+9. Codex Cloud exposes its repository-integrated action to publish the completed candidate as a pull request.
 
-If 1 or 2 fails:
+If 1–4 fails:
 
-`Status=BLOCKED_MOBILE_BASELINE_NOT_PUBLISHED`
+`Status=BLOCKED_MOBILE_REPOSITORY_OR_BASELINE`
 
-If 3–6 fails:
+If 5–8 fails:
 
 `Status=STALE_MOBILE_ENTRY`
 
-Do not work around either state.
+If 9 fails:
 
-## 3. Mobile queue base
+`Status=BLOCKED_CLOUD_PR_PUBLICATION_UNAVAILABLE`
 
-For the active queue, derive one immutable sibling-branch base:
+Do not configure a Git remote, token, credential, SSH key, PAT, GitHub App, or network workaround to make an activation check pass.
 
-```text
-MOBILE_QUEUE_BASE = latest commit reachable from origin/main that changed MOBILE.md
-```
+## 3. Mobile base and isolation contract
 
-Before the first mobile task, verify that `MOBILE_QUEUE_BASE` contains the required baseline ancestor above.
+Every mobile task must start from the repository-integrated `main` state presented to the Cloud task.
 
-Every mobile task branch MUST start from exactly `MOBILE_QUEUE_BASE`, not from another mobile task branch and not from a later moving `main`.
+Rules:
 
-If `MOBILE.md` is changed on `main` after mobile work has begun, stop with `STALE_MOBILE_QUEUE` until Classic/Windows reviews the new queue base.
+1. Never base a mobile task on another `mobile/*` branch or another mobile pull request.
+2. Never merge another mobile pull request into the task branch.
+3. Mobile pull requests remain open and unmerged during the vacation workflow.
+4. Therefore mobile tasks remain mutually independent even when they are created at different times.
+5. If `main` advances for unrelated work, re-read the current canonical sources before starting the next task. Continue only if the selected task contract is still valid.
+6. The pull request's GitHub metadata is the authoritative base/head binding for later Windows review.
+7. If Codex Cloud exposes an exact base SHA before publication, record it in the final response. Do not invent one if the platform does not expose it.
 
-This makes all vacation branches independent siblings and defers their integration order to Windows.
+`main` is the only allowed PR base for this mobile queue.
 
 ## 4. How to select the next task
 
 Process the queue strictly from top to bottom.
 
+Use the **Codex Cloud / GitHub repository integration**, not a local Git remote, to inspect existing mobile pull requests.
+
+A valid completed Cloud candidate is an open pull request whose body contains all of:
+
+```text
+Mobile-Queue: FLASHGATE-MOBILE-V2
+Mobile-Task: <BL-ID>
+Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
+Windows-Finalization: REQUIRED
+Merge-Allowed: NO
+```
+
 For each row:
 
-1. Check the exact remote branch name read-only.
-2. If it is absent, that row is the next task.
-3. If it exists, inspect it read-only:
-   - it must descend from the active `MOBILE_QUEUE_BASE`;
-   - its final task commit must contain the trailers defined below;
-   - `Mobile-Task` must equal the row ID;
-   - `Mobile-State` must be `CLOUD_IMPLEMENTATION_COMPLETE`;
-   - `Mobile-Queue-Base` must equal the active queue base.
-4. A valid completed branch is skipped.
-5. An existing branch that does not satisfy all checks is a collision:
-   `Status=MOBILE_BRANCH_COLLISION`.
-   Do not overwrite, amend, force-push, delete, or reuse it.
+1. Query repository-integrated pull-request state read-only.
+2. If exactly one valid open mobile PR exists for the row, skip that row.
+3. If no mobile PR exists for the row, that row is the next task.
+4. If more than one candidate PR exists for the same row, stop:
+   `Status=MOBILE_PR_COLLISION`.
+5. If a matching PR is closed without merge, stop:
+   `Status=MOBILE_PR_CLOSED_REVIEW_REQUIRED`.
+6. If a matching PR was merged during the mobile workflow, stop:
+   `Status=MOBILE_POLICY_VIOLATION_MERGED_PR`.
+7. If Codex Cloud cannot inspect repository-integrated PR state, stop:
+   `Status=CLOUD_PR_STATE_UNAVAILABLE`.
+   Do not guess task completion from local branches or task history.
 
-A pushed valid task branch is therefore the durable mobile completion marker. `MOBILE.md` itself is not edited after each task.
+An open, correctly marked PR is the durable mobile completion marker. `MOBILE.md` itself is not edited after each task.
 
 ## 5. Per-task authorization boundary
 
 Each task requires a fresh user instruction. A previous task authorization never carries forward.
 
-A minimal mobile authorization is:
+The preferred minimal mobile authorization is:
 
-> Führe den nächsten Task aus MOBILE.md aus. Implementierung ist für genau diesen Task freigegeben. Lokale Git-Mutationen für genau einen Task-Branch, Stage und einen Commit sind freigegeben. Genau ein nicht-erzwungener Push dieses Task-Branches ist freigegeben. Kein PR, Merge, Tag, Release, Branch-Delete oder Write auf main.
+> Führe den nächsten Task aus `MOBILE.md` nach Variante B aus. Implementierung und genau ein Cloud-gemanagter offener PR sind für genau diesen Task freigegeben. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
 
 This authorization is task-scoped only.
 
-Before the first Git write, complete all deterministic read-only preflights that can be known in advance.
+It authorizes:
 
-Before the first remote write, complete the implementation, focused validation, consolidated validation, exact diff/scope review, and staged readback.
+- implementation of exactly the selected BL task in the Cloud workspace;
+- directly caused in-scope correction cycles within the bounded remediation budget;
+- Cloud-available validation;
+- exactly one Codex-Cloud-managed publication attempt that creates one open PR for the completed candidate.
 
-Hard-one-shot behavior applies:
+It does **not** authorize:
 
-- first writable Git action consumes the Git authorization;
-- first remote push consumes the remote authorization;
-- no blind or automatic retry after a failed Git/remote write;
-- report the failure and stop.
+- `git remote add`, remote URL changes, PAT/token/SSH configuration, or manual credential handling;
+- a manual `git push` workaround;
+- PR merge or close;
+- branch deletion;
+- tags, releases, repository settings, GitHub rules, secrets, permissions, or other external changes.
 
-No force push.
+The first write-capable Cloud publication attempt consumes the publication authorization. If PR creation fails, do not retry automatically and do not fall back to manual Git remote/push configuration.
 
 ## 6. Cloud implementation contract
 
@@ -120,14 +151,14 @@ For every selected task:
 5. If such a decision is required, stop with:
    `Status=BLOCKED_DECISION_REQUIRED`.
 6. Do not install tooling or dependencies unless separately authorized.
-7. Do not use credentials or modify GitHub settings.
-8. Do not create a PR, merge, tag, release, or delete a branch.
-9. Do not modify `MOBILE.md` from a task branch.
-10. Keep the canonical BL status `Planned` during Cloud preparation.
-11. Do not mark the task `Done` in `BACKLOG.md`.
-12. Do not update completion-only `CHANGELOG.md` state merely because the Cloud candidate is ready.
-13. Do not fabricate Windows, WSL, native-Linux, PowerShell, service, SCM, systemd, hardware, credential, or local-governance evidence that the Cloud environment did not actually execute.
-14. Repository-visible task artifacts/reports are forbidden unless the canonical BL acceptance explicitly requires them.
+7. Do not configure credentials, Git remotes, SSH keys, tokens, GitHub Apps, or repository settings.
+8. Do not modify `MOBILE.md` from a mobile task.
+9. Keep the canonical BL status `Planned` during Cloud preparation.
+10. Do not mark the task `Done` in `BACKLOG.md`.
+11. Do not update completion-only `CHANGELOG.md` state merely because the Cloud candidate is ready.
+12. Do not fabricate Windows, WSL, native-Linux, PowerShell, service, SCM, systemd, hardware, credential, or local-governance evidence that the Cloud environment did not actually execute.
+13. Repository-visible task artifacts/reports are forbidden unless the canonical BL acceptance explicitly requires them.
+14. A Cloud candidate is never canonical completion.
 
 ### Validation funnel
 
@@ -136,38 +167,72 @@ Use:
 1. parser/focused/root-cause tests first;
 2. bounded correction cycles;
 3. one consolidated repository-appropriate final validation;
-4. `git diff --check`;
-5. exact scope/readback before Stage;
-6. staged readback plus `git diff --cached --check`;
-7. one final commit;
-8. one non-force push.
+4. inspect the complete final diff and changed-path inventory;
+5. run `git diff --check` when local Git is available;
+6. confirm no unrelated task or completion-only steering change is present;
+7. publish exactly one open PR through the Codex Cloud / GitHub integration.
 
 For the established FlashGate repository, maximum material self-remediation cycles: `6`.
 
 Use repository-provided tools already available in the Cloud environment. If `pwsh` 7.6.5 or another required local tool is unavailable, do not install a replacement silently; record that validation for Windows finalization.
 
-## 7. Branch and commit contract
+Local Git staging or committing is an implementation detail, not a publication requirement. Do not fail merely because no Git remote exists. The authoritative Cloud handoff is the GitHub pull request and its base/head/diff metadata.
 
-Each row owns exactly one branch.
+If the final candidate has no repository delta, stop with:
 
-The branch must be created from `MOBILE_QUEUE_BASE` using the exact branch name from the queue.
+`Status=CLOUD_NO_CHANGE_REVIEW_REQUIRED`
 
-A successful Cloud candidate has exactly one final task commit above the queue base.
+Do not create an empty PR and do not advance to the next queue item automatically.
 
-Commit message format:
+## 7. Branch and pull-request contract
+
+Each task owns exactly one dedicated head branch and exactly one open pull request.
+
+### Branch naming
+
+The queue provides a preferred branch name.
+
+- If Codex Cloud lets the task choose the branch name, use the exact preferred name.
+- If Codex Cloud assigns a generated branch name, that is acceptable only when it is a unique branch dedicated to this one task.
+- Never reuse another task branch.
+- Never create a second branch merely to obtain the preferred spelling.
+- Record the actual PR head branch in the final response.
+
+### Pull request
+
+The PR must:
+
+- target `main`;
+- contain only the selected task's candidate delta;
+- remain open;
+- not be marked as canonical task completion;
+- not merge or close itself;
+- not include `MOBILE.md` changes;
+- use title format:
 
 ```text
-<BL-ID>: <concise task subject>
-
-Mobile-Task: <BL-ID>
-Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
-Mobile-Queue-Base: <full SHA>
-Windows-Finalization: REQUIRED
+[MOBILE][<BL-ID>] <canonical task title>
 ```
 
-Do not amend after a successful push.
+The PR body must contain:
 
-Any correction required after the successful push is a Windows/Classic integration concern unless the user separately authorizes a new mobile correction contract.
+```text
+Mobile-Queue: FLASHGATE-MOBILE-V2
+Mobile-Task: <BL-ID>
+Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
+Mobile-Preferred-Branch: <preferred branch from the queue>
+Windows-Finalization: REQUIRED
+Merge-Allowed: NO
+```
+
+Also summarize:
+
+- Cloud validations actually executed;
+- validations deferred to Windows;
+- known warnings or findings;
+- exact scope/non-goals.
+
+After successful PR creation, perform read-only PR readback when the Cloud surface supports it. Verify base `main`, task identity, open state, and selected-task-only scope. Do not mutate the branch or PR further in the same task.
 
 ## 8. Ordered mobile queue
 
@@ -179,7 +244,7 @@ Effort scale:
 - `M+` — broader contract-alignment work, still bounded
 - Open BL dependencies count only **unfinished canonical backlog predecessors required to implement this row**.
 
-| Order | ID | Exact branch | Effort | Open BL dependencies | Cloud class | Windows finalization | Integration collision |
+| Order | ID | Preferred branch | Effort | Open BL dependencies | Cloud class | Windows finalization | Integration collision |
 |---:|---|---|---|---:|---|---|---|
 | 1 | BL-206 | `mobile/bl-206-local-deterministic-work` | XS | 0 | Docs | Required | Low |
 | 2 | BL-323 | `mobile/bl-323-benchmark-coverage-claims` | XS | 0 | Docs/inventory | Required | Medium |
@@ -192,7 +257,7 @@ Effort scale:
 | 9 | BL-325 | `mobile/bl-325-benchmark-schema-alignment` | M+ | 0 | Schema/Go/tests | Required | High |
 | 10 | BL-317 | `mobile/bl-317-workflow-output-semantics` | M+ | 0 | Benchmark contract/tests | Required | Medium |
 
-The ordering deliberately favors small, already-decided, repository-contained work. The benchmark cluster is later because several branches may touch neighboring test/decoder files; they remain sibling branches and MUST NOT consume each other.
+The ordering deliberately favors small, already-decided, repository-contained work. The benchmark cluster is later because several PRs may touch neighboring test/decoder files; they remain independent because no mobile PR is merged into another mobile task.
 
 ## 9. Task contracts
 
@@ -410,39 +475,43 @@ Anything not listed in section 8 is **out of scope for autonomous execution thro
 
 ## 11. Windows return and integration contract
 
-Mobile branches are preparation candidates, not canonical completion.
+Mobile PRs are preparation candidates, not canonical completion.
 
-After the vacation, process branches under Windows one at a time, normally in the same queue order:
+After the vacation, process the open mobile PRs under Windows one at a time, normally in queue order:
 
-1. fetch/read all mobile branches without modifying them;
-2. verify branch ancestry, one-commit contract, trailers, diff, and task scope;
+1. enumerate open PRs carrying `Mobile-Queue: FLASHGATE-MOBILE-V2`;
+2. verify PR base/head, task marker, branch identity, exact diff, and selected-task-only scope;
 3. bind the then-current local `AGENTS.md`, `Codex-Work\Governance`, canonical `BACKLOG.md`, leading registers, and current repository state;
-4. independently review the candidate;
-5. rebase/cherry-pick/integrate only after the applicable explicit Git approval;
-6. run the complete task-specific Windows/native-Linux/PowerShell 7.6.5 validation funnel;
-7. remediate only directly caused in-scope findings within the local continuation policy;
-8. update canonical `BACKLOG.md`, `CHANGELOG.md`, status/docs as required only when integration truth supports it;
-9. commit/push/PR/merge only with the then-applicable explicit approvals;
-10. delete local/remote mobile branches only after verified integration and separate cleanup authorization.
+4. independently review the Cloud candidate;
+5. run the complete task-specific Windows/native-Linux/PowerShell 7.6.5 validation funnel;
+6. remediate only directly caused in-scope findings within the local continuation policy;
+7. decide the integration method against the then-current `main`;
+8. update canonical `BACKLOG.md`, `CHANGELOG.md`, status/docs only when local integration truth supports it;
+9. merge/rebase/cherry-pick/update the mobile PR or use a separate integration branch only with the then-applicable explicit Git/remote approvals;
+10. close or merge the mobile PR only after successful Windows finalization;
+11. delete local/remote mobile branches only after verified integration and separate cleanup authorization.
 
-A Cloud branch must never be treated as proof that Windows finalization is complete.
+A Cloud-open PR must never be treated as proof that Windows finalization is complete.
 
 ## 12. Required Cloud final response
 
 For every mobile task, end with:
 
 ```text
-Status              : CLOUD_IMPLEMENTATION_COMPLETE | CLOUD_NO_CHANGE_REVIEW_REQUIRED | BLOCKED_...
+Status              : CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN | CLOUD_NO_CHANGE_REVIEW_REQUIRED | BLOCKED_...
 TaskID              : BL-xxx
-Branch              : mobile/bl-...
-MobileQueueBase     : <sha>
-CommitSha           : <sha-or-NONE>
-PushState           : PUSHED_ONCE | NOT_PUSHED
+PreferredBranch     : mobile/bl-...
+ActualHeadBranch    : <branch-or-NONE>
+PullRequest         : <OPEN #number/url-or-NONE>
+PRBase              : main
 CloudValidation     : <concise result>
+RemoteConfiguration : NOT_REQUIRED_UNCHANGED
 WindowsFinalization : REQUIRED
 WarningCount        : <n>
 FailureCount        : <n>
 NextAction          : <next exact boundary>
 ```
 
-`CLOUD_IMPLEMENTATION_COMPLETE` means only that the isolated Cloud candidate passed the Cloud-available checks and was pushed once to its task branch. It never means `Done` in the canonical backlog.
+`CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN` means only that the isolated Cloud candidate passed the Cloud-available checks and exactly one open PR was created through the managed repository integration. It never means `Done` in the canonical backlog.
+
+A successful mobile task ends with an **open PR** and no merge.
