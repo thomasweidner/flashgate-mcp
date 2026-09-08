@@ -120,6 +120,60 @@ Status=BLOCKED_CLOUD_PR_PUBLICATION_UNAVAILABLE
 
 Do not fall back to manual push.
 
+### Durable GitHub publication boundary
+
+A Codex Cloud task result, diff view, local Cloud commit, Cloud-internal branch view, or
+Cloud-internal "PR" indication is **not** a durable Mobile completion marker by itself.
+
+Use these states:
+
+```text
+CLOUD_IMPLEMENTATION_IN_PROGRESS
+CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED
+CLOUD_PR_PUBLICATION_PENDING
+CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN
+```
+
+`CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN` may be claimed only after the managed publication
+flow has created a real GitHub pull request and Codex has read that pull request back from
+GitHub.
+
+Required GitHub readback:
+
+- repository is `thomasweidner/flashgate-mcp`;
+- PR state is `OPEN`;
+- PR title starts with `[MOBILE][<BL-ID>]`;
+- PR body contains the exact Mobile V3 identity fields from section 13;
+- `Mobile-Task` equals the selected canonical BL ID;
+- `Mobile-State` is `CLOUD_IMPLEMENTATION_COMPLETE`;
+- `Windows-Finalization` is `REQUIRED`;
+- `Merge-Allowed` is `NO`;
+- PR base equals the expected `main` or direct predecessor Mobile branch;
+- PR head resolves to a durable GitHub branch and commit;
+- the GitHub PR diff remains task-pure.
+
+If implementation is complete but the real GitHub PR has not been created or cannot be
+read back:
+
+```text
+Status=CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED
+```
+
+Do not archive, discard, or treat the Cloud task as completed. Do not advance to another
+task under the same BL ID. The exact next action is the managed Codex Cloud `Create PR`
+publication step.
+
+If managed publication was attempted but GitHub readback is unavailable or invalid:
+
+```text
+Status=CLOUD_PR_PUBLICATION_PENDING
+```
+
+Do not retry automatically and do not fall back to manual Git remote or credential
+configuration.
+
+GitHub is the durable Mobile candidate ledger. Codex Cloud is the execution workspace.
+
 ## 6. Dynamic task discovery
 
 Before selecting work:
@@ -133,7 +187,14 @@ Before selecting work:
 7. determine effort and likely Windows residual from the current repository state;
 8. select an eligible candidate using the preference model unless the user named one.
 
-A valid Mobile V3 candidate PR contains:
+A valid Mobile V3 candidate is a **real GitHub pull request**, read back from GitHub,
+whose title starts with:
+
+```text
+[MOBILE][BL-xxx]
+```
+
+and whose body contains:
 
 ```text
 Mobile-Queue: FLASHGATE-MOBILE-V3
@@ -141,11 +202,16 @@ Mobile-Task: BL-xxx
 Mobile-Mode: A|B|C
 Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
 Mobile-Depends-On: NONE|BL-xxx[,BL-yyy...]
+Mobile-Base-Ref: <main-or-parent-mobile-branch>
 Windows-Finalization: REQUIRED
 Merge-Allowed: NO
 ```
 
-An open valid PR means that task already has a Cloud candidate and is not selected again.
+A Cloud task history entry, Cloud-only diff, or Cloud-internal PR indication is not
+sufficient discovery evidence.
+
+An open, GitHub-read-back, metadata-valid PR means that task already has a durable Cloud
+candidate and is not selected again.
 
 If a matching task has:
 
@@ -224,7 +290,7 @@ Each Mobile task needs a fresh task-scoped instruction.
 
 Preferred short instruction:
 
-> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
+> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener GitHub-PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Der Task gilt erst nach erfolgreichem GitHub-Readback mit `[MOBILE][BL-xxx]`-Titel und vollständigen V3-Markern als Cloud-fertig. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
 
 The instruction authorizes for exactly one selected task:
 
@@ -232,7 +298,8 @@ The instruction authorizes for exactly one selected task:
 - implementation or bounded design work allowed by its Cloud mode;
 - up to 6 material in-scope correction cycles;
 - Cloud-available validation;
-- one managed publication attempt producing one open PR.
+- one managed publication attempt producing one real open GitHub PR plus read-only
+  GitHub readback of its identity, state, base, head, title, markers, and task-pure scope.
 
 It does not authorize:
 
@@ -258,7 +325,13 @@ For every task:
 8. keep the candidate branch task-pure except for directly caused in-scope corrections;
 9. run focused tests before broad validation;
 10. inspect the complete final diff and `git diff --check` when local Git supports it;
-11. publish one open PR only after the Cloud candidate is internally coherent.
+11. publish one open PR only after the Cloud candidate is internally coherent;
+12. after managed publication, read the PR back from GitHub and validate the section 5
+    durability gate;
+13. report `CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN` only after that GitHub readback passes;
+14. if only the Codex Cloud result/diff exists, report
+    `CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED` and preserve the Cloud task until
+    publication succeeds or the user makes a new decision.
 
 If a product defect is discovered outside direct scope:
 
@@ -548,13 +621,29 @@ A Cloud PR is evidence of a candidate, never evidence that the BL item is `Done`
 
 ## 13. Required Mobile PR format
 
-Title:
+The **GitHub PR metadata is part of the durable Mobile contract**.
+
+### Title — mandatory
+
+Exact prefix:
 
 ```text
-[MOBILE][BL-xxx] <canonical task title>
+[MOBILE][BL-xxx]
 ```
 
-Body:
+Preferred complete title:
+
+```text
+[MOBILE][BL-xxx] <concise canonical task subject>
+```
+
+The BL ID must be present in this machine-recognizable prefix. A generic title derived
+from the phone prompt, such as `Implementiere den nächsten mobile.md task`, is invalid
+even when the Cloud task itself selected the correct BL item.
+
+### Body — mandatory
+
+The PR body must contain these exact identity fields as standalone lines:
 
 ```text
 Mobile-Queue: FLASHGATE-MOBILE-V3
@@ -574,33 +663,70 @@ Also state:
 - warnings/findings;
 - scope and explicit non-goals.
 
-The PR remains open.
+### Head branch
+
+Preferred branch naming remains task-specific, for example:
+
+```text
+mobile/bl-036-tools-call-filesystem-tests
+```
+
+If Codex Cloud controls branch naming and generates another unique branch, keep that
+single generated branch rather than manufacturing a second branch solely for naming.
+
+A generated branch name is acceptable only when:
+
+- the branch is dedicated to exactly one Mobile task;
+- the GitHub PR title and body satisfy the mandatory BL identity contract above;
+- GitHub readback proves the actual durable head branch and commit;
+- the final response records `GeneratedBranchNameAccepted: true`.
+
+Branch naming is therefore advisory; PR title/body identity and GitHub readback are
+mandatory.
+
+The PR remains open. Do not merge or close it during Mobile work.
+
+### Publication validation
+
+After `Create PR`, read the PR back from GitHub. If any mandatory title/body/state/base/
+head identity check fails:
+
+```text
+Status=CLOUD_PR_METADATA_INVALID
+```
+
+Do not claim Mobile completion and do not automatically mutate the PR a second time.
+Return the exact mismatch for a new decision.
 
 ## 14. Required Cloud final response
 
 ```text
-Status              : CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN | CLOUD_ANALYSIS_COMPLETE | CLOUD_NO_CHANGE_REVIEW_REQUIRED | BLOCKED_...
-TaskID              : BL-xxx
-CloudMode            : A | B | C
-PreferredBranch      : mobile/bl-xxx-...
-ActualHeadBranch     : <branch-or-NONE>
-PullRequest          : <OPEN #number/url-or-NONE>
-PRBase               : <main-or-parent-mobile-branch>
-MobileDependsOn      : NONE | BL-...
-CloudValidation      : <result>
-DeferredValidation   : <Windows/native work>
-RemoteConfiguration  : NOT_REQUIRED_UNCHANGED
-WindowsFinalization  : REQUIRED
-WarningCount         : <n>
-FailureCount         : <n>
-NextAction           : <exact boundary>
+Status                    : CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN | CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED | CLOUD_PR_PUBLICATION_PENDING | CLOUD_ANALYSIS_COMPLETE | CLOUD_NO_CHANGE_REVIEW_REQUIRED | BLOCKED_...
+TaskID                    : BL-xxx
+CloudMode                  : A | B | C
+PreferredBranch            : mobile/bl-xxx-...
+ActualHeadBranch           : <durable-GitHub-branch-or-NONE>
+GeneratedBranchNameAccepted: true | false
+PullRequest                : <OPEN GitHub #number/url-or-NONE>
+PRTitle                    : <exact title-or-NONE>
+PRBase                     : <main-or-parent-mobile-branch>
+PRHeadSha                  : <GitHub head SHA-or-NONE>
+MobileDependsOn            : NONE | BL-...
+GitHubReadback             : PASS | NOT_AVAILABLE | FAIL
+CloudValidation            : <result>
+DeferredValidation         : <Windows/native work>
+RemoteConfiguration        : NOT_REQUIRED_UNCHANGED
+WindowsFinalization        : REQUIRED
+WarningCount               : <n>
+FailureCount               : <n>
+NextAction                 : <exact boundary>
 ```
 
 ## 15. Minimal phone prompts
 
 ### Automatic candidate
 
-> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
+> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener GitHub-PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Der Task gilt erst nach erfolgreichem GitHub-Readback mit `[MOBILE][BL-xxx]`-Titel und vollständigen V3-Markern als Cloud-fertig. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
 
 ### Named epic
 
@@ -611,4 +737,3 @@ Replace `Filesystem` with `Search`, `Operations/Job`, `Process`, `Command Execut
 ### Named task
 
 > Führe `BL-xxx` gemäß `MOBILE.md` V3 aus. Nutze bei echter technischer Abhängigkeit einen gestapelten Mobile-PR. Kein Merge.
-
