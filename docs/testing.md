@@ -1065,8 +1065,12 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 
 - artifact version/help/platform/name checks;
 - compact and verbose CLI identity checks;
-- Windows x64/ARM64 `VERSIONINFO`, PE architecture, icon, and Explorer property checks;
-- Linux x64 native and ARM64 cross-build Go/VCS, ELF-header, ELF-note, and Go build-ID checks;
+- Windows x64 native execution plus x64/ARM64 `VERSIONINFO`, PE architecture,
+  icon, and Explorer property checks; the current x64 runner cross-builds and
+  statically validates ARM64 without executing it;
+- Linux x64 native execution plus ARM64 cross-build Go/VCS, ELF-header,
+  ELF-note, and Go build-ID checks; the current x64 runner does not execute the
+  ARM64 binary;
 - exact ZIP/TAR.GZ inventory and SHA-256 verification;
 - repeated byte-for-byte binary and archive reproducibility checks;
 - host-path, username, hostname, and credential-shaped-value leak checks;
@@ -1092,6 +1096,11 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - reproducible-build comparison;
 - pinned/validated workflow policy;
 - atomic rollback documentation and smoke procedure.
+
+Native Windows ARM64 and Ubuntu ARM64 execution is a future, conditional layer
+that requires matching hosted or controlled ARM64 runners. Until then, the
+implemented ARM64 gate is cross-compilation plus static validation on x64 and
+must not be reported as native test evidence.
 
 The controlled commands and expected fields are documented in [Build and
 release metadata](build-and-release-metadata.md), [Artifact

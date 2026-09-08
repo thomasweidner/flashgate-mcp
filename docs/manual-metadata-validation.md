@@ -79,6 +79,12 @@ Expected evidence includes:
 - `.note.go.buildid`
 - matching ELF machine architecture
 
+Run the version and help commands only when the artifact architecture matches
+the native host architecture. On the currently implemented x64 validation
+hosts, ARM64 artifacts are cross-built and inspected statically; the commands
+above are not ARM64 execution evidence. Native Windows ARM64 and Linux ARM64
+execution remains a future, conditional check on matching ARM64 hosts.
+
 Extended attributes are intentionally not used because they are not portable and are frequently lost during copying or archive extraction.
 
 Package-manager and systemd presentation checks are not applicable while `.deb`, `.rpm`, and systemd integration remain deferred.

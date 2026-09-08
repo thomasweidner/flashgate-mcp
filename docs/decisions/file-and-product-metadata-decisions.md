@@ -373,12 +373,16 @@ Go target: windows/arm64
 |---|---|---|---|
 | `windows/amd64` | `windows_x64` | Windows-x64-Runner | Stable |
 | `linux/amd64` | `linux_x64` | Ubuntu-x64-Runner | Stable |
-| `windows/arm64` | `windows_arm64` | Windows-ARM64-Runner | Preview |
-| `linux/arm64` | `linux_arm64` | Ubuntu-ARM64-Runner | Preview |
+| `windows/arm64` | `windows_arm64` | x64-Runner: Cross-Build und statische Prüfung; nativer ARM64-Runner: Zielzustand | Preview |
+| `linux/arm64` | `linux_arm64` | x64-Runner: Cross-Build und statische Prüfung; nativer ARM64-Runner: Zielzustand | Preview |
 
 - ARM64-Artefakte können ohne lokale ARM-Hardware cross-kompiliert werden.
 - Ein erfolgreicher Cross-Build allein gilt nicht als native Validierung.
-- Native ARM64-Tests werden über geeignete ARM64-Runner ausgeführt.
+- Der aktuell implementierte Runner-Modus baut ARM64 auf x64-Hosts und prüft
+  die Binärdateien statisch. Er führt sie nicht nativ aus und liefert keinen
+  Nachweis für native Windows- oder Ubuntu-ARM64-Ausführung.
+- Native ARM64-Tests über geeignete Windows- und Ubuntu-ARM64-Runner sind ein
+  zukünftiger, von der Verfügbarkeit solcher Runner abhängiger Zielzustand.
 - ARM64 wird erst nach wiederholten erfolgreichen Releasezyklen und
   stabiler Runnerverfügbarkeit auf Stable hochgestuft.
 - Weitere Architekturen werden nur bei konkretem Bedarf und mit
