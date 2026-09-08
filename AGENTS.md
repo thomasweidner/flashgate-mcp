@@ -62,6 +62,23 @@ Force operations are prohibited unless a later explicit contract says otherwise.
 
 For Mobile work, `MOBILE.md` defines task eligibility, dependency stacking, and the managed-open-PR handoff.
 
+### Automatic Mobile task selection
+
+When the user asks for the **next suitable** Mobile task without naming a BL task or epic, do not choose an arbitrary Cloud-suitable item from the full backlog.
+
+1. Read the current `Sprint sequence and status` table in `BACKLOG.md`.
+2. Inspect `Planned` sprints in ascending `SPR-xxx` order.
+3. Select from the earliest Planned sprint that contains at least one Mobile-eligible task that is executable now or stack-ready on exactly one valid Mobile predecessor.
+4. Inside that sprint prefer Cloud mode `A` before `B` before `C`, then no prerequisite before stack-ready, then lower effort, lower Windows residual, and lower expected branch/diff collision.
+5. Advance to the next Planned sprint only when every Mobile-eligible task in the earlier sprint is currently blocked by a real decision, unavailable evidence/capability, or uncombined prerequisites.
+6. Do not jump to a later Planned sprint merely because its task is smaller or more isolated.
+7. Do not auto-select `Later` work while any executable `Planned` Mobile task exists.
+8. A user-named task or epic explicitly overrides this automatic sprint preference.
+
+Multiple independent tasks from the selected sprint may still be prepared in parallel, and real dependency chains may still use stacked Mobile PRs. This rule controls automatic **selection**, not integration order and not a global serialization requirement.
+
+For the default phone prompt, use **"Führe den nächsten geeigneten Cloud-Task aus `MOBILE.md` V3 aus"** rather than "einen geeigneten".
+
 - no manual `git remote` configuration;
 - no PAT/token/SSH/credential workaround;
 - exactly one managed open-PR publication attempt when the task prompt authorizes it;
