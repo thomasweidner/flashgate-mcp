@@ -337,6 +337,12 @@ This applies to:
 - cancellation rights;
 - authorization-sensitive caches.
 
+The [tool catalog fingerprint and cache contract](catalog-fingerprint-and-cache-contract.md)
+requires current policy evaluation before cache reuse, fail-closed invalidation
+across catalog-affecting context changes, and excludes sensitive context values
+from digest input. A fingerprint is an untrusted change identifier, never an
+authorization token.
+
 Resource control combines:
 
 - global limits;
