@@ -48,6 +48,11 @@ move_path
 - Separate caller authorization and effective service execution identity
 - No interpreter runtime for normal Windows/Linux operation
 
+The [local deterministic work principle](docs/local-deterministic-work.md)
+defines when work should remain inside the server, how clients avoid needless
+content retransmission, and which authorization and boundedness rules still
+apply.
+
 ## FlashGate Security Gate
 
 “Gate” means a server-enforced boundary: policies, capabilities, roots, limits, path and process validation, redaction, and audit events control access below the MCP adapter. Tool annotations and tool visibility are not authorization.
