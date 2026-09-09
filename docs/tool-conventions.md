@@ -103,6 +103,10 @@ The current `MCP_READ_ONLY` environment switch remains a pre-Version-1.0 compati
 
 Version 1.0 does not apply text-plus-`structuredContent` duplication indiscriminately to payload-heavy results.
 
+The normative cross-tool rules live in the
+[payload-class result contract](payload-result-contract.md). Tool-specific schemas must
+apply that contract rather than inventing another payload class or fallback order.
+
 | Class | Examples | Target representation |
 |---|---|---|
 | Small metadata | path status, operation status, counters | compact structured object; text compatibility parity allowed within budget |
