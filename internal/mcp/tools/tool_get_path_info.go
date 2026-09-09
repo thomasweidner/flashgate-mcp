@@ -32,7 +32,8 @@ func (t *GetPathInfoTool) InputSchema() any {
 	}
 }
 func (t *GetPathInfoTool) Definition() protocol.Tool {
-	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name())}
+	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()),
+		Annotations: readOnlyAnnotations}
 }
 func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
 	var arguments getPathInfoArguments

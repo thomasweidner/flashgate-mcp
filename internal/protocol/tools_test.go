@@ -30,6 +30,7 @@ func TestToolMarshal(t *testing.T) {
 			"required":             []string{"entries"},
 			"additionalProperties": false,
 		},
+		Annotations: ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true},
 	}
 
 	encoded, err := json.Marshal(tool)
@@ -60,6 +61,11 @@ func TestToolMarshal(t *testing.T) {
 
 	if _, ok := decoded["outputSchema"].(map[string]any); !ok {
 		t.Fatalf("expected outputSchema object, got %#v", decoded["outputSchema"])
+	}
+	annotations, ok := decoded["annotations"].(map[string]any)
+	if !ok || annotations["readOnlyHint"] != true || annotations["destructiveHint"] != false ||
+		annotations["idempotentHint"] != true || annotations["openWorldHint"] != false {
+		t.Fatalf("unexpected annotations: %#v", decoded["annotations"])
 	}
 
 	var roundTrip Tool

@@ -134,6 +134,16 @@ Where the negotiated MCP revision supports them, every tool declares accurate:
 
 Annotations are discovery metadata only. They never replace server-side authorization, path validation, execution-identity selection, or risk policy.
 
+The current filesystem catalog uses the following explicit values:
+
+| Tools | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+|---|---:|---:|---:|---:|
+| `list_directory`, `read_file`, `get_path_info` | `true` | `false` | `true` | `false` |
+| `create_directory` | `false` | `false` | `true` | `false` |
+| `write_file`, `delete_path`, `copy_path`, `move_path` | `false` | `true` | `true` | `false` |
+
+`destructiveHint` is conservative: a tool is destructive when any accepted invocation can overwrite, delete, or relocate existing data. `idempotentHint` describes additional side effects of repeating an identical request, not whether a retry returns the same success result. All current tools remain confined to the configured local root, so none interacts with an open-world external entity.
+
 ### Partial, batch, and field-bounded operations
 
 New tools prefer one bounded call over repeated scalar calls when this lowers total work and response size. Batch tools:

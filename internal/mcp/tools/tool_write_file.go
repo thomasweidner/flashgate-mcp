@@ -69,6 +69,7 @@ func (t *WriteFileTool) Definition() protocol.Tool {
 		Description:  t.Description(),
 		InputSchema:  t.InputSchema(),
 		OutputSchema: filesystemOutputSchema(t.Name()),
+		Annotations:  destructiveWriteAnnotations,
 	}
 }
 
