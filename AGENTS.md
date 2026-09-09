@@ -8,9 +8,10 @@ Before implementation, review, or Mobile task selection, read the current reposi
 
 1. `Governance/CLOUD-CODEX-GOVERNANCE.md`
 2. `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`
-3. `BACKLOG.md`
-4. `MOBILE.md` for Codex Cloud / Mobile work
-5. directly affected ADRs, security documents, testing guidance, and technical documentation
+3. `Governance/MOBILE-CLOUD-HANDOFF.md` for Codex Cloud / Mobile work
+4. `BACKLOG.md`
+5. `MOBILE.md` for Codex Cloud / Mobile work
+6. directly affected ADRs, security documents, testing guidance, and technical documentation
 
 Do not infer unavailable local files from memory.
 
@@ -32,7 +33,7 @@ For every material assignment:
 Continue independently through directly caused, in-scope corrections while the approved goal, authorization boundary, and remediation budget remain valid.
 
 - established validated artifacts: at most 6 material correction/revalidation cycles;
-- new or materially rebuilt artifacts: at most 12 cycles;
+- new or materially rebuilt artifact: at most 12 cycles;
 - validate parser/focused root cause first, then the smallest sufficient focused checks, then one consolidated final validation;
 - stop earlier on success, no progress, exhausted budget, ambiguous mutation state, or a mandatory decision/authorization boundary.
 
@@ -60,28 +61,44 @@ Force operations are prohibited unless a later explicit contract says otherwise.
 
 ## Codex Cloud / Mobile
 
-For Mobile work, `MOBILE.md` defines task eligibility, dependency stacking, and the managed-open-PR handoff.
+For Mobile work, `Governance/MOBILE-CLOUD-HANDOFF.md` defines the vacation reservation ledger and the manual Create-PR handoff. `MOBILE.md` defines task eligibility, dependency stacking, and Windows finalization.
 
 ### Automatic Mobile task selection
 
 When the user asks for the **next suitable** Mobile task without naming a BL task or epic, do not choose an arbitrary Cloud-suitable item from the full backlog.
 
-1. Read the current `Sprint sequence and status` table in `BACKLOG.md`.
-2. Inspect `Planned` sprints in ascending `SPR-xxx` order.
-3. Select from the earliest Planned sprint that contains at least one Mobile-eligible task that is executable now or stack-ready on exactly one valid Mobile predecessor.
-4. Inside that sprint prefer Cloud mode `A` before `B` before `C`, then no prerequisite before stack-ready, then lower effort, lower Windows residual, and lower expected branch/diff collision.
-5. Advance to the next Planned sprint only when every Mobile-eligible task in the earlier sprint is currently blocked by a real decision, unavailable evidence/capability, or uncombined prerequisites.
-6. Do not jump to a later Planned sprint merely because its task is smaller or more isolated.
-7. Do not auto-select `Later` work while any executable `Planned` Mobile task exists.
-8. A user-named task or epic explicitly overrides this automatic sprint preference.
+1. Read the open-PR Vacation Reservation Ledger from GitHub exactly as defined in `Governance/MOBILE-CLOUD-HANDOFF.md`.
+2. Exclude every task ID that the ledger marks reserved, including metadata-valid Mobile PRs and unambiguous provisional UI-generated PRs.
+3. Read the current `Sprint sequence and status` table in `BACKLOG.md`.
+4. Inspect `Planned` sprints in ascending `SPR-xxx` order.
+5. Select from the earliest Planned sprint that contains at least one unreserved Mobile-eligible task that is executable now or stack-ready on exactly one valid Mobile predecessor.
+6. Inside that sprint prefer Cloud mode `A` before `B` before `C`, then no prerequisite before stack-ready, then lower effort, lower Windows residual, and lower expected branch/diff collision.
+7. Advance to the next Planned sprint only when every unreserved Mobile-eligible task in the earlier sprint is currently blocked by a real decision, unavailable evidence/capability, or uncombined prerequisites.
+8. Do not jump to a later Planned sprint merely because its task is smaller or more isolated.
+9. Do not auto-select `Later` work while any executable unreserved `Planned` Mobile task exists.
+10. A user-named task or epic explicitly overrides this automatic sprint preference, but a user-named task that is already reserved must be reported rather than duplicated unless the user explicitly authorizes a competing candidate.
 
 Multiple independent tasks from the selected sprint may still be prepared in parallel, and real dependency chains may still use stacked Mobile PRs. This rule controls automatic **selection**, not integration order and not a global serialization requirement.
 
 For the default phone prompt, use **"Führe den nächsten geeigneten Cloud-Task aus `MOBILE.md` V3 aus"** rather than "einen geeigneten".
 
+### Manual PR handoff
+
+Codex Cloud is not required to create the real GitHub PR itself.
+
+After implementation, validation, and commit:
+
+- prepare the PR title/body metadata with the selected `BL-xxx` identity and the Mobile V3 markers;
+- report `CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR`;
+- provide `TaskID`, `ActualHeadBranch`, `HeadSha`, expected PR base, and prepared PR title;
+- instruct the user to use the Codex UI **Create PR** action;
+- do not require the PR number before the user performs that action.
+
+When the user replies that the PR was created, perform the read-only GitHub correlation defined in `Governance/MOBILE-CLOUD-HANDOFF.md`, primarily by exact `head.sha`. The PR number is discovered from GitHub after publication; it is not a prerequisite supplied by the user.
+
 - no manual `git remote` configuration;
 - no PAT/token/SSH/credential workaround;
-- exactly one managed open-PR publication attempt when the task prompt authorizes it;
+- no agent-driven GitHub write as a substitute for the UI Create-PR action;
 - no PR merge or close;
 - no branch deletion;
 - no tag or release;
