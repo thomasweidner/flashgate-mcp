@@ -101,6 +101,22 @@ func TestToolMarshalOmitsEmptyTitle(t *testing.T) {
 	}
 }
 
+func TestNewCallToolErrorResult(t *testing.T) {
+	t.Parallel()
+
+	result, err := NewCallToolErrorResult("not_found", "filesystem error: not found")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatal("expected isError=true")
+	}
+	want := `{"category":"not_found","message":"filesystem error: not found"}`
+	if string(result.StructuredContent) != want || len(result.Content) != 1 || result.Content[0].Text != want {
+		t.Fatalf("unexpected normalized tool error: %#v", result)
+	}
+}
+
 func normalizeJSONValue(t *testing.T, value any) any {
 	t.Helper()
 	raw, err := json.Marshal(value)

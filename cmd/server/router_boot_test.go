@@ -89,19 +89,16 @@ func TestCreateRouterRejectsWriteToolCallWhenReadOnly(t *testing.T) {
 	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(true))
 	mcpRouter := createRouter("test-server", "test-version", registry)
 
-	_, protocolErr := mcpRouter.Dispatch(
+	result, protocolErr := mcpRouter.Dispatch(
 		"tools/call",
 		handlers.Context{Context: context.Background()},
 		json.RawMessage(`{"name":"write_file","arguments":{"path":"out.txt","content":"blocked"}}`),
 	)
 
-	if protocolErr == nil {
-		t.Fatal("expected protocol error for disabled write tool")
+	if protocolErr != nil {
+		t.Fatalf("unexpected JSON-RPC error for disabled write tool: %+v", protocolErr)
 	}
-
-	if protocolErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected invalid params for disabled write tool, got: %+v", protocolErr)
-	}
+	assertRouterToolError(t, result, "unavailable_tool")
 }
 
 func TestCreateRouterRejectsUnknownMethod(t *testing.T) {
@@ -243,16 +240,18 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		json.RawMessage(`{"name":"read_file","arguments":{"path":"../outside.txt"}}`),
 		outsideArguments,
 	} {
-		_, protocolErr := mcpRouter.Dispatch(
+		result, protocolErr := mcpRouter.Dispatch(
 			"tools/call",
 			handlers.Context{Context: context.Background()},
 			raw,
 		)
-		if protocolErr == nil || protocolErr.Code != protocol.ErrInvalidParams {
-			t.Fatalf("expected generic invalid params for outside path %s, got %#v", raw, protocolErr)
+		if protocolErr != nil {
+			t.Fatalf("unexpected JSON-RPC error for outside path %s: %#v", raw, protocolErr)
 		}
-		if protocolErr != nil && strings.Contains(protocolErr.Message, root) {
-			t.Fatalf("protocol error leaked root: %q", protocolErr.Message)
+		assertRouterToolError(t, result, "invalid_path")
+		encoded, _ := json.Marshal(result)
+		if strings.Contains(string(encoded), root) {
+			t.Fatalf("tool error leaked root: %s", encoded)
 		}
 	}
 
@@ -264,17 +263,34 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, protocolErr := mcpRouter.Dispatch(
+		result, protocolErr := mcpRouter.Dispatch(
 			"tools/call",
 			handlers.Context{Context: context.Background()},
 			raw,
 		)
-		if protocolErr == nil || protocolErr.Code != protocol.ErrInvalidParams || protocolErr.Message != "invalid params" {
-			t.Fatalf("expected generic invalid params for %q, got %#v", blockedName, protocolErr)
+		if protocolErr != nil {
+			t.Fatalf("unexpected JSON-RPC error for %q: %#v", blockedName, protocolErr)
 		}
+		assertRouterToolError(t, result, "unavailable_tool")
 	}
 
 	if _, err := os.Stat(filepath.Join(root, "blocked.txt")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("expected no read-only artifact, got %v", err)
+	}
+}
+
+func assertRouterToolError(t *testing.T, result any, category string) {
+	t.Helper()
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := mcptest.DecodeCallToolResult(encoded)
+	if err != nil || !decoded.IsError {
+		t.Fatalf("invalid tool error result: %v; JSON=%s", err, encoded)
+	}
+	payload, ok := decoded.StructuredContent.(map[string]any)
+	if !ok || payload["category"] != category {
+		t.Fatalf("tool error category=%#v, want %q", decoded.StructuredContent, category)
 	}
 }

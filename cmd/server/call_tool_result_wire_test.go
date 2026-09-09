@@ -129,23 +129,29 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 		name     string
 		registry *tools.Registry
 		params   string
+		category string
 		message  string
 	}{
-		{"unknown tool", defaultRegistry, `{"name":"unknown_tool","arguments":{}}`, "invalid params"},
-		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "invalid params"},
-		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "invalid params"},
-		{"invalid arguments", defaultRegistry, `{"name":"get_path_info","arguments":{}}`, "invalid params"},
-		{"PathGuard traversal", defaultRegistry, `{"name":"read_file","arguments":{"path":"..\\outside.txt"}}`, "filesystem error: invalid path"},
+		{"unknown tool", defaultRegistry, `{"name":"unknown_tool","arguments":{}}`, "unavailable_tool", "tool unavailable"},
+		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "unavailable_tool", "tool unavailable"},
+		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "unavailable_tool", "tool unavailable"},
+		{"invalid arguments", defaultRegistry, `{"name":"get_path_info","arguments":{}}`, "invalid_arguments", "invalid params"},
+		{"PathGuard traversal", defaultRegistry, `{"name":"read_file","arguments":{"path":"..\\outside.txt"}}`, "invalid_path", "filesystem error: invalid path"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			response, raw := runCallToolWireRequest(t, tc.registry, tc.params)
-			if response.Error == nil || response.Error.Code != protocol.ErrInvalidParams || response.Error.Message != tc.message {
-				t.Fatalf("unexpected error response: %s", raw)
+			if response.Error != nil {
+				t.Fatalf("tool error must not use JSON-RPC error: %s", raw)
 			}
-			if len(response.Result) != 0 {
-				t.Fatalf("error response must not contain result: %s", raw)
+			decoded, err := mcptest.DecodeCallToolResult(response.Result)
+			if err != nil || !decoded.IsError {
+				t.Fatalf("invalid tool error result: %v; response=%s", err, raw)
+			}
+			payload, ok := decoded.StructuredContent.(map[string]any)
+			if !ok || payload["category"] != tc.category || payload["message"] != tc.message {
+				t.Fatalf("unexpected tool error payload: %#v", decoded.StructuredContent)
 			}
 			if strings.Contains(raw, root) {
 				t.Fatalf("response leaked root path: %s", raw)

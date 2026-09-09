@@ -16,7 +16,9 @@ The current server:
 - writes protocol messages only to stdout;
 - returns successful filesystem results as one compact JSON text block plus the same object in `structuredContent`;
 - exposes successful `outputSchema` definitions for the current eight tools;
-- retains safe generic JSON-RPC errors for current tool failures.
+- returns tool-invocation failures as normalized `CallToolResult` objects with
+  `isError: true`, matching text and structured JSON error payloads, and no
+  JSON-RPC `error` member.
 
 `flashgate-mcp --version` and `flashgate-mcp --version --verbose` are pre-protocol CLI exits. They print build identity and terminate before reading MCP input. During normal server operation, stdout remains reserved exclusively for JSON-RPC protocol messages.
 
@@ -102,6 +104,25 @@ The exact URI and MCP resource mapping are finalized by the relevant contract ta
 ## Errors
 
 The protocol adapter maps domain errors without exposing host paths, raw OS errors, command lines, credentials, or internal identifiers. Version 1.0 defines stable machine-readable tool-error data while preserving negotiated-client compatibility.
+
+For a syntactically valid `tools/call`, an unavailable tool or failed tool
+invocation returns this stable shape in both the text content and
+`structuredContent`:
+
+```json
+{
+  "category": "not_found",
+  "message": "filesystem error: not found"
+}
+```
+
+The surrounding `CallToolResult` sets `isError` to `true`. Categories currently
+include `invalid_arguments`, `unavailable_tool`, `not_found`, `already_exists`,
+`access_denied`, `invalid_path`, `unsupported_path_type`,
+`unsupported_operation`, `limit_exceeded`, `io_error`, and `internal_error`.
+Messages are stable and safe but intended for people; clients branch on
+`category`. Malformed JSON-RPC envelopes and malformed `tools/call` parameters
+remain JSON-RPC protocol errors because no valid tool invocation exists.
 
 Errors distinguish at least:
 

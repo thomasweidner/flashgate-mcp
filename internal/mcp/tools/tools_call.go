@@ -36,7 +36,7 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 
 	tool, ok := h.registry.Get(params.Name)
 	if !ok {
-		return nil, invalidParamsError()
+		return wrapToolError(categoryUnavailableTool, "tool unavailable")
 	}
 
 	execCtx := ctx.Context
@@ -46,15 +46,39 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 
 	result, rpcErr := tool.Execute(execCtx, params.Arguments)
 	if rpcErr != nil {
-		return nil, rpcErr
+		return wrapProtocolToolError(rpcErr)
 	}
 
 	wrapped, rpcErr := wrapSuccessfulToolResult(result)
 	if rpcErr != nil {
-		return nil, rpcErr
+		return wrapProtocolToolError(rpcErr)
 	}
 
 	return wrapped, nil
+}
+
+func wrapProtocolToolError(rpcErr *protocol.Error) (any, *protocol.Error) {
+	category := categoryInternalError
+	if rpcErr.Code == protocol.ErrInvalidParams {
+		category = categoryInvalidArguments
+	}
+	if len(rpcErr.Data) != 0 {
+		var data struct {
+			Category filesystemErrorCategory `json:"category"`
+		}
+		if json.Unmarshal(rpcErr.Data, &data) == nil && data.Category != "" {
+			category = data.Category
+		}
+	}
+	return wrapToolError(category, rpcErr.Message)
+}
+
+func wrapToolError(category filesystemErrorCategory, message string) (any, *protocol.Error) {
+	result, err := protocol.NewCallToolErrorResult(string(category), message)
+	if err != nil {
+		return nil, internalToolResultError()
+	}
+	return result, nil
 }
 
 func wrapSuccessfulToolResult(result any) (protocol.CallToolResult, *protocol.Error) {
@@ -80,6 +104,7 @@ func internalToolResultError() *protocol.Error {
 	return &protocol.Error{
 		Code:    protocol.ErrInternalError,
 		Message: "internal error",
+		Data:    toolErrorData(categoryInternalError),
 	}
 }
 

@@ -67,15 +67,25 @@ Client activation must set `MCP_READ_ONLY=true` explicitly; the missing-variable
 
 ## Errors
 
-The adapter retains the existing JSON-RPC architecture:
+Malformed JSON-RPC requests and malformed outer `tools/call` parameters retain
+the JSON-RPC architecture:
 
 - parse error `-32700`;
 - invalid request `-32600`;
 - method not found `-32601`;
-- expected argument, path, policy, and filesystem contract failures `-32602`;
-- unexpected I/O failures `-32603`.
+- malformed outer `tools/call` parameters `-32602`;
+- unexpected adapter failures `-32603`.
 
-Internal classification uses `not_found`, `already_exists`, `access_denied`, `invalid_path`, `unsupported_path_type`, `unsupported_operation`, `limit_exceeded`, and `io_error`. Messages are safe and generic. Stable wire-level error objects are deferred.
+Once a valid tool name has been selected, invocation failures are MCP
+`CallToolResult` values rather than JSON-RPC errors. They set `isError: true`
+and repeat the same compact `{category,message}` object in their single text
+content block and `structuredContent`. The stable categories are
+`invalid_arguments`, `unavailable_tool`, `not_found`, `already_exists`,
+`access_denied`, `invalid_path`, `unsupported_path_type`,
+`unsupported_operation`, `limit_exceeded`, `io_error`, and `internal_error`.
+Unavailable, profile-gated, and removed tool names share the generic
+`unavailable_tool` result. Messages remain safe and generic; clients use the
+category rather than parsing message text.
 
 ## Compatibility
 
