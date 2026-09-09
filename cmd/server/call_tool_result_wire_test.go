@@ -39,13 +39,15 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 	registry := createToolRegistry(filesystem, 1024*1024, toolCapabilities{filesystemWrite: true})
 
 	tests := []struct {
-		name       string
-		params     string
-		assertions func(*testing.T, map[string]any)
+		name             string
+		params           string
+		maxResponseBytes int
+		assertions       func(*testing.T, map[string]any)
 	}{
 		{
-			name:   "list_directory",
-			params: `{"name":"list_directory","arguments":{}}`,
+			name:             "list_directory",
+			params:           `{"name":"list_directory","arguments":{}}`,
+			maxResponseBytes: 1024,
 			assertions: func(t *testing.T, value map[string]any) {
 				if _, ok := value["entries"].([]any); !ok {
 					t.Fatalf("expected entries array, got %#v", value)
@@ -53,8 +55,9 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
-			name:   "read_file content collision",
-			params: `{"name":"read_file","arguments":{"path":"read file.txt"}}`,
+			name:             "read_file content collision",
+			params:           `{"name":"read_file","arguments":{"path":"read file.txt"}}`,
+			maxResponseBytes: 512,
 			assertions: func(t *testing.T, value map[string]any) {
 				if value["content"] != readContent || value["size"] != json.Number("50") {
 					t.Fatalf("unexpected read result: %#v", value)
@@ -62,8 +65,9 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
-			name:   "get_path_info existing",
-			params: `{"name":"get_path_info","arguments":{"path":"read file.txt"}}`,
+			name:             "get_path_info existing",
+			params:           `{"name":"get_path_info","arguments":{"path":"read file.txt"}}`,
+			maxResponseBytes: 512,
 			assertions: func(t *testing.T, value map[string]any) {
 				if value["exists"] != true || value["name"] != "read file.txt" {
 					t.Fatalf("unexpected existing result: %#v", value)
@@ -71,8 +75,9 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
-			name:   "get_path_info missing",
-			params: `{"name":"get_path_info","arguments":{"path":"does-not-exist.txt"}}`,
+			name:             "get_path_info missing",
+			params:           `{"name":"get_path_info","arguments":{"path":"does-not-exist.txt"}}`,
+			maxResponseBytes: 512,
 			assertions: func(t *testing.T, value map[string]any) {
 				if value["path"] != "does-not-exist.txt" || value["exists"] != false || len(value) != 2 {
 					t.Fatalf("unexpected missing result: %#v", value)
@@ -80,8 +85,9 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
-			name:   "move_path default profile",
-			params: `{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`,
+			name:             "move_path default profile",
+			params:           `{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`,
+			maxResponseBytes: 512,
 			assertions: func(t *testing.T, value map[string]any) {
 				if value["moved"] != true || value["source"] != "old.txt" || value["target"] != "new.txt" {
 					t.Fatalf("unexpected move result: %#v", value)
@@ -93,6 +99,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			response, raw := runCallToolWireRequest(t, registry, tc.params)
+			assertResponseSize(t, raw, tc.maxResponseBytes)
 			if response.Error != nil {
 				t.Fatalf("unexpected error: %#v", response.Error)
 			}
@@ -126,21 +133,23 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 	readOnlyRegistry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true))
 
 	tests := []struct {
-		name     string
-		registry *tools.Registry
-		params   string
-		message  string
+		name             string
+		registry         *tools.Registry
+		params           string
+		message          string
+		maxResponseBytes int
 	}{
-		{"unknown tool", defaultRegistry, `{"name":"unknown_tool","arguments":{}}`, "invalid params"},
-		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "invalid params"},
-		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "invalid params"},
-		{"invalid arguments", defaultRegistry, `{"name":"get_path_info","arguments":{}}`, "invalid params"},
-		{"PathGuard traversal", defaultRegistry, `{"name":"read_file","arguments":{"path":"..\\outside.txt"}}`, "filesystem error: invalid path"},
+		{"unknown tool", defaultRegistry, `{"name":"unknown_tool","arguments":{}}`, "invalid params", 160},
+		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "invalid params", 160},
+		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "invalid params", 160},
+		{"invalid arguments", defaultRegistry, `{"name":"get_path_info","arguments":{}}`, "invalid params", 160},
+		{"PathGuard traversal", defaultRegistry, `{"name":"read_file","arguments":{"path":"..\\outside.txt"}}`, "filesystem error: invalid path", 192},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			response, raw := runCallToolWireRequest(t, tc.registry, tc.params)
+			assertResponseSize(t, raw, tc.maxResponseBytes)
 			if response.Error == nil || response.Error.Code != protocol.ErrInvalidParams || response.Error.Message != tc.message {
 				t.Fatalf("unexpected error response: %s", raw)
 			}
@@ -151,6 +160,16 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 				t.Fatalf("response leaked root path: %s", raw)
 			}
 		})
+	}
+}
+
+func assertResponseSize(t *testing.T, response string, maxBytes int) {
+	t.Helper()
+	if maxBytes <= 0 {
+		t.Fatal("response-size regression test requires a positive byte budget")
+	}
+	if size := len([]byte(response)); size > maxBytes {
+		t.Fatalf("response size=%d bytes exceeds regression budget=%d bytes; response=%s", size, maxBytes, response)
 	}
 }
 
