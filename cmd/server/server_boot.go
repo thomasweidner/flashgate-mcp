@@ -29,7 +29,7 @@ type bootstrapDependencies struct {
 	loadConfig      func() (config.Config, error)
 	newFilesystem   func(config.Config) (fs.FileSystem, error)
 	newToolRegistry func(fs.FileSystem, int64, toolCapabilities) *tools.Registry
-	newRouter       func(string, string, *tools.Registry) *router.Router
+	newRouter       func(string, string, *tools.Registry, toolCapabilities) *router.Router
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
 }
 
@@ -79,15 +79,16 @@ func runWithIO(
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
 
+	capabilities := capabilitiesFromReadOnly(cfg.Filesystem().ReadOnly())
 	toolRegistry := dependencies.newToolRegistry(
 		filesystem,
 		cfg.Filesystem().MaxFileSize(),
-		capabilitiesFromReadOnly(cfg.Filesystem().ReadOnly()),
+		capabilities,
 	)
 	if toolRegistry == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
-	mcpRouter := dependencies.newRouter(cfg.Server().Name(), cfg.Server().Version(), toolRegistry)
+	mcpRouter := dependencies.newRouter(cfg.Server().Name(), cfg.Server().Version(), toolRegistry, capabilities)
 	if mcpRouter == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
