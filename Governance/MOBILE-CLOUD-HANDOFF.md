@@ -12,7 +12,9 @@ Codex Cloud task memory is advisory only. Do not use memory as the authority for
 
 Do not create `MOBILE-STATE.md` or another repository file merely to record vacation reservations.
 
-A BL task is reserved for the vacation workflow when an open GitHub PR can be associated with that task according to section 3. Reserved tasks are excluded from later automatic Mobile selection until Windows finalization or an explicit user decision changes that state.
+A BL task is reserved for the vacation workflow when an open GitHub PR can be associated unambiguously with that task according to section 3. Reservation is established from PR/task identity and does **not** depend on commit-SHA or tree-SHA equality. Reserved tasks are excluded from later automatic Mobile selection until Windows finalization or an explicit user decision changes that state.
+
+Content identity is a separate post-publication check. A failed or unavailable content-identity check may block acceptance of the PR as the exact Cloud candidate, but it must never unreserve the BL task or cause automatic duplicate implementation.
 
 ## 2. Read-only GitHub access
 
@@ -60,7 +62,7 @@ If the PR body contains an exact standalone marker:
 Mobile-Task: BL-xxx
 ```
 
-that BL ID is reserved.
+that BL ID is reserved immediately.
 
 If the title and body disagree on the selected task identity, return:
 
@@ -98,6 +100,22 @@ Status=MOBILE_PR_IDENTITY_AMBIGUOUS
 
 Treat the ambiguous PR as requiring review and do not automatically select any BL ID that could plausibly be its selected task.
 
+### 3.3 Reservation is independent of commit identity
+
+Commit SHA, branch name, tree SHA, commit message, author, committer, and timestamp are **not reservation keys**.
+
+Once an open PR resolves unambiguously to `BL-xxx`, record:
+
+```text
+ReservationState=VACATION_CANDIDATE_ALREADY_PREPARED
+```
+
+and exclude that BL ID from later automatic Mobile selection even when:
+
+- the GitHub head commit SHA differs from the Cloud commit SHA;
+- the GitHub branch name differs from the preferred or Cloud-reported name;
+- the tree/content identity check is pending, unavailable, or fails.
+
 ## 4. Automatic task selection
 
 Before selecting the next Mobile task:
@@ -124,7 +142,9 @@ Codex Cloud is responsible for:
 - implementation;
 - Cloud-available validation;
 - a task-pure commit;
-- preserving the actual head branch and head SHA;
+- preserving the actual Cloud branch for diagnostics;
+- recording the Cloud commit SHA for diagnostics;
+- recording the Cloud tree SHA for later content-identity validation;
 - preparing PR metadata for the Codex UI.
 
 Before asking the user to create the PR, prepare:
@@ -142,6 +162,12 @@ Windows-Finalization: REQUIRED
 Merge-Allowed: NO
 ```
 
+Obtain the committed Cloud tree identity with:
+
+```text
+git rev-parse 'HEAD^{tree}'
+```
+
 If the available Codex PR-metadata preparation facility has its own naming behavior, still include the BL ID explicitly in the prepared title and selected-task description.
 
 At this point return:
@@ -149,8 +175,9 @@ At this point return:
 ```text
 Status              : CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR
 TaskID              : BL-xxx
-ActualHeadBranch     : <branch>
-HeadSha              : <full SHA>
+ActualHeadBranch     : <cloud-branch>
+CloudCommitSha       : <full Cloud commit SHA>
+CloudTreeSha         : <full Cloud tree SHA>
 ExpectedPRBase       : <main-or-parent-mobile-branch>
 ExpectedPRTitle      : [MOBILE][BL-xxx] <subject>
 WindowsFinalization  : REQUIRED
@@ -167,57 +194,121 @@ The user does not need to copy the GitHub PR number back into the Codex task.
 
 After the user replies that the PR was created, enumerate the open GitHub PRs again through section 2.
 
-Find the publication primarily by:
+### 6.1 First establish reservation by BL identity
+
+Find open PRs whose selected task resolves to the current `TaskID` through section 3.
+
+Exactly one open PR resolves to the expected `TaskID`:
 
 ```text
-pr.head.sha == HeadSha
+ReservationState=VACATION_CANDIDATE_ALREADY_PREPARED
 ```
 
-Secondary consistency checks:
+The task is now reserved regardless of commit-SHA equality. Do not implement this BL again automatically.
 
-```text
-pr.head.ref == ActualHeadBranch
-pr.base.ref == ExpectedPRBase
-```
-
-The exact head SHA is the primary correlation key because the PR number does not exist until after the manual UI publication.
-
-### Correlation outcomes
-
-Exactly one open PR with the expected head SHA:
-
-```text
-GitHubReadback=PASS
-```
-
-No matching open PR:
+No open PR resolves to the expected task:
 
 ```text
 Status=MANUAL_PR_CREATED_PENDING_GITHUB_VISIBILITY
 ```
 
-Do not claim durable completion and do not create another implementation.
+Do not claim durable completion and do not create another implementation of the same BL. The current task remains locally reserved until the user explicitly decides otherwise.
 
-More than one matching PR or contradictory base/head identity:
+More than one open PR resolves to the same task, or task identity is contradictory:
 
 ```text
 Status=MOBILE_PR_CORRELATION_AMBIGUOUS
 ```
 
-Stop for user review.
+Treat the BL as reserved and stop for review. Do not select it again automatically.
+
+### 6.2 Then validate content identity
+
+For the single correlated PR, record:
+
+```text
+GitHubHeadSha = pr.head.sha
+```
+
+Fetch the GitHub head commit read-only and record its Git tree:
+
+```text
+GET https://api.github.com/repos/thomasweidner/flashgate-mcp/git/commits/<GitHubHeadSha>
+GitHubTreeSha = response.tree.sha
+```
+
+Compare:
+
+```text
+CloudTreeSha == GitHubTreeSha
+```
+
+This is the authoritative content-identity check for the manual UI handoff.
+
+The commit SHA itself is diagnostic only. Git commit IDs may differ when publication rematerializes the same tree with different commit metadata.
+
+### 6.3 Content-identity outcomes
+
+Tree SHA matches:
+
+```text
+ContentIdentity=PASS
+CommitShaRematerialized=<CloudCommitSha != GitHubHeadSha>
+GitHubReadback=PASS
+```
+
+A different `GitHubHeadSha` is accepted when the tree matches.
+
+Tree SHA differs:
+
+```text
+Status=MOBILE_PR_CONTENT_MISMATCH
+ContentIdentity=FAIL
+ReservationState=VACATION_CANDIDATE_ALREADY_PREPARED
+```
+
+Stop content acceptance and report both tree SHAs. **Do not unreserve or reimplement the BL automatically.**
+
+Cloud tree SHA or GitHub tree SHA cannot be obtained:
+
+```text
+Status=MOBILE_PR_RESERVED_CONTENT_IDENTITY_UNVERIFIED
+ContentIdentity=NOT_AVAILABLE
+ReservationState=VACATION_CANDIDATE_ALREADY_PREPARED
+```
+
+Keep the BL reserved. Do not substitute commit-SHA equality as a hard gate.
+
+### 6.4 Base and branch checks
+
+The expected PR base remains a hard topology check:
+
+```text
+pr.base.ref == ExpectedPRBase
+```
+
+For a stacked candidate, the direct predecessor branch must match the expected Mobile predecessor.
+
+`pr.head.ref == ActualHeadBranch` is diagnostic only. A UI-generated or rematerialized branch name is acceptable when task identity, expected base, and content identity are valid.
 
 ## 7. Post-publication validation
 
-After correlation, read the discovered PR number, URL, state, base, head ref, head SHA, title, and body from GitHub.
+After correlation, read the discovered PR number, URL, state, base, head ref, head SHA, head tree SHA, title, and body from GitHub.
 
-A durable vacation reservation requires:
+A fully accepted durable vacation candidate requires:
 
 - repository `thomasweidner/flashgate-mcp`;
 - PR state `OPEN`;
-- exact expected `head.sha`;
+- selected BL task resolvable through section 3;
 - expected base or direct stacked predecessor;
 - task-pure PR scope;
-- selected BL task resolvable through section 3.
+- `CloudTreeSha == GitHubTreeSha`.
+
+The following do **not** invalidate an otherwise accepted candidate:
+
+- `CloudCommitSha != GitHubHeadSha` when tree SHA matches;
+- a generated GitHub head branch name different from the preferred Cloud branch name;
+- UI-generated title/body formatting when section 3 still resolves the BL unambiguously.
 
 Metadata may be:
 
@@ -235,16 +326,22 @@ when the UI altered formatting but the selected BL task remains unambiguous.
 
 Both states reserve the task and prevent duplicate vacation work.
 
-Return:
+On full acceptance return:
 
 ```text
 Status                    : CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN
 TaskID                    : BL-xxx
+ReservationState          : VACATION_CANDIDATE_ALREADY_PREPARED
 PullRequest               : #<number>
 PRUrl                      : <GitHub URL>
 PRMetadataState           : CANONICAL | PROVISIONAL_UI_GENERATED
 ActualHeadBranch          : <GitHub head ref>
-HeadSha                   : <GitHub head SHA>
+CloudCommitSha            : <Cloud commit SHA>
+GitHubHeadSha             : <GitHub commit SHA>
+CommitShaRematerialized   : true | false
+CloudTreeSha              : <Cloud tree SHA>
+GitHubTreeSha             : <GitHub tree SHA>
+ContentIdentity           : PASS
 GitHubReadback            : PASS
 WindowsFinalization       : REQUIRED
 NextAction                : Leave PR open; select a different unreserved Mobile task
