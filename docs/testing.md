@@ -811,6 +811,8 @@ Unit tests are required for:
 - configuration loading
 - path validation
 - filesystem operations
+- the operation registry's atomic lifecycle, duplicate-ID rejection, domain
+  ownership isolation, and concurrent independent register/replace/remove paths
 - MCP protocol routing
 - tool execution
 
