@@ -31,7 +31,8 @@ func (t *CreateDirectoryTool) InputSchema() any {
 	}
 }
 func (t *CreateDirectoryTool) Definition() protocol.Tool {
-	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name())}
+	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()),
+		Annotations: nonDestructiveWriteAnnotations}
 }
 func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
 	var arguments createDirectoryArguments
