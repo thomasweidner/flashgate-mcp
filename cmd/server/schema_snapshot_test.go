@@ -1,4 +1,4 @@
-package tools
+package main
 
 import (
 	"bytes"
@@ -42,12 +42,8 @@ func TestRuntimeToolSchemasMatchSnapshot(t *testing.T) {
 }
 
 func currentToolSchemaSnapshot() toolSchemaSnapshot {
-	fake := newFakeFileSystem()
-	runtimeTools := []Tool{
-		NewListDirectoryTool(fake), NewReadFileTool(fake, 1024), NewGetPathInfoTool(fake),
-		NewWriteFileTool(fake), NewCreateDirectoryTool(fake), NewDeletePathTool(fake),
-		NewCopyPathTool(fake), NewMovePathTool(fake),
-	}
+	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	runtimeTools := registry.List()
 
 	snapshot := toolSchemaSnapshot{
 		SchemaVersion:   toolSchemaSnapshotVersion,

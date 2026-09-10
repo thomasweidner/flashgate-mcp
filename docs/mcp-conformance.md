@@ -37,7 +37,7 @@ unpinned `npx` invocation is not an acceptable release gate.
 
 ## Deterministic schema snapshot
 
-`internal/mcp/tools/testdata/tool-schemas.json` is the committed snapshot of
+`cmd/server/testdata/tool-schemas.json` is the committed snapshot of
 every runtime filesystem tool's complete `inputSchema` and `outputSchema`. It
 also binds the runtime MCP protocol revision and preserves runtime tool order.
 
