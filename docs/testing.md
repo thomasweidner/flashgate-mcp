@@ -941,7 +941,9 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 - payload-class selection for metadata, structured pages, heavy text, media/binary, and large results;
 - heavy payload appears only once across MCP result fields;
-- wire-amplification and useful-byte budgets;
+- deterministic useful-byte, wire-amplification, approximate-token-per-useful-byte,
+  and serialization-copy budgets for the existing result fixtures; metadata-only
+  fixtures use absolute byte budgets and do not manufacture ratios from zero useful bytes;
 - bounded base64 thresholds;
 - opaque resource handles contain no host path and enforce owner/TTL/service-generation checks;
 - fallback behavior for clients without resource-link support;
