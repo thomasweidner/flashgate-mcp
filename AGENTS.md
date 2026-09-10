@@ -90,11 +90,21 @@ After implementation, validation, and commit:
 
 - prepare the PR title/body metadata with the selected `BL-xxx` identity and the Mobile V3 markers;
 - report `CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR`;
-- provide `TaskID`, `ActualHeadBranch`, `HeadSha`, expected PR base, and prepared PR title;
+- provide `TaskID`, `ActualHeadBranch`, `CloudCommitSha`, `CloudTreeSha`, expected PR base, and prepared PR title;
+- obtain `CloudTreeSha` from the committed Cloud worktree, for example with `git rev-parse 'HEAD^{tree}'`;
 - instruct the user to use the Codex UI **Create PR** action;
 - do not require the PR number before the user performs that action.
 
-When the user replies that the PR was created, perform the read-only GitHub correlation defined in `Governance/MOBILE-CLOUD-HANDOFF.md`, primarily by exact `head.sha`. The PR number is discovered from GitHub after publication; it is not a prerequisite supplied by the user.
+When the user replies that the PR was created, perform the read-only GitHub correlation defined in `Governance/MOBILE-CLOUD-HANDOFF.md`.
+
+- First resolve exactly one open PR to the selected `TaskID` using its Mobile marker or unambiguous BL identity. That immediately reserves the BL task for the vacation workflow.
+- Do **not** require the GitHub PR head commit SHA to equal `CloudCommitSha`; the UI publication may rematerialize an equivalent commit.
+- Then fetch the GitHub head commit and compare its `tree.sha` with `CloudTreeSha` to validate content identity.
+- A matching tree with a different commit SHA is accepted with `CommitShaRematerialized=true`.
+- A tree mismatch or unavailable tree proof blocks content acceptance but does **not** remove the reservation and must never cause the same BL task to be selected again automatically.
+- Branch-name differences are diagnostic unless they create ambiguous task identity or an invalid stacked base.
+
+The PR number is discovered from GitHub after publication; it is not a prerequisite supplied by the user.
 
 - no manual `git remote` configuration;
 - no PAT/token/SSH/credential workaround;
