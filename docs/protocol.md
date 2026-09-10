@@ -85,6 +85,11 @@ Version 1.0 defines representation by payload class instead of applying one enve
 - binary/media payload uses bounded inline representation or an opaque result/resource handle;
 - long-running work returns an operation/job handle and bounded status/result pages.
 
+The normative classification, single-transmission, fallback, authorization, lifetime,
+and useful-byte rules are defined in the
+[payload-class result contract](payload-result-contract.md). This is a Version 1.0
+target contract; it does not silently change the current eight-tool wire format.
+
 All handles are opaque, random, expiring, and bound to principal, root, profile, capability set, execution backend, service instance, and operation ownership. Host absolute paths are never encoded into public URIs.
 
 ## Large-result resources
