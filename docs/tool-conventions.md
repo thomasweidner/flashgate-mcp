@@ -17,6 +17,12 @@ move_path
 
 The registry determines deterministic exposure order. `tools/list` uses each implementation's single `Definition()` value for name, title, description, input schema, and output schema. MCP names remain in the adapter layer; the filesystem core keeps domain-oriented Go names such as `List`, `Stat`, and `Mkdir`.
 
+The Version 1.0 target for canonical ordering, fingerprint inputs,
+invalidation, and cache/TTL semantics is defined by the
+[tool catalog fingerprint and cache contract](catalog-fingerprint-and-cache-contract.md).
+Catalog metadata is discovery and cache-validation data, never authorization;
+every invocation remains subject to current server-side policy checks.
+
 ## Arguments
 
 Every tool accepts exactly one JSON object. Runtime decoding uses `json.Decoder`, rejects unknown fields and explicit `null` field values, and requires EOF after the first object. Schemas declare `additionalProperties:false`.
