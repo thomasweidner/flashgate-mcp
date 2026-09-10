@@ -327,6 +327,8 @@ Operations/jobs use opaque non-guessable handles. All stateful objects are bound
 principal + profile + root + execution backend + service generation + expiry
 ```
 
+Operation execution defaults to bounded, cancellable in-process work. The shared execution-unit selector requires a subprocess for an external executable, hard resource or crash isolation, unreliable in-process cancellation, a different execution identity, or a platform-only external mechanism. Its result records why isolation is required but grants no permission: domain validation and all executable, capability, identity, platform, quota, deadline, and cleanup controls are independent prerequisites.
+
 This applies to:
 
 - operation/job handles;
