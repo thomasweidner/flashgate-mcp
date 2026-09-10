@@ -201,6 +201,13 @@ Owns only explicitly released OS/architecture/resource facts, scoped disk use, f
 
 Owns generic queued/running/completed/failed/cancelled/timed-out lifecycle, deadlines, cancellation, progress, bounded result storage, TTL, cleanup, and leak protection.
 
+The transport-neutral status model uses the stable values `queued`, `running`,
+`completed`, `failed`, `cancelled`, and `timed_out`. New work starts queued and
+may begin running or terminate before it starts; running work may enter any
+terminal state. Terminal states are immutable, repeated states are not
+transitions, and unknown values fail closed. MCP Task-state mapping remains an
+adapter concern and does not change this internal lifecycle.
+
 Operations/jobs do not own filesystem, search, process, execution, or system semantics.
 
 ### Cross-cutting components
