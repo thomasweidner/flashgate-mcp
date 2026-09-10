@@ -898,13 +898,24 @@ Future protocol or extension support still requires version-negotiation, extensi
 
 ### Benchmarks
 
-`SPR-047` benchmarks performance-sensitive operations including:
+`SPR-047` currently benchmarks:
 
-- directory listing
-- file reading
-- file copying
-- tool-result wrapping and serialized payload forms
-- search
+- process startup and MCP initialization
+- `tools/list` for the read-only and default profiles
+- existing and missing `get_path_info` calls
+- small and 64-KiB `read_file` calls, including repeated reads
+- small and 500-entry `list_directory` calls
+- repeated path-info calls
+- tool-result wrapping, handler processing, serialized payload forms, and
+  allocations for the path-info, directory-listing, and file-read fixtures
+
+The executable reference-workflow inventory is the ten-entry catalog in
+`benchmarks/workflows.json`; the in-process fixture inventory is maintained in
+`internal/mcp/tools/tools_call_benchmark_test.go`. File-copy and search
+benchmarks are planned Version 1.0 expansion work. They are not part of the
+current executable benchmark suite or the versioned baseline artifacts, and
+documentation must not present them as measured until their workflows and
+regression tests exist.
 
 Benchmark command:
 
