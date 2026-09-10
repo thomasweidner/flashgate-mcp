@@ -886,15 +886,15 @@ GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative 
 
 Limit and redaction behavior is primarily covered by Go unit tests. Additional limit-negative smoke coverage can be added later if it can be done without broad smoke-script refactoring.
 
-Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
+Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. `TestToolSchemasConformToJSONSchema202012` validates every runtime and catalog input/output schema, requires the JSON Schema 2020-12 dialect declaration, and fails closed on unknown or malformed keywords. Negative fixtures cover missing/wrong dialects, unknown keywords and types, invalid numeric constraints, invalid `required`, and invalid composition.
 
-The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
+The `tools/list` JSON-RPC wire test checks schema exposure for both profiles, requires the JSON Schema 2020-12 declaration on every input and output schema, and records deterministic UTF-8 JSONL sizes. The current declared-dialect responses are 2476 bytes for read-only and 6569 bytes for default; no general catalog budget is enforced here.
 
 ### MCP Compatibility Testing
 
 The implemented protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, legacy unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the unchanged error contract. The decoder intentionally validates the exact FlashGate-emitted subset (one text block, required object `structuredContent`, optional boolean `isError`, no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
 
-Future protocol or extension support still requires version-negotiation, extension-negotiation, client fallback, and compatibility tests before it is advertised. Complete JSON Schema 2020-12 validation and official MCP conformance tooling remain planned.
+Future protocol or extension support still requires version-negotiation, extension-negotiation, client fallback, and compatibility tests before it is advertised. JSON Schema 2020-12 validation is a permanent tool-contract gate; official MCP conformance tooling remains a separate compatibility concern.
 
 ### Benchmarks
 

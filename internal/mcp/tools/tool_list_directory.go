@@ -31,7 +31,8 @@ func (t *ListDirectoryTool) Description() string {
 }
 func (t *ListDirectoryTool) InputSchema() any {
 	return map[string]any{
-		"type": "object",
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type":    "object",
 		"properties": map[string]any{
 			"path": map[string]any{
 				"type":        "string",
