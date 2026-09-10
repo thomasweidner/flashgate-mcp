@@ -97,7 +97,11 @@ flashgate://operation/<opaque-id>/result
 flashgate://process/<opaque-id>/stdout
 ```
 
-The exact URI and MCP resource mapping are finalized by the relevant contract task. Reading a resource repeats authorization and state-binding checks. Inline thresholds, TTL, paging, deletion, and client fallback are explicit. Large binary data is not Base64-embedded by default.
+The transport-neutral descriptor and fallback rules are defined in the
+[large-result and resource-handoff contract](result-resource-handoff.md).
+Reading a resource repeats authorization and state-binding checks. MCP endpoint
+registration and negotiated resource-link wiring remain separate adapter work.
+Large binary data is not Base64-embedded by default.
 
 ## Errors
 
