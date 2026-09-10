@@ -61,7 +61,7 @@ Force operations are prohibited unless a later explicit contract says otherwise.
 
 ## Codex Cloud / Mobile
 
-For Mobile work, `Governance/MOBILE-CLOUD-HANDOFF.md` defines the vacation reservation ledger and the manual Create-PR handoff. `MOBILE.md` defines task eligibility, dependency stacking, and Windows finalization.
+For Mobile work, `Governance/MOBILE-CLOUD-HANDOFF.md` defines the vacation reservation ledger, dependency execution states, stack restart, and the manual Create-PR handoff. `MOBILE.md` defines task eligibility, dependency hints, and Windows finalization.
 
 ### Automatic Mobile task selection
 
@@ -71,14 +71,15 @@ When the user asks for the **next suitable** Mobile task without naming a BL tas
 2. Exclude every task ID that the ledger marks reserved, including metadata-valid Mobile PRs and unambiguous provisional UI-generated PRs.
 3. Read the current `Sprint sequence and status` table in `BACKLOG.md`.
 4. Inspect `Planned` sprints in ascending `SPR-xxx` order.
-5. Select from the earliest Planned sprint that contains at least one unreserved Mobile-eligible task that is executable now or stack-ready on exactly one valid Mobile predecessor.
-6. Inside that sprint prefer Cloud mode `A` before `B` before `C`, then no prerequisite before stack-ready, then lower effort, lower Windows residual, and lower expected branch/diff collision.
-7. Advance to the next Planned sprint only when every unreserved Mobile-eligible task in the earlier sprint is currently blocked by a real decision, unavailable evidence/capability, or uncombined prerequisites.
-8. Do not jump to a later Planned sprint merely because its task is smaller or more isolated.
-9. Do not auto-select `Later` work while any executable unreserved `Planned` Mobile task exists.
-10. A user-named task or epic explicitly overrides this automatic sprint preference, but a user-named task that is already reserved must be reported rather than duplicated unless the user explicitly authorizes a competing candidate.
+5. For each candidate, classify dependency execution from the **current checkout** as `INDEPENDENT_FROM_CURRENT_CHECKOUT`, `STACK_BASE_READY`, `STACK_REQUIRED`, or blocked according to `Governance/MOBILE-CLOUD-HANDOFF.md`. A dependency hint in `MOBILE.md` is advisory and does not by itself make a task stack-required.
+6. Select from the earliest Planned sprint that contains at least one unreserved `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` Mobile task.
+7. Inside that sprint prefer Cloud mode `A` before `B` before `C`, then `INDEPENDENT_FROM_CURRENT_CHECKOUT` before `STACK_BASE_READY`, then lower effort, lower Windows residual, and lower expected branch/diff collision.
+8. Do not attempt `git fetch`, manual remote configuration, merge, cherry-pick, or synthetic predecessor import to make a `STACK_REQUIRED` candidate executable.
+9. If the earliest relevant Planned sprint has no executable independent/base-ready candidate but has exactly one valid `STACK_REQUIRED` candidate path, return `STACK_RESTART_REQUIRED` rather than skipping silently to later work. Provide the predecessor PR, head branch, head SHA, selected child BL, and an exact restart instruction.
+10. Do not auto-select `Later` work while any executable unreserved `Planned` Mobile task exists.
+11. A user-named task or epic explicitly overrides this automatic sprint preference, but a user-named task that is already reserved must be reported rather than duplicated unless the user explicitly authorizes a competing candidate.
 
-Multiple independent tasks from the selected sprint may still be prepared in parallel, and real dependency chains may still use stacked Mobile PRs. This rule controls automatic **selection**, not integration order and not a global serialization requirement.
+Multiple independent tasks from the selected sprint may still be prepared in parallel. Real dependency chains use a new Codex Cloud task started directly from the predecessor PR head branch or commit supplied by `STACK_RESTART_REQUIRED`; they are not assembled by fetching the predecessor into a `main`-based task.
 
 For the default phone prompt, use **"Führe den nächsten geeigneten Cloud-Task aus `MOBILE.md` V3 aus"** rather than "einen geeigneten".
 
@@ -92,6 +93,7 @@ After implementation, validation, and commit:
 - report `CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR`;
 - provide `TaskID`, `ActualHeadBranch`, `CloudCommitSha`, `CloudTreeSha`, expected PR base, and prepared PR title;
 - obtain `CloudTreeSha` from the committed Cloud worktree, for example with `git rev-parse 'HEAD^{tree}'`;
+- for a stacked child, `ExpectedPRBase` is the direct predecessor Mobile branch from which the Cloud task was started;
 - instruct the user to use the Codex UI **Create PR** action;
 - do not require the PR number before the user performs that action.
 
@@ -109,6 +111,7 @@ The PR number is discovered from GitHub after publication; it is not a prerequis
 - no manual `git remote` configuration;
 - no PAT/token/SSH/credential workaround;
 - no agent-driven GitHub write as a substitute for the UI Create-PR action;
+- no predecessor `git fetch`, merge, cherry-pick, or synthetic stack construction inside a Mobile task;
 - no PR merge or close;
 - no branch deletion;
 - no tag or release;
