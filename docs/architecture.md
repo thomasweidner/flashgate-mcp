@@ -203,6 +203,13 @@ Owns generic queued/running/completed/failed/cancelled/timed-out lifecycle, dead
 
 Operations/jobs do not own filesystem, search, process, execution, or system semantics.
 
+The `internal/operation` package enforces this dependency direction with a
+source-level regression test: production files in the generic lifecycle
+package may not import business-domain implementations. Domains submit bounded
+work to lifecycle infrastructure through neutral contracts; the domain remains
+responsible for request validation, execution policy, business errors, and
+result interpretation.
+
 ### Cross-cutting components
 
 - authentication and principal mapping;
