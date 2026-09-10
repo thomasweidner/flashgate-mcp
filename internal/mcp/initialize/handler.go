@@ -9,17 +9,26 @@ import (
 
 const method = "initialize"
 
+const (
+	// ReadOnlyInstructions describe efficient use of the restricted filesystem profile.
+	ReadOnlyInstructions = "Use list_directory, read_file, and get_path_info. Reuse returned metadata; avoid redundant get_path_info calls. When supported, request only needed fields or ranges and continue paginated, search, or process output with the returned cursor."
+	// DefaultInstructions add write guidance for the current default filesystem profile.
+	DefaultInstructions = ReadOnlyInstructions + " Prefer batch operations for independent work. Use dry-run before destructive or multi-step changes when supported."
+)
+
 // Handler handles MCP initialize requests.
 type Handler struct {
 	serverName    string
 	serverVersion string
+	instructions  string
 }
 
 // NewHandler creates a new initialize handler.
-func NewHandler(serverName string, serverVersion string) *Handler {
+func NewHandler(serverName string, serverVersion string, instructions string) *Handler {
 	return &Handler{
 		serverName:    serverName,
 		serverVersion: serverVersion,
+		instructions:  instructions,
 	}
 }
 
@@ -54,6 +63,7 @@ func (h *Handler) Handle(_ handlers.Context, rawParams json.RawMessage) (any, *p
 			Name:    h.serverName,
 			Version: h.serverVersion,
 		},
+		Instructions: h.instructions,
 	}, nil
 }
 
@@ -67,6 +77,7 @@ type response struct {
 	ProtocolVersion string             `json:"protocolVersion"`
 	Capabilities    serverCapabilities `json:"capabilities"`
 	ServerInfo      implementation     `json:"serverInfo"`
+	Instructions    string             `json:"instructions"`
 }
 
 type serverCapabilities struct {

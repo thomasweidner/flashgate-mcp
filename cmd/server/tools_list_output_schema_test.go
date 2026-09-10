@@ -29,7 +29,7 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 			registry := createToolRegistry(noopFileSystem{}, 1024, tc.capabilities)
 			request := bytes.NewBufferString("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n")
 			output := &bytes.Buffer{}
-			server := mcpserver.New(request, output, createRouter("test-server", "test-version", registry))
+			server := mcpserver.New(request, output, createRouter("test-server", "test-version", registry, tc.capabilities))
 			if err := server.Run(context.Background()); err != nil {
 				t.Fatal(err)
 			}
@@ -104,7 +104,7 @@ func BenchmarkToolsListWireSerialization(b *testing.B) {
 			sampleServer := mcpserver.New(
 				bytes.NewBufferString("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n"),
 				sampleOutput,
-				createRouter("test-server", "test-version", registry),
+				createRouter("test-server", "test-version", registry, tc.capabilities),
 			)
 			if err := sampleServer.Run(context.Background()); err != nil {
 				b.Fatal(err)
@@ -117,7 +117,7 @@ func BenchmarkToolsListWireSerialization(b *testing.B) {
 				server := mcpserver.New(
 					bytes.NewBufferString("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n"),
 					output,
-					createRouter("test-server", "test-version", registry),
+					createRouter("test-server", "test-version", registry, tc.capabilities),
 				)
 				if err := server.Run(context.Background()); err != nil {
 					b.Fatal(err)
