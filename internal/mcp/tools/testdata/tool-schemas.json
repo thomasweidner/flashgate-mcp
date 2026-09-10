@@ -1,0 +1,365 @@
+{
+  "schemaVersion": "flashgate-mcp-tool-schemas/v1",
+  "protocolVersion": "2025-11-25",
+  "tools": [
+    {
+      "name": "list_directory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "isDir": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "name",
+                "isDir",
+                "size"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "read_file",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "maxBytes": {
+            "description": "Maximum number of bytes to read. Defaults to the configured maximum file size.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "description": "Relative file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content",
+          "size"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "get_path_info",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "exists": {
+                "const": false
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "exists"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "exists": {
+                "const": true
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "write_file",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "description": "Text content to write. An empty string is allowed.",
+            "type": "string"
+          },
+          "overwrite": {
+            "description": "Whether an existing file may be overwritten. Defaults to false.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "Relative file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "written": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "size",
+          "written"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "create_directory",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "created"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "delete_path",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "recursive": {
+            "description": "Whether a non-empty directory may be deleted recursively. Defaults to false.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "deleted"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "copy_path",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "overwrite": {
+            "description": "Whether an existing target may be overwritten. Defaults to false.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Relative source file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "target": {
+            "description": "Relative target file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "copied": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "copied"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "move_path",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "overwrite": {
+            "description": "Whether an existing target may be overwritten. Defaults to false.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Relative source file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "target": {
+            "description": "Relative target file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "type": "object"
+      },
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "moved": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "moved"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}
