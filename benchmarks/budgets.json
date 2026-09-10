@@ -120,12 +120,12 @@
       }
     },
     "serialization": {
-      "path_info_missing_text_plus_structured": { "max_payload_bytes": 154, "max_allocs_per_op": 6 },
-      "path_info_existing_text_plus_structured": { "max_payload_bytes": 244, "max_allocs_per_op": 6 },
-      "directory_small_text_plus_structured": { "max_payload_bytes": 260, "max_allocs_per_op": 6 },
-      "directory_500_entries_text_plus_structured": { "max_payload_bytes": 55856, "max_allocs_per_op": 6 },
-      "text_file_small_text_plus_structured": { "max_payload_bytes": 169, "max_allocs_per_op": 6 },
-      "text_file_64kib_text_plus_structured": { "max_payload_bytes": 131192, "max_allocs_per_op": 6 }
+      "path_info_missing_text_plus_structured": { "max_payload_bytes": 154, "max_allocs_per_op": 6, "useful_payload_bytes": 0, "max_wire_amplification_milli": 0, "max_approx_token_cost_milli_per_useful_byte": 0, "max_serialization_copies": 2 },
+      "path_info_existing_text_plus_structured": { "max_payload_bytes": 244, "max_allocs_per_op": 6, "useful_payload_bytes": 0, "max_wire_amplification_milli": 0, "max_approx_token_cost_milli_per_useful_byte": 0, "max_serialization_copies": 2 },
+      "directory_small_text_plus_structured": { "max_payload_bytes": 260, "max_allocs_per_op": 6, "useful_payload_bytes": 91, "max_wire_amplification_milli": 3242, "max_approx_token_cost_milli_per_useful_byte": 814, "max_serialization_copies": 2 },
+      "directory_500_entries_text_plus_structured": { "max_payload_bytes": 55856, "max_allocs_per_op": 6, "useful_payload_bytes": 25897, "max_wire_amplification_milli": 2159, "max_approx_token_cost_milli_per_useful_byte": 540, "max_serialization_copies": 2 },
+      "text_file_small_text_plus_structured": { "max_payload_bytes": 169, "max_allocs_per_op": 6, "useful_payload_bytes": 26, "max_wire_amplification_milli": 7847, "max_approx_token_cost_milli_per_useful_byte": 1962, "max_serialization_copies": 2 },
+      "text_file_64kib_text_plus_structured": { "max_payload_bytes": 131192, "max_allocs_per_op": 6, "useful_payload_bytes": 65536, "max_wire_amplification_milli": 2003, "max_approx_token_cost_milli_per_useful_byte": 501, "max_serialization_copies": 2 }
     }
   },
   "soft": {
