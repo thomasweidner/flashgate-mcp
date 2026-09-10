@@ -382,6 +382,9 @@ Efficiency mechanisms include pagination, filtering, sorting, field selection, r
 Conditional read/not-modified contracts are post-Version 1.0; Version 1.0 fingerprints and handles must keep them feasible.
 
 See [Efficiency Improvement Plan](efficiency-improvement-plan.md).
+See also [Local deterministic work principle](local-deterministic-work.md) for
+the operation-selection rule and the boundary between server-side mechanics
+and client/model decisions.
 
 ## Native OS adapter policy
 
