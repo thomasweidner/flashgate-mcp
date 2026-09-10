@@ -42,7 +42,8 @@ func (t *ReadFileTool) Description() string {
 // InputSchema returns the JSON schema for this tool.
 func (t *ReadFileTool) InputSchema() any {
 	return map[string]any{
-		"type": "object",
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type":    "object",
 		"properties": map[string]any{
 			"path": map[string]any{
 				"type":        "string",
