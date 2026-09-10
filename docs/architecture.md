@@ -203,6 +203,13 @@ Owns generic queued/running/completed/failed/cancelled/timed-out lifecycle, dead
 
 Operations/jobs do not own filesystem, search, process, execution, or system semantics.
 
+The transport-neutral operation registry is implemented in `internal/operation`.
+It atomically registers, retrieves, replaces, and removes live values while
+requiring the owning domain on every access. Unknown IDs and owner mismatches are
+indistinguishable. Registry IDs are internal keys, not public handles; opaque
+identity-bound handle generation, the operation status model, scheduling,
+cancellation, results, and TTL cleanup remain separate lifecycle layers.
+
 ### Cross-cutting components
 
 - authentication and principal mapping;
