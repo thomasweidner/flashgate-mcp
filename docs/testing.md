@@ -949,6 +949,12 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - profile-specific `tools/list`, schema, description, and initialization-instruction budgets;
 - safe read-only catalog when roots exist and no explicit profile is selected.
 
+The transport-neutral result-resource tests exercise opaque URI validation,
+content metadata, complete binding checks, cross-principal denial, exact-expiry
+behavior, and rejection of path-bearing or malformed references. Storage,
+negotiated MCP resource-link, and platform lifecycle tests remain with their
+own implementation owners.
+
 ### Operations and multi-principal tests
 
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
