@@ -6,6 +6,11 @@ This document distinguishes the current implemented protocol from the accepted V
 
 ## Current implementation
 
+The machine-readable Version 1.0 protocol matrix is
+[`mcp-protocol-matrix.json`](mcp-protocol-matrix.json). It is the released
+inventory of revisions, extensions, and transports that FlashGate actually
+advertises; planning references elsewhere are not support claims.
+
 The current server:
 
 - communicates through UTF-8 JSON-RPC messages over STDIO;
@@ -17,6 +22,20 @@ The current server:
 - returns successful filesystem results as one compact JSON text block plus the same object in `structuredContent`;
 - exposes successful `outputSchema` definitions for the current eight tools;
 - retains safe generic JSON-RPC errors for current tool failures.
+
+### Version 1.0 supported matrix
+
+| Revision | Status | Extensions | Transport |
+|---|---|---|---|
+| `2025-11-25` | Supported | None advertised | STDIO |
+
+When a client proposes another syntactically valid revision, initialization
+responds with the sole supported revision, `2025-11-25`. The client must either
+continue using that selected revision or disconnect; FlashGate does not
+silently enable semantics from the proposed revision. Missing or malformed
+revision fields remain invalid parameters. Adding a row or an extension to the
+matrix requires the implementation, compatibility tests, schema/conformance
+checks, migration documentation, and release review described below.
 
 `flashgate-mcp --version` and `flashgate-mcp --version --verbose` are pre-protocol CLI exits. They print build identity and terminate before reading MCP input. During normal server operation, stdout remains reserved exclusively for JSON-RPC protocol messages.
 

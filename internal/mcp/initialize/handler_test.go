@@ -128,7 +128,7 @@ func TestHandlerReturnsInvalidParamsForMissingProtocolVersion(t *testing.T) {
 	}
 }
 
-func TestHandlerAcceptsDifferentClientProtocolVersion(t *testing.T) {
+func TestHandlerNegotiatesUnsupportedClientProtocolVersionToSupportedRevision(t *testing.T) {
 	t.Parallel()
 
 	handler := NewHandler("flashgate", "0.1.0-dev")
@@ -136,7 +136,7 @@ func TestHandlerAcceptsDifferentClientProtocolVersion(t *testing.T) {
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
 		json.RawMessage(`{
-			"protocolVersion":"2025-11-25",
+			"protocolVersion":"2026-07-28",
 			"capabilities":{},
 			"clientInfo":{
 				"name":"test-client",
