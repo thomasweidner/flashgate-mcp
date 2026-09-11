@@ -23,6 +23,8 @@ Every tool accepts exactly one JSON object. Runtime decoding uses `json.Decoder`
 
 Required path fields must be strings and must not be empty or whitespace-only. Validation does not trim or otherwise alter valid path strings. `list_directory.path` is the only optional path; omission defaults to `.`, but an explicit blank value is invalid.
 
+`list_directory` name filters and ordering use case-sensitive Unicode string comparisons without locale-specific folding. Type ordering compares the portable labels `directory` and `file`; equal type or size keys fall back to name, yielding deterministic results. Policy-hidden entries are removed before client filters are applied.
+
 Security and PathGuard policy are enforced server-side and are not delegated to JSON Schema.
 
 ## Definitions and schemas

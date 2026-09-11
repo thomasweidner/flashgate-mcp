@@ -8,6 +8,9 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added optional, strictly validated name/type filters and deterministic
+  name/type/size ordering to `list_directory`, including runtime/static schema
+  parity, focused tests, and documented cross-platform comparison semantics.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,

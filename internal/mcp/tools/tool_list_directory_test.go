@@ -39,11 +39,50 @@ func TestListDirectoryDefaultsOnlyMissingPath(t *testing.T) {
 }
 
 func TestListDirectoryRejectsInvalidArguments(t *testing.T) {
-	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"unknown":true}`, `{} {}`} {
+	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"filter":null}`, `{"filter":{"type":"link"}}`, `{"filter":{"unknown":true}}`, `{"sortBy":"modified"}`, `{"sortOrder":"sideways"}`, `{"unknown":true}`, `{} {}`} {
 		_, rpcErr := NewListDirectoryTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 		}
+	}
+}
+
+func TestListDirectoryFiltersAndSorts(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{
+		{Name: "zeta.txt", Size: 5},
+		{Name: "alpha.md", Size: 9},
+		{Name: "alpha.txt", Size: 2},
+		{Name: "docs", IsDir: true, Size: 12},
+	}
+	result, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{
+		"filter":{"namePrefix":"alpha","nameSuffix":".txt","type":"file"},
+		"sortBy":"size","sortOrder":"descending"
+	}`))
+	if rpcErr != nil {
+		t.Fatalf("unexpected error: %v", rpcErr)
+	}
+	want := listDirectoryResult{Entries: []fs.Entry{{Name: "alpha.txt", Size: 2}}}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected filtered result: %#v", result)
+	}
+}
+
+func TestListDirectorySortsDeterministically(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{
+		{Name: "large", Size: 10},
+		{Name: "beta", Size: 2},
+		{Name: "alpha", Size: 2},
+		{Name: "folder", IsDir: true, Size: 1},
+	}
+	result, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"sortBy":"size","sortOrder":"ascending"}`))
+	if rpcErr != nil {
+		t.Fatalf("unexpected error: %v", rpcErr)
+	}
+	want := []fs.Entry{{Name: "folder", IsDir: true, Size: 1}, {Name: "alpha", Size: 2}, {Name: "beta", Size: 2}, {Name: "large", Size: 10}}
+	if !reflect.DeepEqual(result.(listDirectoryResult).Entries, want) {
+		t.Fatalf("unexpected order: %#v", result)
 	}
 }
 
