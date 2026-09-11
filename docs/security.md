@@ -134,6 +134,15 @@ The standard cross-platform API remains path-based: a concurrent writer could ex
 
 Directory copy is currently unsupported by design.
 
+### Conflict handling
+
+The Version 1.0 filesystem conflict contract uses the closed strategies
+[`fail`, `skip`, and `replace`](filesystem-conflict-strategy.md). Conflict
+selection is not authorization: PathGuard, path-type, identity, limit, and
+operation-specific replacement checks always remain authoritative. `skip` is
+restricted to batch and bounded-plan items with explicit per-item results, and
+no strategy permits directory merging or delete-then-replace behavior.
+
 ## Symlinks
 
 `SPR-036` rejects symlink-based escapes where an existing path, or the nearest existing parent for a create target, resolves outside the configured root.
