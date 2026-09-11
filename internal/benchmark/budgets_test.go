@@ -111,8 +111,8 @@ func TestEvaluateBudgetsSeparatesHardAndSoft(t *testing.T) {
 
 func completeBudgetTestResult() Result {
 	toolsList := []ToolsListMeasurement{
-		{Profile: "read_only", ToolCount: 3, SchemaCount: 3, RequestBytes: 59, ResponseBytes: 1, ResultBytes: 1, ApproxTokensBytes4: 1},
-		{Profile: "default", ToolCount: 8, SchemaCount: 8, RequestBytes: 59, ResponseBytes: 1, ResultBytes: 1, ApproxTokensBytes4: 1},
+		{Profile: "read_only", ToolCount: 4, SchemaCount: 4, RequestBytes: 59, ResponseBytes: 1, ResultBytes: 1, ApproxTokensBytes4: 1},
+		{Profile: "default", ToolCount: 9, SchemaCount: 9, RequestBytes: 59, ResponseBytes: 1, ResultBytes: 1, ApproxTokensBytes4: 1},
 	}
 	workflows := make([]WorkflowMeasurement, 0, len(referenceWorkflows()))
 	for _, definition := range referenceWorkflows() {

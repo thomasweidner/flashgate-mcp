@@ -18,6 +18,21 @@ func filesystemOutputSchema(toolName string) map[string]any {
 			"content": map[string]any{"type": "string"},
 			"size":    map[string]any{"type": "integer"},
 		}, "content", "size")
+	case readFilesToolName:
+		return objectOutputSchema(map[string]any{
+			"results": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"type": "object",
+					"oneOf": []any{
+						objectOutputSchema(map[string]any{"path": map[string]any{"type": "string"}, "content": map[string]any{"type": "string"}, "size": map[string]any{"type": "integer"}}, "path", "content", "size"),
+						objectOutputSchema(map[string]any{"path": map[string]any{"type": "string"}, "error": map[string]any{"type": "string"}}, "path", "error"),
+					},
+				},
+			},
+			"accepted": map[string]any{"type": "integer"}, "completed": map[string]any{"type": "integer"},
+			"failed": map[string]any{"type": "integer"}, "totalBytes": map[string]any{"type": "integer"},
+		}, "results", "accepted", "completed", "failed", "totalBytes")
 	case getPathInfoToolName:
 		return map[string]any{
 			"type": "object",

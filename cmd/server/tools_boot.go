@@ -19,6 +19,7 @@ func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilitie
 	toolRegistry := tools.NewRegistry()
 	toolRegistry.Register(tools.NewListDirectoryTool(filesystem))
 	toolRegistry.Register(tools.NewReadFileTool(filesystem, maxFileSize))
+	toolRegistry.Register(tools.NewReadFilesTool(filesystem, maxFileSize))
 	toolRegistry.Register(tools.NewGetPathInfoTool(filesystem))
 
 	if !capabilities.filesystemWrite {
