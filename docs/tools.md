@@ -217,4 +217,11 @@ Planned contract changes include:
 - payload classes that transmit large content once instead of duplicating it in text and structured fields;
 - opaque principal-bound result/resource handles for content that should not be embedded in one tool response.
 
+The planned bounded-plan contract is constrained by the dedicated
+[security threat model](bounded-filesystem-plans-threat-model.md). It permits
+only closed typed steps, treats dry-run as a non-reserving preview, repeats
+authorization and path checks per step, and reports partial completion rather
+than claiming multi-step atomicity. No bounded-plan tool is present in the
+current catalog.
+
 Version 1.0 tool names, schemas, annotations, limits, profiles, and error payloads become stable only after their canonical backlog tasks and the release gate are complete. The machine-readable catalog remains a current-implementation snapshot until replaced by generated Version 1.0 profile catalogs.

@@ -525,6 +525,12 @@ FlashGate MCP uses Go's standard testing framework and the `flashgate-mcp` binar
 
 The project aims for high test coverage in security-sensitive and filesystem-related code.
 
+Future bounded filesystem plan tests must satisfy the permanent negative,
+race, limit, cancellation, partial-completion, dry-run, and platform gates in
+the [bounded filesystem plan threat model](bounded-filesystem-plans-threat-model.md).
+That contract is test guidance for the planned implementation, not evidence
+that a plan tool currently exists.
+
 ## Test Commands
 
 Run all tests:
