@@ -39,7 +39,7 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2562 bytes for read-only and 6085 bytes for default after byte-range inputs were added. This is a schema-change snapshot, not a persistent payload budget.
 
 ## `list_directory`
 
@@ -63,7 +63,7 @@ No pagination, filtering, recursion, or batch behavior is provided.
 
 ## `read_file`
 
-Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the configured server limit is used; a larger client value is capped at that limit.
+Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the configured server limit is used; a larger client value is capped at that limit. A request may select exactly one of `byteOffset` plus `byteLength`, `headBytes`, or `tailBytes`. Offsets are zero-based, lengths may be zero, ranges beyond EOF are truncated, and an offset at or beyond EOF returns empty content. A tail longer than the file returns the whole file. Every selected length must fit the effective `maxBytes` limit.
 
 ```json
 {
@@ -79,7 +79,15 @@ Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the co
 }
 ```
 
-Range reads are not implemented.
+```json
+{ "path": "data.bin", "byteOffset": 1024, "byteLength": 512 }
+```
+
+```json
+{ "path": "log.txt", "tailBytes": 4096 }
+```
+
+Ranges are addressed in bytes and do not require loading the complete file. The current result remains a JSON string; binary/media representation and encoding modes remain separate planned work.
 
 ## `get_path_info`
 
