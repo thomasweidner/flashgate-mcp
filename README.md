@@ -23,6 +23,7 @@ list_directory
 read_file
 get_path_info
 write_file
+append_file
 create_directory
 delete_path
 copy_path
@@ -99,9 +100,9 @@ tools/list
 tools/call
 ```
 
-Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present eight-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
+Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present nine-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
 
-Runtime `outputSchema` is exposed for all eight tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
+Runtime `outputSchema` is exposed for all nine tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
 
 JSON-RPC request envelopes are validated before dispatch. Unsupported batch requests, invalid protocol versions, missing or invalid methods, invalid IDs, and malformed method params are rejected with generic JSON-RPC errors. Parse errors and invalid requests without a valid request ID serialize `id:null`. Notifications do not receive responses; `notifications/initialized` is accepted as a no-op, and other notifications are not executed.
 
@@ -153,7 +154,7 @@ Security and path denials are mapped to generic invalid-path tool errors without
 | `MCP_MAX_FILE_SIZE` | `10485760` | Maximum `read_file` bytes. Client `maxBytes` can only lower this cap. |
 | `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `16777216` | Maximum single JSON-RPC stdin message. |
 | `MCP_MAX_TOOL_ARGUMENT_BYTES` | `12582912` | Maximum `tools/call` params or arguments payload. |
-| `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum `write_file` content bytes. |
+| `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum content bytes per `write_file` or `append_file` call. |
 | `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum policy-visible entries returned by `list_directory`. |
 | `MCP_MAX_COPY_BYTES` | `10485760` | Maximum `copy_path` source file size. |
 | `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries allowed for recursive `delete_path`. |
@@ -181,7 +182,7 @@ read_file
 get_path_info
 ```
 
-Write-capable tools are not registered in read-only mode, so direct `tools/call` requests for `write_file`, `create_directory`, `delete_path`, `copy_path`, or `move_path` are rejected with a generic Invalid params error without revealing whether the tool exists in another mode.
+Write-capable tools are not registered in read-only mode, so direct `tools/call` requests for `write_file`, `append_file`, `create_directory`, `delete_path`, `copy_path`, or `move_path` are rejected with a generic Invalid params error without revealing whether the tool exists in another mode.
 
 ## Tool Documentation
 
@@ -752,6 +753,7 @@ Each feature should include:
 | `read_file` | Reads a text file below the configured filesystem root. |
 | `get_path_info` | Returns existence and metadata; missing paths return `exists:false`. |
 | `write_file` | Writes a text file. |
+| `append_file` | Appends bounded text content without truncating an existing file. |
 | `create_directory` | Creates a directory and reports whether it was newly created. |
 | `delete_path` | Deletes a file or directory. |
 | `copy_path` | Copies a file. Directory copy is currently unsupported. |

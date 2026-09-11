@@ -114,10 +114,11 @@ try {
     } else {
         $requests += @(
             ('{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write_file","arguments":{"path":"' + $readOnlyWriteRelative + '","content":"blocked"}}}')
-            ('{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_directory","arguments":{"path":"' + $readOnlyCreateRelative + '"}}}')
-            ('{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"delete_path","arguments":{"path":"' + $readOnlyDeleteRelative + '"}}}')
-            ('{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"copy_path","arguments":{"source":"' + $readOnlyCopySourceRelative + '","target":"' + $readOnlyCopyTargetRelative + '"}}}')
-            ('{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"' + $readOnlyMoveSourceRelative + '","target":"' + $readOnlyMoveTargetRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"append_file","arguments":{"path":"' + $readOnlyWriteRelative + '","content":"blocked"}}}')
+            ('{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"create_directory","arguments":{"path":"' + $readOnlyCreateRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"delete_path","arguments":{"path":"' + $readOnlyDeleteRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"copy_path","arguments":{"source":"' + $readOnlyCopySourceRelative + '","target":"' + $readOnlyCopyTargetRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"' + $readOnlyMoveSourceRelative + '","target":"' + $readOnlyMoveTargetRelative + '"}}}')
         )
     }
 
@@ -131,7 +132,7 @@ try {
 
     $responses = Get-Content $responsePath | Where-Object { $_.Trim().Length -gt 0 }
 
-    $expectedResponseCount = if ($env:MCP_READ_ONLY -eq "true") { 11 } else { 7 }
+    $expectedResponseCount = if ($env:MCP_READ_ONLY -eq "true") { 12 } else { 7 }
     if ($responses.Count -ne $expectedResponseCount) {
         throw "Expected $expectedResponseCount JSON-RPC responses, got $($responses.Count). Response file: $responsePath"
     }
@@ -174,6 +175,7 @@ try {
     if ($env:MCP_READ_ONLY -ne "true") {
         $expectedTools += @(
             "write_file",
+            "append_file",
             "create_directory",
             "delete_path",
             "copy_path",
@@ -220,7 +222,7 @@ try {
             throw "move_path did not perform rename semantics"
         }
     } else {
-        $writeToolResponses = @($responses[6..10] | ForEach-Object { $_ | ConvertFrom-Json })
+        $writeToolResponses = @($responses[6..11] | ForEach-Object { $_ | ConvertFrom-Json })
         for ($index = 0; $index -lt $writeToolResponses.Count; $index++) {
             $response = $writeToolResponses[$index]
             $expectedId = $index + 7

@@ -63,10 +63,11 @@ else
   printf '%s' 'read-only-smoke-fixture' > "${READ_ONLY_MOVE_SOURCE_PATH}"
   cat >> "${REQUEST_PATH}" <<JSONRPC
 {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write_file","arguments":{"path":"${READ_ONLY_WRITE_RELATIVE}","content":"blocked"}}}
-{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_directory","arguments":{"path":"${READ_ONLY_CREATE_RELATIVE}"}}}
-{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"delete_path","arguments":{"path":"${READ_ONLY_DELETE_RELATIVE}"}}}
-{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"copy_path","arguments":{"source":"${READ_ONLY_COPY_SOURCE_RELATIVE}","target":"${READ_ONLY_COPY_TARGET_RELATIVE}"}}}
-{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"${READ_ONLY_MOVE_SOURCE_RELATIVE}","target":"${READ_ONLY_MOVE_TARGET_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"append_file","arguments":{"path":"${READ_ONLY_WRITE_RELATIVE}","content":"blocked"}}}
+{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"create_directory","arguments":{"path":"${READ_ONLY_CREATE_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"delete_path","arguments":{"path":"${READ_ONLY_DELETE_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"copy_path","arguments":{"source":"${READ_ONLY_COPY_SOURCE_RELATIVE}","target":"${READ_ONLY_COPY_TARGET_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"${READ_ONLY_MOVE_SOURCE_RELATIVE}","target":"${READ_ONLY_MOVE_TARGET_RELATIVE}"}}}
 JSONRPC
 fi
 
@@ -83,7 +84,7 @@ move_target_path = sys.argv[2]
 with open(response_path, "r", encoding="utf-8") as handle:
     responses = [json.loads(line) for line in handle if line.strip()]
 
-expected_response_count = 11 if os.environ.get("MCP_READ_ONLY") == "true" else 7
+expected_response_count = 12 if os.environ.get("MCP_READ_ONLY") == "true" else 7
 if len(responses) != expected_response_count:
     raise SystemExit(f"Expected {expected_response_count} JSON-RPC responses, got {len(responses)}. Response file: {response_path}")
 
@@ -123,6 +124,7 @@ expected_tools = [
 if os.environ.get("MCP_READ_ONLY") != "true":
     expected_tools.extend([
         "write_file",
+        "append_file",
         "create_directory",
         "delete_path",
         "copy_path",
@@ -196,7 +198,7 @@ if os.environ.get("MCP_READ_ONLY") != "true":
     if not os.path.isfile(move_target_path):
         raise SystemExit("move_path did not perform rename semantics")
 else:
-    for expected_id, response in enumerate(responses[6:11], start=7):
+    for expected_id, response in enumerate(responses[6:12], start=7):
         error = response.get("error", {})
         if response.get("id") != expected_id or error.get("code") != -32602 or error.get("message") != "invalid params":
             raise SystemExit(f"Expected read-only-gated write tool id {expected_id} to return generic Invalid params")

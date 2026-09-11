@@ -264,6 +264,7 @@ func TestWrapSuccessfulToolResultCoversAllFilesystemResultForms(t *testing.T) {
 		"get_path_info existing": getPathInfoExistingResult{Path: "Folder With Spaces\\grüße.txt", Exists: true, Name: "grüße.txt", Size: 7},
 		"get_path_info missing":  getPathInfoMissingResult{Path: "does-not-exist.txt", Exists: false},
 		"write_file":             writeFileResult{Path: "output file.txt", Size: 4, Written: true},
+		"append_file":            appendFileResult{Path: "output file.txt", Size: 4, Appended: true},
 		"create_directory":       createDirectoryResult{Path: "new directory", Created: true},
 		"delete_path":            deletePathResult{Path: "old.txt", Deleted: true},
 		"copy_path":              copyPathResult{Source: "source.txt", Target: "target.txt", Copied: true},
