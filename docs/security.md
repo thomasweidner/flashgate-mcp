@@ -114,6 +114,12 @@ Existing paths are evaluated directly. Create targets that do not exist yet are 
 
 Destructive operations are intentionally conservative.
 
+All write-capable MCP tools support a non-mutating `dryRun` request preview.
+The preview performs strict protocol argument validation and central path-policy
+validation without mutation. It is not authorization, conflict, capacity, or
+race-validation evidence, and the real operation always performs the
+authoritative checks again. Preview exposes no resolved host paths.
+
 ### Write
 
 `Write()` does not overwrite existing files unless `overwrite=true`.

@@ -10,6 +10,13 @@ PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+Filesystem mutation-tool tests cover `dryRun:true` for write, directory
+creation, deletion, copy, and move. They require a structured preview with the
+operation flag false, central path validation, and no mutating `FileSystem`
+method call.
+Normal execution tests continue to cover the authoritative filesystem and
+security checks.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
