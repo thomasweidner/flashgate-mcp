@@ -227,6 +227,13 @@ Long work may use an opaque handle such as `op_<opaque-id>`. The handle is serve
 - domain/type;
 - expiry.
 
+The Operations package now generates the `op_` identifier from 192 bits of
+cryptographically secure random data and retains principal, root, profile,
+execution-backend, and service-generation bindings as separate server-side
+state. Those bindings are never encoded into the public identifier. Registry
+lookup, expiry, and repeated authorization enforcement remain separate
+Operations/Job lifecycle responsibilities.
+
 Accepted internal statuses:
 
 - `queued`;
