@@ -257,7 +257,7 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 	}
 
 	for _, blockedName := range []string{
-		"write_file", "create_directory", "delete_path", "copy_path", "move_path",
+		"write_file", "edit_file", "create_directory", "delete_path", "copy_path", "move_path",
 		"list_files", "stat_path", "exists_path", "mkdir", "rename_path",
 	} {
 		raw, err := json.Marshal(map[string]any{"name": blockedName, "arguments": map[string]any{}})
