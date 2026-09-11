@@ -1,11 +1,12 @@
 # Filesystem MCP tools
 
-FlashGate MCP exposes eight filesystem tools in the default profile, in this exact order:
+FlashGate MCP exposes nine filesystem tools in the default profile, in this exact order:
 
 ```text
 list_directory
 read_file
 get_path_info
+hash_files
 write_file
 create_directory
 delete_path
@@ -13,7 +14,7 @@ copy_path
 move_path
 ```
 
-The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
+The read-only profile exposes `list_directory`, `read_file`, `get_path_info`, and `hash_files`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
 
 For later Codex activation, `MCP_READ_ONLY=true` must be explicit and `MCP_ROOT` must be an absolute preflighted directory. See [Codex read-only activation preparation](codex-read-only-activation.md). `SPR-044` does not activate a client.
 
@@ -35,9 +36,9 @@ The result examples below are domain objects. Every successful `tools/call` plac
 }
 ```
 
-The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
+The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All nine tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
 The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
 
@@ -80,6 +81,14 @@ Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the co
 ```
 
 Range reads are not implemented.
+
+## `hash_files`
+
+Computes SHA-256 fingerprints without returning file content. `paths` contains 1 to 100 relative file paths and preserves input order. Optional `maxBytes` bounds aggregate bytes hashed and is capped by the configured server file-size limit. Each item reports either `size` plus a reusable `sha256:<hex>` fingerprint or a safe error category; summary counters report completed, failed, and hashed bytes. Exhausting the aggregate budget causes remaining items to fail with `limit_exceeded`.
+
+```json
+{ "paths": ["a.txt", "b.bin"], "maxBytes": 1048576 }
+```
 
 ## `get_path_info`
 

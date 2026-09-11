@@ -14,12 +14,13 @@ func TestFilesystemRuntimeOutputSchemas(t *testing.T) {
 	fake := newFakeFileSystem()
 	runtimeTools := []Tool{
 		NewListDirectoryTool(fake), NewReadFileTool(fake, 1024), NewGetPathInfoTool(fake),
+		NewHashFilesTool(fake, 1024),
 		NewWriteFileTool(fake), NewCreateDirectoryTool(fake), NewDeletePathTool(fake),
 		NewCopyPathTool(fake), NewMovePathTool(fake),
 	}
 
-	if len(runtimeTools) != 8 {
-		t.Fatalf("expected exactly 8 runtime tools, got %d", len(runtimeTools))
+	if len(runtimeTools) != 9 {
+		t.Fatalf("expected exactly 9 runtime tools, got %d", len(runtimeTools))
 	}
 	for _, runtimeTool := range runtimeTools {
 		schema := normalizeSchema(t, runtimeTool.Definition().OutputSchema)
@@ -42,6 +43,7 @@ func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 		{readFileToolName, readFileResult{Content: "text", Size: 4}},
 		{getPathInfoToolName + " existing", getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Size: 4}},
 		{getPathInfoToolName + " missing", getPathInfoMissingResult{Path: "missing.txt", Exists: false}},
+		{hashFilesToolName, hashFilesResult{Algorithm: "sha256", Items: []hashFileItem{{Path: "file.txt", Size: int64Pointer(4), Fingerprint: "sha256:abcd"}}, Completed: 1, BytesHashed: 4}},
 		{writeFileToolName, writeFileResult{Path: "file.txt", Size: 4, Written: true}},
 		{createDirectoryToolName, createDirectoryResult{Path: "dir", Created: true}},
 		{deletePathToolName, deletePathResult{Path: "file.txt", Deleted: true}},
@@ -62,6 +64,8 @@ func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 		})
 	}
 }
+
+func int64Pointer(value int64) *int64 { return &value }
 
 func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 	tests := []struct {

@@ -169,6 +169,7 @@ try {
         "list_directory",
         "read_file",
         "get_path_info"
+        "hash_files"
     )
 
     if ($env:MCP_READ_ONLY -ne "true") {
