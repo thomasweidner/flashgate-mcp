@@ -137,7 +137,7 @@ func (noopFileSystem) Stat(string) (fs.Metadata, error) {
 	return fs.Metadata{}, errors.New("not implemented")
 }
 
-func (noopFileSystem) Write(string, []byte, bool) error {
+func (noopFileSystem) Write(string, []byte, bool, bool) error {
 	return errors.New("not implemented")
 }
 
