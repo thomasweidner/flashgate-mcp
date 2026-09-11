@@ -238,6 +238,15 @@ Accepted internal statuses:
 
 The registry retains bounded timestamps, deadline, progress, byte counters, result/resource reference, error category, temporary resources, TTL, and cleanup status.
 
+The transport-neutral operation result store keeps immutable byte snapshots behind
+opaque `op_` handles. Every insertion is bounded by explicit per-result, aggregate-byte,
+entry-count, and maximum-TTL policy; the store deliberately supplies no implicit
+defaults. Retrieval and deletion repeat the complete principal, profile, root,
+execution-backend, service-generation, and domain binding check. Missing, expired,
+and mismatched results share one unavailable outcome, retrieval never extends expiry,
+and expiry sweeps reclaim both entry and byte capacity. Domains remain responsible for
+validating and interpreting the stored bytes.
+
 Resource governance includes:
 
 - global concurrency;

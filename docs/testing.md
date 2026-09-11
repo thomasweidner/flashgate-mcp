@@ -959,6 +959,12 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - TTL cleanup, restart invalidation, shutdown, and leak detection;
 - slow-reader and audit/log backpressure behavior.
 
+Focused operation-result-store tests cover immutable input/output snapshots, complete
+owner-binding denial, indistinguishable missing/expired/mismatched results, fixed
+non-sliding expiry, explicit TTL and byte/entry caps, capacity reclamation, deletion,
+and concurrent retrieval/deletion. The package race test is the permanent concurrency
+gate for this storage primitive.
+
 ### Typed command tests
 
 - executable ID resolves only to approved absolute binary;
