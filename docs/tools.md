@@ -39,15 +39,18 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2441 bytes for read-only and 5964 bytes for default after adding the `list_directory` filter and sort schema. This is a regression snapshot, not a persistent payload budget.
 
 ## `list_directory`
 
-Lists one directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid.
+Lists one directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid. Optional `filter` fields select a case-sensitive name prefix and/or suffix and the portable entry `type` (`file` or `directory`). `sortBy` accepts `name`, `type`, or `size`; `sortOrder` accepts `ascending` or `descending`. Defaults are ascending name order. Equal type or size values use the name as a deterministic tie-breaker.
 
 ```json
 {
-  "path": "docs"
+  "path": "docs",
+  "filter": { "nameSuffix": ".md", "type": "file" },
+  "sortBy": "size",
+  "sortOrder": "descending"
 }
 ```
 
@@ -59,7 +62,7 @@ Lists one directory. `path` is optional; omission means `.`, while an explicitly
 }
 ```
 
-No pagination, filtering, recursion, or batch behavior is provided.
+Filtering happens after filesystem policy removes hidden or disallowed entries. Size sorting uses the existing portable numeric `size` field; directory sizes remain OS-dependent and should not be compared across hosts. No pagination, recursion, or batch behavior is provided.
 
 ## `read_file`
 
