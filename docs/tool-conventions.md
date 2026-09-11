@@ -21,7 +21,7 @@ The registry determines deterministic exposure order. `tools/list` uses each imp
 
 Every tool accepts exactly one JSON object. Runtime decoding uses `json.Decoder`, rejects unknown fields and explicit `null` field values, and requires EOF after the first object. Schemas declare `additionalProperties:false`.
 
-Required path fields must be strings and must not be empty or whitespace-only. Validation does not trim or otherwise alter valid path strings. `list_directory.path` is the only optional path; omission defaults to `.`, but an explicit blank value is invalid.
+Required path fields must be strings and must not be empty or whitespace-only. Validation does not trim or otherwise alter valid path strings. `list_directory.path` is the only optional path; omission defaults to `.`, but an explicit blank value is invalid. Its optional `fields` array accepts one or more unique values from `name`, `isDir`, and `size`; omission selects all three.
 
 Security and PathGuard policy are enforced server-side and are not delegated to JSON Schema.
 
@@ -43,7 +43,7 @@ Every successful `tools/call` uses the central MCP adapter wrapper. The outer re
 
 ## Path and result conventions
 
-All client paths are relative to the configured root. Results may echo the public relative path supplied by the client; they must never expose the PathGuard-resolved absolute host path.
+All client paths are relative to the configured root. Results may echo the public relative path supplied by the client; they must never expose the PathGuard-resolved absolute host path. `list_directory` returns exactly the requested portable entry fields and performs field projection only after the filesystem policy has produced the allowed entry set.
 
 `get_path_info` reports genuine absence as a successful `{path, exists:false}` domain result inside both `CallToolResult` representations, with no `isError=true`. Existing paths include `name`, `isDir`, and `size`. Policy denials are never converted to absence.
 
