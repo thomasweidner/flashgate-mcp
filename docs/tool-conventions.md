@@ -45,7 +45,7 @@ Every successful `tools/call` uses the central MCP adapter wrapper. The outer re
 
 All client paths are relative to the configured root. Results may echo the public relative path supplied by the client; they must never expose the PathGuard-resolved absolute host path.
 
-`get_path_info` reports genuine absence as a successful `{path, exists:false}` domain result inside both `CallToolResult` representations, with no `isError=true`. Existing paths include `name`, `isDir`, and `size`. Policy denials are never converted to absence.
+`get_path_info` reports genuine absence as a successful `{path, exists:false}` domain result inside both `CallToolResult` representations, with no `isError=true`. Existing paths include `name`, portable `type`, `isDir`, `size`, and an RFC 3339 UTC `modifiedTime`. Unix results also include four-digit octal `permissions`; Windows omits that field because its synthesized Go mode bits are not a portable ACL representation. Policy denials are never converted to absence.
 
 `create_directory.created` is `true` only when the leaf directory was created by that call and `false` for an existing directory.
 

@@ -27,12 +27,15 @@ func filesystemOutputSchema(toolName string) map[string]any {
 					"exists": map[string]any{"const": false},
 				}, "path", "exists"),
 				objectOutputSchema(map[string]any{
-					"path":   map[string]any{"type": "string"},
-					"exists": map[string]any{"const": true},
-					"name":   map[string]any{"type": "string"},
-					"isDir":  map[string]any{"type": "boolean"},
-					"size":   map[string]any{"type": "integer"},
-				}, "path", "exists", "name", "isDir", "size"),
+					"path":         map[string]any{"type": "string"},
+					"exists":       map[string]any{"const": true},
+					"name":         map[string]any{"type": "string"},
+					"type":         map[string]any{"type": "string"},
+					"isDir":        map[string]any{"type": "boolean"},
+					"size":         map[string]any{"type": "integer"},
+					"modifiedTime": map[string]any{"type": "string"},
+					"permissions":  map[string]any{"type": "string"},
+				}, "path", "exists", "name", "type", "isDir", "size", "modifiedTime"),
 			},
 		}
 	case writeFileToolName:
