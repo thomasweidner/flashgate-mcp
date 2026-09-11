@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "flashgate-mcp-profile-budgets/v1",
+  "profiles": {
+    "read_only": {
+      "maxToolCount": 16,
+      "maxToolsListResponseBytes": 32768,
+      "maxSchemaBytes": 24576,
+      "maxDescriptionBytesPerTool": 1024,
+      "maxDescriptionBytesTotal": 8192,
+      "maxInitializationInstructionsBytes": 1024
+    },
+    "default": {
+      "maxToolCount": 64,
+      "maxToolsListResponseBytes": 131072,
+      "maxSchemaBytes": 98304,
+      "maxDescriptionBytesPerTool": 1024,
+      "maxDescriptionBytesTotal": 32768,
+      "maxInitializationInstructionsBytes": 1024
+    }
+  }
+}
