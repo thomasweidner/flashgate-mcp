@@ -280,6 +280,72 @@ func TestLocalFileSystemReadRejectsZeroLimit(t *testing.T) {
 	}
 }
 
+func TestLocalFileSystemReadLinesReturnsInclusiveWindow(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.txt"), "first\r\nsecond\nthird\nfourth")
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	content, err := filesystem.ReadLines("file.txt", 2, 3, 1024, 1024)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if string(content) != "second\nthird\n" {
+		t.Fatalf("expected selected lines with terminators preserved, got %q", content)
+	}
+}
+
+func TestLocalFileSystemReadLinesHandlesEOFWindowsAndEmptySelection(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.txt"), "first\nsecond")
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	content, err := filesystem.ReadLines("file.txt", 2, 4, 1024, 1024)
+	if err != nil || string(content) != "second" {
+		t.Fatalf("expected unterminated final line, got %q error=%v", content, err)
+	}
+	content, err = filesystem.ReadLines("file.txt", 5, 6, 1024, 1024)
+	if err != nil || len(content) != 0 {
+		t.Fatalf("expected empty window beyond EOF, got %q error=%v", content, err)
+	}
+}
+
+func TestLocalFileSystemReadLinesEnforcesSelectedByteLimit(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.txt"), "long skipped prefix\nsecond\n")
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	content, err := filesystem.ReadLines("file.txt", 2, 2, 7, 1024)
+	if err != nil || string(content) != "second\n" {
+		t.Fatalf("expected selected bytes at exact limit, got %q error=%v", content, err)
+	}
+	_, err = filesystem.ReadLines("file.txt", 2, 2, 6, 1024)
+	if !errors.Is(err, ErrFileTooLarge) {
+		t.Fatalf("expected ErrFileTooLarge, got %v", err)
+	}
+	_, err = filesystem.ReadLines("file.txt", 2, 2, 7, 10)
+	if !errors.Is(err, ErrFileTooLarge) {
+		t.Fatalf("expected ErrFileTooLarge for scan limit, got %v", err)
+	}
+}
+
+func TestLocalFileSystemReadLinesRejectsInvalidRange(t *testing.T) {
+	t.Parallel()
+
+	filesystem := mustNewLocalFileSystem(t, t.TempDir())
+	for _, test := range []struct{ start, end, max int64 }{{0, 1, 1}, {2, 1, 1}, {1, 1, 0}} {
+		_, err := filesystem.ReadLines("unused.txt", test.start, test.end, test.max, test.max)
+		if !errors.Is(err, ErrLimitExceeded) {
+			t.Fatalf("expected ErrLimitExceeded for %#v, got %v", test, err)
+		}
+	}
+}
+
 func TestLocalFileSystemReadRejectsTraversal(t *testing.T) {
 	t.Parallel()
 

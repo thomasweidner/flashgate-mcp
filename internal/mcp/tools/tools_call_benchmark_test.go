@@ -149,6 +149,9 @@ type benchmarkParallelFileSystem struct{}
 
 func (benchmarkParallelFileSystem) List(string) ([]fs.Entry, error)    { return nil, nil }
 func (benchmarkParallelFileSystem) Read(string, int64) ([]byte, error) { return nil, nil }
+func (benchmarkParallelFileSystem) ReadLines(string, int64, int64, int64, int64) ([]byte, error) {
+	return nil, nil
+}
 func (benchmarkParallelFileSystem) Stat(string) (fs.Metadata, error) {
 	return fs.Metadata{Name: "existing.txt", Size: 26}, nil
 }

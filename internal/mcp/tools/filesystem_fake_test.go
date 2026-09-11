@@ -3,34 +3,37 @@ package tools
 import "github.com/thomasweidner/flashgate-mcp/internal/fs"
 
 type fakeFileSystem struct {
-	entries         []fs.Entry
-	err             error
-	listPath        string
-	readPath        string
-	readMaxBytes    int64
-	readContent     []byte
-	readErr         error
-	statPath        string
-	statMetadata    fs.Metadata
-	statErr         error
-	writePath       string
-	writeContent    []byte
-	writeOverwrite  bool
-	writeErr        error
-	mkdirPath       string
-	mkdirCreated    bool
-	mkdirErr        error
-	deletePath      string
-	deleteRecursive bool
-	deleteErr       error
-	moveSource      string
-	moveTarget      string
-	moveOverwrite   bool
-	moveErr         error
-	copySource      string
-	copyTarget      string
-	copyOverwrite   bool
-	copyErr         error
+	entries          []fs.Entry
+	err              error
+	listPath         string
+	readPath         string
+	readMaxBytes     int64
+	readMaxScanBytes int64
+	readContent      []byte
+	readErr          error
+	readStartLine    int64
+	readEndLine      int64
+	statPath         string
+	statMetadata     fs.Metadata
+	statErr          error
+	writePath        string
+	writeContent     []byte
+	writeOverwrite   bool
+	writeErr         error
+	mkdirPath        string
+	mkdirCreated     bool
+	mkdirErr         error
+	deletePath       string
+	deleteRecursive  bool
+	deleteErr        error
+	moveSource       string
+	moveTarget       string
+	moveOverwrite    bool
+	moveErr          error
+	copySource       string
+	copyTarget       string
+	copyOverwrite    bool
+	copyErr          error
 }
 
 func newFakeFileSystem() *fakeFileSystem { return &fakeFileSystem{} }
@@ -40,6 +43,11 @@ func (f *fakeFileSystem) List(path string) ([]fs.Entry, error) {
 }
 func (f *fakeFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	f.readPath, f.readMaxBytes = path, maxBytes
+	return f.readContent, f.readErr
+}
+func (f *fakeFileSystem) ReadLines(path string, startLine, endLine, maxBytes, maxScanBytes int64) ([]byte, error) {
+	f.readPath, f.readStartLine, f.readEndLine, f.readMaxBytes = path, startLine, endLine, maxBytes
+	f.readMaxScanBytes = maxScanBytes
 	return f.readContent, f.readErr
 }
 func (f *fakeFileSystem) Stat(path string) (fs.Metadata, error) {

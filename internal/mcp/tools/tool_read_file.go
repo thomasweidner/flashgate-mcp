@@ -54,6 +54,16 @@ func (t *ReadFileTool) InputSchema() any {
 				"description": "Maximum number of bytes to read. Defaults to the configured maximum file size.",
 				"minimum":     1,
 			},
+			"startLine": map[string]any{
+				"type":        "integer",
+				"description": "One-based first line of an inclusive line window; requires endLine.",
+				"minimum":     1,
+			},
+			"endLine": map[string]any{
+				"type":        "integer",
+				"description": "One-based last line of an inclusive line window; requires startLine and must not precede it.",
+				"minimum":     1,
+			},
 		},
 		"required":             []string{"path"},
 		"additionalProperties": false,
@@ -93,7 +103,20 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		maxBytes = t.serverMaxBytes
 	}
 
-	content, err := t.filesystem.Read(arguments.Path, maxBytes)
+	if (arguments.StartLine == nil) != (arguments.EndLine == nil) {
+		return nil, invalidParamsError()
+	}
+
+	var content []byte
+	var err error
+	if arguments.StartLine != nil {
+		if *arguments.StartLine < 1 || *arguments.EndLine < *arguments.StartLine {
+			return nil, invalidParamsError()
+		}
+		content, err = t.filesystem.ReadLines(arguments.Path, *arguments.StartLine, *arguments.EndLine, maxBytes, t.serverMaxBytes)
+	} else {
+		content, err = t.filesystem.Read(arguments.Path, maxBytes)
+	}
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}
@@ -105,8 +128,10 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 }
 
 type readFileArguments struct {
-	Path     string `json:"path"`
-	MaxBytes *int64 `json:"maxBytes,omitempty"`
+	Path      string `json:"path"`
+	MaxBytes  *int64 `json:"maxBytes,omitempty"`
+	StartLine *int64 `json:"startLine,omitempty"`
+	EndLine   *int64 `json:"endLine,omitempty"`
 }
 
 type readFileResult struct {
