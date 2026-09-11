@@ -4,10 +4,11 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 // Write writes a file. Existing files are only overwritten when overwrite is true.
-func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) error {
+func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool, atomic bool) error {
 	safePath, err := f.guard.ResolveForCreate(path)
 	if err != nil {
 		return err
@@ -28,6 +29,10 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
+	}
+
+	if atomic {
+		return writeFileAtomic(safePath.String(), content, overwrite)
 	}
 
 	flags := os.O_WRONLY | os.O_CREATE
@@ -56,6 +61,42 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 		return io.ErrShortWrite
 	}
 
+	return nil
+}
+
+// writeFileAtomic stages content beside the target so publication cannot cross
+// filesystem volumes. The stage is removed on every outcome where it still
+// exists.
+func writeFileAtomic(target string, content []byte, overwrite bool) error {
+	stage, err := os.CreateTemp(filepath.Dir(target), ".flashgate-write-*")
+	if err != nil {
+		return err
+	}
+	stagePath := stage.Name()
+	defer os.Remove(stagePath)
+
+	if err := stage.Chmod(0o600); err != nil {
+		stage.Close()
+		return err
+	}
+	if _, err := stage.Write(content); err != nil {
+		stage.Close()
+		return err
+	}
+	if err := stage.Sync(); err != nil {
+		stage.Close()
+		return err
+	}
+	if err := stage.Close(); err != nil {
+		return err
+	}
+
+	if err := publishAtomicWrite(stagePath, target, overwrite); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return ErrFileExists
+		}
+		return err
+	}
 	return nil
 }
 
