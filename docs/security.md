@@ -348,6 +348,12 @@ Resource control combines:
 - TTL cleanup and leak detection;
 - slow-reader/backpressure handling.
 
+Operation admission now enforces global, per-domain, and per-principal active
+work limits in one atomic reservation. Non-canonical empty or whitespace-padded
+domain/principal keys fail closed, rejected admission does not consume partial
+capacity, and an idempotent permit releases all three counters together. Queue
+limits and fairness are not implied by this concurrency-only control.
+
 A service restart changes the generation and invalidates stale state.
 
 ### Payload and resource boundary

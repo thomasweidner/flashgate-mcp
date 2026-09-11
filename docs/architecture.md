@@ -250,6 +250,12 @@ Resource governance includes:
 - leak detection;
 - slow-reader and backpressure handling.
 
+The implemented concurrency admission primitive reserves global, per-domain,
+and per-principal capacity atomically before work starts. Its defaults are 16,
+8, and 4 active operations respectively and may be replaced by validated
+positive configuration. Admission is non-blocking and reports the exhausted
+scope deterministically; queue caps and fair scheduling remain separate work.
+
 The normal execution unit is a cancellable Go goroutine. A subprocess is justified for an approved external program, hard resource/crash isolation, a different OS identity, or work that cannot be reliably cancelled in-process.
 
 ## Managed processes and typed command execution
