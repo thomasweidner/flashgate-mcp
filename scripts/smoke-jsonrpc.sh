@@ -118,6 +118,7 @@ expected_tools = [
     "list_directory",
     "read_file",
     "get_path_info",
+    "hash_files",
 ]
 
 if os.environ.get("MCP_READ_ONLY") != "true":
