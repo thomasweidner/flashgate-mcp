@@ -250,6 +250,16 @@ Resource governance includes:
 - leak detection;
 - slow-reader and backpressure handling.
 
+Controlled Operations/Job shutdown is an explicit two-phase lifecycle. The
+manager first signals every registered domain-owned worker in deterministic
+registration order and waits for a caller-configured grace period. It then
+invokes an available owner-supplied termination callback only for remaining
+workers and waits for a second bounded period. The immutable final report names
+each worker that terminated, required escalation, failed escalation, or
+remained incomplete. The manager never substitutes domain cleanup or result
+logic, and a waiting caller's cancellation does not cancel server-owned
+shutdown.
+
 The normal execution unit is a cancellable Go goroutine. A subprocess is justified for an approved external program, hard resource/crash isolation, a different OS identity, or work that cannot be reliably cancelled in-process.
 
 ## Managed processes and typed command execution
