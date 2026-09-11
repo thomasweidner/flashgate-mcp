@@ -366,6 +366,15 @@ The server enforces:
 - bounded inline compatibility fallback;
 - no unrestricted base64 output.
 
+The `read_file` content classifier treats only valid UTF-8 without NUL bytes
+as inline text. Binary/media mode uses standard base64 and lowers the server
+raw-byte ceiling to keep the encoded string within the configured file-size
+ceiling. A lower client `maxBytes` continues to limit raw bytes. MIME detection
+is descriptive only and never changes path,
+profile, or authorization enforcement. Oversized content fails closed; the
+reader does not invent a resource handle when the separately owned resource
+handoff implementation is unavailable.
+
 ### Managed process identity and control
 
 Server-started processes receive opaque handles. PIDs are diagnostic only and cannot be the sole authority because PID reuse may target the wrong process.

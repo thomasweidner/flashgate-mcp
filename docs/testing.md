@@ -10,6 +10,12 @@ PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+Filesystem read contract tests cover the compatibility-default UTF-8 mode,
+explicit binary and automatic content selection, MIME metadata, rejection of
+invalid UTF-8/NUL text, strict mode validation before filesystem access, and
+the encoded-safe binary read ceiling. Runtime and static schemas are checked
+for parity by the catalog contract tests.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
@@ -888,7 +894,7 @@ Limit and redaction behavior is primarily covered by Go unit tests. Additional l
 
 Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
-The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
+The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with output schemas. After BL-045, the current snapshots are 2443 bytes for read-only and 5966 bytes for default; the versioned SPR-047 baseline artifacts retain their historical measurements.
 
 ### MCP Compatibility Testing
 
