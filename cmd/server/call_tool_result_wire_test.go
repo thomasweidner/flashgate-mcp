@@ -80,6 +80,21 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
+			name:   "get_paths_info ordered batch",
+			params: `{"name":"get_paths_info","arguments":{"paths":["read file.txt","does-not-exist.txt"]}}`,
+			assertions: func(t *testing.T, value map[string]any) {
+				results, ok := value["results"].([]any)
+				if !ok || len(results) != 2 || value["accepted"] != json.Number("2") || value["completed"] != json.Number("2") || value["failed"] != json.Number("0") {
+					t.Fatalf("unexpected batch result: %#v", value)
+				}
+				first := results[0].(map[string]any)
+				second := results[1].(map[string]any)
+				if first["path"] != "read file.txt" || first["exists"] != true || second["path"] != "does-not-exist.txt" || second["exists"] != false {
+					t.Fatalf("batch result order/content mismatch: %#v", results)
+				}
+			},
+		},
+		{
 			name:   "move_path default profile",
 			params: `{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {

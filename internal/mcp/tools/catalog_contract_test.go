@@ -31,6 +31,7 @@ func TestRuntimeDefinitionsMatchStaticCatalog(t *testing.T) {
 	fake := newFakeFileSystem()
 	runtimeTools := []Tool{
 		NewListDirectoryTool(fake), NewReadFileTool(fake, 1024), NewGetPathInfoTool(fake),
+		NewGetPathsInfoTool(fake),
 		NewWriteFileTool(fake), NewCreateDirectoryTool(fake), NewDeletePathTool(fake),
 		NewCopyPathTool(fake), NewMovePathTool(fake),
 	}

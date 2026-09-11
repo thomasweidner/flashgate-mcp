@@ -13,6 +13,7 @@ type fakeFileSystem struct {
 	statPath        string
 	statMetadata    fs.Metadata
 	statErr         error
+	statFunc        func(string) (fs.Metadata, error)
 	writePath       string
 	writeContent    []byte
 	writeOverwrite  bool
@@ -44,6 +45,9 @@ func (f *fakeFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 }
 func (f *fakeFileSystem) Stat(path string) (fs.Metadata, error) {
 	f.statPath = path
+	if f.statFunc != nil {
+		return f.statFunc(path)
+	}
 	return f.statMetadata, f.statErr
 }
 func (f *fakeFileSystem) Write(path string, content []byte, overwrite bool) error {
