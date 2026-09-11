@@ -51,6 +51,13 @@ All client paths are relative to the configured root. Results may echo the publi
 
 `copy_path` is file-only. `move_path` is the sole Move/Rename contract and is same-volume only.
 
+Filesystem target conflicts follow the closed [`fail`, `skip`, `replace`
+strategy](filesystem-conflict-strategy.md). `fail` is the default; `skip` is
+available only to batch or bounded-plan items that report per-item outcomes;
+and `replace` remains constrained by each operation's type, identity, and
+atomicity rules. The current Boolean `overwrite` arguments map to `fail` and
+`replace` for pre-1.0 compatibility.
+
 ## Capability gating
 
 The default profile exposes all eight baseline tools. The read-only profile exposes exactly:

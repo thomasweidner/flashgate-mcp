@@ -179,6 +179,10 @@ Go components in this repository reuse the core directly. Future MCPs built on F
 
 Owns files, directories, metadata, ranged reads, text/media/binary classification, writes, edits, copying, moving, deletion, hashing, fingerprints, directory size, and bounded plans.
 
+Filesystem operations share one [conflict strategy](filesystem-conflict-strategy.md):
+fail by default, skip only for explicitly reported batch/plan items, and
+replace only under operation-specific type and identity safeguards.
+
 ### Search
 
 Owns root-scoped path/name/metadata/content search, include/exclude rules, bounded recursion, pagination, context, and optional later accelerators.
