@@ -83,6 +83,7 @@ type Metadata struct {
 type FileSystem interface {
 	List(path string) ([]Entry, error)
 	Read(path string, maxBytes int64) ([]byte, error)
+	ReadLines(path string, startLine, endLine int64, maxBytes, maxScanBytes int64) ([]byte, error)
 	Stat(path string) (Metadata, error)
 	Write(path string, content []byte, overwrite bool) error
 	Mkdir(path string) (bool, error)

@@ -95,6 +95,16 @@
             "type": "integer",
             "minimum": 1,
             "description": "Maximum number of bytes to read. Defaults to the configured maximum file size."
+          },
+          "startLine": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "One-based first line of an inclusive line window; requires endLine."
+          },
+          "endLine": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "One-based last line of an inclusive line window; requires startLine and must not precede it."
           }
         }
       },

@@ -62,6 +62,15 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
+			name:   "read_file line window",
+			params: `{"name":"read_file","arguments":{"path":"read file.txt","startLine":2,"endLine":2}}`,
+			assertions: func(t *testing.T, value map[string]any) {
+				if value["content"] != "Unicode ÄÖÜ and folder\\relative\\file.txt" || value["size"] != json.Number("43") {
+					t.Fatalf("unexpected line-window result: %#v", value)
+				}
+			},
+		},
+		{
 			name:   "get_path_info existing",
 			params: `{"name":"get_path_info","arguments":{"path":"read file.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {
