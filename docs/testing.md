@@ -957,6 +957,9 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - global/per-principal queue caps and fair scheduling;
 - deterministic overload behavior;
 - TTL cleanup, restart invalidation, shutdown, and leak detection;
+- temporary-resource cleanup after success, failure, cancellation, and timeout,
+  including deterministic order, at-most-once callbacks, continued cleanup
+  after failure, and explicit incomplete markers;
 - slow-reader and audit/log backpressure behavior.
 
 ### Typed command tests

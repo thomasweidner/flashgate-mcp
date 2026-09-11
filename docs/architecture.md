@@ -203,6 +203,15 @@ Owns generic queued/running/completed/failed/cancelled/timed-out lifecycle, dead
 
 Operations/jobs do not own filesystem, search, process, execution, or system semantics.
 
+Temporary resources are registered under opaque, path-free identifiers with a
+domain-supplied bounded cleanup function. The lifecycle layer invokes every
+registered cleanup exactly once after success, failure, cancellation, or
+timeout, preserves registration order, and records an explicit incomplete
+marker for each failed cleanup attempt. Registration closes when cleanup starts;
+later calls return the immutable first cleanup report rather than repeating a
+destructive action. Resource creation, path policy, and domain-specific cleanup
+semantics remain with the owning domain.
+
 ### Cross-cutting components
 
 - authentication and principal mapping;
