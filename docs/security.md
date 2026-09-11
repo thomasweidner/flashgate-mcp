@@ -267,6 +267,13 @@ Version 1.0 security work includes:
 - audit lifecycle and end-to-end correlation;
 - supply-chain and release evidence.
 
+The Operations queue scheduler now enforces explicit global and per-principal
+caps before retaining work. Its round-robin selection prevents a continuously
+busy principal from starving another active principal, while per-principal FIFO
+ordering remains deterministic. Queue entries contain opaque operation and
+domain identities rather than request payloads; authorization and ownership
+checks remain responsibilities of the caller and domain lifecycle components.
+
 Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, conditional read cache semantics, optional accelerators, and any external provider ecosystem.
 
 ## Accepted Target Security Architecture
