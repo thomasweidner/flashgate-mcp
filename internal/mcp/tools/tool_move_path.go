@@ -56,6 +56,7 @@ func (t *MovePathTool) InputSchema() any {
 				"type":        "boolean",
 				"description": "Whether an existing target may be overwritten. Defaults to false.",
 			},
+			"dryRun": dryRunInputSchema(),
 		},
 		"required":             []string{"source", "target"},
 		"additionalProperties": false,
@@ -83,6 +84,15 @@ func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 	if !isNonBlank(arguments.Source) || !isNonBlank(arguments.Target) {
 		return nil, invalidParamsError()
 	}
+	if arguments.DryRun {
+		if err := t.filesystem.ValidatePath(arguments.Source, true); err != nil {
+			return nil, mapFilesystemError(err)
+		}
+		if err := t.filesystem.ValidatePath(arguments.Target, false); err != nil {
+			return nil, mapFilesystemError(err)
+		}
+		return movePathResult{Source: arguments.Source, Target: arguments.Target, DryRun: true}, nil
+	}
 
 	if err := t.filesystem.Move(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
 		return nil, mapFilesystemError(err)
@@ -99,10 +109,12 @@ type movePathArguments struct {
 	Source    string `json:"source"`
 	Target    string `json:"target"`
 	Overwrite bool   `json:"overwrite,omitempty"`
+	DryRun    bool   `json:"dryRun,omitempty"`
 }
 
 type movePathResult struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
 	Moved  bool   `json:"moved"`
+	DryRun bool   `json:"dryRun,omitempty"`
 }

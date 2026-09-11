@@ -51,6 +51,7 @@ func (t *DeletePathTool) InputSchema() any {
 				"type":        "boolean",
 				"description": "Whether a non-empty directory may be deleted recursively. Defaults to false.",
 			},
+			"dryRun": dryRunInputSchema(),
 		},
 		"required":             []string{"path"},
 		"additionalProperties": false,
@@ -78,6 +79,12 @@ func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage
 	if !isNonBlank(arguments.Path) {
 		return nil, invalidParamsError()
 	}
+	if arguments.DryRun {
+		if err := t.filesystem.ValidatePath(arguments.Path, true); err != nil {
+			return nil, mapFilesystemError(err)
+		}
+		return deletePathResult{Path: arguments.Path, DryRun: true}, nil
+	}
 
 	if err := t.filesystem.Delete(arguments.Path, arguments.Recursive); err != nil {
 		return nil, mapFilesystemError(err)
@@ -92,9 +99,11 @@ func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage
 type deletePathArguments struct {
 	Path      string `json:"path"`
 	Recursive bool   `json:"recursive,omitempty"`
+	DryRun    bool   `json:"dryRun,omitempty"`
 }
 
 type deletePathResult struct {
 	Path    string `json:"path"`
 	Deleted bool   `json:"deleted"`
+	DryRun  bool   `json:"dryRun,omitempty"`
 }

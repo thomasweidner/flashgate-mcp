@@ -40,28 +40,33 @@ func filesystemOutputSchema(toolName string) map[string]any {
 			"path":    map[string]any{"type": "string"},
 			"size":    map[string]any{"type": "integer"},
 			"written": map[string]any{"type": "boolean"},
+			"dryRun":  map[string]any{"type": "boolean"},
 		}, "path", "size", "written")
 	case createDirectoryToolName:
 		return objectOutputSchema(map[string]any{
 			"path":    map[string]any{"type": "string"},
 			"created": map[string]any{"type": "boolean"},
+			"dryRun":  map[string]any{"type": "boolean"},
 		}, "path", "created")
 	case deletePathToolName:
 		return objectOutputSchema(map[string]any{
 			"path":    map[string]any{"type": "string"},
 			"deleted": map[string]any{"type": "boolean"},
+			"dryRun":  map[string]any{"type": "boolean"},
 		}, "path", "deleted")
 	case copyPathToolName:
 		return objectOutputSchema(map[string]any{
 			"source": map[string]any{"type": "string"},
 			"target": map[string]any{"type": "string"},
 			"copied": map[string]any{"type": "boolean"},
+			"dryRun": map[string]any{"type": "boolean"},
 		}, "source", "target", "copied")
 	case movePathToolName:
 		return objectOutputSchema(map[string]any{
 			"source": map[string]any{"type": "string"},
 			"target": map[string]any{"type": "string"},
 			"moved":  map[string]any{"type": "boolean"},
+			"dryRun": map[string]any{"type": "boolean"},
 		}, "source", "target", "moved")
 	default:
 		return nil

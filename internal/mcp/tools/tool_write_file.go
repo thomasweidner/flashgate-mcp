@@ -55,6 +55,7 @@ func (t *WriteFileTool) InputSchema() any {
 				"type":        "boolean",
 				"description": "Whether an existing file may be overwritten. Defaults to false.",
 			},
+			"dryRun": dryRunInputSchema(),
 		},
 		"required":             []string{"path"},
 		"additionalProperties": false,
@@ -84,6 +85,12 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 	}
 
 	content := []byte(arguments.Content)
+	if arguments.DryRun {
+		if err := t.filesystem.ValidatePath(arguments.Path, false); err != nil {
+			return nil, mapFilesystemError(err)
+		}
+		return writeFileResult{Path: arguments.Path, Size: int64(len(content)), DryRun: true}, nil
+	}
 
 	if err := t.filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
 		return nil, mapFilesystemError(err)
@@ -100,10 +107,12 @@ type writeFileArguments struct {
 	Path      string `json:"path"`
 	Content   string `json:"content,omitempty"`
 	Overwrite bool   `json:"overwrite,omitempty"`
+	DryRun    bool   `json:"dryRun,omitempty"`
 }
 
 type writeFileResult struct {
 	Path    string `json:"path"`
 	Size    int64  `json:"size"`
 	Written bool   `json:"written"`
+	DryRun  bool   `json:"dryRun,omitempty"`
 }

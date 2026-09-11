@@ -110,7 +110,7 @@ Only genuine missing-path errors become `exists:false`. Security and policy deni
 
 ## `write_file`
 
-Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (default `false`). Existing limits and root/security enforcement apply.
+Required: `path`. Optional: `content` (empty is allowed), `overwrite` (default `false`), and `dryRun` (default `false`). Existing limits and root/security enforcement apply.
 
 ```json
 {
@@ -119,6 +119,30 @@ Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (defaul
   "overwrite": false
 }
 ```
+
+## Dry-run request previews
+
+Every write-capable filesystem tool accepts optional `dryRun`. When it is
+`true`, FlashGate strictly decodes and validates the request shape, returns the
+same bounded result type with the operation flag set to `false` and
+`dryRun:true`, and uses the filesystem abstraction only to apply the central
+path policy. For example:
+
+```json
+{ "source": "a.txt", "target": "b.txt", "overwrite": true, "dryRun": true }
+```
+
+```json
+{ "source": "a.txt", "target": "b.txt", "copied": false, "dryRun": true }
+```
+
+This is a **request preview**, not a feasibility check: it intentionally does
+not inspect target conflicts, capacity, or concurrent state. It validates the
+central path policy and requires copy, move, and delete sources to exist.
+The later real operation re-evaluates all filesystem and security conditions
+and can still fail. A false operation flag never claims that a mutation
+occurred. Normal calls omit `dryRun` from results and retain their existing
+wire shape.
 
 ```json
 {
@@ -130,7 +154,7 @@ Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (defaul
 
 ## `create_directory`
 
-Required: `path`. Missing parents are created. `created` describes the actual leaf state.
+Required: `path`. Optional: `dryRun`. Missing parents are created. `created` describes the actual leaf state.
 
 ```json
 { "path": "output/archive" }
@@ -152,7 +176,7 @@ An existing file at the target is a path-type error.
 
 ## `delete_path`
 
-Required: `path`. Optional: `recursive`, default `false`. Non-empty directories require explicit recursive deletion and remain bounded by the configured deletion limit.
+Required: `path`. Optional: `recursive` and `dryRun`, both default `false`. Non-empty directories require explicit recursive deletion and remain bounded by the configured deletion limit.
 
 ```json
 { "path": "output/archive", "recursive": true }
@@ -164,7 +188,7 @@ Required: `path`. Optional: `recursive`, default `false`. Non-empty directories 
 
 ## `copy_path`
 
-Required: `source` and `target`. Optional: `overwrite`, default `false`.
+Required: `source` and `target`. Optional: `overwrite` and `dryRun`, both default `false`.
 
 ```json
 { "source": "a.txt", "target": "b.txt", "overwrite": false }
@@ -178,7 +202,7 @@ This contract copies files only. Directory copy and recursive copy are not suppo
 
 ## `move_path`
 
-Required: `source` and `target`. Optional: `overwrite`, default `false`. This is the single contract for both move and rename.
+Required: `source` and `target`. Optional: `overwrite` and `dryRun`, both default `false`. This is the single contract for both move and rename.
 
 ```json
 { "source": "old.txt", "target": "new.txt", "overwrite": false }

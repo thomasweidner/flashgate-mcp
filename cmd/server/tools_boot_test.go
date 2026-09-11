@@ -137,6 +137,8 @@ func (noopFileSystem) Stat(string) (fs.Metadata, error) {
 	return fs.Metadata{}, errors.New("not implemented")
 }
 
+func (noopFileSystem) ValidatePath(string, bool) error { return nil }
+
 func (noopFileSystem) Write(string, []byte, bool) error {
 	return errors.New("not implemented")
 }
