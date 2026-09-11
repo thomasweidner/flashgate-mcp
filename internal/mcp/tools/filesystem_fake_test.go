@@ -9,6 +9,8 @@ type fakeFileSystem struct {
 	readPath        string
 	readMaxBytes    int64
 	readContent     []byte
+	readRangeOffset int64
+	readRangeLength int64
 	readErr         error
 	statPath        string
 	statMetadata    fs.Metadata
@@ -41,6 +43,11 @@ func (f *fakeFileSystem) List(path string) ([]fs.Entry, error) {
 func (f *fakeFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	f.readPath, f.readMaxBytes = path, maxBytes
 	return f.readContent, f.readErr
+}
+
+func (f *fakeFileSystem) ReadRange(path string, offset, length, maxBytes int64) ([]byte, error) {
+	f.readPath, f.readRangeOffset, f.readRangeLength, f.readMaxBytes = path, offset, length, maxBytes
+	return append([]byte(nil), f.readContent...), f.readErr
 }
 func (f *fakeFileSystem) Stat(path string) (fs.Metadata, error) {
 	f.statPath = path

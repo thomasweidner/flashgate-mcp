@@ -132,6 +132,7 @@ func (noopFileSystem) List(string) ([]fs.Entry, error) {
 func (noopFileSystem) Read(string, int64) ([]byte, error) {
 	return nil, errors.New("not implemented")
 }
+func (noopFileSystem) ReadRange(string, int64, int64, int64) ([]byte, error) { return nil, nil }
 
 func (noopFileSystem) Stat(string) (fs.Metadata, error) {
 	return fs.Metadata{}, errors.New("not implemented")
