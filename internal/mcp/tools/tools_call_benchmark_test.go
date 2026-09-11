@@ -150,7 +150,7 @@ type benchmarkParallelFileSystem struct{}
 func (benchmarkParallelFileSystem) List(string) ([]fs.Entry, error)    { return nil, nil }
 func (benchmarkParallelFileSystem) Read(string, int64) ([]byte, error) { return nil, nil }
 func (benchmarkParallelFileSystem) Stat(string) (fs.Metadata, error) {
-	return fs.Metadata{Name: "existing.txt", Size: 26}, nil
+	return fs.Metadata{Name: "existing.txt", Type: "file", Size: 26, ModifiedTime: "2026-09-11T10:15:30Z", Permissions: "0644"}, nil
 }
 func (benchmarkParallelFileSystem) Write(string, []byte, bool) error { return nil }
 func (benchmarkParallelFileSystem) Mkdir(string) (bool, error)       { return false, nil }
@@ -177,7 +177,7 @@ func callToolHandlerBenchmarkFixtures() []callToolHandlerBenchmarkFixture {
 			registry.Register(NewGetPathInfoTool(filesystem))
 			params = json.RawMessage(`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`)
 		case getPathInfoExistingResult:
-			filesystem.statMetadata = fs.Metadata{Name: value.Name, IsDir: value.IsDir, Size: value.Size}
+			filesystem.statMetadata = fs.Metadata{Name: value.Name, Type: value.Type, IsDir: value.IsDir, Size: value.Size, ModifiedTime: value.ModifiedTime, Permissions: value.Permissions}
 			registry.Register(NewGetPathInfoTool(filesystem))
 			params = json.RawMessage(`{"name":"get_path_info","arguments":{"path":"docs/readme.txt"}}`)
 		case listDirectoryResult:
@@ -248,7 +248,7 @@ func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 
 	return []callToolResultBenchmarkFixture{
 		{"path_info_missing", getPathInfoMissingResult{Path: "does-not-exist.txt", Exists: false}},
-		{"path_info_existing", getPathInfoExistingResult{Path: "docs/readme.txt", Exists: true, Name: "readme.txt", Size: 128}},
+		{"path_info_existing", getPathInfoExistingResult{Path: "docs/readme.txt", Exists: true, Name: "readme.txt", Type: "file", Size: 128, ModifiedTime: "2026-09-11T10:15:30Z", Permissions: "0644"}},
 		{"directory_small", listDirectoryResult{Entries: []fs.Entry{{Name: "a.txt", Size: 12}, {Name: "sub", IsDir: true}}}},
 		{"directory_500_entries", listDirectoryResult{Entries: largeEntries}},
 		{"text_file_small", readFileResult{Content: "FlashGate benchmark text.\n", Size: 26}},
@@ -259,7 +259,7 @@ func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 func TestCallToolResultSerializationPayloadSizes(t *testing.T) {
 	expected := map[string][3]int{
 		"path_info_missing":     {44, 89, 154},
-		"path_info_existing":    {85, 138, 244},
+		"path_info_existing":    {158, 223, 402},
 		"directory_small":       {91, 148, 260},
 		"directory_500_entries": {25897, 29938, 55856},
 		"text_file_small":       {51, 97, 169},

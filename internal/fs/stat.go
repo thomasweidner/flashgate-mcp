@@ -3,6 +3,7 @@ package fs
 import (
 	"errors"
 	"os"
+	"time"
 )
 
 // Stat returns filesystem metadata.
@@ -24,8 +25,22 @@ func (f *LocalFileSystem) Stat(path string) (Metadata, error) {
 	}
 
 	return Metadata{
-		Name:  info.Name(),
-		IsDir: info.IsDir(),
-		Size:  info.Size(),
+		Name:         info.Name(),
+		Type:         portablePathType(info.Mode()),
+		IsDir:        info.IsDir(),
+		Size:         info.Size(),
+		ModifiedTime: info.ModTime().UTC().Format(time.RFC3339Nano),
+		Permissions:  portablePermissions(info.Mode()),
 	}, nil
+}
+
+func portablePathType(mode os.FileMode) string {
+	switch {
+	case mode.IsRegular():
+		return "file"
+	case mode.IsDir():
+		return "directory"
+	default:
+		return "other"
+	}
 }

@@ -74,9 +74,12 @@ type Entry struct {
 
 // Metadata represents filesystem metadata.
 type Metadata struct {
-	Name  string `json:"name"`
-	IsDir bool   `json:"isDir"`
-	Size  int64  `json:"size"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	IsDir        bool   `json:"isDir"`
+	Size         int64  `json:"size"`
+	ModifiedTime string `json:"modifiedTime"`
+	Permissions  string `json:"permissions,omitempty"`
 }
 
 // FileSystem defines filesystem operations used by MCP tools.

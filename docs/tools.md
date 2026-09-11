@@ -92,10 +92,15 @@ Existing path:
   "path": "README.md",
   "exists": true,
   "name": "README.md",
+  "type": "file",
   "isDir": false,
-  "size": 123
+  "size": 123,
+  "modifiedTime": "2026-09-11T10:15:30Z",
+  "permissions": "0644"
 }
 ```
+
+`type` is `file`, `directory`, or `other`. `modifiedTime` is normalized to RFC 3339 in UTC. `permissions` is a four-digit octal Unix permission mode and is omitted on Windows, where the Go mode bits are not a portable representation of Windows ACLs.
 
 Missing path:
 

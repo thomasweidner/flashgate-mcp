@@ -200,6 +200,8 @@ Unexpected handler panics are contained at the request boundary and returned as 
 
 Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification is intentionally unchanged in `SPR-045`; BL-203 owns a later complete `isError=true` migration.
 
+`get_path_info` exposes only root-relative path metadata. Its Unix `permissions` value is the four-digit permission mode and is not an authorization decision; normal path policy remains authoritative. Windows omits `permissions` rather than translating synthesized Go mode bits into a misleading ACL claim, and the tool never exposes owners, ACL entries, or resolved host paths.
+
 ## Limits and Redaction
 
 `SPR-039` adds configurable hard limits for protocol input, tool arguments, filesystem payloads, and response size.

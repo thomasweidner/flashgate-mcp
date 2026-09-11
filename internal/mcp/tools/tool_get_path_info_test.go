@@ -14,10 +14,10 @@ import (
 
 func TestGetPathInfoExistingAndMissing(t *testing.T) {
 	fake := newFakeFileSystem()
-	fake.statMetadata = fs.Metadata{Name: "file.txt", Size: 7}
+	fake.statMetadata = fs.Metadata{Name: "file.txt", Type: "file", Size: 7, ModifiedTime: "2026-09-11T10:15:30Z", Permissions: "0644"}
 	tool := NewGetPathInfoTool(fake)
 	result, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"path":"file.txt"}`))
-	want := getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Size: 7}
+	want := getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Type: "file", Size: 7, ModifiedTime: "2026-09-11T10:15:30Z", Permissions: "0644"}
 	if rpcErr != nil || !reflect.DeepEqual(result, want) {
 		t.Fatalf("unexpected existing result=%#v error=%v", result, rpcErr)
 	}
@@ -37,9 +37,9 @@ func TestGetPathInfoDefinition(t *testing.T) {
 
 func TestGetPathInfoExistingDirectory(t *testing.T) {
 	fake := newFakeFileSystem()
-	fake.statMetadata = fs.Metadata{Name: "docs", IsDir: true}
+	fake.statMetadata = fs.Metadata{Name: "docs", Type: "directory", IsDir: true, ModifiedTime: "2026-09-11T10:15:30Z"}
 	result, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"docs"}`))
-	want := getPathInfoExistingResult{Path: "docs", Exists: true, Name: "docs", IsDir: true, Size: 0}
+	want := getPathInfoExistingResult{Path: "docs", Exists: true, Name: "docs", Type: "directory", IsDir: true, Size: 0, ModifiedTime: "2026-09-11T10:15:30Z"}
 	if rpcErr != nil || !reflect.DeepEqual(result, want) {
 		t.Fatalf("unexpected directory result=%#v error=%v", result, rpcErr)
 	}
