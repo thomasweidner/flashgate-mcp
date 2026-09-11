@@ -105,6 +105,10 @@ Sprint 3.43 removes the redundant `FileSystem.Exists` method and the `FileSystem
 
 Directory creation now reports whether the leaf was actually created while preserving parent creation. Move validates same path, effective path, `os.SameFile`, Windows case aliases, overwrite type combinations, directory self-subtrees, changed path identities, and same-volume support before replacement. Existing files are replaced by rename without a separate target deletion. Cross-volume moves are rejected without copy/delete fallback. These changes retain centralized PathGuard enforcement and do not add directory copy.
 
+## Contract Amendment - 2026-09-11
+
+The Version 1.0 cross-volume move target is now defined by the [cross-volume move contract](../cross-volume-move-contract.md). It uses a bounded copy/verify/publish/delete workflow with source and target revalidation, truthful partial-completion reporting, and identity-checked cleanup. This amendment does not change the current runtime: cross-volume moves remain rejected until the workflow, job integration, and native-platform validation are implemented.
+
 ## Implementation Amendment - 2026-07-11
 
 Sprint 3.44 makes `MCP_ROOT` mandatory and requires absolute production roots. Missing, empty, whitespace-only and general relative roots fail closed. `MCP_ROOT=.` is development-only and requires exact `MCP_ALLOW_CWD_ROOT=true`; no other relative root is enabled.
