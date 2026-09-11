@@ -1,12 +1,13 @@
 # Filesystem MCP tools
 
-FlashGate MCP exposes eight filesystem tools in the default profile, in this exact order:
+FlashGate MCP exposes nine filesystem tools in the default profile, in this exact order:
 
 ```text
 list_directory
 read_file
 get_path_info
 write_file
+append_file
 create_directory
 delete_path
 copy_path
@@ -35,11 +36,11 @@ The result examples below are domain objects. Every successful `tools/call` plac
 }
 ```
 
-The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
+The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All nine tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2134 bytes for read-only and 6326 bytes for default after `BL-055`. The schemas account for 895 bytes (+72.24%) and 2003 bytes (+46.33%), respectively. This is a contract snapshot, not a persistent payload budget.
 
 ## `list_directory`
 
@@ -128,6 +129,24 @@ Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (defaul
 }
 ```
 
+## `append_file`
+
+Required: `path`. Optional: `content` (empty is allowed). The operation appends
+without truncating existing data and creates a new file when the path is absent.
+The configured write-byte limit applies independently to each append payload;
+root and path policy remain server-enforced.
+
+```json
+{ "path": "events.log", "content": "next entry\n" }
+```
+
+```json
+{ "path": "events.log", "size": 11, "appended": true }
+```
+
+Appending to a directory is rejected. Unlike `write_file`, this tool has no
+`overwrite` option because existing file content is always preserved.
+
 ## `create_directory`
 
 Required: `path`. Missing parents are created. `created` describes the actual leaf state.
@@ -202,7 +221,7 @@ The previous pre-1.0 contract and required client changes are documented in [fil
 
 ## Version 1.0 target contract direction
 
-The sections above describe the current eight-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
+The sections above describe the current nine-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
 
 Planned contract changes include:
 

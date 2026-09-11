@@ -41,6 +41,12 @@ func filesystemOutputSchema(toolName string) map[string]any {
 			"size":    map[string]any{"type": "integer"},
 			"written": map[string]any{"type": "boolean"},
 		}, "path", "size", "written")
+	case appendFileToolName:
+		return objectOutputSchema(map[string]any{
+			"path":     map[string]any{"type": "string"},
+			"size":     map[string]any{"type": "integer"},
+			"appended": map[string]any{"type": "boolean"},
+		}, "path", "size", "appended")
 	case createDirectoryToolName:
 		return objectOutputSchema(map[string]any{
 			"path":    map[string]any{"type": "string"},
