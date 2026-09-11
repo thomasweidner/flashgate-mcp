@@ -348,6 +348,14 @@ Resource control combines:
 - TTL cleanup and leak detection;
 - slow-reader/backpressure handling.
 
+Operation temporary-resource cleanup uses opaque identifiers rather than host
+paths in lifecycle evidence. Cleanup callbacks are registered before cleanup
+starts, receive the caller's bounded context, execute at most once, and produce
+explicit incomplete markers on failure. One failed callback does not suppress
+attempts for later registered resources; incomplete resources remain visible to
+the later leak-detection and diagnostic boundary rather than being reported as
+successfully removed.
+
 A service restart changes the generation and invalidates stale state.
 
 ### Payload and resource boundary
