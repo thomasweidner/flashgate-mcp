@@ -8,6 +8,7 @@ Tool names use stable lower-case snake case and describe the user-visible operat
 list_directory
 read_file
 get_path_info
+get_paths_info
 write_file
 create_directory
 delete_path
@@ -53,17 +54,18 @@ All client paths are relative to the configured root. Results may echo the publi
 
 ## Capability gating
 
-The default profile exposes all eight baseline tools. The read-only profile exposes exactly:
+The default profile exposes all nine baseline tools. The read-only profile exposes exactly:
 
 ```text
 list_directory
 read_file
 get_path_info
+get_paths_info
 ```
 
 `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path` are write-gated and absent from the read-only registry.
 
-Client activation must set `MCP_READ_ONLY=true` explicitly; the missing-variable default remains the eight-tool profile. The read-only and negative STDIO smokes require identical generic Invalid params responses for every write-gated and removed legacy name.
+Client activation must set `MCP_READ_ONLY=true` explicitly; the missing-variable default remains the nine-tool profile. The read-only and negative STDIO smokes require identical generic Invalid params responses for every write-gated and removed legacy name.
 
 ## Errors
 
@@ -83,7 +85,7 @@ FlashGate MCP is pre-1.0 and was not productively deployed when `SPR-043` cleane
 
 ## Version 1.0 planned conventions
 
-This section is a target contract. It does not claim that the current eight-tool implementation already follows every rule below.
+This section is a target contract. It does not claim that the current nine-tool implementation already follows every rule below.
 
 ### Safe profile and catalog exposure
 

@@ -72,6 +72,62 @@ func TestGetPathInfoRejectsInvalidArguments(t *testing.T) {
 	}
 }
 
+func TestGetPathsInfoReturnsOrderedPartialResults(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.statFunc = func(path string) (fs.Metadata, error) {
+		switch path {
+		case "file.txt":
+			return fs.Metadata{Name: "file.txt", Size: 7}, nil
+		case "missing.txt":
+			return fs.Metadata{}, fs.ErrNotFound
+		default:
+			return fs.Metadata{}, security.ErrHiddenPathDenied
+		}
+	}
+	size := int64(7)
+	result, rpcErr := NewGetPathsInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"paths":["file.txt","missing.txt",".hidden"]}`))
+	want := getPathsInfoResult{
+		Results: []getPathsInfoItemResult{
+			{Path: "file.txt", Exists: boolPointer(true), Name: "file.txt", IsDir: boolPointer(false), Size: &size},
+			{Path: "missing.txt", Exists: boolPointer(false)},
+			{Path: ".hidden", Error: &getPathsInfoItemError{Code: "invalid_path", Message: "filesystem error: invalid path"}},
+		},
+		Accepted: 3, Completed: 2, Failed: 1,
+	}
+	if rpcErr != nil || !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected batch result=%#v error=%v", result, rpcErr)
+	}
+}
+
+func TestGetPathsInfoRejectsInvalidArgumentsBeforeFilesystemAccess(t *testing.T) {
+	tooMany := make([]string, maxPathsInfoItems+1)
+	for index := range tooMany {
+		tooMany[index] = "file.txt"
+	}
+	rawTooMany, err := json.Marshal(map[string]any{"paths": tooMany})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []json.RawMessage{
+		json.RawMessage(`{}`), json.RawMessage(`{"paths":[]}`), json.RawMessage(`{"paths":[""]}`),
+		json.RawMessage(`{"paths":["  "]}`), json.RawMessage(`{"paths":null}`),
+		json.RawMessage(`{"paths":["a"],"extra":true}`), rawTooMany,
+	} {
+		fake := newFakeFileSystem()
+		_, rpcErr := NewGetPathsInfoTool(fake).Execute(context.Background(), raw)
+		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.statPath != "" {
+			t.Fatalf("expected preflight rejection for %s, error=%#v statPath=%q", raw, rpcErr, fake.statPath)
+		}
+	}
+}
+
+func TestGetPathsInfoDefinition(t *testing.T) {
+	definition := NewGetPathsInfoTool(newFakeFileSystem()).Definition()
+	if definition.Name != "get_paths_info" || definition.Title != "Get Paths Info" || definition.Description == "" || definition.InputSchema == nil || definition.OutputSchema == nil {
+		t.Fatalf("unexpected definition: %#v", definition)
+	}
+}
+
 func TestMapFilesystemErrorCategories(t *testing.T) {
 	cases := []struct {
 		err     error

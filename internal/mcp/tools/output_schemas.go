@@ -35,6 +35,17 @@ func filesystemOutputSchema(toolName string) map[string]any {
 				}, "path", "exists", "name", "isDir", "size"),
 			},
 		}
+	case getPathsInfoToolName:
+		return objectOutputSchema(map[string]any{
+			"results": map[string]any{"type": "array", "items": map[string]any{
+				"type": "object", "oneOf": []any{
+					objectOutputSchema(map[string]any{"path": map[string]any{"type": "string"}, "exists": map[string]any{"const": false}}, "path", "exists"),
+					objectOutputSchema(map[string]any{"path": map[string]any{"type": "string"}, "exists": map[string]any{"const": true}, "name": map[string]any{"type": "string"}, "isDir": map[string]any{"type": "boolean"}, "size": map[string]any{"type": "integer"}}, "path", "exists", "name", "isDir", "size"),
+					objectOutputSchema(map[string]any{"path": map[string]any{"type": "string"}, "error": objectOutputSchema(map[string]any{"code": map[string]any{"type": "string"}, "message": map[string]any{"type": "string"}}, "code", "message")}, "path", "error"),
+				},
+			}},
+			"accepted": map[string]any{"type": "integer"}, "completed": map[string]any{"type": "integer"}, "failed": map[string]any{"type": "integer"},
+		}, "results", "accepted", "completed", "failed")
 	case writeFileToolName:
 		return objectOutputSchema(map[string]any{
 			"path":    map[string]any{"type": "string"},
