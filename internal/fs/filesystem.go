@@ -85,6 +85,7 @@ type FileSystem interface {
 	Read(path string, maxBytes int64) ([]byte, error)
 	Stat(path string) (Metadata, error)
 	Write(path string, content []byte, overwrite bool) error
+	EditRange(path string, startByte, endByte int64, content []byte) (int64, error)
 	Mkdir(path string) (bool, error)
 	Delete(path string, recursive bool) error
 	Move(source string, target string, overwrite bool) error

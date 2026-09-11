@@ -174,6 +174,7 @@ try {
     if ($env:MCP_READ_ONLY -ne "true") {
         $expectedTools += @(
             "write_file",
+            "edit_file",
             "create_directory",
             "delete_path",
             "copy_path",

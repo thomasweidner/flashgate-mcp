@@ -245,6 +245,7 @@ Security tests currently cover:
 - generic protocol error messages
 - JSON-RPC message and tool argument limits
 - filesystem read/write/list/copy/delete limits
+- targeted byte-range edits confined through `PathGuard`, with source and result sizes bounded by `MCP_MAX_WRITE_BYTES`
 - response-size safety net
 - strict successful `CallToolResult` envelope and text/structured parity without host-path additions
 - diagnostics redaction
