@@ -251,8 +251,8 @@ func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 		{"path_info_existing", getPathInfoExistingResult{Path: "docs/readme.txt", Exists: true, Name: "readme.txt", Size: 128}},
 		{"directory_small", listDirectoryResult{Entries: []fs.Entry{{Name: "a.txt", Size: 12}, {Name: "sub", IsDir: true}}}},
 		{"directory_500_entries", listDirectoryResult{Entries: largeEntries}},
-		{"text_file_small", readFileResult{Content: "FlashGate benchmark text.\n", Size: 26}},
-		{"text_file_64kib", readFileResult{Content: strings.Repeat("x", 64*1024), Size: 64 * 1024}},
+		{"text_file_small", readFileResult{Content: "FlashGate benchmark text.\n", Size: 26, MIMEType: "text/plain; charset=utf-8", Encoding: "utf-8"}},
+		{"text_file_64kib", readFileResult{Content: strings.Repeat("x", 64*1024), Size: 64 * 1024, MIMEType: "text/plain; charset=utf-8", Encoding: "utf-8"}},
 	}
 }
 
@@ -262,8 +262,8 @@ func TestCallToolResultSerializationPayloadSizes(t *testing.T) {
 		"path_info_existing":    {85, 138, 244},
 		"directory_small":       {91, 148, 260},
 		"directory_500_entries": {25897, 29938, 55856},
-		"text_file_small":       {51, 97, 169},
-		"text_file_64kib":       {65563, 65608, 131192},
+		"text_file_small":       {109, 163, 293},
+		"text_file_64kib":       {65621, 65674, 131316},
 	}
 	variants := []struct {
 		name      string

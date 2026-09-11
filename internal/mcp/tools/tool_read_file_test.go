@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -73,8 +74,10 @@ func TestReadFileToolExecute(t *testing.T) {
 	}
 
 	var decoded struct {
-		Content string `json:"content"`
-		Size    int64  `json:"size"`
+		Content  string `json:"content"`
+		Size     int64  `json:"size"`
+		MIMEType string `json:"mimeType"`
+		Encoding string `json:"encoding"`
 	}
 
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
@@ -87,6 +90,46 @@ func TestReadFileToolExecute(t *testing.T) {
 
 	if decoded.Size != int64(len("hello world")) {
 		t.Fatalf("expected size %d, got %d", len("hello world"), decoded.Size)
+	}
+	if decoded.MIMEType != "text/plain; charset=utf-8" || decoded.Encoding != "utf-8" {
+		t.Fatalf("unexpected content metadata: %#v", decoded)
+	}
+}
+
+func TestReadFileToolBinaryAndAutoModes(t *testing.T) {
+	for _, mode := range []string{"binary", "auto"} {
+		t.Run(mode, func(t *testing.T) {
+			filesystem := newFakeFileSystem()
+			filesystem.readContent = []byte{0x00, 0xff, 0x10}
+			result, rpcErr := NewReadFileTool(filesystem, 1024).Execute(context.Background(), json.RawMessage(`{"path":"image.bin","mode":"`+mode+`"}`))
+			if rpcErr != nil {
+				t.Fatalf("unexpected error: %v", rpcErr)
+			}
+			got := result.(readFileResult)
+			if got.Content != base64.StdEncoding.EncodeToString(filesystem.readContent) || got.Encoding != "base64" || got.Size != 3 {
+				t.Fatalf("unexpected binary result: %#v", got)
+			}
+			if filesystem.readMaxBytes != 768 {
+				t.Fatalf("expected encoded-safe raw limit 768, got %d", filesystem.readMaxBytes)
+			}
+		})
+	}
+}
+
+func TestReadFileToolTextModeRejectsBinary(t *testing.T) {
+	filesystem := newFakeFileSystem()
+	filesystem.readContent = []byte{0xff}
+	_, rpcErr := NewReadFileTool(filesystem, 1024).Execute(context.Background(), json.RawMessage(`{"path":"binary","mode":"text"}`))
+	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		t.Fatalf("expected invalid params, got %#v", rpcErr)
+	}
+}
+
+func TestReadFileToolRejectsUnknownModeBeforeFilesystemAccess(t *testing.T) {
+	filesystem := newFakeFileSystem()
+	_, rpcErr := NewReadFileTool(filesystem, 1024).Execute(context.Background(), json.RawMessage(`{"path":"file","mode":"raw"}`))
+	if rpcErr == nil || filesystem.readPath != "" {
+		t.Fatalf("expected preflight rejection, error=%#v path=%q", rpcErr, filesystem.readPath)
 	}
 }
 

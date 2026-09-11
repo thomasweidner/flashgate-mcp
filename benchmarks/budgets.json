@@ -6,15 +6,15 @@
         "tool_count": 3,
         "schema_count": 3,
         "max_request_bytes": 59,
-        "max_response_bytes": 2134,
-        "max_result_bytes": 2099
+        "max_response_bytes": 2443,
+        "max_result_bytes": 2408
       },
       "default": {
         "tool_count": 8,
         "schema_count": 8,
         "max_request_bytes": 59,
-        "max_response_bytes": 5657,
-        "max_result_bytes": 5622
+        "max_response_bytes": 5966,
+        "max_result_bytes": 5931
       }
     },
     "workflows": {
@@ -61,8 +61,8 @@
       "read_file_small": {
         "calls": 1,
         "max_request_bytes": 331,
-        "max_response_bytes": 355,
-        "max_result_bytes": 285,
+        "max_response_bytes": 479,
+        "max_result_bytes": 409,
         "max_read_bytes": 26,
         "max_written_bytes": 0,
         "max_scanned_bytes": 0,
@@ -71,8 +71,8 @@
       "read_file_64kib": {
         "calls": 1,
         "max_request_bytes": 336,
-        "max_response_bytes": 131378,
-        "max_result_bytes": 131308,
+        "max_response_bytes": 131502,
+        "max_result_bytes": 131432,
         "max_read_bytes": 65536,
         "max_written_bytes": 0,
         "max_scanned_bytes": 0,
@@ -124,8 +124,8 @@
       "path_info_existing_text_plus_structured": { "max_payload_bytes": 244, "max_allocs_per_op": 6 },
       "directory_small_text_plus_structured": { "max_payload_bytes": 260, "max_allocs_per_op": 6 },
       "directory_500_entries_text_plus_structured": { "max_payload_bytes": 55856, "max_allocs_per_op": 6 },
-      "text_file_small_text_plus_structured": { "max_payload_bytes": 169, "max_allocs_per_op": 6 },
-      "text_file_64kib_text_plus_structured": { "max_payload_bytes": 131192, "max_allocs_per_op": 6 }
+      "text_file_small_text_plus_structured": { "max_payload_bytes": 293, "max_allocs_per_op": 6 },
+      "text_file_64kib_text_plus_structured": { "max_payload_bytes": 131316, "max_allocs_per_op": 6 }
     }
   },
   "soft": {
