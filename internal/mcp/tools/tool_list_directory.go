@@ -14,6 +14,12 @@ import (
 
 const listDirectoryToolName = "list_directory"
 
+const (
+	listDirectoryFieldName  = "name"
+	listDirectoryFieldIsDir = "isDir"
+	listDirectoryFieldSize  = "size"
+)
+
 // ListDirectoryTool exposes directory listing as an MCP tool.
 type ListDirectoryTool struct {
 	filesystem fs.FileSystem
@@ -38,6 +44,16 @@ func (t *ListDirectoryTool) InputSchema() any {
 				"minLength":   1,
 				"description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
 			},
+			"fields": map[string]any{
+				"type":        "array",
+				"minItems":    1,
+				"uniqueItems": true,
+				"items": map[string]any{
+					"type": "string",
+					"enum": []string{listDirectoryFieldName, listDirectoryFieldIsDir, listDirectoryFieldSize},
+				},
+				"description": "Portable entry fields to return. Defaults to name, isDir, and size when omitted.",
+			},
 		},
 		"additionalProperties": false,
 	}
@@ -60,20 +76,93 @@ func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMess
 		path = *arguments.Path
 	}
 
+	fields, ok := selectedListDirectoryFields(arguments.Fields)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
 	entries, err := t.filesystem.List(path)
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
-	return listDirectoryResult{Entries: entries}, nil
+	return listDirectoryResult{Entries: projectListDirectoryEntries(entries, fields)}, nil
 }
 
 type listDirectoryArguments struct {
-	Path *string `json:"path,omitempty"`
+	Path   *string  `json:"path,omitempty"`
+	Fields []string `json:"fields,omitempty"`
 }
 
 type listDirectoryResult struct {
-	Entries []fs.Entry `json:"entries"`
+	Entries []listDirectoryEntry `json:"entries"`
+}
+
+type listDirectoryEntry struct {
+	Name  *string `json:"name,omitempty"`
+	IsDir *bool   `json:"isDir,omitempty"`
+	Size  *int64  `json:"size,omitempty"`
+}
+
+type listDirectoryFields struct {
+	name  bool
+	isDir bool
+	size  bool
+}
+
+func selectedListDirectoryFields(requested []string) (listDirectoryFields, bool) {
+	if requested == nil {
+		return listDirectoryFields{name: true, isDir: true, size: true}, true
+	}
+	if len(requested) == 0 {
+		return listDirectoryFields{}, false
+	}
+
+	var selected listDirectoryFields
+	for _, field := range requested {
+		switch field {
+		case listDirectoryFieldName:
+			if selected.name {
+				return listDirectoryFields{}, false
+			}
+			selected.name = true
+		case listDirectoryFieldIsDir:
+			if selected.isDir {
+				return listDirectoryFields{}, false
+			}
+			selected.isDir = true
+		case listDirectoryFieldSize:
+			if selected.size {
+				return listDirectoryFields{}, false
+			}
+			selected.size = true
+		default:
+			return listDirectoryFields{}, false
+		}
+	}
+	return selected, true
+}
+
+func projectListDirectoryEntry(entry fs.Entry, fields listDirectoryFields) listDirectoryEntry {
+	var result listDirectoryEntry
+	if fields.name {
+		result.Name = &entry.Name
+	}
+	if fields.isDir {
+		result.IsDir = &entry.IsDir
+	}
+	if fields.size {
+		result.Size = &entry.Size
+	}
+	return result
+}
+
+func projectListDirectoryEntries(entries []fs.Entry, fields listDirectoryFields) []listDirectoryEntry {
+	result := make([]listDirectoryEntry, 0, len(entries))
+	for _, entry := range entries {
+		result = append(result, projectListDirectoryEntry(entry, fields))
+	}
+	return result
 }
 
 type filesystemErrorCategory string

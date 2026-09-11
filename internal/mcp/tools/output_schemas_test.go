@@ -38,7 +38,7 @@ func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 		name   string
 		result any
 	}{
-		{listDirectoryToolName, listDirectoryResult{Entries: []fs.Entry{{Name: "file.txt", Size: 4}}}},
+		{listDirectoryToolName, listDirectoryResult{Entries: projectListDirectoryEntries([]fs.Entry{{Name: "file.txt", Size: 4}}, listDirectoryFields{name: true, isDir: true, size: true})}},
 		{readFileToolName, readFileResult{Content: "text", Size: 4}},
 		{getPathInfoToolName + " existing", getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Size: 4}},
 		{getPathInfoToolName + " missing", getPathInfoMissingResult{Path: "missing.txt", Exists: false}},

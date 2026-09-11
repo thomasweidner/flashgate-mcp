@@ -181,7 +181,10 @@ func callToolHandlerBenchmarkFixtures() []callToolHandlerBenchmarkFixture {
 			registry.Register(NewGetPathInfoTool(filesystem))
 			params = json.RawMessage(`{"name":"get_path_info","arguments":{"path":"docs/readme.txt"}}`)
 		case listDirectoryResult:
-			filesystem.entries = value.Entries
+			filesystem.entries = make([]fs.Entry, 0, len(value.Entries))
+			for _, entry := range value.Entries {
+				filesystem.entries = append(filesystem.entries, fs.Entry{Name: *entry.Name, IsDir: *entry.IsDir, Size: *entry.Size})
+			}
 			registry.Register(NewListDirectoryTool(filesystem))
 			params = json.RawMessage(`{"name":"list_directory","arguments":{"path":"fixtures"}}`)
 		case readFileResult:
@@ -249,8 +252,8 @@ func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 	return []callToolResultBenchmarkFixture{
 		{"path_info_missing", getPathInfoMissingResult{Path: "does-not-exist.txt", Exists: false}},
 		{"path_info_existing", getPathInfoExistingResult{Path: "docs/readme.txt", Exists: true, Name: "readme.txt", Size: 128}},
-		{"directory_small", listDirectoryResult{Entries: []fs.Entry{{Name: "a.txt", Size: 12}, {Name: "sub", IsDir: true}}}},
-		{"directory_500_entries", listDirectoryResult{Entries: largeEntries}},
+		{"directory_small", listDirectoryResult{Entries: projectListDirectoryEntries([]fs.Entry{{Name: "a.txt", Size: 12}, {Name: "sub", IsDir: true}}, listDirectoryFields{name: true, isDir: true, size: true})}},
+		{"directory_500_entries", listDirectoryResult{Entries: projectListDirectoryEntries(largeEntries, listDirectoryFields{name: true, isDir: true, size: true})}},
 		{"text_file_small", readFileResult{Content: "FlashGate benchmark text.\n", Size: 26}},
 		{"text_file_64kib", readFileResult{Content: strings.Repeat("x", 64*1024), Size: 64 * 1024}},
 	}

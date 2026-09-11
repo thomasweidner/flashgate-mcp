@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcptest"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -259,7 +258,10 @@ func TestCallHandlerMethod(t *testing.T) {
 }
 func TestWrapSuccessfulToolResultCoversAllFilesystemResultForms(t *testing.T) {
 	tests := map[string]any{
-		"list_directory":         listDirectoryResult{Entries: []fs.Entry{{Name: "Folder With Spaces", IsDir: true}, {Name: "grüße.txt", Size: 7}}},
+		"list_directory": listDirectoryResult{Entries: []listDirectoryEntry{
+			{Name: stringPointer("Folder With Spaces"), IsDir: boolPointer(true), Size: int64Pointer(0)},
+			{Name: stringPointer("grüße.txt"), IsDir: boolPointer(false), Size: int64Pointer(7)},
+		}},
 		"read_file":              readFileResult{Content: "line 1\nUnicode ÄÖÜ and folder\\relative\\file.txt", Size: 50},
 		"get_path_info existing": getPathInfoExistingResult{Path: "Folder With Spaces\\grüße.txt", Exists: true, Name: "grüße.txt", Size: 7},
 		"get_path_info missing":  getPathInfoMissingResult{Path: "does-not-exist.txt", Exists: false},
@@ -268,7 +270,7 @@ func TestWrapSuccessfulToolResultCoversAllFilesystemResultForms(t *testing.T) {
 		"delete_path":            deletePathResult{Path: "old.txt", Deleted: true},
 		"copy_path":              copyPathResult{Source: "source.txt", Target: "target.txt", Copied: true},
 		"move_path":              movePathResult{Source: "old.txt", Target: "new.txt", Moved: true},
-		"empty directory":        listDirectoryResult{Entries: []fs.Entry{}},
+		"empty directory":        listDirectoryResult{Entries: []listDirectoryEntry{}},
 		"empty file":             readFileResult{Content: "", Size: 0},
 	}
 

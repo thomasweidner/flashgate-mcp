@@ -3,14 +3,16 @@ package tools
 func filesystemOutputSchema(toolName string) map[string]any {
 	switch toolName {
 	case listDirectoryToolName:
+		entrySchema := objectOutputSchema(map[string]any{
+			"name":  map[string]any{"type": "string"},
+			"isDir": map[string]any{"type": "boolean"},
+			"size":  map[string]any{"type": "integer"},
+		})
+		entrySchema["minProperties"] = 1
 		return objectOutputSchema(map[string]any{
 			"entries": map[string]any{
-				"type": "array",
-				"items": objectOutputSchema(map[string]any{
-					"name":  map[string]any{"type": "string"},
-					"isDir": map[string]any{"type": "boolean"},
-					"size":  map[string]any{"type": "integer"},
-				}, "name", "isDir", "size"),
+				"type":  "array",
+				"items": entrySchema,
 			},
 		}, "entries")
 	case readFileToolName:
@@ -69,10 +71,13 @@ func filesystemOutputSchema(toolName string) map[string]any {
 }
 
 func objectOutputSchema(properties map[string]any, required ...string) map[string]any {
-	return map[string]any{
+	schema := map[string]any{
 		"type":                 "object",
 		"properties":           properties,
-		"required":             required,
 		"additionalProperties": false,
 	}
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+	return schema
 }
