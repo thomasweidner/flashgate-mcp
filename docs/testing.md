@@ -959,6 +959,11 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - TTL cleanup, restart invalidation, shutdown, and leak detection;
 - slow-reader and audit/log backpressure behavior.
 
+The permanent scheduler unit suite validates invalid configuration and entries,
+atomic global/per-principal overload rejection, per-principal FIFO order,
+round-robin fairness, empty dequeue behavior, and concurrent admission under the
+global cap. Run it with `go test -race ./internal/operation`.
+
 ### Typed command tests
 
 - executable ID resolves only to approved absolute binary;
