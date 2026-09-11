@@ -252,6 +252,13 @@ Resource governance includes:
 
 The normal execution unit is a cancellable Go goroutine. A subprocess is justified for an approved external program, hard resource/crash isolation, a different OS identity, or work that cannot be reliably cancelled in-process.
 
+Each operation owns a child `context.Context`. Cancelling that operation closes
+its worker-visible signal without cancelling the parent server context; parent
+shutdown still propagates to the operation. Cancellation is cooperative:
+domain workers must check the context at bounded intervals and return promptly.
+The operation lifecycle owns the signal only and does not take over domain
+cleanup or result semantics.
+
 ## Managed processes and typed command execution
 
 Managed process handles are the primary identity; PIDs are diagnostic only because of reuse risk.
