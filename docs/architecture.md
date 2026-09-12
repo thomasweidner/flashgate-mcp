@@ -187,6 +187,10 @@ Owns root-scoped path/name/metadata/content search, include/exclude rules, bound
 
 Owns observation, details, trees, managed process instances, opaque handles, status, stdout/stderr cursors, stop/wait, and lifecycle.
 
+The planned Version 1.0 [managed process lifecycle contract](managed-process-lifecycle.md)
+defines owned-child cleanup, restart-generation invalidation, bounded TTL
+handling, and the boundary between managed-child and top-level host ownership.
+
 ### Execution
 
 Owns typed allowlisted commands, executable identity/path resolution, structured argument validation, working-directory/environment policy, resource limits, and platform isolation.

@@ -969,6 +969,15 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - stdout/stderr, runtime, process count, and network policy limits;
 - Windows/Linux isolation outcomes and redaction.
 
+### Managed process lifecycle tests
+
+The planned Version 1.0 [managed process lifecycle contract](managed-process-lifecycle.md)
+requires race and native Windows/Linux coverage for concurrent lifecycle
+signals, PID reuse, bounded graceful and forced tree cleanup, stream draining,
+host shutdown, crash/restart generation invalidation, TTL sweeping, resource
+release, unrelated-process protection, and redacted diagnostics. Fake adapters
+and cross-builds do not replace native process-lifecycle evidence.
+
 ### System service and execution-identity tests
 
 Version 1.0 tests Variant A only:
