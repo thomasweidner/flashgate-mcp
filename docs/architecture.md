@@ -43,6 +43,28 @@ FlashGate is not a remote-shell replacement, web-hosting service, cloud agent, o
 
 See [Version 1.0 Scope and Release Boundary](version-1-scope-and-release-boundary.md).
 
+## How to read architecture status
+
+Architecture acceptance and implementation completion are separate facts. An
+`Accepted` ADR records an approved direction; it does not by itself prove that
+the described runtime behavior is implemented, tested on every target
+platform, or released. Use the following sources in this order when reading
+this document:
+
+| Question | Authoritative source |
+|---|---|
+| What runs in the repository today? | The **Current state** section below, product code, and tests |
+| What is approved for Version 1.0? | The **Accepted Version 1.0 target architecture** and the applicable accepted ADR |
+| Is delivery complete or still planned? | The exact canonical row in [`BACKLOG.md`](../BACKLOG.md) |
+| What is intentionally after Version 1.0? | **Post-Version-1.0 decisions** below and `Later` backlog rows |
+
+Unless a subsection explicitly says otherwise, descriptions of named roots,
+general capability profiles, Operations/Jobs, process management, command
+execution, additional transports, services, and execution backends describe
+the accepted target rather than current runtime behavior. The
+[ADR index](adr/README.md) maps every decision record to its architectural
+horizon without treating ADR acceptance as delivery evidence.
+
 ## Current state
 
 The current implementation is a layered Go application using MCP JSON-RPC over STDIO. It provides:
@@ -558,5 +580,6 @@ Remote transport, product splitting, interpreter-based core operation, or unrest
 - [Execution identity backends](execution-identity-backends.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [ADR directory](adr/)
+- [ADR index and status-reading guide](adr/README.md)
 - [ADR-016: Governance fixture harness execution architecture](adr/016-governance-fixture-harness-execution-architecture.md)
 - [ADR-017: Host process ownership and lifecycle](adr/017-host-process-ownership-and-lifecycle.md)
