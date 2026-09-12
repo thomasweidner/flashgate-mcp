@@ -882,6 +882,14 @@ The default smoke test validates `initialize`, the exact eight-tool `tools/list`
 
 The startup-negative smoke covers missing/empty/whitespace/relative roots, `.` with and without the development opt-in, invalid development/read-only values, missing and file roots, a valid absolute root, exit codes, empty stdout, safe stderr categories and cleanup.
 
+`TestFilesystemToolsCallPlatformIntegration` is the focused BL-066 Windows/Linux
+integration gate. On each supported host it combines the real `LocalFileSystem`, tool
+registry, router, and JSON-RPC server path; exercises all eight filesystem tools through
+`tools/call` with nested, spaced, and Unicode relative paths; and verifies traversal and
+absolute-path rejection without host-path disclosure. Other operating systems skip this
+platform-specific gate. A cross-build only proves that the Windows test compiles; the
+test must execute on a native Windows runner during Windows finalization.
+
 GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative smoke variants on both `windows-latest` and `ubuntu-latest`. The smoke scripts create per-run artifacts under `build/` and clean them before exit. Script output is CI diagnostic output; server stdout remains reserved for redirected JSON-RPC protocol messages.
 
 Limit and redaction behavior is primarily covered by Go unit tests. Additional limit-negative smoke coverage can be added later if it can be done without broad smoke-script refactoring.
