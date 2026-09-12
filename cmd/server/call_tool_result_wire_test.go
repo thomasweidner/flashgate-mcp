@@ -36,7 +36,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := createToolRegistry(filesystem, 1024*1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(filesystem, 1024*1024, capabilitiesFromReadOnly(false))
 
 	tests := []struct {
 		name       string
@@ -122,7 +122,7 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defaultRegistry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	defaultRegistry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(false))
 	readOnlyRegistry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true))
 
 	tests := []struct {
