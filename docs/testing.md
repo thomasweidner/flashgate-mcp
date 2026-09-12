@@ -1064,6 +1064,8 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 ### Release and supply-chain tests
 
 - artifact version/help/platform/name checks;
+- source-level release-name parity across the Windows and Linux archive
+  producers, validators, release workflow, and public documentation;
 - compact and verbose CLI identity checks;
 - Windows x64/ARM64 `VERSIONINFO`, PE architecture, icon, and Explorer property checks;
 - Linux x64 native and ARM64 cross-build Go/VCS, ELF-header, ELF-note, and Go build-ID checks;
