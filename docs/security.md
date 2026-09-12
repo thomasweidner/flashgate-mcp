@@ -368,6 +368,9 @@ The server enforces:
 
 ### Managed process identity and control
 
+The consolidated process-observation, managed-lifecycle, and typed-command
+security contract is [Process and Execution Security](process-and-execution-security.md).
+
 Server-started processes receive opaque handles. PIDs are diagnostic only and cannot be the sole authority because PID reuse may target the wrong process.
 
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.

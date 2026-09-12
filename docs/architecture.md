@@ -256,6 +256,10 @@ The normal execution unit is a cancellable Go goroutine. A subprocess is justifi
 
 Managed process handles are the primary identity; PIDs are diagnostic only because of reuse risk.
 
+The complete implementation and review target for handles, PID reuse,
+allowlisted execution, isolation, output, redaction, and negative validation is
+documented in [Process and Execution Security](process-and-execution-security.md).
+
 Process output uses separate bounded stdout/stderr buffers, truncation markers, and cursors. Status, wait, output, and stop operations require the owning execution context.
 
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:
