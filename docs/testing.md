@@ -898,6 +898,10 @@ Future protocol or extension support still requires version-negotiation, extensi
 
 ### Benchmarks
 
+Use the [benchmark method and baseline guide](benchmark-method-and-baselines.md)
+to distinguish in-process measurements, end-to-end workflows, diagnostic runs,
+committed platform artifacts, and authoritative baseline evidence.
+
 `SPR-047` benchmarks performance-sensitive operations including:
 
 - directory listing
