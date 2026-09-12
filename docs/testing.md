@@ -1090,7 +1090,8 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - build provenance;
 - signing verification where configured;
 - reproducible-build comparison;
-- pinned/validated workflow policy;
+- the [pinned/validated workflow policy](workflow-pinning.md), enforced by
+  `go test ./internal/workflowpolicy` over every external action reference;
 - atomic rollback documentation and smoke procedure.
 
 The controlled commands and expected fields are documented in [Build and

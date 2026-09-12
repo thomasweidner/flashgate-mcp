@@ -269,6 +269,11 @@ Version 1.0 security work includes:
 
 Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, conditional read cache semantics, optional accelerators, and any external provider ecosystem.
 
+GitHub-hosted automation follows the [GitHub Actions pinning policy](workflow-pinning.md):
+third-party actions use immutable full commit SHAs, retain a reviewed release
+comment, and are covered by a repository-scanning test. Dependency automation
+may propose updates but cannot replace review or introduce a floating ref.
+
 ## Accepted Target Security Architecture
 
 Except where the current-state sections above state otherwise, the controls below are planned and are not implemented yet.
