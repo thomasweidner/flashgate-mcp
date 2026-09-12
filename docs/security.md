@@ -1,5 +1,11 @@
 # FlashGate MCP Security Model
 
+The public [security policy](../SECURITY.md) defines supported-version truth,
+private vulnerability reporting, coordinated disclosure, and the stable-release
+policy revalidation gate. This document defines the technical security model;
+it does not replace the reporting policy or claim that planned controls are
+already implemented.
+
 FlashGate MCP is designed as a secure-by-default local host-operations MCP server. It currently exposes only the filesystem functionality described below.
 
 Filesystem access is security-sensitive because MCP clients may request operations on local files. For this reason, all filesystem operations are restricted to a configured sandbox root.
