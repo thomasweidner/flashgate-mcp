@@ -217,6 +217,10 @@ Operations/jobs do not own filesystem, search, process, execution, or system sem
 
 ## Operations and Job Manager
 
+The focused [Operations/Job Manager documentation](operations-and-job-manager.md)
+collects the accepted handle, lifecycle, limit, result, cleanup, MCP-boundary,
+and validation contracts. The summary below remains the architectural view.
+
 Long work may use an opaque handle such as `op_<opaque-id>`. The handle is server-generated and bound to:
 
 - caller principal;

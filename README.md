@@ -56,7 +56,7 @@ The current implementation enforces one configured root, optional read-only regi
 
 ## Target Domains and Runtime
 
-Accepted future domains are filesystem, search, process, execution, and system information. An optional shared Operations/Job Manager is planned for bounded long-running or managed work, cancellation, deadlines, progress, TTL, cleanup, and leak protection. Short synchronous work may remain directly in domain services; the manager is not currently implemented and does not own domain logic.
+Accepted future domains are filesystem, search, process, execution, and system information. An optional shared [Operations/Job Manager](docs/operations-and-job-manager.md) is planned for bounded long-running or managed work, cancellation, deadlines, progress, TTL, cleanup, and leak protection. Short synchronous work may remain directly in domain services; the manager is not currently implemented and does not own domain logic.
 
 FlashGate MCP remains one repository and one primary native binary per platform unless benchmarks and threat models demonstrate a concrete benefit from splitting it. Version 1.0 keeps direct STDIO for non-admin users and adds optional Windows/Linux system-service roles through the same binary. The system service implements service-account roots; per-user workers are designed but deferred.
 
