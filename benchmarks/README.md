@@ -132,6 +132,14 @@ The Linux checkout and temporary output stay on native ext4 under `/home`, never
 under `/mnt` or `/media`. OneDrive archival occurs only after the final host gate.
 The legacy wrapper record flags are intentionally blocked; a policy-compliant
 controller is prepared and independently reviewed for each authoritative attempt.
+That controller must bind a dedicated, existing corpus parent explicitly. On
+Windows it calls `Assert-AuthoritativeBenchmarkCorpusParent` from
+`scripts/BenchmarkCorpusParent.psm1`; on native Linux it invokes
+`scripts/benchmark-corpus-parent.py` with
+`FLASHGATE_BENCHMARK_CORPUS_PARENT`. Both gates run before corpus creation and
+fail closed for implicit, linked, synchronized, mounted-Windows, network, or
+otherwise nonconforming locations. The corpus parent is not inferred from a
+temporary-directory default.
 
 Ordinary local benchmark results remain allowed on dirty trees and record
 `working_tree_dirty: true` accurately, but results collected during the scheduled

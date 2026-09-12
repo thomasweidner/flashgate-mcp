@@ -1140,4 +1140,15 @@ copy, hash scan, JSON verification, report, archive, or OneDrive access.
 `scripts/benchmark.sh --record-baseline` are deliberately blocked compatibility
 flags, not an authoritative workflow. A separately prepared controller implements
 the two-phase attempt; no wrapper-side shortcut or time override is permitted.
+Before creating corpus data, that controller must validate an explicit corpus
+parent with `scripts/BenchmarkCorpusParent.psm1` on Windows or
+`scripts/benchmark-corpus-parent.py` on native Linux. The Windows gate requires a
+child of the bound task workspace on fixed local NTFS, rejects reparse/network and
+known synchronized roots, and is finalized on a real Windows host. The Linux gate
+requires a canonical link-free directory strictly below `/home` whose most
+specific `/proc/self/mountinfo` entry reports `ext4`; it rejects `/mnt`, `/media`,
+other filesystem types, missing mount evidence, and implicit temporary paths.
+`python3 scripts/test-benchmark-corpus-parent.py` is the permanent portable
+negative gate; PowerShell parsing and real NTFS/reparse/synchronization cases are
+required during Windows finalization.
 <!-- FLASHGATE_PERFORMANCE_WORKSPACE_POLICY_END -->
