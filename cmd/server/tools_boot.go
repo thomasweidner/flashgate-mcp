@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
+	"github.com/thomasweidner/flashgate-mcp/internal/systeminfo"
 )
 
 type toolCapabilities struct {
@@ -20,6 +21,7 @@ func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilitie
 	toolRegistry.Register(tools.NewListDirectoryTool(filesystem))
 	toolRegistry.Register(tools.NewReadFileTool(filesystem, maxFileSize))
 	toolRegistry.Register(tools.NewGetPathInfoTool(filesystem))
+	toolRegistry.Register(tools.NewSystemInfoTool(systeminfo.NewProvider()))
 
 	if !capabilities.filesystemWrite {
 		return toolRegistry
@@ -30,6 +32,5 @@ func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilitie
 	toolRegistry.Register(tools.NewDeletePathTool(filesystem))
 	toolRegistry.Register(tools.NewCopyPathTool(filesystem))
 	toolRegistry.Register(tools.NewMovePathTool(filesystem))
-
 	return toolRegistry
 }
