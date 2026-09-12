@@ -187,6 +187,12 @@ Owns root-scoped path/name/metadata/content search, include/exclude rules, bound
 
 Owns observation, details, trees, managed process instances, opaque handles, status, stdout/stderr cursors, stop/wait, and lifecycle.
 
+The implemented managed-process foundation is a transport-neutral, thread-safe
+registry for server-started process state. It assigns a never-reused internal
+instance ID and provides atomic lookup and removal. That ID is not an MCP
+handle and is never a PID; opaque principal-bound handles, process startup,
+status, output, waiting, stopping, and cleanup remain separate planned work.
+
 ### Execution
 
 Owns typed allowlisted commands, executable identity/path resolution, structured argument validation, working-directory/environment policy, resource limits, and platform isolation.

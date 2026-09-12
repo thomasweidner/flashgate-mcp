@@ -10,6 +10,18 @@ PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+The managed-process registry has a focused permanent Go race gate:
+
+```text
+go test -race ./internal/managedprocess -count=1
+```
+
+It covers concurrent registration/removal, unique non-zero lifecycle IDs,
+non-reuse after removal, zero-value safety, and fail-closed identifier-space
+exhaustion. Public opaque handles, PID/start identity, process startup, output,
+stop/wait, and platform lifecycle tests remain owned by their respective
+planned tasks.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
