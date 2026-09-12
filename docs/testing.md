@@ -10,6 +10,13 @@ PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+The dedicated `Benchmark Diagnostics` workflow runs the benchmark wrappers in
+quick mode on native Windows and Linux AMD64 GitHub-hosted runners. It uploads
+the machine-readable result from each platform for 14 days, fails on
+deterministic hard-budget violations, and retains soft or contaminated timing
+observations as diagnostic warnings. These CI artifacts are not authoritative
+baseline measurements or cross-run baseline comparisons.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
