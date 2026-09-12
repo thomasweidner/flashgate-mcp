@@ -172,6 +172,12 @@ a supported race platform; for the current Windows host, missing CGO/GCC is an
 infrastructure limitation and does not justify relaxing allocation budgets. Native
 Linux `go test -race ./...` remains required.
 
+Hosted CI enforces that native Linux race command and runs both platform versions
+of the benchmark record-policy and measurement-window regression suites. The
+Windows and Linux jobs upload their command logs as `native-policy-<platform>-*`
+artifacts even after a gate failure; missing policy artifacts fail the upload
+step instead of being treated as an allowed exception.
+
 A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. `SPR-047` does not add the full process benchmark to CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
 
 ## Version 1.0 benchmark expansion
