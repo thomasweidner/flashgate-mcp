@@ -847,6 +847,9 @@ Security tests must cover:
 ### Integration Tests
 
 JSON-RPC smoke tests exercise the built server binary over STDIO.
+The [non-developer smoke-testing guide](non-developer-smoke-testing.md) provides
+one operator-focused sequence for a prebuilt binary, including exact pass
+messages and fail-closed handling of unexpected results.
 
 On Windows:
 
