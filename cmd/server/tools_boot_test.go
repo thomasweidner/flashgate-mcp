@@ -5,13 +5,14 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 )
 
 func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(filesystem, 1024, mustCapabilities(t, capability.FilesystemRead, capability.FilesystemWrite))
 
 	registeredTools := registry.List()
 	gotNames := make([]string, 0, len(registeredTools))
@@ -39,7 +40,7 @@ func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(filesystem, 1024, mustCapabilities(t, capability.FilesystemRead, capability.FilesystemWrite))
 
 	expectedNames := []string{
 		"list_directory",
@@ -60,7 +61,7 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 }
 
 func TestCreateToolRegistryDoesNotResolveRemovedTools(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(noopFileSystem{}, 1024, mustCapabilities(t, capability.FilesystemRead, capability.FilesystemWrite))
 	for _, name := range []string{"list_files", "stat_path", "exists_path", "mkdir", "rename_path"} {
 		if _, ok := registry.Get(name); ok {
 			t.Fatalf("expected removed tool %q to be unavailable", name)
@@ -114,13 +115,32 @@ func TestCreateToolRegistryDoesNotResolveWriteToolsWhenReadOnly(t *testing.T) {
 func TestCapabilitiesFromReadOnly(t *testing.T) {
 	t.Parallel()
 
-	if capabilitiesFromReadOnly(true).filesystemWrite {
+	if capabilitiesFromReadOnly(true).Has(capability.FilesystemWrite) {
 		t.Fatal("expected filesystem writes to be disabled in read-only mode")
 	}
 
-	if !capabilitiesFromReadOnly(false).filesystemWrite {
+	if !capabilitiesFromReadOnly(false).Has(capability.FilesystemWrite) {
 		t.Fatal("expected filesystem writes to be enabled outside read-only mode")
 	}
+	if !capabilitiesFromReadOnly(true).Has(capability.FilesystemRead) {
+		t.Fatal("expected filesystem reads to remain enabled in read-only mode")
+	}
+}
+
+func TestCreateToolRegistryOmitsToolsWithoutCapabilities(t *testing.T) {
+	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{})
+	if got := registry.List(); len(got) != 0 {
+		t.Fatalf("expected no tools without functional capabilities, got %#v", got)
+	}
+}
+
+func mustCapabilities(t *testing.T, names ...capability.Name) capability.Set {
+	t.Helper()
+	set, ok := capability.NewSet(names...)
+	if !ok {
+		t.Fatalf("invalid test capabilities: %v", names)
+	}
+	return set
 }
 
 type noopFileSystem struct{}
