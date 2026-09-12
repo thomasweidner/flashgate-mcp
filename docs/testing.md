@@ -1036,6 +1036,20 @@ per active client transport; further processes must be explicitly classified
 as workers or managed children. Ambiguous live-owner/live-transport cases are
 `SUSPECTED_STALE` and the test must prove no heuristic age, idle, CPU,
 request-count, singleton, PID-only, or registry-only termination.
+
+### Command-execution threat-model tests
+
+The normative [Command Execution Threat Model](command-execution-threat-model.md)
+requires negative coverage for executable substitution; shell, argument,
+response-file, configuration, hook, plugin, loader, environment, root, and
+working-directory injection; capability bypass; bounded stdout/stderr;
+timeouts, cancellation, descendants, quotas, ownership, PID reuse, cleanup,
+and restart. Tests must also prove that `run_command` uses the single Managed
+Process Engine. Native Windows/Linux tests are required for executable
+identity, process privilege, descendant cleanup, resource enforcement, and any
+claimed filesystem or network isolation; cross-builds and synthetic Cloud
+tests are not native evidence.
+
 ### Protocol compatibility tests
 
 Before Version 1.0, publish and test the supported MCP revision matrix:

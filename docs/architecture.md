@@ -191,6 +191,8 @@ Owns observation, details, trees, managed process instances, opaque handles, sta
 
 Owns typed allowlisted commands, executable identity/path resolution, structured argument validation, working-directory/environment policy, resource limits, and platform isolation.
 
+The [Command Execution Threat Model](command-execution-threat-model.md) defines the normative Version 1.0 trust boundaries and required policy outcomes before this domain is implemented.
+
 Execution does not expose a general shell. A command definition can fix subcommands, allow named flags and typed values, bind path arguments to roots, disable network use, and constrain timeout/output.
 
 ### System information
