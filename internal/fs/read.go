@@ -1,6 +1,10 @@
 package fs
 
-import "os"
+import (
+	"io"
+	"math"
+	"os"
+)
 
 // Read reads a file up to maxBytes bytes.
 func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
@@ -9,7 +13,13 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 		return nil, err
 	}
 
-	info, err := os.Stat(safePath.String())
+	file, err := os.Open(safePath.String())
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
@@ -26,5 +36,20 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 		return nil, ErrFileTooLarge
 	}
 
-	return os.ReadFile(safePath.String())
+	// Read from the validated open handle and retain one detection byte so a file
+	// that grows after Stat cannot make this operation allocate or return more
+	// than the caller's limit.
+	readLimit := maxBytes
+	if readLimit < math.MaxInt64 {
+		readLimit++
+	}
+	content, err := io.ReadAll(io.LimitReader(file, readLimit))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(content)) > maxBytes {
+		return nil, ErrFileTooLarge
+	}
+
+	return content, nil
 }
