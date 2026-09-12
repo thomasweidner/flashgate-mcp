@@ -153,6 +153,8 @@ identity fields.
 The versioned-artifact gate does not trust embedded `budget_evaluation`. It strictly
 decodes each platform artifact and the canonical budget/workflow definitions,
 rejecting unknown, duplicate, missing, mistyped, null, or trailing JSON content.
+It also rejects malformed raw UTF-8 and unpaired UTF-16 surrogate escapes at
+any nesting level while accepting a genuine U+FFFD replacement character.
 Typed Go invariants cover the complete current `baseline.schema.json` contract
 without a third-party schema dependency. Hard and soft results are recomputed from
 the loaded measurements only after exact hard/soft workflow key sets and positive
