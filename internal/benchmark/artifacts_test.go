@@ -129,8 +129,10 @@ func TestWorkflowCatalogMatchesRunner(t *testing.T) {
 	var catalog struct {
 		SchemaVersion string `json:"schema_version"`
 		Workflows     []struct {
-			Name           string `json:"name"`
-			ToolsCallCount int    `json:"tools_call_count"`
+			Name              string  `json:"name"`
+			ToolsCallCount    int     `json:"tools_call_count"`
+			ExpectedReadBytes *uint64 `json:"expected_read_bytes,omitempty"`
+			ExpectedEntries   *uint64 `json:"expected_entries,omitempty"`
 		} `json:"workflows"`
 	}
 	if err := json.Unmarshal(data, &catalog); err != nil {
@@ -156,5 +158,15 @@ func TestWorkflowCatalogMatchesRunner(t *testing.T) {
 		if catalog.Workflows[index].ToolsCallCount != calls {
 			t.Fatalf("workflow %s calls=%d, want %d", workflow.name, catalog.Workflows[index].ToolsCallCount, calls)
 		}
+		if !equalOptionalUint64(catalog.Workflows[index].ExpectedReadBytes, workflow.expectedReadBytes) {
+			t.Fatalf("workflow %s expected_read_bytes=%v, want %v", workflow.name, catalog.Workflows[index].ExpectedReadBytes, workflow.expectedReadBytes)
+		}
+		if !equalOptionalUint64(catalog.Workflows[index].ExpectedEntries, workflow.expectedEntries) {
+			t.Fatalf("workflow %s expected_entries=%v, want %v", workflow.name, catalog.Workflows[index].ExpectedEntries, workflow.expectedEntries)
+		}
 	}
+}
+
+func equalOptionalUint64(left, right *uint64) bool {
+	return left == nil && right == nil || left != nil && right != nil && *left == *right
 }

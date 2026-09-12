@@ -98,6 +98,13 @@ Workflow request byte counts include the initialization request and the 55-byte 
 
 The machine-readable catalog is `workflows.json`. It covers initialize, initialize plus `tools/list`, existing and missing `get_path_info`, small and 64-KiB reads, small and 500-entry directory listings, ten independent path checks, and ten independent file reads. Every repetition starts a new read-only server process.
 
+Catalog `expected_read_bytes` and `expected_entries` values are deterministic exact
+useful-output contracts, not upper budgets. The runner rejects a repetition before
+aggregation when its counter differs from the declared value, and artifact budget
+reevaluation independently requires both the minimum and maximum summary values to
+equal that value. Consequently, missing or truncated output cannot appear efficient
+merely because its byte, duration, or allocation measurements are smaller.
+
 The corpus is created below the operating-system temporary directory, is removed after the run, and is never serialized into results.
 
 ## Token approximation
@@ -147,7 +154,7 @@ identity fields.
 
 `budgets.json` separates deterministic hard contracts from noisy soft review limits:
 
-- Hard: complete and exact tool-profile/workflow measurement sets, tool/schema counts, wire/result byte maxima, reference workflow calls/counters, and all six selected-result allocation/payload records loaded from `budgets.json`.
+- Hard: complete and exact tool-profile/workflow measurement sets, tool/schema counts, wire/result byte maxima, exact catalog-declared useful-output counters, reference workflow calls/counters, and all six selected-result allocation/payload records loaded from `budgets.json`.
 - Soft: startup p95, workflow p95, idle/peak working set, and CPU time.
 
 The versioned-artifact gate does not trust embedded `budget_evaluation`. It strictly
