@@ -164,6 +164,13 @@ projection. Runner result construction records budget messages only in
 `budget_evaluation`; general result `warnings` contain only non-budget runtime
 warnings and remain forbidden in clean versioned baselines.
 
+Schema/runtime parity tests inventory every reusable nested object and pin numeric
+representations to the Go wire types. Portable counters are bounded to signed
+32-bit range, byte/measurement summaries use the full unsigned 64-bit range, and
+both startup and workflow `exit_statuses` require canonical signed-decimal keys
+with non-negative portable counts. Schema and strict Go validation therefore
+reject the same fractional, overflowing, negative, or malformed status values.
+
 Payload and allocation contracts are both validated in ordinary tests. Under race
 instrumentation the functional serialization, payload, fixture, and budget-contract
 checks still run, while only the `testing.AllocsPerRun` assertion is skipped because
