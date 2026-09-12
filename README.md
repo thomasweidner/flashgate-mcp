@@ -54,6 +54,11 @@ move_path
 
 The current implementation enforces one configured root, optional read-only registration, path policies, hard limits, and redacted diagnostics. The Version 1.0 target adds multiple named roots and capability-based profiles while retaining server-side checks as authoritative. With valid roots but no explicit profile, the target default is safe read-only; write, process, and command capabilities require explicit activation.
 
+The [capabilities, profiles, and named roots guide](docs/capabilities-profiles-and-named-roots.md)
+separates current configuration from the accepted Version 1.0 target and
+documents how tool exposure, call-time authorization, root policy, and
+execution identity compose without turning client metadata into authority.
+
 ## Target Domains and Runtime
 
 Accepted future domains are filesystem, search, process, execution, and system information. An optional shared Operations/Job Manager is planned for bounded long-running or managed work, cancellation, deadlines, progress, TTL, cleanup, and leak protection. Short synchronous work may remain directly in domain services; the manager is not currently implemented and does not own domain logic.

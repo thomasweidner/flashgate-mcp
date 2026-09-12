@@ -274,6 +274,9 @@ A future synchronous `run_command` remains a wrapper over the Managed Process En
 
 Profiles determine tool exposure and policy composition; server-side authorization remains authoritative.
 
+For the operator-facing target model, current-versus-planned boundary, and
+authorization flow, see [Capabilities, profiles, and named roots](capabilities-profiles-and-named-roots.md).
+
 Illustrative capabilities:
 
 ```text
