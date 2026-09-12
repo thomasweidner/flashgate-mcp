@@ -158,6 +158,12 @@ func TestStrictArtifactValidatorRejectsSecurityRelevantMutations(t *testing.T) {
 				*windows = append([]byte(`{"project":"flashgate-mcp",`), (*windows)[1:]...)
 			},
 		},
+		{
+			name: "invalid raw UTF-8 in nested artifact value", wantArtifact: "baseline.windows-amd64.json", wantCause: "invalid JSON Unicode",
+			mutate: func(windows, _ *[]byte) {
+				*windows = bytes.Replace(*windows, []byte(`"name": "initialize"`), []byte{'"', 'n', 'a', 'm', 'e', '"', ':', ' ', '"', 0xff, '"'}, 1)
+			},
+		},
 	}
 
 	for _, tc := range tests {
