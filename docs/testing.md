@@ -937,6 +937,26 @@ Currently tested:
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
 
+The process-specific cases below are governed by the normative
+[process observation and managed-process threat model](process-threat-model.md).
+
+### Process observation and managed-process tests
+
+- execution-time `process.observe` and `process.manage` denial, including
+  crafted calls that bypass catalog discovery;
+- bounded observation pagination, explicit fields, partial visibility,
+  redaction, and cursor context/expiry checks;
+- PID reuse and native process-start-identity mismatch immediately before
+  wait, stop, or cleanup;
+- concurrent exit, wait, stop, timeout, cancellation, shutdown, and exactly one
+  terminal registry state under the race detector;
+- separately bounded stdout/stderr, truncation markers, slow readers, output
+  cursor isolation, TTL cleanup, and leak checks;
+- cross-principal and prior-service-generation handle denial without existence
+  disclosure;
+- native Windows/Linux child-tree cleanup, restart/orphan diagnostics, access
+  denial, and partial-field behavior without unrelated-process targeting.
+
 ### Payload and catalog tests
 
 - payload-class selection for metadata, structured pages, heavy text, media/binary, and large results;
