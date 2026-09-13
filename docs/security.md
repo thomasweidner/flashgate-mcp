@@ -527,6 +527,10 @@ The vendored Windows resource generator and committed icon source are covered by
 
 ## Threat Model Workstreams
 
+The normative cross-domain index is [Stateful Domain Threat Models](stateful-domain-threat-models.md).
+It defines shared state-binding, lifecycle, cleanup, and validation invariants;
+the table below remains the concise workstream inventory.
+
 | Workstream | Minimum concerns |
 |---|---|
 | Filesystem | traversal, symlink/reparse escape, TOCTOU, overwrite/delete semantics, MIME/binary transfer, result handles, exhaustion, disclosure |
@@ -601,6 +605,7 @@ Remote access or a product/binary split requires a separate ADR and threat model
 - [Architecture](architecture.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
+- [Stateful domain threat models](stateful-domain-threat-models.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
 - [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)
