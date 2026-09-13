@@ -971,6 +971,12 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### System service and execution-identity tests
 
+The negative cases in the
+[native multi-mode threat model](native-multi-mode-threat-model.md) are the
+minimum security evidence for the planned direct/proxy/auto/service boundary;
+platform-specific evidence remains required on the real Windows and Linux
+hosts.
+
 Version 1.0 tests Variant A only:
 
 - Windows SCM and Linux systemd lifecycle;
