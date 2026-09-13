@@ -205,6 +205,14 @@ checksum/inventory reproducibility comparison, and a release-content leak
 scan. Machine-readable reproducibility and leak reports are uploaded with the
 validated archive and checksum.
 
+The release workflow is permanently gated by `v<SemVer>` tags. Its manual
+dispatch input does not bypass that boundary: the selected commit must already
+carry the exact `v<version>` tag. The workflow has read-only repository
+permissions and publishes validated workflow artifacts only; creating GitHub
+Release notes or attaching durable release assets remains a separate release
+decision. `TestReleaseWorkflowRemainsTagGated` protects the tag trigger, exact
+tag check, required manual version input, and read-only permission contract.
+
 Stable, prerelease, and development expectations are stored in `internal/version/testdata/build-metadata-fixtures.json` and exercised by `internal/version/fixtures_test.go`.
 
 The shared valid/invalid SemVer and epoch matrix is stored in

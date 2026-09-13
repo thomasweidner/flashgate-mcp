@@ -581,6 +581,11 @@ Versioned baselines are recorded only from clean isolated checkouts of the same 
 
 Release tags use `v<SemVer>`. The leading `v` belongs to the Git tag but is not embedded in product versions or artifact names. Release mode requires the exact tag and a clean tree; local integration validation may use an explicit SemVer and records `Modified: true`.
 
+The release workflow may also be started manually for an existing tag, but the
+requested version must match the exact tag on the selected commit. It retains
+read-only repository permissions and uploads validated workflow artifacts; it
+does not create or mutate a GitHub Release.
+
 The tag-gated `.github/workflows/release-build.yml` workflow builds and validates:
 
 ```text
