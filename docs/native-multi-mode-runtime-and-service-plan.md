@@ -4,7 +4,7 @@
 
 **Accepted Version 1.0 target architecture; implementation not started.**
 
-The authoritative service tasks are `BL-221` through `BL-244` plus BL-341 in [BACKLOG.md](../BACKLOG.md), with post-Version-1.0 tasks `BL-232` and `BL-240`. ADR-014 defines the multi-mode runtime, ADR-015 defines the hybrid execution-identity architecture, and ADR-017 defines host-process ownership and lifecycle.
+The authoritative service tasks are `BL-221` through `BL-244` plus BL-341 in [BACKLOG.md](../BACKLOG.md), with post-Version-1.0 tasks `BL-232` and `BL-240`. ADR-014 defines the multi-mode runtime, ADR-015 defines the hybrid execution-identity architecture, ADR-017 defines host-process ownership and lifecycle, and the [native multi-mode threat model](native-multi-mode-threat-model.md) defines the security analysis for the runtime boundary.
 
 Version 1.0 delivers direct STDIO and system-service operation with Variant A service-account roots. It includes the interfaces and threat model for Variant B but does not implement user workers or persistent user-scoped hosts.
 
@@ -662,6 +662,7 @@ Any remote transport, product split, or broader provider-isolation mechanism req
 - [ADR-015](adr/015-hybrid-service-execution-identity.md)
 - [ADR-017](adr/017-host-process-ownership-and-lifecycle.md)
 - [Execution identity backends](execution-identity-backends.md)
+- [Native multi-mode threat model](native-multi-mode-threat-model.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
 - [Security model](security.md)

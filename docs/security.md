@@ -429,6 +429,10 @@ The service derives caller identity from Named Pipe or Unix socket peer informat
 
 ### Local IPC and auto-mode boundary
 
+The [native multi-mode threat model](native-multi-mode-threat-model.md)
+defines the assets, trust boundaries, threats, fail-closed controls, residual
+risks, and native evidence required for this planned runtime boundary.
+
 Windows uses a local Named Pipe with restrictive ACLs. Linux uses a local Unix Domain Socket with restrictive ownership/mode and OS peer credentials.
 
 The IPC contract includes framing, size limits, compatibility handshake, correlation, cancellation, overload, resource handles, disconnect behavior, and service generation.
@@ -601,6 +605,7 @@ Remote access or a product/binary split requires a separate ADR and threat model
 - [Architecture](architecture.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
+- [Native multi-mode threat model](native-multi-mode-threat-model.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
 - [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)

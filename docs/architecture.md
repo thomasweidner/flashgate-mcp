@@ -557,6 +557,7 @@ Remote transport, product splitting, interpreter-based core operation, or unrest
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
+- [Native multi-mode threat model](native-multi-mode-threat-model.md)
 - [ADR directory](adr/)
 - [ADR-016: Governance fixture harness execution architecture](adr/016-governance-fixture-harness-execution-architecture.md)
 - [ADR-017: Host process ownership and lifecycle](adr/017-host-process-ownership-and-lifecycle.md)
