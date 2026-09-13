@@ -23,6 +23,12 @@ func TestStrictArtifactValidatorRejectsSecurityRelevantMutations(t *testing.T) {
 		mutate       func(*[]byte, *[]byte)
 	}{
 		{
+			name: "platform baseline contents swapped", wantArtifact: "baseline.windows-amd64.json", wantCause: "embedded platform identity=linux/amd64, want windows/amd64 from filename",
+			mutate: func(windows, linux *[]byte) {
+				*windows, *linux = append([]byte{}, (*linux)...), append([]byte{}, (*windows)...)
+			},
+		},
+		{
 			name: "hard budget exceeded with embedded zero evaluation", wantArtifact: "baseline.windows-amd64.json", wantCause: "budget failure",
 			mutate: func(windows, _ *[]byte) {
 				*windows = mutateResultArtifact(t, *windows, func(result *Result) {
