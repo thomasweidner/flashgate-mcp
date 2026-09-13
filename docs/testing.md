@@ -936,6 +936,10 @@ Currently tested:
 ## Version 1.0 Planned Validation Matrix
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
+The [stateful domain threat-model index](stateful-domain-threat-models.md)
+maps the state assets and threats behind these gates and requires forged,
+expired, cross-context, restart, race, quota, cleanup, and redaction negatives
+for every affected stateful component.
 
 ### Payload and catalog tests
 
