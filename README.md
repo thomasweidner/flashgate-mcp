@@ -109,6 +109,10 @@ JSON-RPC messages, tool arguments, filesystem payloads, and response sizes are b
 
 ## Security Model
 
+The [stateful domain threat-model index](docs/stateful-domain-threat-models.md)
+records the shared authorization, lifecycle, cleanup, and negative-validation
+requirements for current and planned stateful components.
+
 All filesystem operations are constrained to a configured root directory.
 
 The root directory is configured through the `MCP_ROOT` environment variable:
