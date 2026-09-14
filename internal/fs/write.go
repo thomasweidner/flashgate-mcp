@@ -1,13 +1,21 @@
 package fs
 
 import (
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 // Write writes a file. Existing files are only overwritten when overwrite is true.
 func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) error {
+	return f.WriteConditional(path, content, overwrite, WritePreconditions{})
+}
+
+// WriteConditional writes a file only when every supplied precondition matches.
+func (f *LocalFileSystem) WriteConditional(path string, content []byte, overwrite bool, preconditions WritePreconditions) error {
 	safePath, err := f.guard.ResolveForCreate(path)
 	if err != nil {
 		return err
@@ -16,28 +24,42 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 	if int64(len(content)) > f.limits.MaxWriteBytes {
 		return ErrLimitExceeded
 	}
-
-	info, err := os.Stat(safePath.String())
-	if err == nil {
-		if info.IsDir() {
-			return ErrPathIsDirectory
-		}
-
-		if !overwrite {
+	if !overwrite {
+		info, statErr := os.Stat(safePath.String())
+		if statErr == nil {
+			if info.IsDir() {
+				return ErrPathIsDirectory
+			}
 			return ErrFileExists
 		}
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
+		if !errors.Is(statErr, os.ErrNotExist) {
+			return statErr
+		}
 	}
 
-	flags := os.O_WRONLY | os.O_CREATE
-	if overwrite {
-		flags |= os.O_TRUNC
-	} else {
-		flags |= os.O_EXCL
+	file, err := os.OpenFile(safePath.String(), os.O_RDWR, 0)
+	if errors.Is(err, os.ErrNotExist) {
+		if !matchesMissingTarget(preconditions) {
+			return ErrWritePreconditionFailed
+		}
+		file, err = os.OpenFile(safePath.String(), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	} else if err == nil {
+		if err := checkExistingPreconditions(file, preconditions); err != nil {
+			file.Close()
+			return err
+		}
+		if err := file.Truncate(0); err != nil {
+			file.Close()
+			return err
+		}
+		if _, err := file.Seek(0, io.SeekStart); err != nil {
+			file.Close()
+			return err
+		}
+	} else if info, statErr := os.Stat(safePath.String()); statErr == nil && info.IsDir() {
+		return ErrPathIsDirectory
 	}
 
-	file, err := os.OpenFile(safePath.String(), flags, 0o600)
 	if err != nil {
 		if errors.Is(err, os.ErrExist) {
 			return ErrFileExists
@@ -56,6 +78,43 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 		return io.ErrShortWrite
 	}
 
+	return nil
+}
+
+func matchesMissingTarget(preconditions WritePreconditions) bool {
+	if preconditions.SHA256 != nil || preconditions.ModifiedTime != nil {
+		return false
+	}
+	return preconditions.PathType == nil || *preconditions.PathType == "missing"
+}
+
+func checkExistingPreconditions(file *os.File, preconditions WritePreconditions) error {
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return ErrPathIsDirectory
+	}
+	if !info.Mode().IsRegular() {
+		return ErrWritePreconditionFailed
+	}
+	if preconditions.PathType != nil && *preconditions.PathType != "file" {
+		return ErrWritePreconditionFailed
+	}
+	if preconditions.ModifiedTime != nil && !info.ModTime().Equal(*preconditions.ModifiedTime) {
+		return ErrWritePreconditionFailed
+	}
+	if preconditions.SHA256 != nil {
+		hash := sha256.New()
+		if _, err := io.Copy(hash, file); err != nil {
+			return err
+		}
+		actual := fmt.Sprintf("%x", hash.Sum(nil))
+		if !strings.EqualFold(actual, *preconditions.SHA256) {
+			return ErrWritePreconditionFailed
+		}
+	}
 	return nil
 }
 

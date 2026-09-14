@@ -158,6 +158,70 @@ func TestWriteFileToolForwardsOverwrite(t *testing.T) {
 	}
 }
 
+func TestWriteFileToolForwardsConditionalPreconditions(t *testing.T) {
+	t.Parallel()
+
+	filesystem := newFakeFileSystem()
+	tool := NewWriteFileTool(filesystem)
+	_, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{
+		"path":"existing.txt",
+		"content":"new",
+		"overwrite":true,
+		"expectedSha256":"48d6f8a946c4ef3f31db5a9f8e2e6cf9d060c3aa588b0a75073e0e7f100f6210",
+		"expectedModifiedTime":"2026-09-14T12:34:56.123456789Z",
+		"expectedPathType":"file"
+	}`))
+	if rpcErr != nil {
+		t.Fatalf("expected no error, got %v", rpcErr)
+	}
+	if filesystem.writePreconditions.SHA256 == nil || *filesystem.writePreconditions.SHA256 != "48d6f8a946c4ef3f31db5a9f8e2e6cf9d060c3aa588b0a75073e0e7f100f6210" {
+		t.Fatalf("unexpected SHA-256 precondition: %#v", filesystem.writePreconditions.SHA256)
+	}
+	if filesystem.writePreconditions.ModifiedTime == nil || filesystem.writePreconditions.ModifiedTime.Format("2006-01-02T15:04:05.999999999Z07:00") != "2026-09-14T12:34:56.123456789Z" {
+		t.Fatalf("unexpected modified-time precondition: %#v", filesystem.writePreconditions.ModifiedTime)
+	}
+	if filesystem.writePreconditions.PathType == nil || *filesystem.writePreconditions.PathType != "file" {
+		t.Fatalf("unexpected path-type precondition: %#v", filesystem.writePreconditions.PathType)
+	}
+}
+
+func TestWriteFileToolRejectsInvalidConditionalPreconditions(t *testing.T) {
+	t.Parallel()
+
+	for _, arguments := range []string{
+		`{"path":"file.txt","expectedSha256":"not-a-digest"}`,
+		`{"path":"file.txt","expectedModifiedTime":"yesterday"}`,
+		`{"path":"file.txt","expectedPathType":"directory"}`,
+	} {
+		arguments := arguments
+		t.Run(arguments, func(t *testing.T) {
+			t.Parallel()
+			filesystem := newFakeFileSystem()
+			result, rpcErr := NewWriteFileTool(filesystem).Execute(context.Background(), json.RawMessage(arguments))
+			if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+				t.Fatalf("expected invalid params, got result=%#v error=%#v", result, rpcErr)
+			}
+			if filesystem.writePath != "" {
+				t.Fatal("expected invalid precondition to be rejected before filesystem access")
+			}
+		})
+	}
+}
+
+func TestWriteFileToolMapsFailedPreconditionSafely(t *testing.T) {
+	t.Parallel()
+
+	filesystem := newFakeFileSystem()
+	filesystem.writeErr = fs.ErrWritePreconditionFailed
+	result, rpcErr := NewWriteFileTool(filesystem).Execute(context.Background(), json.RawMessage(`{"path":"file.txt","expectedPathType":"file"}`))
+	if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		t.Fatalf("expected invalid params, got result=%#v error=%#v", result, rpcErr)
+	}
+	if rpcErr.Message != "filesystem error: precondition failed" {
+		t.Fatalf("unexpected safe error message %q", rpcErr.Message)
+	}
+}
+
 func TestWriteFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 	t.Parallel()
 
