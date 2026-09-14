@@ -203,6 +203,7 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		`{"name":"read_file","arguments":{"path":"root.txt"}}`,
 		`{"name":"read_file","arguments":{"path":"sub directory/space.txt"}}`,
 		`{"name":"read_file","arguments":{"path":"unicode-ä/ü.txt"}}`,
+		`{"name":"read_files","arguments":{"paths":["root.txt","missing.txt","sub directory/space.txt"]}}`,
 		`{"name":"get_path_info","arguments":{"path":"root.txt"}}`,
 		`{"name":"get_path_info","arguments":{"path":"sub directory"}}`,
 		`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`,
