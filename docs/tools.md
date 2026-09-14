@@ -39,7 +39,10 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline,
+is 2443 bytes for read-only and 5966 bytes for default after the BL-045 read
+schema extension. These are contract snapshots; benchmark budgets enforce the
+current values while historical baseline artifacts remain unchanged evidence.
 
 ## `list_directory`
 
@@ -63,23 +66,43 @@ No pagination, filtering, recursion, or batch behavior is provided.
 
 ## `read_file`
 
-Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the configured server limit is used; a larger client value is capped at that limit.
+Required: `path`. Optional: `maxBytes` with a minimum of 1 and `mode` with
+one of `text`, `binary`, or `auto`. When `maxBytes` is omitted, the configured
+server limit is used; a larger client value is capped at that limit.
+
+`text` is the compatibility default and accepts only valid UTF-8 without NUL
+bytes. `binary` returns standard padded base64. `auto` applies the same text
+test and otherwise selects base64. `mimeType` is detected from at most the
+leading 512 content bytes using Go's deterministic HTTP content detection and
+is descriptive metadata, not an authorization decision.
 
 ```json
 {
   "path": "README.md",
-  "maxBytes": 4096
+  "maxBytes": 4096,
+  "mode": "text"
 }
 ```
 
 ```json
 {
   "content": "...",
-  "size": 123
+  "size": 123,
+  "mimeType": "text/plain; charset=utf-8",
+  "encoding": "utf-8"
 }
 ```
 
-Range reads are not implemented.
+For binary and auto reads, the raw read ceiling is additionally capped so the
+expanded base64 string cannot exceed the configured server file-size ceiling;
+a lower client `maxBytes` remains a raw-byte limit. `size` always reports raw
+bytes, while `content` contains encoded bytes when `encoding` is `base64`. A
+file above the applicable inline ceiling fails with the safe filesystem limit
+error; it is never partially returned. Once the opaque resource handoff
+from BL-218 is integrated, large-result delivery may use that separately
+authorized contract rather than weakening this inline limit.
+
+Range reads are not implemented in the current checkout.
 
 ## `get_path_info`
 

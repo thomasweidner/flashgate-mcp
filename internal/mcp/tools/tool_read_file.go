@@ -1,14 +1,24 @@
 package tools
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"unicode/utf8"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 const readFileToolName = "read_file"
+
+const (
+	readModeText   = "text"
+	readModeBinary = "binary"
+	readModeAuto   = "auto"
+)
 
 // ReadFileTool exposes file reading as an MCP tool.
 type ReadFileTool struct {
@@ -36,7 +46,7 @@ func (t *ReadFileTool) Title() string {
 
 // Description returns the tool description.
 func (t *ReadFileTool) Description() string {
-	return "Reads a text file below the configured filesystem root."
+	return "Reads bounded text, media, or binary content below the configured filesystem root."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -53,6 +63,11 @@ func (t *ReadFileTool) InputSchema() any {
 				"type":        "integer",
 				"description": "Maximum number of bytes to read. Defaults to the configured maximum file size.",
 				"minimum":     1,
+			},
+			"mode": map[string]any{
+				"type":        "string",
+				"description": "Output mode. text (default) requires UTF-8 text, binary returns base64, and auto selects between them.",
+				"enum":        []string{readModeText, readModeBinary, readModeAuto},
 			},
 		},
 		"required":             []string{"path"},
@@ -93,23 +108,74 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		maxBytes = t.serverMaxBytes
 	}
 
-	content, err := t.filesystem.Read(arguments.Path, maxBytes)
+	mode := arguments.Mode
+	if mode == "" {
+		mode = readModeText
+	}
+	if mode != readModeText && mode != readModeBinary && mode != readModeAuto {
+		return nil, invalidParamsError()
+	}
+
+	// Base64 expands every three raw bytes to four encoded bytes. Lower the
+	// filesystem limit so encoded binary content cannot exceed the same
+	// server-controlled byte ceiling used for inline text.
+	readLimit := maxBytes
+	if mode == readModeBinary || mode == readModeAuto {
+		encodedSafeLimit := t.serverMaxBytes / 4 * 3
+		if encodedSafeLimit < 1 {
+			return nil, invalidParamsError()
+		}
+		if readLimit > encodedSafeLimit {
+			readLimit = encodedSafeLimit
+		}
+	}
+
+	content, err := t.filesystem.Read(arguments.Path, readLimit)
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
+	mimeType := http.DetectContentType(content)
+	isText := isUTF8Text(content)
+	if mode == readModeAuto {
+		if isText {
+			mode = readModeText
+		} else {
+			mode = readModeBinary
+		}
+	}
+	if mode == readModeText && !isText {
+		return nil, &protocol.Error{Code: protocol.ErrInvalidParams, Message: "filesystem error: content is not UTF-8 text"}
+	}
+
+	encodedContent := string(content)
+	encoding := "utf-8"
+	if mode == readModeBinary {
+		encodedContent = base64.StdEncoding.EncodeToString(content)
+		encoding = "base64"
+	}
+
 	return readFileResult{
-		Content: string(content),
-		Size:    int64(len(content)),
+		Content:  encodedContent,
+		Size:     int64(len(content)),
+		MIMEType: mimeType,
+		Encoding: encoding,
 	}, nil
+}
+
+func isUTF8Text(content []byte) bool {
+	return utf8.Valid(content) && bytes.IndexByte(content, 0) < 0
 }
 
 type readFileArguments struct {
 	Path     string `json:"path"`
 	MaxBytes *int64 `json:"maxBytes,omitempty"`
+	Mode     string `json:"mode,omitempty"`
 }
 
 type readFileResult struct {
-	Content string `json:"content"`
-	Size    int64  `json:"size"`
+	Content  string `json:"content"`
+	Size     int64  `json:"size"`
+	MIMEType string `json:"mimeType"`
+	Encoding string `json:"encoding"`
 }
