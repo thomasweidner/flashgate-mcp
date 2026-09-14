@@ -21,6 +21,47 @@ func TestNewLocalFileSystemRejectsEmptyRoot(t *testing.T) {
 	}
 }
 
+func TestLocalFileSystemReadRange(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.bin"), "0123456789")
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	for _, tc := range []struct {
+		name   string
+		offset int64
+		length int64
+		want   string
+	}{
+		{"middle", 3, 4, "3456"},
+		{"head", 0, 3, "012"},
+		{"tail", -4, 4, "6789"},
+		{"tail longer than file", -20, 20, "0123456789"},
+		{"past EOF", 20, 3, ""},
+		{"zero length", 2, 0, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := filesystem.ReadRange("file.bin", tc.offset, tc.length, 20)
+			if err != nil {
+				t.Fatalf("ReadRange: %v", err)
+			}
+			if string(got) != tc.want {
+				t.Fatalf("content=%q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestLocalFileSystemReadRangeEnforcesLimit(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.bin"), "0123456789")
+	filesystem := mustNewLocalFileSystem(t, root)
+	if _, err := filesystem.ReadRange("file.bin", 0, 5, 4); !errors.Is(err, ErrFileTooLarge) {
+		t.Fatalf("expected ErrFileTooLarge, got %v", err)
+	}
+}
+
 func TestLocalFileSystemListReturnsFilesAndDirectories(t *testing.T) {
 	t.Parallel()
 
