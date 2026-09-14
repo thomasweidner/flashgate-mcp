@@ -1,5 +1,9 @@
 # Testing
 
+Named-root registry tests cover multiple independent filesystem mappings,
+deterministic ID enumeration, compatible single-root registration, and
+fail-closed empty, blank, duplicate, nil-filesystem, and unknown-root cases.
+
 ## Slim project validation
 
 FlashGate inherits the central Slim Governance security and authorization

@@ -29,6 +29,13 @@ MCP_ALLOW_CWD_ROOT=true
 
 The opt-in accepts only lowercase `true` or `false`, never supplies a missing root, and never enables other relative roots. A successful CWD-development start emits one safe stderr warning. Production and Codex examples set `MCP_ALLOW_CWD_ROOT=false`.
 
+Each configured root is represented by an independently root-confined
+`FileSystem` in an immutable application-level named-root registry. Blank or
+duplicate IDs, missing filesystems, empty registries, and unknown lookups fail
+closed. The current single `MCP_ROOT` is registered under the compatible
+internal ID `default`; external multi-root configuration and MCP selection
+fields remain separate contracts and are not inferred from client paths.
+
 ### No Direct Filesystem Access Outside `internal/fs`
 
 Production code outside `internal/fs` must not directly call filesystem APIs such as:
