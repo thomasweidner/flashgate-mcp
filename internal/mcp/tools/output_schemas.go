@@ -12,6 +12,7 @@ func filesystemOutputSchema(toolName string) map[string]any {
 					"size":  map[string]any{"type": "integer"},
 				}, "name", "isDir", "size"),
 			},
+			"nextCursor": map[string]any{"type": "string", "minLength": 1},
 		}, "entries")
 	case readFileToolName:
 		return objectOutputSchema(map[string]any{
