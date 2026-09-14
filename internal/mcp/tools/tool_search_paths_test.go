@@ -122,6 +122,30 @@ func TestSearchPathsMatchesLiteralText(t *testing.T) {
 	}
 }
 
+func TestSearchPathsMatchesRegularExpression(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "wanted.txt", Size: 13}}
+	fake.readContent = []byte("item-12 item-7")
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"regex":"item-[0-9]+"}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	want := searchContentResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 0}, {Path: "wanted.txt", ByteOffset: 8}}}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
+func TestSearchPathsRejectsInvalidOrConflictingRegularExpression(t *testing.T) {
+	for _, raw := range []string{`{"regex":""}`, `{"regex":"["}`, `{"text":"x","regex":"x"}`, `{"regex":"x","type":"directory"}`} {
+		fake := newFakeFileSystem()
+		_, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(raw))
+		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.listPath != "" || fake.readPath != "" {
+			t.Fatalf("expected pre-traversal invalid params for %s, list=%q read=%q err=%#v", raw, fake.listPath, fake.readPath, rpcErr)
+		}
+	}
+}
+
 func TestSearchPathsLiteralTextRejectsDirectoryFilter(t *testing.T) {
 	_, rpcErr := NewSearchPathsTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(`{"text":"x","type":"directory"}`))
 	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {

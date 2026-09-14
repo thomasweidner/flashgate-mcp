@@ -67,6 +67,11 @@ func (t *SearchPathsTool) InputSchema() any {
 				"minLength":   1,
 				"description": "Case-sensitive UTF-8 literal text to find in files.",
 			},
+			"regex": map[string]any{
+				"type":        "string",
+				"minLength":   1,
+				"description": "Go RE2-style regular expression to find in files.",
+			},
 			"type": map[string]any{
 				"type":        "string",
 				"enum":        []string{"file", "directory"},
@@ -77,7 +82,10 @@ func (t *SearchPathsTool) InputSchema() any {
 			"modifiedNotBefore": map[string]any{"type": "string", "format": "date-time", "description": "Inclusive RFC 3339 lower modification-time bound."},
 			"modifiedNotAfter":  map[string]any{"type": "string", "format": "date-time", "description": "Inclusive RFC 3339 upper modification-time bound."},
 		},
-		"not":                  map[string]any{"required": []string{"name", "namePattern"}},
+		"allOf": []any{
+			map[string]any{"not": map[string]any{"required": []string{"name", "namePattern"}}},
+			map[string]any{"not": map[string]any{"required": []string{"text", "regex"}}},
+		},
 		"additionalProperties": false,
 	}
 }
@@ -122,18 +130,24 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 		}
 		selector, kind = *arguments.NamePattern, search.NameMatchPattern
 	}
-	if arguments.Text != nil && *arguments.Text == "" {
+	if arguments.Text != nil && arguments.Regex != nil {
 		return nil, invalidParamsError()
 	}
-	if arguments.Text != nil && arguments.Type != nil && *arguments.Type == "directory" {
+	if arguments.Text != nil && *arguments.Text == "" || arguments.Regex != nil && *arguments.Regex == "" {
+		return nil, invalidParamsError()
+	}
+	if (arguments.Text != nil || arguments.Regex != nil) && arguments.Type != nil && *arguments.Type == "directory" {
 		return nil, invalidParamsError()
 	}
 	if arguments.Text != nil {
-		matches, err := t.service.SearchLiteral(ctx, startPath, selector, kind, filter, *arguments.Text, search.LiteralLimits{
-			MaxFiles: maxSearchContentFiles, MaxBytesPerFile: maxSearchBytesPerFile,
-			MaxScannedBytes: maxSearchScannedBytes, MaxMatchesPerFile: maxSearchMatchesPerFile,
-			MaxMatches: maxSearchContentMatches, MaxResponseBytes: maxSearchResponseBytes,
-		})
+		matches, err := t.service.SearchLiteral(ctx, startPath, selector, kind, filter, *arguments.Text, contentSearchLimits())
+		if err != nil {
+			return nil, mapSearchError(err)
+		}
+		return searchContentResult{Matches: matches}, nil
+	}
+	if arguments.Regex != nil {
+		matches, err := t.service.SearchRegex(ctx, startPath, selector, kind, filter, *arguments.Regex, contentSearchLimits())
 		if err != nil {
 			return nil, mapSearchError(err)
 		}
@@ -152,11 +166,20 @@ type searchPathsArguments struct {
 	Name              *string `json:"name,omitempty"`
 	NamePattern       *string `json:"namePattern,omitempty"`
 	Text              *string `json:"text,omitempty"`
+	Regex             *string `json:"regex,omitempty"`
 	Type              *string `json:"type,omitempty"`
 	MinSizeBytes      *int64  `json:"minSizeBytes,omitempty"`
 	MaxSizeBytes      *int64  `json:"maxSizeBytes,omitempty"`
 	ModifiedNotBefore *string `json:"modifiedNotBefore,omitempty"`
 	ModifiedNotAfter  *string `json:"modifiedNotAfter,omitempty"`
+}
+
+func contentSearchLimits() search.LiteralLimits {
+	return search.LiteralLimits{
+		MaxFiles: maxSearchContentFiles, MaxBytesPerFile: maxSearchBytesPerFile,
+		MaxScannedBytes: maxSearchScannedBytes, MaxMatchesPerFile: maxSearchMatchesPerFile,
+		MaxMatches: maxSearchContentMatches, MaxResponseBytes: maxSearchResponseBytes,
+	}
 }
 
 func (a searchPathsArguments) metadataFilter() (search.MetadataFilter, *protocol.Error) {
@@ -206,7 +229,7 @@ type searchContentResult struct {
 
 func mapSearchError(err error) *protocol.Error {
 	switch {
-	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch):
+	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch):
 		return invalidParamsError()
 	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrMatchLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}

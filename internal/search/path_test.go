@@ -303,3 +303,48 @@ func TestLiteralSearchEnforcesIncrementalBudgets(t *testing.T) {
 		t.Fatalf("expected response limit, got=%#v err=%v", got, err)
 	}
 }
+
+func TestRegexSearchReturnsDeterministicByteOffsetsAndComposesFilters(t *testing.T) {
+	filesystem := &listingFS{
+		entries: map[string][]fs.Entry{
+			".":    {{Name: "z.txt", Size: 9}, {Name: "docs", IsDir: true}},
+			"docs": {{Name: "a.txt", Size: 8}, {Name: "skip.go", Size: 6}},
+		},
+		content: map[string][]byte{"z.txt": []byte("ab12 cd3"), "docs/a.txt": []byte("x99 y007"), "docs/skip.go": []byte("z12345")},
+	}
+	service, _ := NewPathService(filesystem, 10)
+	got, err := service.SearchRegex(context.Background(), ".", "*.txt", NameMatchPattern, MetadataFilter{Type: EntryTypeFile}, `[a-z][0-9]+`, LiteralLimits{
+		MaxFiles: 10, MaxBytesPerFile: 100, MaxScannedBytes: 100, MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []LiteralMatch{{Path: "docs/a.txt", ByteOffset: 0}, {Path: "docs/a.txt", ByteOffset: 4}, {Path: "z.txt", ByteOffset: 1}, {Path: "z.txt", ByteOffset: 6}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected regex matches\nwant: %#v\n got: %#v", want, got)
+	}
+	if !reflect.DeepEqual(filesystem.reads, []string{"z.txt", "docs/a.txt"}) {
+		t.Fatalf("unexpected reads: %#v", filesystem.reads)
+	}
+}
+
+func TestRegexSearchRejectsInvalidExpressionBeforeTraversal(t *testing.T) {
+	limits := LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 1, MaxScannedBytes: 1, MaxMatchesPerFile: 1, MaxMatches: 1, MaxResponseBytes: 1}
+	for _, expression := range []string{"", "[", string([]byte{0xff})} {
+		filesystem := &listingFS{}
+		service, _ := NewPathService(filesystem, 10)
+		got, err := service.SearchRegex(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, expression, limits)
+		if !errors.Is(err, ErrInvalidRegexSearch) || got != nil || len(filesystem.calls) != 0 {
+			t.Fatalf("expression %q: expected pre-traversal rejection, got=%#v calls=%#v err=%v", expression, got, filesystem.calls, err)
+		}
+	}
+}
+
+func TestRegexSearchEnforcesExistingContentBudgets(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a", Size: 4}}}, content: map[string][]byte{"a": []byte("xxxx")}}
+	service, _ := NewPathService(filesystem, 10)
+	limits := LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 4, MaxScannedBytes: 4, MaxMatchesPerFile: 2, MaxMatches: 4, MaxResponseBytes: 1000}
+	if got, err := service.SearchRegex(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, `x`, limits); !errors.Is(err, ErrMatchLimitExceeded) || got != nil {
+		t.Fatalf("expected match limit, got=%#v err=%v", got, err)
+	}
+}
