@@ -62,6 +62,11 @@ Extension negotiation is not authorization. Tasks and legacy compatibility paths
 - optional legacy MCP Roots compatibility for a demonstrated client need
 - FlashGate module/provider contract and runtime model
 
+The repository-contained evidence requirements and bounded alternatives for
+the open Tasks-support choice are maintained in the
+[MCP Tasks compatibility decision packet](../mcp-tasks-compatibility-decision.md).
+That packet does not resolve this decision gate or advertise extension support.
+
 ## Official References
 
 - [MCP 2025-11-25 schema](https://modelcontextprotocol.io/specification/2025-11-25/schema)
