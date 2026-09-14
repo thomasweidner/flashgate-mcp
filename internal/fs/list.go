@@ -35,9 +35,10 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 		}
 
 		result = append(result, Entry{
-			Name:  dirEntry.Name(),
-			IsDir: dirEntry.IsDir(),
-			Size:  info.Size(),
+			Name:         dirEntry.Name(),
+			IsDir:        dirEntry.IsDir(),
+			Size:         info.Size(),
+			ModifiedTime: info.ModTime(),
 		})
 	}
 

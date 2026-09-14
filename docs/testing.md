@@ -892,7 +892,9 @@ Limit and redaction behavior is primarily covered by Go unit tests. Additional l
 
 Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly nine runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
-The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. The current nine-tool catalog records 3046 bytes for read-only and 6569 bytes for default; `SPR-046`'s earlier 1239/2134-byte and 3850/5657-byte measurements remain historical, and no regression budget is enforced.
+The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. The current nine-tool catalog records 3672 bytes for read-only and 7195 bytes for default; the earlier 1239/2134-byte, 3850/5657-byte, and 3046/6569-byte measurements remain historical, and no regression budget is enforced.
+
+Focused search tests cover portable type, inclusive file-size, and RFC 3339 modification-time filters; composition with filename matching; match-only result-cap accounting; and rejection of malformed, negative, or reversed filters before filesystem traversal. Native Windows finalization must additionally exercise real modification timestamps and reparse behavior through the central path policy.
 
 ### MCP Compatibility Testing
 

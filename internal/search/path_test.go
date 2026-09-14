@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 )
@@ -155,5 +156,70 @@ func TestFilenameSearchLimitCountsOnlyMatches(t *testing.T) {
 	results, err := service.SearchNames(context.Background(), ".", "*.go", NameMatchPattern)
 	if err != nil || !reflect.DeepEqual(results, []Path{{Path: "b.go"}}) {
 		t.Fatalf("expected one bounded match, results=%#v err=%v", results, err)
+	}
+}
+
+func TestMetadataSearchFiltersPortableTypeSizeAndTime(t *testing.T) {
+	old := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
+	recent := old.Add(24 * time.Hour)
+	filesystem := &listingFS{entries: map[string][]fs.Entry{
+		".": {
+			{Name: "docs", IsDir: true, ModifiedTime: recent},
+			{Name: "small.txt", Size: 4, ModifiedTime: recent},
+			{Name: "wanted.txt", Size: 8, ModifiedTime: recent},
+			{Name: "old.txt", Size: 8, ModifiedTime: old},
+		},
+		"docs": {{Name: "nested.txt", Size: 8, ModifiedTime: recent}},
+	}}
+	service, _ := NewPathService(filesystem, 10)
+	minSize, maxSize := int64(8), int64(8)
+	got, err := service.SearchFiltered(context.Background(), ".", "*.txt", NameMatchPattern, MetadataFilter{
+		Type: EntryTypeFile, MinSizeBytes: &minSize, MaxSizeBytes: &maxSize, ModifiedNotBefore: &recent, ModifiedNotAfter: &recent,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Path{{Path: "docs/nested.txt"}, {Path: "wanted.txt"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected metadata matches\nwant: %#v\n got: %#v", want, got)
+	}
+}
+
+func TestMetadataSearchSizeFiltersNeverMatchDirectories(t *testing.T) {
+	zero := int64(0)
+	service, _ := NewPathService(&listingFS{entries: map[string][]fs.Entry{".": {{Name: "empty", IsDir: true}, {Name: "empty.txt"}}, "empty": {}}}, 10)
+	got, err := service.SearchFiltered(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{MinSizeBytes: &zero, MaxSizeBytes: &zero})
+	if err != nil || !reflect.DeepEqual(got, []Path{{Path: "empty.txt"}}) {
+		t.Fatalf("expected only zero-byte file, results=%#v err=%v", got, err)
+	}
+}
+
+func TestMetadataSearchRejectsInvalidFiltersBeforeTraversal(t *testing.T) {
+	negative, small, large := int64(-1), int64(1), int64(2)
+	later := time.Date(2026, time.January, 2, 0, 0, 0, 0, time.UTC)
+	earlier := later.Add(-time.Hour)
+	filters := []MetadataFilter{
+		{Type: EntryType(99)},
+		{MinSizeBytes: &negative},
+		{MinSizeBytes: &large, MaxSizeBytes: &small},
+		{ModifiedNotBefore: &later, ModifiedNotAfter: &earlier},
+	}
+	for _, filter := range filters {
+		filesystem := &listingFS{}
+		service, _ := NewPathService(filesystem, 10)
+		results, err := service.SearchFiltered(context.Background(), ".", "", NameMatchLiteral, filter)
+		if !errors.Is(err, ErrInvalidMetadataFilter) || results != nil || len(filesystem.calls) != 0 {
+			t.Fatalf("expected pre-traversal rejection, filter=%#v results=%#v calls=%#v err=%v", filter, results, filesystem.calls, err)
+		}
+	}
+}
+
+func TestMetadataSearchLimitCountsOnlyMatches(t *testing.T) {
+	minSize := int64(10)
+	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "small-a", Size: 1}, {Name: "large", Size: 10}, {Name: "small-b", Size: 2}}}}
+	service, _ := NewPathService(filesystem, 1)
+	got, err := service.SearchFiltered(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{MinSizeBytes: &minSize})
+	if err != nil || !reflect.DeepEqual(got, []Path{{Path: "large"}}) {
+		t.Fatalf("expected one bounded metadata match, results=%#v err=%v", got, err)
 	}
 }

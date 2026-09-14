@@ -2,6 +2,7 @@ package fs
 
 import (
 	"errors"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
@@ -67,9 +68,10 @@ func DefaultLimits() Limits {
 
 // Entry represents a filesystem directory entry.
 type Entry struct {
-	Name  string `json:"name"`
-	IsDir bool   `json:"isDir"`
-	Size  int64  `json:"size"`
+	Name         string    `json:"name"`
+	IsDir        bool      `json:"isDir"`
+	Size         int64     `json:"size"`
+	ModifiedTime time.Time `json:"-"`
 }
 
 // Metadata represents filesystem metadata.

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -50,11 +51,29 @@ func TestSearchPathsDefaultsOnlyMissingPath(t *testing.T) {
 }
 
 func TestSearchPathsRejectsInvalidArguments(t *testing.T) {
-	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"name":""}`, `{"name":"  "}`, `{"name":"dir/file"}`, `{"namePattern":"["}`, `{"name":"a","namePattern":"*"}`, `{"unknown":true}`, `{} {`} {
+	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"name":""}`, `{"name":"  "}`, `{"name":"dir/file"}`, `{"namePattern":"["}`, `{"name":"a","namePattern":"*"}`, `{"type":"link"}`, `{"minSizeBytes":-1}`, `{"minSizeBytes":2,"maxSizeBytes":1}`, `{"modifiedNotBefore":"yesterday"}`, `{"modifiedNotBefore":"2026-01-02T00:00:00Z","modifiedNotAfter":"2026-01-01T00:00:00Z"}`, `{"unknown":true}`, `{} {`} {
 		_, rpcErr := NewSearchPathsTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 		}
+	}
+}
+
+func TestSearchPathsAppliesPortableMetadataFilters(t *testing.T) {
+	modified := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{
+		{Name: "small.txt", Size: 2, ModifiedTime: modified},
+		{Name: "wanted.txt", Size: 7, ModifiedTime: modified},
+	}
+	raw := json.RawMessage(`{"type":"file","minSizeBytes":7,"maxSizeBytes":7,"modifiedNotBefore":"2026-01-02T03:04:05Z","modifiedNotAfter":"2026-01-02T03:04:05+00:00"}`)
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), raw)
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	want := searchPathsResult{Paths: []search.Path{{Path: "wanted.txt"}}}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result: %#v", result)
 	}
 }
 
