@@ -25,7 +25,7 @@ Do not create new BL IDs, change sprint assignment, change `Planned`/`Later` mil
 
 ```text
 Mobile-Queue: FLASHGATE-MOBILE-V3
-Publication: CODEX_CLOUD_MANAGED_OPEN_PR
+Publication: CODEX_UI_MANUAL_CREATE_PR
 Merge-During-Mobile: NO
 Windows-Finalization: REQUIRED
 ```
@@ -37,10 +37,11 @@ Before task discovery or implementation, verify that the selected repository/bas
 - root `AGENTS.md`;
 - `Governance/CLOUD-CODEX-GOVERNANCE.md`;
 - `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`;
+- `Governance/MOBILE-CLOUD-HANDOFF.md`;
 - current `BACKLOG.md`;
 - this `MOBILE.md`.
 
-Read the first three governance sources before selecting work.
+Read the governance sources before selecting work.
 
 If the tracked Cloud governance router or capsule is absent, unreadable, or internally contradictory:
 
@@ -50,11 +51,9 @@ Do not compensate by assuming the missing local `Codex-Work/Governance` content 
 
 The Cloud capsule is intentionally a bounded projection. Every candidate is rebound against the complete current local governance during Windows finalization.
 
-## 3. Core model — no global task order
+## 3. Core model — no mandatory global implementation order
 
-There is **no mandatory global execution order**.
-
-The numerical order in `BACKLOG.md`, sprint order, epic order, and the order of tables in this file are not a Mobile execution queue.
+There is **no mandatory global implementation order** for user-named Mobile tasks.
 
 Tasks may be:
 
@@ -67,26 +66,26 @@ A task is blocked only by a real canonical/technical dependency, missing require
 
 ### Default selection when the user says only "next task"
 
-Enumerate all eligible open tasks and choose the best candidate using these preferences, not hard gates:
+Automatic selection is governed by root `AGENTS.md` and `Governance/MOBILE-CLOUD-HANDOFF.md`:
 
-1. `Planned` before `Later`;
-2. Cloud mode `A` before `B` before `C`;
-3. no prerequisite before a stack-ready prerequisite before a blocked prerequisite;
-4. lower effort before higher effort;
-5. lower expected Windows residual before higher residual;
-6. lower expected branch/diff collision before higher collision.
+1. enumerate the open-PR Vacation Reservation Ledger;
+2. exclude every reserved BL identity, including unambiguous provisional UI-generated PRs;
+3. inspect `Planned` sprints in ascending `SPR-xxx` order;
+4. classify every relevant candidate from the **current checkout** as `INDEPENDENT_FROM_CURRENT_CHECKOUT`, `STACK_BASE_READY`, `STACK_REQUIRED`, or blocked;
+5. select from the earliest Planned sprint that contains an executable unreserved candidate;
+6. inside that sprint prefer mode `A` before `B` before `C`, then independent before stack-base-ready, then lower effort, lower Windows residual, and lower expected collision;
+7. if the earliest relevant sprint has no executable candidate and the next actionable path is one exact predecessor stack, return `STACK_RESTART_REQUIRED` rather than silently skipping to later work;
+8. do not auto-select `Later` work while executable unreserved `Planned` work exists.
 
-Do **not** choose by BL number alone.
-
-The user may name any eligible task or epic and override this preference order.
+The user may name any eligible task or epic and override the automatic sprint preference, but a reserved task is never duplicated without explicit authorization for a competing candidate.
 
 ## 4. Cloud modes
 
 | Mode | Meaning | Mobile completion |
 |---|---|---|
-| `A — CLOUD_IMPLEMENTABLE` | Repository-contained code/docs/tests can be substantially implemented and validated in Cloud | Open PR candidate; Windows finalization still required |
-| `B — CLOUD_IMPLEMENTABLE_PLATFORM_FINAL` | Meaningful implementation is possible in Cloud, but Windows/native-host/service/real-OS validation is essential | Open PR candidate with explicit deferred validations |
-| `C — CLOUD_ANALYSIS_OR_CONTRACT` | Cloud can perform architecture, threat-model, design, investigation, or draft work, but an owner/external decision may be required before implementation/final completion | Open PR only if the canonical task itself permits a bounded documentation/design delta; otherwise return analysis without PR |
+| `A — CLOUD_IMPLEMENTABLE` | Repository-contained code/docs/tests can be substantially implemented and validated in Cloud | Task-pure Cloud commit; manual Create-PR handoff; Windows finalization required |
+| `B — CLOUD_IMPLEMENTABLE_PLATFORM_FINAL` | Meaningful implementation is possible in Cloud, but Windows/native-host/service/real-OS validation is essential | Task-pure Cloud commit with explicit deferred validations; manual Create-PR handoff |
+| `C — CLOUD_ANALYSIS_OR_CONTRACT` | Cloud can perform architecture, threat-model, design, investigation, or draft work, but an owner/external decision may be required before implementation/final completion | PR only if the canonical task permits a bounded documentation/design delta; otherwise return analysis without PR |
 | `D — CONTINUOUS_OR_FINAL_GATE` | Valid Cloud work may contribute, but the BL item is continuous, release-wide, or integration-wide and should not normally own a vacation PR by itself | Consume from other tasks; do not auto-select standalone |
 | `X — NOT_AUTONOMOUS_MOBILE` | Required evidence/authority is unavailable or the work is primarily an external/local decision/action | Do not auto-select |
 
@@ -99,9 +98,9 @@ A local Git remote is not required.
 `no Git remote configured` is non-blocking when Codex Cloud can:
 
 - read `thomasweidner/flashgate-mcp`;
-- read the relevant base branch;
+- read the relevant base branch or predecessor ref selected when the Cloud task starts;
 - inspect current GitHub pull-request state through the managed repository integration;
-- publish the completed candidate through the managed open-PR action.
+- prepare a task-pure commit and the PR metadata required for the Codex UI **Create PR** action.
 
 Do not configure:
 
@@ -112,112 +111,83 @@ Do not configure:
 - repository settings;
 - alternate network or credential workarounds.
 
-If managed PR publication is unavailable after implementation:
+Do not use an agent-driven GitHub write as a substitute for the Codex UI Create-PR handoff.
+
+### Manual Create-PR handoff
+
+After implementation, validation, and a task-pure Cloud commit, prepare:
 
 ```text
-Status=BLOCKED_CLOUD_PR_PUBLICATION_UNAVAILABLE
+Status              : CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR
+TaskID              : BL-xxx
+DependencyExecution : INDEPENDENT_FROM_CURRENT_CHECKOUT | STACK_BASE_READY
+ActualHeadBranch     : <cloud-branch>
+CloudCommitSha       : <full Cloud commit SHA>
+CloudTreeSha         : <full Cloud tree SHA>
+ExpectedPRBase       : <main-or-parent-mobile-branch>
+ExpectedPRTitle      : [MOBILE][BL-xxx] <subject>
+WindowsFinalization  : REQUIRED
+NextAction           : Use Codex UI Create PR, then reply "PR erstellt"
 ```
 
-Do not fall back to manual push.
+Obtain `CloudTreeSha` from the committed worktree, for example with:
+
+```text
+git rev-parse 'HEAD^{tree}'
+```
+
+The user performs the Codex UI **Create PR** action. Do not require a PR number in advance.
 
 ### Durable GitHub publication boundary
 
-A Codex Cloud task result, diff view, local Cloud commit, Cloud-internal branch view, or
-Cloud-internal "PR" indication is **not** a durable Mobile completion marker by itself.
+GitHub open pull requests are the Vacation Reservation Ledger. A Cloud task result, local Cloud commit, diff view, or Cloud-internal branch indication is not a durable reservation by itself.
 
 Use these states:
 
 ```text
 CLOUD_IMPLEMENTATION_IN_PROGRESS
-CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED
-CLOUD_PR_PUBLICATION_PENDING
+CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR
+MANUAL_PR_CREATED_PENDING_GITHUB_VISIBILITY
 CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN
 ```
 
-`CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN` may be claimed only after the managed publication
-flow has created a real GitHub pull request and Codex has read that pull request back from
-GitHub.
+After the user reports that the PR was created:
 
-Required GitHub readback:
+1. enumerate the open GitHub PRs again;
+2. resolve exactly one PR to the selected BL identity using the reservation rules in `Governance/MOBILE-CLOUD-HANDOFF.md`;
+3. record the reservation before content-identity checking;
+4. fetch the GitHub head commit read-only and compare its tree SHA with `CloudTreeSha`;
+5. accept commit-SHA rematerialization when the tree SHA matches;
+6. verify the expected base, especially for stacked children;
+7. keep the task reserved even when content identity is unavailable or mismatched; never auto-reimplement it.
 
-- repository is `thomasweidner/flashgate-mcp`;
-- PR state is `OPEN`;
-- PR title starts with `[MOBILE][<BL-ID>]`;
-- PR body contains the exact Mobile V3 identity fields from section 13;
-- `Mobile-Task` equals the selected canonical BL ID;
-- `Mobile-State` is `CLOUD_IMPLEMENTATION_COMPLETE`;
-- `Windows-Finalization` is `REQUIRED`;
-- `Merge-Allowed` is `NO`;
-- PR base equals the expected `main` or direct predecessor Mobile branch;
-- PR head resolves to a durable GitHub branch and commit;
-- the GitHub PR diff remains task-pure.
+A fully accepted candidate returns `CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN`. A base mismatch, ambiguous reservation, or content mismatch remains fail-closed and requires a new decision; do not automatically mutate, retarget, close, recreate, or merge the PR.
 
-If implementation is complete but the real GitHub PR has not been created or cannot be
-read back:
-
-```text
-Status=CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED
-```
-
-Do not archive, discard, or treat the Cloud task as completed. Do not advance to another
-task under the same BL ID. The exact next action is the managed Codex Cloud `Create PR`
-publication step.
-
-If managed publication was attempted but GitHub readback is unavailable or invalid:
-
-```text
-Status=CLOUD_PR_PUBLICATION_PENDING
-```
-
-Do not retry automatically and do not fall back to manual Git remote or credential
-configuration.
-
-GitHub is the durable Mobile candidate ledger. Codex Cloud is the execution workspace.
-
-## 6. Dynamic task discovery
+## 6. Dynamic task discovery and reservation
 
 Before selecting work:
 
-1. confirm `AGENTS.md` and `Governance/CLOUD-CODEX-GOVERNANCE.md` were read for this task;
+1. confirm `AGENTS.md`, Cloud governance, and `Governance/MOBILE-CLOUD-HANDOFF.md` were read for this task;
 2. read current `BACKLOG.md`;
-3. consider only canonical rows with status `Planned` or `Later`;
+3. consider only canonical rows with status `Planned` or explicitly permitted `Later`;
 4. map the BL ID through the capability catalog;
-5. inspect existing Mobile V3 PRs;
-6. inspect real dependencies from the backlog, code, contracts, and existing Mobile PRs;
+5. enumerate all open GitHub PRs and build the Vacation Reservation Ledger;
+6. inspect real dependencies from the backlog, current checkout, contracts, and existing Mobile PRs;
 7. determine effort and likely Windows residual from the current repository state;
-8. select an eligible candidate using the preference model unless the user named one.
+8. select an eligible candidate using the root `AGENTS.md` sprint-first preference unless the user named one.
 
-A valid Mobile V3 candidate is a **real GitHub pull request**, read back from GitHub,
-whose title starts with:
+### Reservation identity
 
-```text
-[MOBILE][BL-xxx]
-```
+A PR reserves a BL task when either:
 
-and whose body contains:
+- its body contains an exact standalone `Mobile-Task: BL-xxx` marker; or
+- no marker exists but exactly one selected-task BL identity is unambiguous from the title/body according to `Governance/MOBILE-CLOUD-HANDOFF.md`.
 
-```text
-Mobile-Queue: FLASHGATE-MOBILE-V3
-Mobile-Task: BL-xxx
-Mobile-Mode: A|B|C
-Mobile-State: CLOUD_IMPLEMENTATION_COMPLETE
-Mobile-Depends-On: NONE|BL-xxx[,BL-yyy...]
-Mobile-Base-Ref: <main-or-parent-mobile-branch>
-Windows-Finalization: REQUIRED
-Merge-Allowed: NO
-```
+Canonical Mobile metadata remains preferred, but UI-generated formatting differences do not unreserve a task when its selected BL identity is unambiguous.
 
-A Cloud task history entry, Cloud-only diff, or Cloud-internal PR indication is not
-sufficient discovery evidence.
+If title/body identity conflicts, or several BL identities are ambiguous, stop with the applicable Mobile correlation/identity status and treat every plausibly implicated task as requiring review.
 
-An open, GitHub-read-back, metadata-valid PR means that task already has a durable Cloud
-candidate and is not selected again.
-
-If a matching task has:
-
-- multiple competing Mobile PRs → `MOBILE_PR_COLLISION`;
-- a closed unmerged Mobile PR → `MOBILE_PR_CLOSED_REVIEW_REQUIRED`;
-- a merged Mobile PR before Windows finalization → `MOBILE_POLICY_VIOLATION_MERGED_PR`.
+Reservation is independent of commit SHA, branch name, tree SHA, author, committer, or timestamp. Content identity is a separate post-publication gate.
 
 ## 7. Dependency and stacked-PR contract
 
@@ -230,33 +200,39 @@ If the task does not consume an unintegrated Mobile predecessor:
 ```text
 task branch base = current main
 PR base          = main
+Mobile-Depends-On: NONE
 ```
 
-### 7.2 Task consuming one Mobile predecessor
+### 7.2 Stack-base-ready task
 
-If BL-B genuinely requires the unintegrated implementation of BL-A:
+A dependent task is executable only when the current Cloud checkout already contains the exact predecessor Mobile implementation it consumes. The normal route is to start a **new Codex Cloud task directly from the predecessor PR head branch or head SHA**.
+
+Before child implementation, verify locally that the selected predecessor is present. When the parent SHA is available locally, use:
 
 ```text
-main
-  \
-   BL-A branch ---- open PR A
-          \
-           BL-B branch ---- open stacked PR B
+git merge-base --is-ancestor <ParentHeadSha> HEAD
 ```
 
-For BL-B:
+For a valid child:
 
 ```text
-task branch base = current head of BL-A
-PR base          = BL-A head branch
-Mobile-Depends-On: BL-A
+PR base          = <direct predecessor head branch>
+Mobile-Depends-On: <parent BL>
 ```
 
-This keeps BL-B's PR diff limited to BL-B rather than duplicating BL-A.
+### 7.3 Stack required from a main-based task
 
-Neither PR is merged during Mobile work.
+If a candidate genuinely needs exactly one open predecessor that is not present in the current checkout:
 
-### 7.3 Longer chain
+```text
+Status=STACK_RESTART_REQUIRED
+```
+
+Do not make it executable with `git fetch`, `git pull`, merge, cherry-pick, patch replay, downloaded Git objects, a synthetic merge branch, or credential/remote configuration.
+
+Return the parent PR, head branch, head SHA, child BL, and instruct the user to start a new Codex Cloud task from that predecessor ref.
+
+### 7.4 Longer chain
 
 A chain is allowed:
 
@@ -264,33 +240,31 @@ A chain is allowed:
 main -> BL-A -> BL-B -> BL-C
 ```
 
-Each PR targets its direct predecessor branch and records the complete dependency list relevant to Windows integration.
+Each child task must start from its direct predecessor and each PR must target that direct predecessor branch.
 
-### 7.4 Multiple independent prerequisites
+### 7.5 Multiple independent prerequisites
 
 Do not automatically synthesize a merge branch from two unrelated open Mobile PRs.
 
-If BL-C requires BL-A and BL-B and those heads are not already in one ancestry chain:
+If a task genuinely requires more than one independent uncombined predecessor:
 
 ```text
 Status=BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
 ```
 
-Choose another eligible task. Windows can combine the prerequisites later, or the user can separately authorize a synthesis strategy.
+Choose another eligible task or defer combination to Windows unless the user explicitly authorizes another strategy.
 
-### 7.5 Dependency truth
+### 7.6 Dependency truth
 
-The dependency hints in this file are advisory Mobile planning hints. They do not create new canonical backlog dependencies.
-
-Before stacking, verify the dependency from the current code/contracts.
+Dependency hints in this file are advisory planning hints. They do not create a Git ancestry requirement. Before stacking, verify the real dependency from the current code/contracts.
 
 ## 8. Per-task authorization
 
 Each Mobile task needs a fresh task-scoped instruction.
 
-Preferred short instruction:
+Preferred automatic phone instruction:
 
-> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener GitHub-PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Der Task gilt erst nach erfolgreichem GitHub-Readback mit `[MOBILE][BL-xxx]`-Titel und vollständigen V3-Markern als Cloud-fertig. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
+> Führe den nächsten geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung, task-purer Commit und Cloud-validierbare Tests sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen nur über einen neuen Cloud-Task konsumiert werden, der direkt vom Vorgänger-PR-Head gestartet wurde. Nach Abschluss PR-Metadaten für den manuellen Codex-UI-`Create PR`-Schritt vorbereiten und mit `CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR` stoppen. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
 
 The instruction authorizes for exactly one selected task:
 
@@ -298,8 +272,8 @@ The instruction authorizes for exactly one selected task:
 - implementation or bounded design work allowed by its Cloud mode;
 - up to 6 material in-scope correction cycles;
 - Cloud-available validation;
-- one managed publication attempt producing one real open GitHub PR plus read-only
-  GitHub readback of its identity, state, base, head, title, markers, and task-pure scope.
+- a task-pure Cloud commit;
+- PR title/body metadata preparation for the manual Codex UI Create-PR handoff.
 
 It does not authorize:
 
@@ -307,7 +281,9 @@ It does not authorize:
 - deleting branches;
 - tags/releases;
 - GitHub settings/rules/secrets;
+- agent-driven GitHub writes as a substitute for the user's UI Create-PR action;
 - manual remote/credential configuration;
+- predecessor fetch/pull/merge/cherry-pick;
 - installations or dependencies not separately approved;
 - implementation of another BL task merely because it is nearby.
 
@@ -317,21 +293,20 @@ For every task:
 
 1. re-read its canonical BL row;
 2. inspect affected code, tests, docs, ADRs, security and change-trigger rules;
-3. identify actual prerequisites;
-4. do not silently cross a product/security/architecture decision boundary;
-5. keep the canonical backlog status unchanged;
-6. do not mark Cloud work as canonical completion;
-7. do not fabricate Windows/WSL/systemd/SCM/native-host evidence;
-8. keep the candidate branch task-pure except for directly caused in-scope corrections;
-9. run focused tests before broad validation;
-10. inspect the complete final diff and `git diff --check` when local Git supports it;
-11. publish one open PR only after the Cloud candidate is internally coherent;
-12. after managed publication, read the PR back from GitHub and validate the section 5
-    durability gate;
-13. report `CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN` only after that GitHub readback passes;
-14. if only the Codex Cloud result/diff exists, report
-    `CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED` and preserve the Cloud task until
-    publication succeeds or the user makes a new decision.
+3. enumerate the current Vacation Reservation Ledger;
+4. identify actual prerequisites and classify dependency execution from the current checkout;
+5. do not silently cross a product/security/architecture decision boundary;
+6. keep the canonical backlog status unchanged;
+7. do not mark Cloud work as canonical completion;
+8. do not fabricate Windows/WSL/systemd/SCM/native-host evidence;
+9. keep the candidate branch task-pure except for directly caused in-scope corrections;
+10. run focused tests before broad validation;
+11. inspect the complete final diff and `git diff --check` when local Git supports it;
+12. commit the task-pure Cloud candidate;
+13. record `CloudCommitSha` and `CloudTreeSha`;
+14. prepare the canonical PR title/body and expected base;
+15. return `CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR` and stop for the user's Codex UI Create-PR action;
+16. only after the user reports `PR erstellt`, perform the read-only GitHub correlation/content-identity/base checks from `Governance/MOBILE-CLOUD-HANDOFF.md`.
 
 If a product defect is discovered outside direct scope:
 
@@ -553,6 +528,183 @@ All `Done` tasks are excluded automatically, including the completed foundations
 
 No Mobile task may reopen them.
 
+### 10.17 Operational launch matrix — snapshot 2026-09-14
+
+This section is an **operational snapshot**, not a replacement for dynamic discovery. It exists so a phone/Codex Cloud session can start from a known-good topology without reconstructing the whole vacation graph from memory.
+
+Snapshot binding:
+
+```text
+Repository : thomasweidner/flashgate-mcp
+Main       : 5b851afb3ef3e7de1b49ce5a352c06d40b815f9d
+AGENTS     : 73b06e26da08847ebd3c5ee0512c581147eb4548
+BACKLOG    : a02db7c09b10dba8c827f62618c7c6eb9f096591
+MOBILE     : d9ba2949cb1523d8a5a8dce0b3fa8763bf0cf6b6 (pre-this-update)
+Ledger     : open GitHub PRs through #147 at snapshot time
+```
+
+**Mandatory refresh:** before any mutation, re-read current `AGENTS.md`, governance, `BACKLOG.md`, this file, and the complete open-PR ledger. If `main`, a listed parent PR, or dependency truth changed, current repository/GitHub truth wins and the snapshot classification must be recomputed.
+
+Operational preclassification codes:
+
+| Code | Meaning | Start rule |
+|---|---|---|
+| `MAIN_READY` | No mandatory unintegrated predecessor identified at snapshot time | Start a fresh Cloud task from current `main`; reclassify before mutation |
+| `STACK_RESTART_READY` | One clear open predecessor is known | Start a **new** Cloud task directly from that PR head branch/SHA; no predecessor import |
+| `RECHECK_ON_PARENT` | Likely stackable from the listed parent, but exact dependency truth must be rebound | Start from parent only if local inspection proves `STACK_BASE_READY` |
+| `WAIT_SINGLE_PARENT` | Required immediate predecessor has no durable child candidate yet | Prepare/publish predecessor first |
+| `WAIT_MULTI` | Multiple independent/uncombined predecessors are implicated | Do not synthesize a Cloud merge branch |
+| `ANALYSIS_READY` | Mode C research/contract work is useful | Start from `main`; stop at any new decision boundary |
+
+#### Immediate launch candidates
+
+| Task | Mode | Snapshot state | Start ref / expected base | Depends on | Guidance |
+|---|:---:|---|---|---|---|
+| `BL-209` | C | `ANALYSIS_READY` | `main` | `NONE` | SPR-048 compatibility decision preparation only; do not invent the decision |
+| `BL-211` | C | `ANALYSIS_READY` | `main` | `NONE` | SPR-048 fallback-contract decision preparation only |
+| `BL-037` | A | `STACK_RESTART_READY` | PR #75 head `codex/next-suitable-cloud-task-ausfuhren` @ `abe72f8a486aa80ffecf2713769dfad3610f46f4` | `BL-038` | Paginated listing consumes stable cursor semantics |
+| `BL-051` | A | `STACK_RESTART_READY` | PR #90 head `codex/fuhre-cloud-task-aus-mobile.md-v3-5ml4q4` @ `d4aee0943a1ac4d47aede5899c196437e019710d` | `BL-050` | Expected-match-count checks extend targeted edits |
+| `BL-053` | A | `MAIN_READY` | current `main` | `NONE` | Conditional hash/mtime/path-type preconditions; recheck collisions before mutation |
+| `BL-069` | A | `STACK_RESTART_READY` | PR #104 head `codex/fuhre-unabhangigen-cloud-task-aus` @ `0ad566a417118339c44df3a045a30cd652bb9331` | `BL-068` | Recommended first Search implementation child |
+| `BL-101` | A | `MAIN_READY` | current `main` | `NONE` | Named-root foundation; do not manufacture a stack solely for conceptual sequencing |
+| `BL-120` | A | `RECHECK_ON_PARENT` | PR #123 / `BL-119`, head `codex/fuhre-nachsten-cloud-task-aus-o35p7y` @ `0289117a8d818721d3559d244819c333441c6d0d` | likely `BL-119` | Proceed only if registry is the only required implementation predecessor |
+| `BL-137` | A | `STACK_RESTART_READY` | PR #107 head `codex/fuhre-cloud-task-aus-mobile.md-v3-aus-ztndq7` @ `02bbdc19b9f706b7d033e7cc55378f612c1c95f` | `BL-136` | Recommended first command-execution child |
+| `BL-154` | A | `STACK_RESTART_READY` | PR #135 head `codex/fuhre-nachsten-geeigneten-cloud-task-aus-58655l` @ `1ebd868f5f20d37be48cdf5df5e0de1b7e470797` | `BL-062` | Canonical backlog explicitly requires reuse of BL-062 |
+| `BL-155` | A | `RECHECK_ON_PARENT` | PR #132 / `BL-153`, head `codex/fuhre-nachsten-cloud-task-aus-myz7pk` @ `20e2d97a640879564a428b29726fa9c6646abf69` | likely `BL-153` | Preserve environment allowlist and secret exclusion |
+| `BL-156` | A | `RECHECK_ON_PARENT` | PR #132 / `BL-153`, same head | likely `BL-153` | Recheck whether BL-155 became a direct predecessor before mutation |
+| `BL-159` | A | `STACK_RESTART_READY` | PR #105 head `codex/fuhre-nachsten-cloud-task-aus-mobile.md-v3-aus` @ `3ca7584e00690b8f09bccb8401e555bc9cf3985f` | `BL-100` | Registration must not be the authorization boundary |
+| `BL-177` | C | `ANALYSIS_READY` | `main` | `NONE` | Governance model drafting/research; owner decision may remain |
+| `BL-178` | C | `ANALYSIS_READY` | `main` | `NONE` | Maintainer rules; stop at owner decision |
+| `BL-179` | C | `ANALYSIS_READY` | `main` | `NONE` | Contribution guidance; DCO/CLA is a decision boundary |
+| `BL-328` | C | `ANALYSIS_READY` | `main` | `NONE` | Resource limits require justified thresholds; do not silently select them |
+| `BL-330` | C | `ANALYSIS_READY` | `main` | `NONE` | Prepare status-contract options/tests; owner chooses canonical rule |
+
+#### Workstream topology
+
+**Filesystem**
+
+- `BL-037`: stack on BL-038 / PR #75.
+- `BL-051`: stack on BL-050 / PR #90.
+- `BL-053`: `MAIN_READY` snapshot candidate.
+- `BL-049`, `BL-056`, `BL-060`, `BL-061`, `BL-063`, `BL-064`: `WAIT_MULTI` at snapshot time because they intersect several independent open listing/write/job foundations.
+- `BL-057`: `WAIT_SINGLE_PARENT` on the bounded-plan implementation from BL-056.
+
+**Search**
+
+- foundation: BL-068 / PR #104.
+- `BL-069`: first recommended stack child.
+- `BL-070`, `BL-071`, `BL-072`, `BL-074`, `BL-075`, `BL-076`, `BL-078`, `BL-080`, `BL-082`: `RECHECK_ON_PARENT`; use BL-068 only when the task remains task-pure without a newer Search sibling.
+- `BL-073`, `BL-077`, `BL-079`: prefer a direct implementation predecessor; `BL-079` must consume the stable ordering semantics of the search implementation it paginates.
+
+**Named roots / capabilities**
+
+- capability foundation: BL-100 / PR #105.
+- `BL-101`: `MAIN_READY` snapshot candidate.
+- `BL-102`, `BL-104–107`: normally wait for the BL-101 candidate and then reclassify.
+- `BL-103`, `BL-108–110`: currently cross capability/root/profile boundaries and should be treated as `WAIT_MULTI` until one ancestry chain exists.
+- `BL-111`: run only after the effective dynamic registration/catalog model exists.
+
+**Process**
+
+Open foundations are split across BL-113, BL-119, BL-129 and BL-162. Therefore:
+
+- `BL-120` and `BL-121`: recheck from BL-119 / PR #123.
+- `BL-114–118`, `BL-122–126`, `BL-130–135`: treat as `WAIT_MULTI` until current topology proves a single direct parent or Windows integration combines the required foundations.
+
+**Command execution**
+
+- foundation: BL-136 / PR #107.
+- `BL-137`: first recommended stack child.
+- `BL-138`: normally wait for BL-137.
+- `BL-140`, `BL-141`, `BL-144`, `BL-149`: may be separable contract work from BL-136; recheck before mutation.
+- `BL-139`, `BL-142`, `BL-143`, `BL-145–148`, `BL-151–152`: currently cross named-root, result-resource, managed-process, policy and/or platform-isolation foundations; default to `WAIT_MULTI`.
+- `BL-143` must reuse the Managed Process Engine and must never create a second engine.
+
+**System information**
+
+- `BL-154`: stack on BL-062 / PR #135.
+- `BL-155`/`BL-156`: recheck from BL-153 / PR #132.
+- `BL-157`: wait for both effective system-info and capability-enforcement truth.
+
+**Security**
+
+- `BL-159`: stack on BL-100 / PR #105.
+- `BL-160`: normally follows BL-159.
+- `BL-161`, `BL-163`, `BL-164`, `BL-167`, `BL-168`, `BL-171`: cross several independent domain/security foundations; treat as `WAIT_MULTI` until reclassification proves otherwise.
+
+**Multi-mode/service and CI/release**
+
+Most unreserved work in `BL-223–244` and `BL-252–262` remains Cloud-capable by mode, but current implementation topology is split across independent architecture, process, identity and service foundations. Do not infer one parent from the catalog alone. Reclassify a user-named task from the selected checkout and use `WAIT_MULTI` unless a single exact parent or independent implementation is proven.
+
+`BL-261` may prepare Mode-B harness/research work but authoritative identical-host/external-server evidence is deferred. `BL-262` may prepare repository-contained supply-chain plans/evidence, but signing credentials and atomic release actions remain outside Cloud authority. `BL-341` remains Mode B and must be rebound against then-current multi-mode host/runtime truth before mutation.
+
+#### Mode-C analysis queue
+
+Useful Planned analysis/contract tasks when implementation topology is blocked:
+
+`BL-177`, `BL-178`, `BL-179`, `BL-209`, `BL-211`, `BL-328`, `BL-330`.
+
+Codex may investigate repository evidence, prepare options, and write only a bounded contract/documentation delta already permitted by the canonical BL scope. It must stop with `BLOCKED_DECISION_REQUIRED` before making a new product, architecture, security, release, dependency, platform, scope, or owner decision.
+
+#### Post-1.0 work
+
+Do not auto-select while executable unreserved Planned work exists:
+
+`BL-081`, `BL-083`, `BL-112`, `BL-127`, `BL-128`, `BL-150`, `BL-158`, `BL-169`, `BL-176`, `BL-181–188`, `BL-217`, `BL-232`, `BL-240`, `BL-313`.
+
+#### Copy/paste start instructions
+
+Independent task from `main`:
+
+```text
+Führe <BL-ID> gemäß `MOBILE.md` V3 als eigenständigen Mobile-Task aus.
+Start-Ref ist aktuelles `main`. Lies zuerst `AGENTS.md`, die Cloud-Governance,
+`Governance/MOBILE-CLOUD-HANDOFF.md`, `BACKLOG.md`, `MOBILE.md` und alle
+scope-relevanten ADR-/Security-/Test-Dokumente. Prüfe vor jeder Mutation den
+offenen GitHub-PR-Ledger und klassifiziere die DependencyExecution erneut.
+
+Wenn der Task nicht mehr `INDEPENDENT_FROM_CURRENT_CHECKOUT` ist, stoppe ohne
+Mutation und gib den korrekten Dependency-Zustand aus.
+
+Implementierung, task-purer Commit und Cloud-validierbare Tests sind für genau
+diesen BL-Task freigegeben. Kein Merge, kein PR-Close, kein Branch-Delete,
+kein Tag/Release, kein manuelles Remote-/Credential-Setup und keine Installation
+neuer Dependencies. Nach Abschluss PR-Metadaten für den manuellen Codex-UI
+`Create PR` Schritt vorbereiten.
+```
+
+Stacked child:
+
+```text
+Führe <CHILD-BL> gemäß `MOBILE.md` V3 als abhängigen Mobile-Task aus.
+Der ausgewählte Start-Ref ist der Vorgänger von <PARENT-BL>:
+<ParentHeadBranch>
+ParentHeadSha=<ParentHeadSha>
+
+Verifiziere lokal, dass ParentHeadSha im aktuellen Checkout enthalten ist.
+Kein Fetch, Pull, Merge oder Cherry-Pick des Vorgängers. Wenn die Ancestry-
+Prüfung oder die reale Dependency nicht passt, stoppe ohne Mutation.
+
+Der spätere Child-PR muss `<ParentHeadBranch>` als Base verwenden und
+`Mobile-Depends-On: <PARENT-BL>` enthalten. Implementierung, task-purer Commit
+und Cloud-validierbare Tests sind nur für <CHILD-BL> freigegeben. Kein Merge,
+PR-Close, Branch-Delete, Tag/Release, Remote-/Credential-Setup oder neue
+Dependency-Installation.
+```
+
+Mode-C analysis/contract:
+
+```text
+Bearbeite <BL-ID> gemäß `MOBILE.md` V3 ausschließlich als Mode-C
+Analyse-/Contract-Task. Lies aktuellen Repository-, Governance-, Backlog- und
+PR-Ledger-Stand. Erstelle die maximal repository-gestützte Analyse bzw. den
+bounded Contract-/Dokumentationsdelta, den der kanonische BL-Task bereits
+erlaubt. Triff keine neue Produkt-, Architektur-, Security-, Release- oder
+Owner-Entscheidung. Sobald eine solche Entscheidung erforderlich wird, stoppe
+mit `BLOCKED_DECISION_REQUIRED` und liefere die Optionen, Auswirkungen und die
+kleinste notwendige Entscheidung.
+```
+
 ## 11. Epic-level collision and priority guidance
 
 This is guidance, not ordering.
@@ -596,17 +748,13 @@ Avoid unrelated parallel branches that rewrite the same shared abstraction.
 
 ## 12. Windows return and integration
 
-After vacation, enumerate all open PRs carrying:
-
-```text
-Mobile-Queue: FLASHGATE-MOBILE-V3
-```
+After vacation, enumerate all open PRs carrying `Mobile-Queue: FLASHGATE-MOBILE-V3` or otherwise unambiguously reserved by the Mobile handoff rules.
 
 Process dependency roots before stacked children.
 
 For each candidate:
 
-1. verify exact PR base/head and dependency markers;
+1. verify exact PR base/head and dependency markers or provisional selected-task identity;
 2. inspect complete diff and Mobile ancestry;
 3. bind current local `AGENTS.md`, governance and local canonical state;
 4. independently review the candidate;
@@ -623,27 +771,13 @@ A Cloud PR is evidence of a candidate, never evidence that the BL item is `Done`
 
 The **GitHub PR metadata is part of the durable Mobile contract**.
 
-### Title — mandatory
-
-Exact prefix:
-
-```text
-[MOBILE][BL-xxx]
-```
-
-Preferred complete title:
+### Canonical title — preferred
 
 ```text
 [MOBILE][BL-xxx] <concise canonical task subject>
 ```
 
-The BL ID must be present in this machine-recognizable prefix. A generic title derived
-from the phone prompt, such as `Implementiere den nächsten mobile.md task`, is invalid
-even when the Cloud task itself selected the correct BL item.
-
-### Body — mandatory
-
-The PR body must contain these exact identity fields as standalone lines:
+### Canonical body — preferred
 
 ```text
 Mobile-Queue: FLASHGATE-MOBILE-V3
@@ -663,6 +797,8 @@ Also state:
 - warnings/findings;
 - scope and explicit non-goals.
 
+The Codex UI may rematerialize commit metadata, branch naming, or PR formatting. A UI-generated PR that omits the complete marker block still reserves the BL when exactly one selected-task identity is unambiguous under `Governance/MOBILE-CLOUD-HANDOFF.md`. Record such metadata as `PROVISIONAL_UI_GENERATED`; do not duplicate the task.
+
 ### Head branch
 
 Preferred branch naming remains task-specific, for example:
@@ -671,69 +807,72 @@ Preferred branch naming remains task-specific, for example:
 mobile/bl-036-tools-call-filesystem-tests
 ```
 
-If Codex Cloud controls branch naming and generates another unique branch, keep that
-single generated branch rather than manufacturing a second branch solely for naming.
-
-A generated branch name is acceptable only when:
-
-- the branch is dedicated to exactly one Mobile task;
-- the GitHub PR title and body satisfy the mandatory BL identity contract above;
-- GitHub readback proves the actual durable head branch and commit;
-- the final response records `GeneratedBranchNameAccepted: true`.
-
-Branch naming is therefore advisory; PR title/body identity and GitHub readback are
-mandatory.
+A generated branch name is acceptable when task identity, expected base, and content identity are valid. Branch naming is diagnostic; BL reservation, expected base, and tree identity are authoritative.
 
 The PR remains open. Do not merge or close it during Mobile work.
 
 ### Publication validation
 
-After `Create PR`, read the PR back from GitHub. If any mandatory title/body/state/base/
-head identity check fails:
+After the user performs `Create PR`, read the PR back from GitHub. Apply the reservation, tree-identity, and expected-base rules from `Governance/MOBILE-CLOUD-HANDOFF.md`.
+
+Do not automatically mutate a mismatched PR. Keep the BL reserved and return the exact mismatch for a new decision.
+
+## 14. Required Cloud final responses
+
+### Before manual Create PR
 
 ```text
-Status=CLOUD_PR_METADATA_INVALID
+Status              : CLOUD_IMPLEMENTATION_COMPLETE_AWAITING_MANUAL_PR
+TaskID              : BL-xxx
+CloudMode            : A | B | C
+DependencyExecution : INDEPENDENT_FROM_CURRENT_CHECKOUT | STACK_BASE_READY
+ActualHeadBranch     : <cloud branch>
+CloudCommitSha       : <full Cloud commit SHA>
+CloudTreeSha         : <full Cloud tree SHA>
+ExpectedPRBase       : <main-or-parent-mobile-branch>
+ExpectedPRTitle      : [MOBILE][BL-xxx] <subject>
+CloudValidation      : <result>
+DeferredValidation   : <Windows/native work>
+WindowsFinalization  : REQUIRED
+WarningCount         : <n>
+FailureCount         : <n>
+NextAction           : Use Codex UI Create PR, then reply "PR erstellt"
 ```
 
-Do not claim Mobile completion and do not automatically mutate the PR a second time.
-Return the exact mismatch for a new decision.
-
-## 14. Required Cloud final response
+### After GitHub readback
 
 ```text
-Status                    : CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN | CLOUD_IMPLEMENTATION_COMPLETE_UNPUBLISHED | CLOUD_PR_PUBLICATION_PENDING | CLOUD_ANALYSIS_COMPLETE | CLOUD_NO_CHANGE_REVIEW_REQUIRED | BLOCKED_...
-TaskID                    : BL-xxx
-CloudMode                  : A | B | C
-PreferredBranch            : mobile/bl-xxx-...
-ActualHeadBranch           : <durable-GitHub-branch-or-NONE>
-GeneratedBranchNameAccepted: true | false
-PullRequest                : <OPEN GitHub #number/url-or-NONE>
-PRTitle                    : <exact title-or-NONE>
-PRBase                     : <main-or-parent-mobile-branch>
-PRHeadSha                  : <GitHub head SHA-or-NONE>
-MobileDependsOn            : NONE | BL-...
-GitHubReadback             : PASS | NOT_AVAILABLE | FAIL
-CloudValidation            : <result>
-DeferredValidation         : <Windows/native work>
-RemoteConfiguration        : NOT_REQUIRED_UNCHANGED
-WindowsFinalization        : REQUIRED
-WarningCount               : <n>
-FailureCount               : <n>
-NextAction                 : <exact boundary>
+Status                 : CLOUD_IMPLEMENTATION_COMPLETE_PR_OPEN | MANUAL_PR_CREATED_PENDING_GITHUB_VISIBILITY | MOBILE_PR_RESERVED_CONTENT_IDENTITY_UNVERIFIED | MOBILE_PR_CONTENT_MISMATCH | MOBILE_STACK_PR_BASE_MISMATCH | MOBILE_PR_CORRELATION_AMBIGUOUS | BLOCKED_...
+TaskID                 : BL-xxx
+ReservationState       : VACATION_CANDIDATE_ALREADY_PREPARED
+PRMetadataState        : CANONICAL | PROVISIONAL_UI_GENERATED
+PullRequest            : <OPEN GitHub #number/url-or-NONE>
+ExpectedPRBase         : <main-or-parent-mobile-branch>
+ActualPRBase           : <GitHub base-or-NONE>
+GitHubHeadSha          : <head SHA-or-NONE>
+CloudTreeSha           : <Cloud tree SHA-or-NONE>
+GitHubTreeSha          : <GitHub tree SHA-or-NONE>
+ContentIdentity        : PASS | FAIL | NOT_AVAILABLE
+CommitShaRematerialized: true | false | NOT_AVAILABLE
+GitHubReadback         : PASS | NOT_AVAILABLE | FAIL
+WindowsFinalization    : REQUIRED
+NextAction             : <exact boundary>
 ```
 
 ## 15. Minimal phone prompts
 
 ### Automatic candidate
 
-> Führe einen geeigneten Cloud-Task aus `MOBILE.md` V3 aus. Implementierung und genau ein Cloud-gemanagter offener GitHub-PR sind für genau diesen Task freigegeben. Reale Abhängigkeiten dürfen über einen gestapelten Mobile-Branch konsumiert werden. Der Task gilt erst nach erfolgreichem GitHub-Readback mit `[MOBILE][BL-xxx]`-Titel und vollständigen V3-Markern als Cloud-fertig. Kein Merge, kein PR-Close, kein Branch-Delete und keine manuelle Remote- oder Credential-Konfiguration.
+> Führe den nächsten geeigneten Cloud-Task aus `MOBILE.md` V3 aus.
+
+This short prompt is sufficient only because root `AGENTS.md`, `Governance/MOBILE-CLOUD-HANDOFF.md`, and this file define the required discovery, reservation, dependency, validation, and manual Create-PR handoff. Codex must not infer missing authorization for merge, close, branch deletion, remote configuration, credentials, installs, tags, releases, or other external actions.
 
 ### Named epic
 
-> Wähle einen geeigneten noch offenen Task aus dem Filesystem-Epic gemäß `MOBILE.md` V3 und führe genau diesen Mobile-Task aus.
+> Wähle den nächsten geeigneten noch offenen Task aus dem Filesystem-Epic gemäß `MOBILE.md` V3 und führe genau diesen Mobile-Task aus.
 
 Replace `Filesystem` with `Search`, `Operations/Job`, `Process`, `Command Execution`, `MCP Contracts`, `Multi-Mode` or another catalog section.
 
 ### Named task
 
-> Führe `BL-xxx` gemäß `MOBILE.md` V3 aus. Nutze bei echter technischer Abhängigkeit einen gestapelten Mobile-PR. Kein Merge.
+> Führe `BL-xxx` gemäß `MOBILE.md` V3 aus. Prüfe die DependencyExecution aus dem aktuellen Checkout; bei `STACK_REQUIRED` stoppe mit dem exakten Vorgänger-Ref für einen neuen Cloud-Task. Kein Fetch/Pull/Merge/Cherry-Pick des Vorgängers und kein Merge des späteren PRs.
