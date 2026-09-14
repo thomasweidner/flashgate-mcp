@@ -30,7 +30,7 @@
     {
       "name": "search_paths",
       "title": "Search Paths",
-      "description": "Recursively searches root-relative paths with optional filename and portable metadata filters.",
+      "description": "Recursively searches root-relative paths or bounded file content with optional filename and portable metadata filters.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -77,6 +77,11 @@
             "type": "string",
             "format": "date-time",
             "description": "Inclusive RFC 3339 upper modification-time bound."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Case-sensitive UTF-8 literal text to find in files."
           }
         },
         "not": {
@@ -88,31 +93,65 @@
       },
       "resultSchema": {
         "type": "object",
-        "properties": {
-          "paths": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "path": {
-                  "type": "string"
-                },
-                "isDir": {
-                  "type": "boolean"
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "isDir": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "isDir"
+                  ],
+                  "additionalProperties": false
                 }
-              },
-              "required": [
-                "path",
-                "isDir"
-              ],
-              "additionalProperties": false
-            }
+              }
+            },
+            "required": [
+              "paths"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "matches": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "byteOffset": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "byteOffset"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "matches"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "paths"
-        ],
-        "additionalProperties": false
+        ]
       }
     },
     {

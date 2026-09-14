@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -12,8 +13,14 @@ import (
 )
 
 const (
-	searchPathsToolName  = "search_paths"
-	maxSearchPathResults = 1000
+	searchPathsToolName     = "search_paths"
+	maxSearchPathResults    = 1000
+	maxSearchContentFiles   = 1000
+	maxSearchBytesPerFile   = 1024 * 1024
+	maxSearchScannedBytes   = 10 * 1024 * 1024
+	maxSearchMatchesPerFile = 256
+	maxSearchContentMatches = 1000
+	maxSearchResponseBytes  = 1024 * 1024
 )
 
 // SearchPathsTool exposes bounded recursive path search as an MCP tool.
@@ -34,7 +41,7 @@ func NewSearchPathsTool(filesystem fs.DirectoryLister) *SearchPathsTool {
 func (t *SearchPathsTool) Name() string  { return searchPathsToolName }
 func (t *SearchPathsTool) Title() string { return "Search Paths" }
 func (t *SearchPathsTool) Description() string {
-	return "Recursively searches root-relative paths with optional filename and portable metadata filters."
+	return "Recursively searches root-relative paths or bounded file content with optional filename and portable metadata filters."
 }
 func (t *SearchPathsTool) InputSchema() any {
 	return map[string]any{
@@ -55,6 +62,11 @@ func (t *SearchPathsTool) InputSchema() any {
 				"minLength":   1,
 				"description": "Case-sensitive path.Match pattern applied to each complete base filename.",
 			},
+			"text": map[string]any{
+				"type":        "string",
+				"minLength":   1,
+				"description": "Case-sensitive UTF-8 literal text to find in files.",
+			},
 			"type": map[string]any{
 				"type":        "string",
 				"enum":        []string{"file", "directory"},
@@ -74,6 +86,9 @@ func (t *SearchPathsTool) Definition() protocol.Tool {
 }
 
 func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
+	if !utf8.Valid(rawArguments) {
+		return nil, invalidParamsError()
+	}
 	var arguments searchPathsArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
 		return nil, rpcErr
@@ -107,18 +122,26 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 		}
 		selector, kind = *arguments.NamePattern, search.NameMatchPattern
 	}
+	if arguments.Text != nil && *arguments.Text == "" {
+		return nil, invalidParamsError()
+	}
+	if arguments.Text != nil && arguments.Type != nil && *arguments.Type == "directory" {
+		return nil, invalidParamsError()
+	}
+	if arguments.Text != nil {
+		matches, err := t.service.SearchLiteral(ctx, startPath, selector, kind, filter, *arguments.Text, search.LiteralLimits{
+			MaxFiles: maxSearchContentFiles, MaxBytesPerFile: maxSearchBytesPerFile,
+			MaxScannedBytes: maxSearchScannedBytes, MaxMatchesPerFile: maxSearchMatchesPerFile,
+			MaxMatches: maxSearchContentMatches, MaxResponseBytes: maxSearchResponseBytes,
+		})
+		if err != nil {
+			return nil, mapSearchError(err)
+		}
+		return searchContentResult{Matches: matches}, nil
+	}
 	paths, err := t.service.SearchFiltered(ctx, startPath, selector, kind, filter)
 	if err != nil {
-		switch {
-		case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter):
-			return nil, invalidParamsError()
-		case errors.Is(err, search.ErrLimitExceeded):
-			return nil, &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
-		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-			return nil, &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: canceled"}
-		default:
-			return nil, mapFilesystemError(err)
-		}
+		return nil, mapSearchError(err)
 	}
 
 	return searchPathsResult{Paths: paths}, nil
@@ -128,6 +151,7 @@ type searchPathsArguments struct {
 	Path              *string `json:"path,omitempty"`
 	Name              *string `json:"name,omitempty"`
 	NamePattern       *string `json:"namePattern,omitempty"`
+	Text              *string `json:"text,omitempty"`
 	Type              *string `json:"type,omitempty"`
 	MinSizeBytes      *int64  `json:"minSizeBytes,omitempty"`
 	MaxSizeBytes      *int64  `json:"maxSizeBytes,omitempty"`
@@ -174,4 +198,25 @@ func (a searchPathsArguments) metadataFilter() (search.MetadataFilter, *protocol
 
 type searchPathsResult struct {
 	Paths []search.Path `json:"paths"`
+}
+
+type searchContentResult struct {
+	Matches []search.LiteralMatch `json:"matches"`
+}
+
+func mapSearchError(err error) *protocol.Error {
+	switch {
+	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch):
+		return invalidParamsError()
+	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrMatchLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded):
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
+	case errors.Is(err, fs.ErrFileTooLarge):
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
+	case errors.Is(err, search.ErrContentSearchUnavailable):
+		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: unavailable"}
+	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: canceled"}
+	default:
+		return mapFilesystemError(err)
+	}
 }

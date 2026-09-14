@@ -3,7 +3,7 @@ package tools
 func filesystemOutputSchema(toolName string) map[string]any {
 	switch toolName {
 	case searchPathsToolName:
-		return objectOutputSchema(map[string]any{
+		return map[string]any{"type": "object", "oneOf": []any{objectOutputSchema(map[string]any{
 			"paths": map[string]any{
 				"type": "array",
 				"items": objectOutputSchema(map[string]any{
@@ -11,7 +11,11 @@ func filesystemOutputSchema(toolName string) map[string]any {
 					"isDir": map[string]any{"type": "boolean"},
 				}, "path", "isDir"),
 			},
-		}, "paths")
+		}, "paths"), objectOutputSchema(map[string]any{
+			"matches": map[string]any{"type": "array", "items": objectOutputSchema(map[string]any{
+				"path": map[string]any{"type": "string"}, "byteOffset": map[string]any{"type": "integer", "minimum": 0},
+			}, "path", "byteOffset")},
+		}, "matches")}}
 	case listDirectoryToolName:
 		return objectOutputSchema(map[string]any{
 			"entries": map[string]any{

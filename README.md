@@ -14,7 +14,7 @@ It exposes secure filesystem operations to MCP-compatible clients through JSON-R
 
 The project currently implements the core MCP server loop, JSON-RPC routing and request validation, tool discovery, tool execution, MCP-conformant `CallToolResult` wrapping, filesystem abstraction, root-confined path handling, bounded root-relative path search, read-only tool gating, canonical build identity, native Windows/Linux metadata, deterministic release archives, reproducible resource/latency/payload benchmarks, tests, and documentation.
 
-The current implemented scope is filesystem operations plus the first bounded path-search slice. Version 1.0 plans further search, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, and optional local system-service deployment. These remain planned work.
+The current implemented scope is filesystem operations plus bounded path, filename, metadata, and literal-text search slices. Version 1.0 plans further search capabilities, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, and optional local system-service deployment. These remain planned work.
 
 Implemented tools:
 
