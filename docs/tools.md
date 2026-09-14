@@ -131,10 +131,14 @@ Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (defaul
 
 ## `edit_file`
 
-Required: `path`, `startByte`, `endByte`, and `content`. The offsets select an exact half-open byte range (`startByte` inclusive, `endByte` exclusive) in an existing file. Equal offsets insert content; empty content deletes the selected range. The source and resulting file must both remain within the configured write limit. This initial targeted-edit primitive is intentionally non-atomic; conditional writes, match-count checks, and dry-run behavior remain separate planned work.
+Required: `path` plus exactly one edit mode. Range mode requires `startByte`, `endByte`, and `content`; the offsets select an exact half-open byte range (`startByte` inclusive, `endByte` exclusive). Equal offsets insert content and empty content deletes the selected range. Match mode requires non-empty `oldText`, `newText`, and `expectedMatches` greater than zero. It replaces every exact, non-overlapping match only when the observed count equals `expectedMatches`; zero, fewer, or additional matches reject the request without writing, so stale and ambiguous edits fail closed. The source and resulting file must both remain within the configured write limit. The targeted-edit primitive remains intentionally non-atomic; conditional writes and dry-run behavior remain separate planned work.
 
 ```json
 {"path":"notes.txt","startByte":6,"endByte":11,"content":"FlashGate"}
+```
+
+```json
+{"path":"notes.txt","oldText":"world","newText":"FlashGate","expectedMatches":1}
 ```
 
 ```json

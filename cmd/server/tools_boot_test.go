@@ -147,6 +147,9 @@ func (noopFileSystem) Write(string, []byte, bool) error {
 func (noopFileSystem) EditRange(string, int64, int64, []byte) (int64, error) {
 	return 0, errors.New("not implemented")
 }
+func (noopFileSystem) EditMatches(string, []byte, []byte, int) (int64, error) {
+	return 0, errors.New("not implemented")
+}
 
 func (noopFileSystem) Mkdir(string) (bool, error) {
 	return false, errors.New("not implemented")

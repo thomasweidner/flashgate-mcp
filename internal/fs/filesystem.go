@@ -45,6 +45,9 @@ var (
 
 	// ErrMovePathChanged is returned when a move path changes during validation.
 	ErrMovePathChanged = errors.New("move path changed during validation")
+
+	// ErrMatchCountMismatch is returned when a targeted edit's precondition is stale or ambiguous.
+	ErrMatchCountMismatch = errors.New("targeted edit match count mismatch")
 )
 
 // Limits contains filesystem operation limits.
@@ -86,6 +89,7 @@ type FileSystem interface {
 	Stat(path string) (Metadata, error)
 	Write(path string, content []byte, overwrite bool) error
 	EditRange(path string, startByte, endByte int64, content []byte) (int64, error)
+	EditMatches(path string, oldContent, newContent []byte, expectedMatches int) (int64, error)
 	Mkdir(path string) (bool, error)
 	Delete(path string, recursive bool) error
 	Move(source string, target string, overwrite bool) error
