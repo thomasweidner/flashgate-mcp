@@ -21,7 +21,7 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 		expectedResultBytes   int
 	}{
 		{"read-only", capabilitiesFromReadOnly(true), 3, 2134, 2099},
-		{"default", toolCapabilities{filesystemWrite: true}, 8, 5657, 5622},
+		{"default", toolCapabilities{filesystemWrite: true}, 8, 6592, 6557},
 	}
 
 	for _, tc := range tests {

@@ -84,11 +84,22 @@ type FileSystem interface {
 	List(path string) ([]Entry, error)
 	Read(path string, maxBytes int64) ([]byte, error)
 	Stat(path string) (Metadata, error)
+	ValidatePath(path string, mustExist bool) error
 	Write(path string, content []byte, overwrite bool) error
 	Mkdir(path string) (bool, error)
 	Delete(path string, recursive bool) error
 	Move(source string, target string, overwrite bool) error
 	Copy(source string, target string, overwrite bool) error
+}
+
+// ValidatePath applies the configured path policy without changing filesystem state.
+func (f *LocalFileSystem) ValidatePath(path string, mustExist bool) error {
+	if mustExist {
+		_, err := f.guard.ResolveExisting(path)
+		return err
+	}
+	_, err := f.guard.ResolveForCreate(path)
+	return err
 }
 
 // LocalFileSystem implements FileSystem using the local operating system.
