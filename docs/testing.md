@@ -10,6 +10,13 @@ PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+Filesystem implementations that expose conflict selection must cover the
+operation/strategy matrix, target identity changes, preservation on failure or
+skip, deterministic batch outcomes, and safe error classification defined by
+the [filesystem conflict strategy](filesystem-conflict-strategy.md). Native
+Windows and Linux validation remains required for filesystem replacement and
+race behavior.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
