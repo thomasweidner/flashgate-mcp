@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -225,6 +226,65 @@ func TestMetadataSearchRejectsInvalidFiltersBeforeTraversal(t *testing.T) {
 		if !errors.Is(err, ErrInvalidMetadataFilter) || results != nil || len(filesystem.calls) != 0 {
 			t.Fatalf("expected pre-traversal rejection, filter=%#v results=%#v calls=%#v err=%v", filter, results, filesystem.calls, err)
 		}
+	}
+}
+
+func TestPathPatternsUseRelativePathsAndExclusionsWin(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{
+		".":        {{Name: "docs", IsDir: true}, {Name: "top.md"}},
+		"docs":     {{Name: "guide.md"}, {Name: "draft.md"}, {Name: "sub", IsDir: true}},
+		"docs/sub": {{Name: "nested.md"}},
+	}}
+	service, _ := NewPathService(filesystem, 10)
+
+	got, err := service.SearchFilteredPatterns(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, PathPatterns{
+		Include: []string{"docs/*.md"},
+		Exclude: []string{"docs/draft.md"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Path{{Path: "docs/guide.md"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected path-pattern results\nwant: %#v\n got: %#v", want, got)
+	}
+	if wantCalls := []string{".", "docs", "docs/sub"}; !reflect.DeepEqual(filesystem.calls, wantCalls) {
+		t.Fatalf("unmatched directories must remain traversable: %#v", filesystem.calls)
+	}
+}
+
+func TestPathPatternsRejectInvalidSyntaxBeforeTraversal(t *testing.T) {
+	tooMany := make([]string, maxPathPatterns+1)
+	for i := range tooMany {
+		tooMany[i] = string(rune('a' + i))
+	}
+	for _, patterns := range []PathPatterns{
+		{Include: []string{""}}, {Include: []string{"["}}, {Exclude: []string{`docs\*.md`}},
+		{Include: []string{"same", "same"}}, {Include: []string{strings.Repeat("a", maxPatternBytes+1)}}, {Exclude: tooMany},
+	} {
+		filesystem := &listingFS{}
+		service, _ := NewPathService(filesystem, 10)
+		results, err := service.SearchFilteredPatterns(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, patterns)
+		if !errors.Is(err, ErrInvalidPathPatterns) || results != nil || len(filesystem.calls) != 0 {
+			t.Fatalf("expected pre-traversal rejection, results=%#v calls=%#v err=%v", results, filesystem.calls, err)
+		}
+	}
+}
+
+func TestContentSearchAppliesPathPatternsBeforeRead(t *testing.T) {
+	filesystem := &listingFS{
+		entries: map[string][]fs.Entry{".": {{Name: "keep.txt", Size: 1}, {Name: "skip.txt", Size: 1}}},
+		content: map[string][]byte{"keep.txt": []byte("x"), "skip.txt": []byte("x")},
+	}
+	service, _ := NewPathService(filesystem, 10)
+	got, err := service.SearchLiteralPatterns(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, PathPatterns{
+		Include: []string{"*.txt"}, Exclude: []string{"skip.txt"},
+	}, "x", LiteralLimits{MaxFiles: 10, MaxBytesPerFile: 10, MaxScannedBytes: 20, MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, []LiteralMatch{{Path: "keep.txt", ByteOffset: 0}}) || !reflect.DeepEqual(filesystem.reads, []string{"keep.txt"}) {
+		t.Fatalf("unexpected matches=%#v reads=%#v", got, filesystem.reads)
 	}
 }
 

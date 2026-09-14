@@ -17,6 +17,11 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 )
 
+const (
+	maxPathPatterns = 32
+	maxPatternBytes = 256
+)
+
 var (
 	// ErrInvalidLimit is returned when a path search has no positive server cap.
 	ErrInvalidLimit = errors.New("path search limit must be positive")
@@ -34,6 +39,9 @@ var (
 	// ErrInvalidRegexSearch is returned before traversal for an empty, invalid,
 	// or non-UTF-8 regular expression or incompatible search settings.
 	ErrInvalidRegexSearch = errors.New("invalid regular-expression search")
+	// ErrInvalidPathPatterns is returned before traversal when an include or
+	// exclude pattern is empty, malformed, or exceeds its server-owned bound.
+	ErrInvalidPathPatterns = errors.New("invalid search path patterns")
 	// ErrContentSearchUnavailable is returned when the filesystem boundary does
 	// not provide root-confined reads.
 	ErrContentSearchUnavailable = errors.New("content search unavailable")
@@ -98,6 +106,13 @@ type MetadataFilter struct {
 	ModifiedNotAfter  *time.Time
 }
 
+// PathPatterns narrows search candidates by their normalized, root-relative
+// slash-separated path. Exclusions take precedence over inclusions.
+type PathPatterns struct {
+	Include []string
+	Exclude []string
+}
+
 // PathService recursively enumerates root-relative paths through the central
 // filesystem boundary. It never receives or exposes an absolute host path.
 type PathService struct {
@@ -133,7 +148,18 @@ func (s *PathService) SearchNames(ctx context.Context, startPath, selector strin
 // SearchFiltered returns descendants matching optional filename and portable
 // metadata filters. All filters are validated before filesystem traversal.
 func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter) ([]Path, error) {
+	return s.SearchFilteredPatterns(ctx, startPath, selector, kind, filter, PathPatterns{})
+}
+
+// SearchFilteredPatterns returns descendants matching filename, metadata, and
+// root-relative path-pattern filters. Directories remain traversable even when
+// they do not match, so an included descendant cannot be hidden by its parent.
+func (s *PathService) SearchFilteredPatterns(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, patterns PathPatterns) ([]Path, error) {
 	if err := validateMetadataFilter(filter); err != nil {
+		return nil, err
+	}
+	pathMatches, err := compilePathPatterns(patterns)
+	if err != nil {
 		return nil, err
 	}
 
@@ -159,8 +185,8 @@ func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector st
 		return nil, ErrInvalidNameSelector
 	}
 
-	return s.search(ctx, startPath, func(entry fs.Entry) bool {
-		return (nameMatches == nil || nameMatches(entry.Name)) && matchesMetadata(entry, filter)
+	return s.search(ctx, startPath, func(relativePath string, entry fs.Entry) bool {
+		return pathMatches(relativePath) && (nameMatches == nil || nameMatches(entry.Name)) && matchesMetadata(entry, filter)
 	})
 }
 
@@ -169,13 +195,19 @@ func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector st
 // selector is validated as UTF-8; binary classification and alternate
 // encodings remain outside this baseline operation.
 func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, term string, limits LiteralLimits) ([]LiteralMatch, error) {
+	return s.SearchLiteralPatterns(ctx, startPath, selector, kind, filter, PathPatterns{}, term, limits)
+}
+
+// SearchLiteralPatterns applies root-relative include/exclude filters before a
+// file is opened for literal content scanning.
+func (s *PathService) SearchLiteralPatterns(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, patterns PathPatterns, term string, limits LiteralLimits) ([]LiteralMatch, error) {
 	if term == "" || !utf8.ValidString(term) || filter.Type == EntryTypeDirectory ||
 		limits.MaxFiles <= 0 || limits.MaxBytesPerFile <= 0 || limits.MaxScannedBytes <= 0 ||
 		limits.MaxMatchesPerFile <= 0 || limits.MaxMatches <= 0 || limits.MaxResponseBytes <= 0 {
 		return nil, ErrInvalidLiteralSearch
 	}
 	needle := []byte(term)
-	return s.searchContent(ctx, startPath, selector, kind, filter, limits, func(content []byte, maxMatches int) [][2]int {
+	return s.searchContent(ctx, startPath, selector, kind, filter, patterns, limits, func(content []byte, maxMatches int) [][2]int {
 		var offsets [][2]int
 		for base := 0; base <= len(content)-len(needle); {
 			offset := bytes.Index(content[base:], needle)
@@ -197,6 +229,12 @@ func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector str
 // linear-time regular-expression engine. The same server-owned scan, match,
 // response, and cancellation budgets as literal content search are enforced.
 func (s *PathService) SearchRegex(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, expression string, limits LiteralLimits) ([]LiteralMatch, error) {
+	return s.SearchRegexPatterns(ctx, startPath, selector, kind, filter, PathPatterns{}, expression, limits)
+}
+
+// SearchRegexPatterns applies root-relative include/exclude filters before a
+// file is opened for regular-expression content scanning.
+func (s *PathService) SearchRegexPatterns(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, patterns PathPatterns, expression string, limits LiteralLimits) ([]LiteralMatch, error) {
 	if expression == "" || !utf8.ValidString(expression) || filter.Type == EntryTypeDirectory || !validLiteralLimits(limits) {
 		return nil, ErrInvalidRegexSearch
 	}
@@ -204,7 +242,7 @@ func (s *PathService) SearchRegex(ctx context.Context, startPath, selector strin
 	if err != nil {
 		return nil, ErrInvalidRegexSearch
 	}
-	return s.searchContent(ctx, startPath, selector, kind, filter, limits, func(content []byte, maxMatches int) [][2]int {
+	return s.searchContent(ctx, startPath, selector, kind, filter, patterns, limits, func(content []byte, maxMatches int) [][2]int {
 		indexes := compiled.FindAllIndex(content, maxMatches)
 		offsets := make([][2]int, len(indexes))
 		for i, index := range indexes {
@@ -219,11 +257,15 @@ func validLiteralLimits(limits LiteralLimits) bool {
 		limits.MaxMatchesPerFile > 0 && limits.MaxMatches > 0 && limits.MaxResponseBytes > 0
 }
 
-func (s *PathService) searchContent(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, limits LiteralLimits, find func([]byte, int) [][2]int) ([]LiteralMatch, error) {
+func (s *PathService) searchContent(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, patterns PathPatterns, limits LiteralLimits, find func([]byte, int) [][2]int) ([]LiteralMatch, error) {
 	if err := validateMetadataFilter(filter); err != nil {
 		return nil, err
 	}
 	nameMatches, err := compileNameMatcher(selector, kind)
+	if err != nil {
+		return nil, err
+	}
+	pathMatches, err := compilePathPatterns(patterns)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +298,7 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 				pending = append(pending, relativePath)
 				continue
 			}
-			if (nameMatches != nil && !nameMatches(entry.Name)) || !matchesMetadata(entry, filter) {
+			if !pathMatches(relativePath) || (nameMatches != nil && !nameMatches(entry.Name)) || !matchesMetadata(entry, filter) {
 				continue
 			}
 			if files == limits.MaxFiles || entry.Size > limits.MaxBytesPerFile || entry.Size > limits.MaxScannedBytes-scanned {
@@ -350,7 +392,7 @@ func matchesMetadata(entry fs.Entry, filter MetadataFilter) bool {
 	return true
 }
 
-func (s *PathService) search(ctx context.Context, startPath string, matches func(fs.Entry) bool) ([]Path, error) {
+func (s *PathService) search(ctx context.Context, startPath string, matches func(string, fs.Entry) bool) ([]Path, error) {
 	startPath = normalizeRelativePath(startPath)
 	results := make([]Path, 0)
 	pending := []string{startPath}
@@ -373,7 +415,7 @@ func (s *PathService) search(ctx context.Context, startPath string, matches func
 				return nil, err
 			}
 			relativePath := joinRelativePath(directory, entry.Name)
-			if matches(entry) {
+			if matches(relativePath, entry) {
 				if len(results) == s.maxResults {
 					return nil, ErrLimitExceeded
 				}
@@ -387,6 +429,51 @@ func (s *PathService) search(ctx context.Context, startPath string, matches func
 
 	sort.Slice(results, func(i, j int) bool { return results[i].Path < results[j].Path })
 	return results, nil
+}
+
+func compilePathPatterns(patterns PathPatterns) (func(string) bool, error) {
+	validate := func(values []string) error {
+		if len(values) > maxPathPatterns {
+			return ErrInvalidPathPatterns
+		}
+		seen := make(map[string]struct{}, len(values))
+		for _, pattern := range values {
+			if pattern == "" || len(pattern) > maxPatternBytes || strings.Contains(pattern, `\`) {
+				return ErrInvalidPathPatterns
+			}
+			if _, duplicate := seen[pattern]; duplicate {
+				return ErrInvalidPathPatterns
+			}
+			seen[pattern] = struct{}{}
+			if _, err := path.Match(pattern, ""); err != nil {
+				return ErrInvalidPathPatterns
+			}
+		}
+		return nil
+	}
+	if err := validate(patterns.Include); err != nil {
+		return nil, err
+	}
+	if err := validate(patterns.Exclude); err != nil {
+		return nil, err
+	}
+	return func(relativePath string) bool {
+		included := len(patterns.Include) == 0
+		for _, pattern := range patterns.Include {
+			matched, _ := path.Match(pattern, relativePath)
+			included = included || matched
+		}
+		if !included {
+			return false
+		}
+		for _, pattern := range patterns.Exclude {
+			matched, _ := path.Match(pattern, relativePath)
+			if matched {
+				return false
+			}
+		}
+		return true
+	}, nil
 }
 
 func normalizeRelativePath(value string) string {
