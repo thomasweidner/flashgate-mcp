@@ -44,7 +44,7 @@ func TestPathSearchReturnsRootRelativePathsInPortableOrder(t *testing.T) {
 		"a":     {{Name: "two.txt"}, {Name: "one", IsDir: true}},
 		"a/one": {{Name: "deep.txt"}},
 	}}
-	service, err := NewPathService(filesystem, 10)
+	service, err := NewPathService(filesystem, 10, 64, 10000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestPathSearchReturnsRootRelativePathsInPortableOrder(t *testing.T) {
 
 func TestPathSearchKeepsStartPathRootRelative(t *testing.T) {
 	filesystem := &listingFS{entries: map[string][]fs.Entry{"docs": {{Name: "nested", IsDir: true}}, "docs/nested": {{Name: "file.md"}}}}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 
 	got, err := service.Search(context.Background(), "docs")
 	if err != nil {
@@ -84,7 +84,7 @@ func TestPathSearchKeepsStartPathRootRelative(t *testing.T) {
 }
 
 func TestPathSearchFailsClosedAtLimit(t *testing.T) {
-	service, _ := NewPathService(&listingFS{entries: map[string][]fs.Entry{".": {{Name: "a"}, {Name: "b"}}}}, 1)
+	service, _ := NewPathService(&listingFS{entries: map[string][]fs.Entry{".": {{Name: "a"}, {Name: "b"}}}}, 1, 64, 10000)
 	results, err := service.Search(context.Background(), ".")
 	if !errors.Is(err, ErrLimitExceeded) || results != nil {
 		t.Fatalf("expected bounded failure, got results=%#v err=%v", results, err)
@@ -95,7 +95,7 @@ func TestPathSearchHonorsCancellationBeforeFilesystemAccess(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	filesystem := &listingFS{}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 
 	_, err := service.Search(ctx, ".")
 	if !errors.Is(err, context.Canceled) || len(filesystem.calls) != 0 {
@@ -104,8 +104,38 @@ func TestPathSearchHonorsCancellationBeforeFilesystemAccess(t *testing.T) {
 }
 
 func TestNewPathServiceRequiresPositiveLimit(t *testing.T) {
-	if _, err := NewPathService(&listingFS{}, 0); !errors.Is(err, ErrInvalidLimit) {
-		t.Fatalf("expected invalid limit, got %v", err)
+	for _, limits := range [][3]int{{0, 1, 1}, {1, 0, 1}, {1, 1, 0}} {
+		if _, err := NewPathService(&listingFS{}, limits[0], limits[1], limits[2]); !errors.Is(err, ErrInvalidLimit) {
+			t.Fatalf("limits %v: expected invalid limit, got %v", limits, err)
+		}
+	}
+}
+
+func TestPathSearchEnforcesVisitedEntryLimitBeforeFiltering(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{
+		".": {{Name: "a.txt"}, {Name: "b.txt"}},
+	}}
+	service, _ := NewPathService(filesystem, 10, 10, 1)
+
+	results, err := service.SearchNames(context.Background(), ".", "missing", NameMatchLiteral)
+	if !errors.Is(err, ErrTraversalLimitExceeded) || results != nil {
+		t.Fatalf("expected visited-entry failure, results=%#v err=%v", results, err)
+	}
+}
+
+func TestPathSearchEnforcesDepthLimitBeforeDescending(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{
+		".":   {{Name: "one", IsDir: true}},
+		"one": {{Name: "too-deep.txt"}},
+	}}
+	service, _ := NewPathService(filesystem, 10, 1, 10)
+
+	results, err := service.Search(context.Background(), ".")
+	if !errors.Is(err, ErrTraversalLimitExceeded) || results != nil {
+		t.Fatalf("expected depth failure, results=%#v err=%v", results, err)
+	}
+	if !reflect.DeepEqual(filesystem.calls, []string{"."}) {
+		t.Fatalf("depth-limited directory must not be listed: calls=%#v", filesystem.calls)
 	}
 }
 
@@ -114,7 +144,7 @@ func TestFilenameSearchMatchesLiteralAndTraversesUnmatchedDirectories(t *testing
 		".":     {{Name: "target.txt"}, {Name: "other", IsDir: true}},
 		"other": {{Name: "target.txt"}, {Name: "TARGET.txt"}},
 	}}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 
 	got, err := service.SearchNames(context.Background(), ".", "target.txt", NameMatchLiteral)
 	if err != nil {
@@ -132,7 +162,7 @@ func TestFilenameSearchMatchesPortablePatternAgainstBaseName(t *testing.T) {
 		"docs":     {{Name: "guide.md"}, {Name: "notes.txt"}, {Name: "sub", IsDir: true}},
 		"docs/sub": {{Name: "nested.md"}},
 	}}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 
 	got, err := service.SearchNames(context.Background(), ".", "*.md", NameMatchPattern)
 	if err != nil {
@@ -155,7 +185,7 @@ func TestFilenameSearchRejectsInvalidSelectorBeforeTraversal(t *testing.T) {
 		{"file.txt", NameMatchKind(99)},
 	} {
 		filesystem := &listingFS{}
-		service, _ := NewPathService(filesystem, 10)
+		service, _ := NewPathService(filesystem, 10, 64, 10000)
 		results, err := service.SearchNames(context.Background(), ".", tc.selector, tc.kind)
 		if !errors.Is(err, ErrInvalidNameSelector) || results != nil || len(filesystem.calls) != 0 {
 			t.Fatalf("selector %q: expected pre-traversal rejection, results=%#v calls=%#v err=%v", tc.selector, results, filesystem.calls, err)
@@ -165,7 +195,7 @@ func TestFilenameSearchRejectsInvalidSelectorBeforeTraversal(t *testing.T) {
 
 func TestFilenameSearchLimitCountsOnlyMatches(t *testing.T) {
 	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a.txt"}, {Name: "b.go"}, {Name: "c.txt"}}}}
-	service, _ := NewPathService(filesystem, 1)
+	service, _ := NewPathService(filesystem, 1, 64, 10000)
 
 	results, err := service.SearchNames(context.Background(), ".", "*.go", NameMatchPattern)
 	if err != nil || !reflect.DeepEqual(results, []Path{{Path: "b.go"}}) {
@@ -185,7 +215,7 @@ func TestMetadataSearchFiltersPortableTypeSizeAndTime(t *testing.T) {
 		},
 		"docs": {{Name: "nested.txt", Size: 8, ModifiedTime: recent}},
 	}}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 	minSize, maxSize := int64(8), int64(8)
 	got, err := service.SearchFiltered(context.Background(), ".", "*.txt", NameMatchPattern, MetadataFilter{
 		Type: EntryTypeFile, MinSizeBytes: &minSize, MaxSizeBytes: &maxSize, ModifiedNotBefore: &recent, ModifiedNotAfter: &recent,
@@ -201,7 +231,7 @@ func TestMetadataSearchFiltersPortableTypeSizeAndTime(t *testing.T) {
 
 func TestMetadataSearchSizeFiltersNeverMatchDirectories(t *testing.T) {
 	zero := int64(0)
-	service, _ := NewPathService(&listingFS{entries: map[string][]fs.Entry{".": {{Name: "empty", IsDir: true}, {Name: "empty.txt"}}, "empty": {}}}, 10)
+	service, _ := NewPathService(&listingFS{entries: map[string][]fs.Entry{".": {{Name: "empty", IsDir: true}, {Name: "empty.txt"}}, "empty": {}}}, 10, 64, 10000)
 	got, err := service.SearchFiltered(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{MinSizeBytes: &zero, MaxSizeBytes: &zero})
 	if err != nil || !reflect.DeepEqual(got, []Path{{Path: "empty.txt"}}) {
 		t.Fatalf("expected only zero-byte file, results=%#v err=%v", got, err)
@@ -220,7 +250,7 @@ func TestMetadataSearchRejectsInvalidFiltersBeforeTraversal(t *testing.T) {
 	}
 	for _, filter := range filters {
 		filesystem := &listingFS{}
-		service, _ := NewPathService(filesystem, 10)
+		service, _ := NewPathService(filesystem, 10, 64, 10000)
 		results, err := service.SearchFiltered(context.Background(), ".", "", NameMatchLiteral, filter)
 		if !errors.Is(err, ErrInvalidMetadataFilter) || results != nil || len(filesystem.calls) != 0 {
 			t.Fatalf("expected pre-traversal rejection, filter=%#v results=%#v calls=%#v err=%v", filter, results, filesystem.calls, err)
@@ -231,7 +261,7 @@ func TestMetadataSearchRejectsInvalidFiltersBeforeTraversal(t *testing.T) {
 func TestMetadataSearchLimitCountsOnlyMatches(t *testing.T) {
 	minSize := int64(10)
 	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "small-a", Size: 1}, {Name: "large", Size: 10}, {Name: "small-b", Size: 2}}}}
-	service, _ := NewPathService(filesystem, 1)
+	service, _ := NewPathService(filesystem, 1, 64, 10000)
 	got, err := service.SearchFiltered(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{MinSizeBytes: &minSize})
 	if err != nil || !reflect.DeepEqual(got, []Path{{Path: "large"}}) {
 		t.Fatalf("expected one bounded metadata match, results=%#v err=%v", got, err)
@@ -246,7 +276,7 @@ func TestLiteralSearchReturnsDeterministicByteOffsetsAndComposesFilters(t *testi
 		},
 		content: map[string][]byte{"z.txt": []byte("needle x ne"), "docs/a.txt": []byte("needle--"), "docs/skip.go": []byte("needle")},
 	}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 	got, err := service.SearchLiteral(context.Background(), ".", "*.txt", NameMatchPattern, MetadataFilter{Type: EntryTypeFile}, "ne", LiteralLimits{
 		MaxFiles: 10, MaxBytesPerFile: 100, MaxScannedBytes: 100, MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000,
 	})
@@ -275,7 +305,7 @@ func TestLiteralSearchRejectsInvalidRequestBeforeTraversal(t *testing.T) {
 		{term: "x", limits: LiteralLimits{}},
 	} {
 		filesystem := &listingFS{}
-		service, _ := NewPathService(filesystem, 10)
+		service, _ := NewPathService(filesystem, 10, 64, 10000)
 		got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, tc.filter, tc.term, tc.limits)
 		if !errors.Is(err, ErrInvalidLiteralSearch) || got != nil || len(filesystem.calls) != 0 {
 			t.Fatalf("expected pre-traversal rejection, got=%#v calls=%#v err=%v", got, filesystem.calls, err)
@@ -285,14 +315,14 @@ func TestLiteralSearchRejectsInvalidRequestBeforeTraversal(t *testing.T) {
 
 func TestLiteralSearchEnforcesIncrementalBudgets(t *testing.T) {
 	base := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a", Size: 4}, {Name: "b", Size: 4}}}, content: map[string][]byte{"a": []byte("xxxx"), "b": []byte("xxxx")}}
-	service, _ := NewPathService(base, 10)
+	service, _ := NewPathService(base, 10, 64, 10000)
 	limits := LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 4, MaxScannedBytes: 8, MaxMatchesPerFile: 4, MaxMatches: 8, MaxResponseBytes: 1000}
 	if got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits); !errors.Is(err, ErrScanLimitExceeded) || got != nil {
 		t.Fatalf("expected scan limit, got=%#v err=%v", got, err)
 	}
 
 	base = &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a", Size: 4}}}, content: map[string][]byte{"a": []byte("xxxx")}}
-	service, _ = NewPathService(base, 10)
+	service, _ = NewPathService(base, 10, 64, 10000)
 	limits.MaxFiles, limits.MaxMatchesPerFile = 1, 2
 	if got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits); !errors.Is(err, ErrMatchLimitExceeded) || got != nil {
 		t.Fatalf("expected match limit, got=%#v err=%v", got, err)
@@ -304,6 +334,36 @@ func TestLiteralSearchEnforcesIncrementalBudgets(t *testing.T) {
 	}
 }
 
+func TestContentSearchEnforcesTraversalBudgetsBeforeReads(t *testing.T) {
+	limits := LiteralLimits{MaxFiles: 10, MaxBytesPerFile: 10, MaxScannedBytes: 10, MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000}
+	for _, searchContent := range []struct {
+		name string
+		run  func(*PathService) ([]LiteralMatch, error)
+	}{
+		{name: "literal", run: func(service *PathService) ([]LiteralMatch, error) {
+			return service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits)
+		}},
+		{name: "regex", run: func(service *PathService) ([]LiteralMatch, error) {
+			return service.SearchRegex(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits)
+		}},
+	} {
+		t.Run(searchContent.name, func(t *testing.T) {
+			filesystem := &listingFS{
+				entries: map[string][]fs.Entry{".": {{Name: "a", Size: 1}, {Name: "b", Size: 1}}},
+				content: map[string][]byte{"a": []byte("x"), "b": []byte("x")},
+			}
+			service, _ := NewPathService(filesystem, 10, 10, 1)
+			matches, err := searchContent.run(service)
+			if !errors.Is(err, ErrTraversalLimitExceeded) || matches != nil {
+				t.Fatalf("expected traversal failure, matches=%#v err=%v", matches, err)
+			}
+			if !reflect.DeepEqual(filesystem.reads, []string{"a"}) {
+				t.Fatalf("entry beyond traversal cap must not be read: reads=%#v", filesystem.reads)
+			}
+		})
+	}
+}
+
 func TestRegexSearchReturnsDeterministicByteOffsetsAndComposesFilters(t *testing.T) {
 	filesystem := &listingFS{
 		entries: map[string][]fs.Entry{
@@ -312,7 +372,7 @@ func TestRegexSearchReturnsDeterministicByteOffsetsAndComposesFilters(t *testing
 		},
 		content: map[string][]byte{"z.txt": []byte("ab12 cd3"), "docs/a.txt": []byte("x99 y007"), "docs/skip.go": []byte("z12345")},
 	}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 	got, err := service.SearchRegex(context.Background(), ".", "*.txt", NameMatchPattern, MetadataFilter{Type: EntryTypeFile}, `[a-z][0-9]+`, LiteralLimits{
 		MaxFiles: 10, MaxBytesPerFile: 100, MaxScannedBytes: 100, MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000,
 	})
@@ -332,7 +392,7 @@ func TestRegexSearchRejectsInvalidExpressionBeforeTraversal(t *testing.T) {
 	limits := LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 1, MaxScannedBytes: 1, MaxMatchesPerFile: 1, MaxMatches: 1, MaxResponseBytes: 1}
 	for _, expression := range []string{"", "[", string([]byte{0xff})} {
 		filesystem := &listingFS{}
-		service, _ := NewPathService(filesystem, 10)
+		service, _ := NewPathService(filesystem, 10, 64, 10000)
 		got, err := service.SearchRegex(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, expression, limits)
 		if !errors.Is(err, ErrInvalidRegexSearch) || got != nil || len(filesystem.calls) != 0 {
 			t.Fatalf("expression %q: expected pre-traversal rejection, got=%#v calls=%#v err=%v", expression, got, filesystem.calls, err)
@@ -342,7 +402,7 @@ func TestRegexSearchRejectsInvalidExpressionBeforeTraversal(t *testing.T) {
 
 func TestRegexSearchEnforcesExistingContentBudgets(t *testing.T) {
 	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a", Size: 4}}}, content: map[string][]byte{"a": []byte("xxxx")}}
-	service, _ := NewPathService(filesystem, 10)
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
 	limits := LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 4, MaxScannedBytes: 4, MaxMatchesPerFile: 2, MaxMatches: 4, MaxResponseBytes: 1000}
 	if got, err := service.SearchRegex(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, `x`, limits); !errors.Is(err, ErrMatchLimitExceeded) || got != nil {
 		t.Fatalf("expected match limit, got=%#v err=%v", got, err)

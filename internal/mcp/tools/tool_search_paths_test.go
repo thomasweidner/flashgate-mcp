@@ -161,3 +161,10 @@ func TestSearchPathsRejectsInvalidUTF8LiteralBeforeTraversal(t *testing.T) {
 		t.Fatalf("expected pre-traversal invalid params, list=%q read=%q err=%#v", fake.listPath, fake.readPath, rpcErr)
 	}
 }
+
+func TestSearchPathsMapsTraversalLimitToSafePublicError(t *testing.T) {
+	rpcErr := mapSearchError(search.ErrTraversalLimitExceeded)
+	if rpcErr.Code != protocol.ErrInvalidParams || rpcErr.Message != "search error: limit exceeded" {
+		t.Fatalf("unexpected traversal-limit mapping: %#v", rpcErr)
+	}
+}
