@@ -15,6 +15,8 @@ import (
 const (
 	searchPathsToolName     = "search_paths"
 	maxSearchPathResults    = 1000
+	maxSearchDepth          = 64
+	maxSearchVisitedEntries = 10000
 	maxSearchContentFiles   = 1000
 	maxSearchBytesPerFile   = 1024 * 1024
 	maxSearchScannedBytes   = 10 * 1024 * 1024
@@ -31,7 +33,7 @@ type SearchPathsTool struct {
 // NewSearchPathsTool creates a search_paths tool over the central filesystem
 // abstraction.
 func NewSearchPathsTool(filesystem fs.DirectoryLister) *SearchPathsTool {
-	service, err := search.NewPathService(filesystem, maxSearchPathResults)
+	service, err := search.NewPathService(filesystem, maxSearchPathResults, maxSearchDepth, maxSearchVisitedEntries)
 	if err != nil {
 		panic(err)
 	}
@@ -231,7 +233,7 @@ func mapSearchError(err error) *protocol.Error {
 	switch {
 	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch):
 		return invalidParamsError()
-	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrMatchLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded):
+	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrTraversalLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrMatchLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
 	case errors.Is(err, fs.ErrFileTooLarge):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}

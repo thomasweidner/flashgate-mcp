@@ -18,10 +18,13 @@ import (
 )
 
 var (
-	// ErrInvalidLimit is returned when a path search has no positive server cap.
-	ErrInvalidLimit = errors.New("path search limit must be positive")
+	// ErrInvalidLimit is returned when a path search has a non-positive server cap.
+	ErrInvalidLimit = errors.New("path search limits must be positive")
 	// ErrLimitExceeded is returned before a result could exceed its server cap.
 	ErrLimitExceeded = errors.New("path search limit exceeded")
+	// ErrTraversalLimitExceeded is returned before traversal could exceed the
+	// server-owned depth or visited-entry budget.
+	ErrTraversalLimitExceeded = errors.New("search traversal limit exceeded")
 	// ErrInvalidNameSelector is returned before traversal when a filename
 	// selector is empty, contains a path separator, or has invalid pattern syntax.
 	ErrInvalidNameSelector = errors.New("invalid filename selector")
@@ -103,14 +106,18 @@ type MetadataFilter struct {
 type PathService struct {
 	filesystem fs.DirectoryLister
 	maxResults int
+	maxDepth   int
+	maxEntries int
 }
 
-// NewPathService creates a path search with a mandatory server-owned cap.
-func NewPathService(filesystem fs.DirectoryLister, maxResults int) (*PathService, error) {
-	if maxResults <= 0 {
+// NewPathService creates a path search with mandatory server-owned result,
+// recursion-depth, and visited-entry caps. Depth counts descendants below the
+// selected start path, whose depth is zero.
+func NewPathService(filesystem fs.DirectoryLister, maxResults, maxDepth, maxEntries int) (*PathService, error) {
+	if maxResults <= 0 || maxDepth <= 0 || maxEntries <= 0 {
 		return nil, ErrInvalidLimit
 	}
-	return &PathService{filesystem: filesystem, maxResults: maxResults}, nil
+	return &PathService{filesystem: filesystem, maxResults: maxResults, maxDepth: maxDepth, maxEntries: maxEntries}, nil
 }
 
 // Search returns every policy-visible descendant in deterministic UTF-8 byte
@@ -233,16 +240,20 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 	}
 
 	startPath = normalizeRelativePath(startPath)
-	pending := []string{startPath}
+	type pendingDirectory struct {
+		path  string
+		depth int
+	}
+	pending := []pendingDirectory{{path: startPath}}
 	matches := make([]LiteralMatch, 0)
-	files, scanned := 0, int64(0)
+	files, entriesVisited, scanned := 0, 0, int64(0)
 	for len(pending) > 0 {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		directory := pending[0]
 		pending = pending[1:]
-		entries, err := s.filesystem.List(directory)
+		entries, err := s.filesystem.List(directory.path)
 		if err != nil {
 			return nil, err
 		}
@@ -251,9 +262,16 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			relativePath := joinRelativePath(directory, entry.Name)
+			if entriesVisited == s.maxEntries {
+				return nil, ErrTraversalLimitExceeded
+			}
+			entriesVisited++
+			relativePath := joinRelativePath(directory.path, entry.Name)
 			if entry.IsDir {
-				pending = append(pending, relativePath)
+				if directory.depth == s.maxDepth-1 {
+					return nil, ErrTraversalLimitExceeded
+				}
+				pending = append(pending, pendingDirectory{path: relativePath, depth: directory.depth + 1})
 				continue
 			}
 			if (nameMatches != nil && !nameMatches(entry.Name)) || !matchesMetadata(entry, filter) {
@@ -353,7 +371,12 @@ func matchesMetadata(entry fs.Entry, filter MetadataFilter) bool {
 func (s *PathService) search(ctx context.Context, startPath string, matches func(fs.Entry) bool) ([]Path, error) {
 	startPath = normalizeRelativePath(startPath)
 	results := make([]Path, 0)
-	pending := []string{startPath}
+	type pendingDirectory struct {
+		path  string
+		depth int
+	}
+	pending := []pendingDirectory{{path: startPath}}
+	entriesVisited := 0
 
 	for len(pending) > 0 {
 		if err := ctx.Err(); err != nil {
@@ -362,7 +385,7 @@ func (s *PathService) search(ctx context.Context, startPath string, matches func
 
 		directory := pending[0]
 		pending = pending[1:]
-		entries, err := s.filesystem.List(directory)
+		entries, err := s.filesystem.List(directory.path)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +395,11 @@ func (s *PathService) search(ctx context.Context, startPath string, matches func
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			relativePath := joinRelativePath(directory, entry.Name)
+			if entriesVisited == s.maxEntries {
+				return nil, ErrTraversalLimitExceeded
+			}
+			entriesVisited++
+			relativePath := joinRelativePath(directory.path, entry.Name)
 			if matches(entry) {
 				if len(results) == s.maxResults {
 					return nil, ErrLimitExceeded
@@ -380,7 +407,10 @@ func (s *PathService) search(ctx context.Context, startPath string, matches func
 				results = append(results, Path{Path: relativePath, IsDir: entry.IsDir})
 			}
 			if entry.IsDir {
-				pending = append(pending, relativePath)
+				if directory.depth == s.maxDepth-1 {
+					return nil, ErrTraversalLimitExceeded
+				}
+				pending = append(pending, pendingDirectory{path: relativePath, depth: directory.depth + 1})
 			}
 		}
 	}

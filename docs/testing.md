@@ -888,6 +888,8 @@ The default smoke test validates `initialize`, the exact nine-tool `tools/list`,
 
 The startup-negative smoke covers missing/empty/whitespace/relative roots, `.` with and without the development opt-in, invalid development/read-only values, missing and file roots, a valid absolute root, exit codes, empty stdout, safe stderr categories and cleanup.
 
+Search unit and adapter tests enforce the fixed server-owned recursion-depth and visited-entry caps for path, literal-text, and regular-expression searches. They verify that visited entries are charged before filtering, depth-limited directories are not opened, invalid/non-positive caps fail before traversal, and all traversal-cap failures map to the same safe public limit error without partial results.
+
 GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative smoke variants on both `windows-latest` and `ubuntu-latest`. The smoke scripts create per-run artifacts under `build/` and clean them before exit. Script output is CI diagnostic output; server stdout remains reserved for redirected JSON-RPC protocol messages.
 
 Limit and redaction behavior is primarily covered by Go unit tests. Additional limit-negative smoke coverage can be added later if it can be done without broad smoke-script refactoring.
