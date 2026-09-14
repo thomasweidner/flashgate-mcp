@@ -947,6 +947,9 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Payload and catalog tests
 
+The normative class, single-transmission, metadata, compatibility, and negative-test
+requirements are defined in [Payload-Class Result Contracts](payload-result-contracts.md).
+
 - payload-class selection for metadata, structured pages, heavy text, media/binary, and large results;
 - heavy payload appears only once across MCP result fields;
 - wire-amplification and useful-byte budgets;
