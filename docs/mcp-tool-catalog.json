@@ -82,14 +82,31 @@
             "type": "string",
             "minLength": 1,
             "description": "Case-sensitive UTF-8 literal text to find in files."
+          },
+          "regex": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Go RE2-style regular expression to find in files."
           }
         },
-        "not": {
-          "required": [
-            "name",
-            "namePattern"
-          ]
-        }
+        "allOf": [
+          {
+            "not": {
+              "required": [
+                "name",
+                "namePattern"
+              ]
+            }
+          },
+          {
+            "not": {
+              "required": [
+                "text",
+                "regex"
+              ]
+            }
+          }
+        ]
       },
       "resultSchema": {
         "type": "object",

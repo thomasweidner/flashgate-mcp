@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -30,6 +31,9 @@ var (
 	// ErrInvalidLiteralSearch is returned before traversal for an empty or
 	// invalid UTF-8 term, incompatible filters, or non-positive server budgets.
 	ErrInvalidLiteralSearch = errors.New("invalid literal text search")
+	// ErrInvalidRegexSearch is returned before traversal for an empty, invalid,
+	// or non-UTF-8 regular expression or incompatible search settings.
+	ErrInvalidRegexSearch = errors.New("invalid regular-expression search")
 	// ErrContentSearchUnavailable is returned when the filesystem boundary does
 	// not provide root-confined reads.
 	ErrContentSearchUnavailable = errors.New("content search unavailable")
@@ -170,6 +174,52 @@ func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector str
 		limits.MaxMatchesPerFile <= 0 || limits.MaxMatches <= 0 || limits.MaxResponseBytes <= 0 {
 		return nil, ErrInvalidLiteralSearch
 	}
+	needle := []byte(term)
+	return s.searchContent(ctx, startPath, selector, kind, filter, limits, func(content []byte, maxMatches int) [][2]int {
+		var offsets [][2]int
+		for base := 0; base <= len(content)-len(needle); {
+			offset := bytes.Index(content[base:], needle)
+			if offset < 0 {
+				break
+			}
+			absolute := base + offset
+			offsets = append(offsets, [2]int{absolute, absolute + len(needle)})
+			if len(offsets) == maxMatches {
+				break
+			}
+			base = absolute + len(needle)
+		}
+		return offsets
+	})
+}
+
+// SearchRegex returns non-overlapping matches produced by Go's RE2-style,
+// linear-time regular-expression engine. The same server-owned scan, match,
+// response, and cancellation budgets as literal content search are enforced.
+func (s *PathService) SearchRegex(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, expression string, limits LiteralLimits) ([]LiteralMatch, error) {
+	if expression == "" || !utf8.ValidString(expression) || filter.Type == EntryTypeDirectory || !validLiteralLimits(limits) {
+		return nil, ErrInvalidRegexSearch
+	}
+	compiled, err := regexp.Compile(expression)
+	if err != nil {
+		return nil, ErrInvalidRegexSearch
+	}
+	return s.searchContent(ctx, startPath, selector, kind, filter, limits, func(content []byte, maxMatches int) [][2]int {
+		indexes := compiled.FindAllIndex(content, maxMatches)
+		offsets := make([][2]int, len(indexes))
+		for i, index := range indexes {
+			offsets[i] = [2]int{index[0], index[1]}
+		}
+		return offsets
+	})
+}
+
+func validLiteralLimits(limits LiteralLimits) bool {
+	return limits.MaxFiles > 0 && limits.MaxBytesPerFile > 0 && limits.MaxScannedBytes > 0 &&
+		limits.MaxMatchesPerFile > 0 && limits.MaxMatches > 0 && limits.MaxResponseBytes > 0
+}
+
+func (s *PathService) searchContent(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, limits LiteralLimits, find func([]byte, int) [][2]int) ([]LiteralMatch, error) {
 	if err := validateMetadataFilter(filter); err != nil {
 		return nil, err
 	}
@@ -186,7 +236,6 @@ func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector str
 	pending := []string{startPath}
 	matches := make([]LiteralMatch, 0)
 	files, scanned := 0, int64(0)
-	needle := []byte(term)
 	for len(pending) > 0 {
 		if err := ctx.Err(); err != nil {
 			return nil, err
@@ -223,25 +272,23 @@ func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector str
 			files++
 			scanned += int64(len(content))
 			fileMatches := 0
-			for base := 0; base <= len(content)-len(needle); {
+			maxFound := limits.MaxMatchesPerFile + 1
+			if remaining := limits.MaxMatches - len(matches) + 1; remaining < maxFound {
+				maxFound = remaining
+			}
+			for _, offset := range find(content, maxFound) {
 				if err := ctx.Err(); err != nil {
 					return nil, err
-				}
-				offset := bytes.Index(content[base:], needle)
-				if offset < 0 {
-					break
 				}
 				if fileMatches == limits.MaxMatchesPerFile || len(matches) == limits.MaxMatches {
 					return nil, ErrMatchLimitExceeded
 				}
-				absolute := base + offset
-				matches = append(matches, LiteralMatch{Path: relativePath, ByteOffset: int64(absolute)})
+				matches = append(matches, LiteralMatch{Path: relativePath, ByteOffset: int64(offset[0])})
 				fileMatches++
 				encoded, _ := json.Marshal(matches)
 				if len(encoded)+len(`{"matches":}`) > limits.MaxResponseBytes {
 					return nil, ErrResponseLimitExceeded
 				}
-				base = absolute + len(needle)
 			}
 		}
 	}
