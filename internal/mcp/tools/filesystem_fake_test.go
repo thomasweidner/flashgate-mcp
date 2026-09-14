@@ -1,6 +1,10 @@
 package tools
 
-import "github.com/thomasweidner/flashgate-mcp/internal/fs"
+import (
+	"fmt"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+)
 
 type fakeFileSystem struct {
 	entries         []fs.Entry
@@ -37,6 +41,24 @@ func newFakeFileSystem() *fakeFileSystem { return &fakeFileSystem{} }
 func (f *fakeFileSystem) List(path string) ([]fs.Entry, error) {
 	f.listPath = path
 	return f.entries, f.err
+}
+func (f *fakeFileSystem) ListPage(path string, offset int, limit int) ([]fs.Entry, string, int, error) {
+	f.listPath = path
+	if f.err != nil {
+		return nil, "", 0, f.err
+	}
+	end := offset + limit
+	if end > len(f.entries) {
+		end = len(f.entries)
+	}
+	if offset > len(f.entries) {
+		offset = len(f.entries)
+	}
+	next := 0
+	if end < len(f.entries) {
+		next = end
+	}
+	return f.entries[offset:end], fmt.Sprint(f.entries), next, nil
 }
 func (f *fakeFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	f.readPath, f.readMaxBytes = path, maxBytes

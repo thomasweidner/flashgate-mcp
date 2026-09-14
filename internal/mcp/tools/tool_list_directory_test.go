@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -74,5 +75,78 @@ func TestListDirectoryRedactsAllPolicyDenials(t *testing.T) {
 		if strings.Contains(rpcErr.Message, hostPath) {
 			t.Fatalf("host path leaked for %v", testErr)
 		}
+	}
+}
+
+func TestListDirectoryPaginatesInDeterministicOrder(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "a"}, {Name: "b"}, {Name: "c"}}
+	tool := NewListDirectoryTool(fake)
+
+	firstValue, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"path":"docs","pageSize":2}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	first := firstValue.(listDirectoryResult)
+	if got := []string{first.Entries[0].Name, first.Entries[1].Name}; !reflect.DeepEqual(got, []string{"a", "b"}) || first.NextCursor == "" {
+		t.Fatalf("unexpected first page: %#v", first)
+	}
+
+	secondValue, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"cursor":`+strconv.Quote(first.NextCursor)+`}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	second := secondValue.(listDirectoryResult)
+	if len(second.Entries) != 1 || second.Entries[0].Name != "c" || second.NextCursor != "" {
+		t.Fatalf("unexpected final page: %#v", second)
+	}
+}
+
+func TestListDirectoryRejectsCursorMisuse(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "a"}, {Name: "b"}}
+	tool := NewListDirectoryTool(fake)
+	value, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"pageSize":1}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	cursor := value.(listDirectoryResult).NextCursor
+
+	for _, raw := range []string{
+		`{"cursor":` + strconv.Quote(cursor) + `,"path":"."}`,
+		`{"cursor":` + strconv.Quote(cursor) + `,"pageSize":2}`,
+		`{"cursor":` + strconv.Quote(cursor+"x") + `}`,
+	} {
+		if _, rpcErr := tool.Execute(context.Background(), json.RawMessage(raw)); rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+			t.Fatalf("expected cursor rejection for %s, got %#v", raw, rpcErr)
+		}
+	}
+}
+
+func TestListDirectoryInvalidatesCursorWhenDirectoryChanges(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "a"}, {Name: "b"}}
+	tool := NewListDirectoryTool(fake)
+	value, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"pageSize":1}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	fake.entries[1].Size = 1
+	_, rpcErr = tool.Execute(context.Background(), json.RawMessage(`{"cursor":`+strconv.Quote(value.(listDirectoryResult).NextCursor)+`}`))
+	if rpcErr == nil || rpcErr.Message != "cursor_invalidated" {
+		t.Fatalf("expected safe invalidation, got %#v", rpcErr)
+	}
+}
+
+func TestListDirectoryCursorDoesNotSurviveToolRestart(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "a"}, {Name: "b"}}
+	value, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"pageSize":1}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	_, rpcErr = NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"cursor":`+strconv.Quote(value.(listDirectoryResult).NextCursor)+`}`))
+	if rpcErr == nil || rpcErr.Message != "invalid_cursor" {
+		t.Fatalf("expected restart rejection, got %#v", rpcErr)
 	}
 }

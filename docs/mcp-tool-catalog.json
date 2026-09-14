@@ -30,7 +30,7 @@
     {
       "name": "list_directory",
       "title": "List Directory",
-      "description": "Lists files and directories below the configured filesystem root.",
+      "description": "Lists one bounded page of files and directories below the configured filesystem root.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -39,6 +39,17 @@
             "type": "string",
             "minLength": 1,
             "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted."
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Maximum entries in this page. Defaults to 100; continuation requests may only reduce it."
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque continuation cursor returned by a previous list_directory page."
           }
         }
       },
@@ -67,6 +78,10 @@
               ],
               "additionalProperties": false
             }
+          },
+          "nextCursor": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": [

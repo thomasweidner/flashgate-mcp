@@ -39,15 +39,18 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The `SPR-046` deterministic UTF-8 JSONL response snapshot, including its trailing newline, was 2134 bytes for read-only and 5657 bytes for default. The paginated `list_directory` schema changes the current snapshots to 2489 and 6012 bytes respectively. These are contract snapshots, not persistent payload budgets; authoritative benchmark baselines remain subject to native finalization.
 
 ## `list_directory`
 
-Lists one directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid.
+Lists one directory in deterministic, bounded pages. The first request may supply
+`path` (omission means `.`) and `pageSize` (default 100, maximum 1000). An explicitly
+empty or whitespace-only path is invalid.
 
 ```json
 {
-  "path": "docs"
+  "path": "docs",
+  "pageSize": 100
 }
 ```
 
@@ -55,11 +58,17 @@ Lists one directory. `path` is optional; omission means `.`, while an explicitly
 {
   "entries": [
     { "name": "tools.md", "isDir": false, "size": 123 }
-  ]
+  ],
+  "nextCursor": "opaque-server-generated-value"
 }
 ```
 
-No pagination, filtering, recursion, or batch behavior is provided.
+`nextCursor` is present only when another page remains. A continuation supplies
+`cursor` instead of `path`; it may omit `pageSize` or reduce the original effective
+size, but cannot increase it. Directory entries use platform-neutral ordinal name
+ordering. Changes to visible names, types, or sizes between pages invalidate the
+cursor rather than returning an approximate continuation. Cursors expire five
+minutes after creation and do not survive server restart.
 
 ## `read_file`
 

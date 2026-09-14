@@ -55,6 +55,34 @@ func TestLocalFileSystemListReturnsFilesAndDirectories(t *testing.T) {
 	}
 }
 
+func TestLocalFileSystemListPageContinuesBeyondConfiguredPageLimit(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	for _, name := range []string{"a", "b", "c", "d", "e"} {
+		writeTestFile(t, filepath.Join(root, name), name)
+	}
+	limits := DefaultLimits()
+	limits.MaxListEntries = 2
+	filesystem, err := NewLocalFileSystemWithPolicyAndLimits(root, security.DefaultPolicy(), limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	first, fingerprint, next, err := filesystem.ListPage(".", 0, 100)
+	if err != nil || len(first) != 2 || first[0].Name != "a" || first[1].Name != "b" || next != 2 || fingerprint == "" {
+		t.Fatalf("unexpected first page: entries=%#v fingerprint=%q next=%d err=%v", first, fingerprint, next, err)
+	}
+	second, secondFingerprint, next, err := filesystem.ListPage(".", next, 2)
+	if err != nil || len(second) != 2 || second[0].Name != "c" || second[1].Name != "d" || next != 4 || secondFingerprint != fingerprint {
+		t.Fatalf("unexpected second page: entries=%#v fingerprint=%q next=%d err=%v", second, secondFingerprint, next, err)
+	}
+	last, lastFingerprint, next, err := filesystem.ListPage(".", next, 2)
+	if err != nil || len(last) != 1 || last[0].Name != "e" || next != 0 || lastFingerprint != fingerprint {
+		t.Fatalf("unexpected final page: entries=%#v fingerprint=%q next=%d err=%v", last, lastFingerprint, next, err)
+	}
+}
+
 func TestLocalFileSystemListEmptyDirectory(t *testing.T) {
 	t.Parallel()
 
