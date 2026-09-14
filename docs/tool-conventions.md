@@ -134,6 +134,22 @@ Where the negotiated MCP revision supports them, every tool declares accurate:
 
 Annotations are discovery metadata only. They never replace server-side authorization, path validation, execution-identity selection, or risk policy.
 
+The current filesystem catalog uses the following reviewed values. All tools
+are local (`openWorldHint: false`) and repeatable without an additional state
+transition (`idempotentHint: true`). Write and copy are destructive because an
+authorized call may replace existing content; move may replace a target; and
+delete removes content.
+
+| Tools | `readOnlyHint` | `destructiveHint` |
+|---|---:|---:|
+| `list_directory`, `read_file`, `get_path_info` | `true` | `false` |
+| `create_directory` | `false` | `false` |
+| `write_file`, `delete_path`, `copy_path`, `move_path` | `false` | `true` |
+
+Every annotation member is emitted explicitly so clients do not need to infer
+defaults. The runtime tool registry and server-side capability/path checks are
+unchanged and remain the only authorization boundary.
+
 ### Partial, batch, and field-bounded operations
 
 New tools prefer one bounded call over repeated scalar calls when this lowers total work and response size. Batch tools:

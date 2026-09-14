@@ -8,11 +8,21 @@ import (
 
 // Tool describes a MCP tool exposed by the server.
 type Tool struct {
-	Name         string         `json:"name"`
-	Title        string         `json:"title,omitempty"`
-	Description  string         `json:"description"`
-	InputSchema  any            `json:"inputSchema"`
-	OutputSchema map[string]any `json:"outputSchema,omitempty"`
+	Name         string          `json:"name"`
+	Title        string          `json:"title,omitempty"`
+	Description  string          `json:"description"`
+	InputSchema  any             `json:"inputSchema"`
+	OutputSchema map[string]any  `json:"outputSchema,omitempty"`
+	Annotations  ToolAnnotations `json:"annotations"`
+}
+
+// ToolAnnotations describes client-facing behavioral hints for a tool.
+// Authorization and policy enforcement must not depend on these values.
+type ToolAnnotations struct {
+	ReadOnlyHint    bool `json:"readOnlyHint"`
+	DestructiveHint bool `json:"destructiveHint"`
+	IdempotentHint  bool `json:"idempotentHint"`
+	OpenWorldHint   bool `json:"openWorldHint"`
 }
 
 // TextContent is a text content block returned by an MCP tool call.
