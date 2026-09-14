@@ -39,27 +39,28 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2329 bytes for read-only and 5852 bytes for default after adding the `list_directory.fields` schema. The earlier `SPR-046` 2134/5657-byte snapshot remains historical; current hard catalog budgets are recorded in `benchmarks/budgets.json`.
 
 ## `list_directory`
 
-Lists one directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid.
+Lists one directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid. Optional `fields` selects one or more unique portable entry fields from `name`, `isDir`, and `size`; omission returns all three fields.
 
 ```json
 {
-  "path": "docs"
+  "path": "docs",
+  "fields": ["name", "size"]
 }
 ```
 
 ```json
 {
   "entries": [
-    { "name": "tools.md", "isDir": false, "size": 123 }
+    { "name": "tools.md", "size": 123 }
   ]
 }
 ```
 
-No pagination, filtering, recursion, or batch behavior is provided.
+Every returned entry contains exactly the selected fields. An empty selection, duplicate field, or unknown field is rejected. No pagination, filtering, recursion, or batch behavior is provided.
 
 ## `read_file`
 
