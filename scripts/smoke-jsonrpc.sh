@@ -123,6 +123,7 @@ expected_tools = [
 if os.environ.get("MCP_READ_ONLY") != "true":
     expected_tools.extend([
         "write_file",
+        "edit_file",
         "create_directory",
         "delete_path",
         "copy_path",

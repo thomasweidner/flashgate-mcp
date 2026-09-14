@@ -139,22 +139,45 @@
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": false }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": false
+              }
             },
-            "required": ["path", "exists"],
+            "required": [
+              "path",
+              "exists"
+            ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": true },
-              "name": { "type": "string" },
-              "isDir": { "type": "boolean" },
-              "size": { "type": "integer" }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer"
+              }
             },
-            "required": ["path", "exists", "name", "isDir", "size"],
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
             "additionalProperties": false
           }
         ]
@@ -203,6 +226,62 @@
           "path",
           "size",
           "written"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "edit_file",
+      "title": "Edit File",
+      "description": "Replaces one exact half-open byte range in an existing file below the configured filesystem root.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Relative file path below the configured filesystem root."
+          },
+          "startByte": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Inclusive zero-based start byte."
+          },
+          "endByte": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Exclusive zero-based end byte."
+          },
+          "content": {
+            "type": "string",
+            "description": "Replacement UTF-8 text; an empty string deletes the selected bytes."
+          }
+        },
+        "required": [
+          "path",
+          "startByte",
+          "endByte",
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "edited": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "size",
+          "edited"
         ],
         "additionalProperties": false
       }

@@ -17,6 +17,12 @@ type fakeFileSystem struct {
 	writeContent    []byte
 	writeOverwrite  bool
 	writeErr        error
+	editPath        string
+	editStart       int64
+	editEnd         int64
+	editContent     []byte
+	editSize        int64
+	editErr         error
 	mkdirPath       string
 	mkdirCreated    bool
 	mkdirErr        error
@@ -49,6 +55,11 @@ func (f *fakeFileSystem) Stat(path string) (fs.Metadata, error) {
 func (f *fakeFileSystem) Write(path string, content []byte, overwrite bool) error {
 	f.writePath, f.writeContent, f.writeOverwrite = path, append([]byte(nil), content...), overwrite
 	return f.writeErr
+}
+func (f *fakeFileSystem) EditRange(path string, startByte, endByte int64, content []byte) (int64, error) {
+	f.editPath, f.editStart, f.editEnd = path, startByte, endByte
+	f.editContent = append([]byte(nil), content...)
+	return f.editSize, f.editErr
 }
 func (f *fakeFileSystem) Mkdir(path string) (bool, error) {
 	f.mkdirPath = path
