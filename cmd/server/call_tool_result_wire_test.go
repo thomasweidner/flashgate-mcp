@@ -62,6 +62,15 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
+			name:   "write_file",
+			params: `{"name":"write_file","arguments":{"path":"written file.txt","content":"written through tools/call"}}`,
+			assertions: func(t *testing.T, value map[string]any) {
+				if value["path"] != "written file.txt" || value["size"] != json.Number("26") || value["written"] != true {
+					t.Fatalf("unexpected write result: %#v", value)
+				}
+			},
+		},
+		{
 			name:   "get_path_info existing",
 			params: `{"name":"get_path_info","arguments":{"path":"read file.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {
@@ -114,16 +123,36 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "new.txt")); err != nil {
 		t.Fatalf("expected move target: %v", err)
 	}
+	written, err := os.ReadFile(filepath.Join(root, "written file.txt"))
+	if err != nil {
+		t.Fatalf("expected written file: %v", err)
+	}
+	if string(written) != "written through tools/call" {
+		t.Fatalf("unexpected written content: %q", written)
+	}
 }
 
 func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 	root := t.TempDir()
+	outsideRoot := t.TempDir()
+	outsideFile := filepath.Join(outsideRoot, "outside.txt")
+	if err := os.WriteFile(outsideFile, []byte("outside secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	filesystem, err := fs.NewLocalFileSystem(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defaultRegistry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
 	readOnlyRegistry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true))
+
+	absolutePathParams, err := json.Marshal(map[string]any{
+		"name":      "read_file",
+		"arguments": map[string]any{"path": outsideFile},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name     string
@@ -135,7 +164,9 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "invalid params"},
 		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "invalid params"},
 		{"invalid arguments", defaultRegistry, `{"name":"get_path_info","arguments":{}}`, "invalid params"},
+		{"missing file", defaultRegistry, `{"name":"read_file","arguments":{"path":"missing.txt"}}`, "filesystem error: not found"},
 		{"PathGuard traversal", defaultRegistry, `{"name":"read_file","arguments":{"path":"..\\outside.txt"}}`, "filesystem error: invalid path"},
+		{"PathGuard absolute path", defaultRegistry, string(absolutePathParams), "filesystem error: invalid path"},
 	}
 
 	for _, tc := range tests {
@@ -149,6 +180,9 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 			}
 			if strings.Contains(raw, root) {
 				t.Fatalf("response leaked root path: %s", raw)
+			}
+			if strings.Contains(raw, outsideRoot) || strings.Contains(raw, "outside secret") {
+				t.Fatalf("response leaked outside path or content: %s", raw)
 			}
 		})
 	}
