@@ -124,6 +124,11 @@ Version 1.0 architecture does not bind durable authorization or operation owners
 
 The final supported protocol matrix decides whether and how the MCP Tasks Extension is exposed. FlashGate must not combine the experimental 2025 task lifecycle with a later final extension contract. Internal Operations/Job Manager semantics remain protocol-independent and are adapted only after negotiation.
 
+Clients that do not negotiate Tasks receive no implicit asynchronous or custom
+job-tool behavior. The bounded synchronous-versus-capability-error choice is
+still an owner decision; the [BL-211 decision packet](mcp-tasks-fallback-decision.md)
+defines its options, required evidence, and fail-closed validation boundary.
+
 Deprecated MCP Roots, Sampling, and Logging are not architectural dependencies. FlashGate named roots are server configuration and authorization objects, not client-provided trust roots.
 
 ## Host lifecycle and connection ownership
