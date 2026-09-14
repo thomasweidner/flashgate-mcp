@@ -126,6 +126,8 @@ Destructive operations are intentionally conservative.
 
 `Move()` does not overwrite existing targets unless `overwrite=true`. Replacement is restricted to file-to-file, revalidates the observed source and target identities immediately before the rename, and uses `os.Rename` without a separate target deletion. Directory targets are never explicitly removed.
 
+Cross-volume moves remain rejected by the current runtime. Their Version 1.0 target is the bounded [cross-volume move contract](cross-volume-move-contract.md): copy into identity-bound target-volume staging, verify content and source state, publish, and only then delete a revalidated source. Cancellation after target publication must expose partial completion rather than imply atomic rollback.
+
 The standard cross-platform API remains path-based: a concurrent writer could exchange the file at the already authorized target path after final revalidation. That residual race is bounded to the target path, cannot invoke directory removal or copy/delete fallback, and is narrower than the previous remove-then-rename sequence.
 
 ### Copy
