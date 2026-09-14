@@ -3,12 +3,15 @@
 package search
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"path"
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 )
@@ -24,6 +27,21 @@ var (
 	// ErrInvalidMetadataFilter is returned before traversal when metadata filter
 	// bounds or the requested portable entry type are invalid.
 	ErrInvalidMetadataFilter = errors.New("invalid metadata filter")
+	// ErrInvalidLiteralSearch is returned before traversal for an empty or
+	// invalid UTF-8 term, incompatible filters, or non-positive server budgets.
+	ErrInvalidLiteralSearch = errors.New("invalid literal text search")
+	// ErrContentSearchUnavailable is returned when the filesystem boundary does
+	// not provide root-confined reads.
+	ErrContentSearchUnavailable = errors.New("content search unavailable")
+	// ErrScanLimitExceeded is returned before content scanning could exceed a
+	// server-owned file or byte budget.
+	ErrScanLimitExceeded = errors.New("content search scan limit exceeded")
+	// ErrMatchLimitExceeded is returned before another literal match could
+	// exceed the server-owned result budget.
+	ErrMatchLimitExceeded = errors.New("content search match limit exceeded")
+	// ErrResponseLimitExceeded is returned before an oversized match response is
+	// returned to the adapter.
+	ErrResponseLimitExceeded = errors.New("content search response limit exceeded")
 )
 
 // NameMatchKind identifies how a filename selector is interpreted.
@@ -38,6 +56,23 @@ const (
 type Path struct {
 	Path  string `json:"path"`
 	IsDir bool   `json:"isDir"`
+}
+
+// LiteralMatch identifies a non-overlapping literal occurrence by its
+// root-relative file path and zero-based UTF-8 byte offset.
+type LiteralMatch struct {
+	Path       string `json:"path"`
+	ByteOffset int64  `json:"byteOffset"`
+}
+
+// LiteralLimits are mandatory server-owned budgets for one content search.
+type LiteralLimits struct {
+	MaxFiles          int
+	MaxBytesPerFile   int64
+	MaxScannedBytes   int64
+	MaxMatchesPerFile int
+	MaxMatches        int
+	MaxResponseBytes  int
 }
 
 // EntryType is a portable classification of policy-visible search entries.
@@ -123,6 +158,122 @@ func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector st
 	return s.search(ctx, startPath, func(entry fs.Entry) bool {
 		return (nameMatches == nil || nameMatches(entry.Name)) && matchesMetadata(entry, filter)
 	})
+}
+
+// SearchLiteral returns non-overlapping, case-sensitive literal matches in
+// deterministic path/byte-offset order. Content is matched as bytes after the
+// selector is validated as UTF-8; binary classification and alternate
+// encodings remain outside this baseline operation.
+func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, term string, limits LiteralLimits) ([]LiteralMatch, error) {
+	if term == "" || !utf8.ValidString(term) || filter.Type == EntryTypeDirectory ||
+		limits.MaxFiles <= 0 || limits.MaxBytesPerFile <= 0 || limits.MaxScannedBytes <= 0 ||
+		limits.MaxMatchesPerFile <= 0 || limits.MaxMatches <= 0 || limits.MaxResponseBytes <= 0 {
+		return nil, ErrInvalidLiteralSearch
+	}
+	if err := validateMetadataFilter(filter); err != nil {
+		return nil, err
+	}
+	nameMatches, err := compileNameMatcher(selector, kind)
+	if err != nil {
+		return nil, err
+	}
+	reader, ok := s.filesystem.(fs.ContentReader)
+	if !ok {
+		return nil, ErrContentSearchUnavailable
+	}
+
+	startPath = normalizeRelativePath(startPath)
+	pending := []string{startPath}
+	matches := make([]LiteralMatch, 0)
+	files, scanned := 0, int64(0)
+	needle := []byte(term)
+	for len(pending) > 0 {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		directory := pending[0]
+		pending = pending[1:]
+		entries, err := s.filesystem.List(directory)
+		if err != nil {
+			return nil, err
+		}
+		sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
+		for _, entry := range entries {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			relativePath := joinRelativePath(directory, entry.Name)
+			if entry.IsDir {
+				pending = append(pending, relativePath)
+				continue
+			}
+			if (nameMatches != nil && !nameMatches(entry.Name)) || !matchesMetadata(entry, filter) {
+				continue
+			}
+			if files == limits.MaxFiles || entry.Size > limits.MaxBytesPerFile || entry.Size > limits.MaxScannedBytes-scanned {
+				return nil, ErrScanLimitExceeded
+			}
+			content, err := reader.Read(relativePath, limits.MaxBytesPerFile)
+			if err != nil {
+				return nil, err
+			}
+			if int64(len(content)) > limits.MaxBytesPerFile || int64(len(content)) > limits.MaxScannedBytes-scanned {
+				return nil, ErrScanLimitExceeded
+			}
+			files++
+			scanned += int64(len(content))
+			fileMatches := 0
+			for base := 0; base <= len(content)-len(needle); {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
+				offset := bytes.Index(content[base:], needle)
+				if offset < 0 {
+					break
+				}
+				if fileMatches == limits.MaxMatchesPerFile || len(matches) == limits.MaxMatches {
+					return nil, ErrMatchLimitExceeded
+				}
+				absolute := base + offset
+				matches = append(matches, LiteralMatch{Path: relativePath, ByteOffset: int64(absolute)})
+				fileMatches++
+				encoded, _ := json.Marshal(matches)
+				if len(encoded)+len(`{"matches":}`) > limits.MaxResponseBytes {
+					return nil, ErrResponseLimitExceeded
+				}
+				base = absolute + len(needle)
+			}
+		}
+	}
+	sort.Slice(matches, func(i, j int) bool {
+		if matches[i].Path == matches[j].Path {
+			return matches[i].ByteOffset < matches[j].ByteOffset
+		}
+		return matches[i].Path < matches[j].Path
+	})
+	return matches, nil
+}
+
+func compileNameMatcher(selector string, kind NameMatchKind) (func(string) bool, error) {
+	if selector == "" {
+		if kind != NameMatchLiteral {
+			return nil, ErrInvalidNameSelector
+		}
+		return nil, nil
+	}
+	if strings.Contains(selector, "/") {
+		return nil, ErrInvalidNameSelector
+	}
+	if kind == NameMatchLiteral {
+		return func(name string) bool { return name == selector }, nil
+	}
+	if kind != NameMatchPattern {
+		return nil, ErrInvalidNameSelector
+	}
+	if _, err := path.Match(selector, ""); err != nil {
+		return nil, ErrInvalidNameSelector
+	}
+	return func(name string) bool { matched, _ := path.Match(selector, name); return matched }, nil
 }
 
 func validateMetadataFilter(filter MetadataFilter) error {

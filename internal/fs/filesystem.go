@@ -100,6 +100,13 @@ type DirectoryLister interface {
 	List(path string) ([]Entry, error)
 }
 
+// ContentReader is the root-confined read boundary consumed by content search.
+// Implementations must apply the same path policy and size limit as filesystem
+// tools on every call.
+type ContentReader interface {
+	Read(path string, maxBytes int64) ([]byte, error)
+}
+
 // LocalFileSystem implements FileSystem using the local operating system.
 type LocalFileSystem struct {
 	guard  *security.PathGuard

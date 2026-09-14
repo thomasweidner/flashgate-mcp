@@ -104,3 +104,36 @@ func TestSearchPathsMatchesFilenamePattern(t *testing.T) {
 		t.Fatalf("unexpected result: %#v", result)
 	}
 }
+
+func TestSearchPathsMatchesLiteralText(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "wanted.txt", Size: 12}}
+	fake.readContent = []byte("hello hello!")
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"text":"hello"}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	want := searchContentResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 0}, {Path: "wanted.txt", ByteOffset: 6}}}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+	if fake.readPath != "wanted.txt" || fake.readMaxBytes != maxSearchBytesPerFile {
+		t.Fatalf("unexpected bounded read: path=%q max=%d", fake.readPath, fake.readMaxBytes)
+	}
+}
+
+func TestSearchPathsLiteralTextRejectsDirectoryFilter(t *testing.T) {
+	_, rpcErr := NewSearchPathsTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(`{"text":"x","type":"directory"}`))
+	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		t.Fatalf("expected invalid params, got %#v", rpcErr)
+	}
+}
+
+func TestSearchPathsRejectsInvalidUTF8LiteralBeforeTraversal(t *testing.T) {
+	fake := newFakeFileSystem()
+	raw := json.RawMessage(append([]byte(`{"text":"`), append([]byte{0xff}, []byte(`"}`)...)...))
+	_, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), raw)
+	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.listPath != "" || fake.readPath != "" {
+		t.Fatalf("expected pre-traversal invalid params, list=%q read=%q err=%#v", fake.listPath, fake.readPath, rpcErr)
+	}
+}

@@ -12,7 +12,9 @@ import (
 
 type listingFS struct {
 	entries map[string][]fs.Entry
+	content map[string][]byte
 	calls   []string
+	reads   []string
 	err     error
 }
 
@@ -22,6 +24,18 @@ func (f *listingFS) List(path string) ([]fs.Entry, error) {
 		return nil, f.err
 	}
 	return append([]fs.Entry(nil), f.entries[path]...), nil
+}
+
+func (f *listingFS) Read(path string, maxBytes int64) ([]byte, error) {
+	f.reads = append(f.reads, path)
+	if f.err != nil {
+		return nil, f.err
+	}
+	content := f.content[path]
+	if int64(len(content)) > maxBytes {
+		return nil, fs.ErrFileTooLarge
+	}
+	return append([]byte(nil), content...), nil
 }
 
 func TestPathSearchReturnsRootRelativePathsInPortableOrder(t *testing.T) {
@@ -221,5 +235,71 @@ func TestMetadataSearchLimitCountsOnlyMatches(t *testing.T) {
 	got, err := service.SearchFiltered(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{MinSizeBytes: &minSize})
 	if err != nil || !reflect.DeepEqual(got, []Path{{Path: "large"}}) {
 		t.Fatalf("expected one bounded metadata match, results=%#v err=%v", got, err)
+	}
+}
+
+func TestLiteralSearchReturnsDeterministicByteOffsetsAndComposesFilters(t *testing.T) {
+	filesystem := &listingFS{
+		entries: map[string][]fs.Entry{
+			".":    {{Name: "z.txt", Size: 11}, {Name: "docs", IsDir: true}},
+			"docs": {{Name: "a.txt", Size: 8}, {Name: "skip.go", Size: 6}},
+		},
+		content: map[string][]byte{"z.txt": []byte("needle x ne"), "docs/a.txt": []byte("needle--"), "docs/skip.go": []byte("needle")},
+	}
+	service, _ := NewPathService(filesystem, 10)
+	got, err := service.SearchLiteral(context.Background(), ".", "*.txt", NameMatchPattern, MetadataFilter{Type: EntryTypeFile}, "ne", LiteralLimits{
+		MaxFiles: 10, MaxBytesPerFile: 100, MaxScannedBytes: 100, MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []LiteralMatch{{Path: "docs/a.txt", ByteOffset: 0}, {Path: "z.txt", ByteOffset: 0}, {Path: "z.txt", ByteOffset: 9}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected literal matches\nwant: %#v\n got: %#v", want, got)
+	}
+	if !reflect.DeepEqual(filesystem.reads, []string{"z.txt", "docs/a.txt"}) {
+		t.Fatalf("unexpected reads: %#v", filesystem.reads)
+	}
+}
+
+func TestLiteralSearchRejectsInvalidRequestBeforeTraversal(t *testing.T) {
+	invalidUTF8 := string([]byte{0xff})
+	for _, tc := range []struct {
+		term   string
+		filter MetadataFilter
+		limits LiteralLimits
+	}{
+		{term: "", limits: LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 1, MaxScannedBytes: 1, MaxMatchesPerFile: 1, MaxMatches: 1, MaxResponseBytes: 1}},
+		{term: invalidUTF8, limits: LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 1, MaxScannedBytes: 1, MaxMatchesPerFile: 1, MaxMatches: 1, MaxResponseBytes: 1}},
+		{term: "x", filter: MetadataFilter{Type: EntryTypeDirectory}, limits: LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 1, MaxScannedBytes: 1, MaxMatchesPerFile: 1, MaxMatches: 1, MaxResponseBytes: 1}},
+		{term: "x", limits: LiteralLimits{}},
+	} {
+		filesystem := &listingFS{}
+		service, _ := NewPathService(filesystem, 10)
+		got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, tc.filter, tc.term, tc.limits)
+		if !errors.Is(err, ErrInvalidLiteralSearch) || got != nil || len(filesystem.calls) != 0 {
+			t.Fatalf("expected pre-traversal rejection, got=%#v calls=%#v err=%v", got, filesystem.calls, err)
+		}
+	}
+}
+
+func TestLiteralSearchEnforcesIncrementalBudgets(t *testing.T) {
+	base := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a", Size: 4}, {Name: "b", Size: 4}}}, content: map[string][]byte{"a": []byte("xxxx"), "b": []byte("xxxx")}}
+	service, _ := NewPathService(base, 10)
+	limits := LiteralLimits{MaxFiles: 1, MaxBytesPerFile: 4, MaxScannedBytes: 8, MaxMatchesPerFile: 4, MaxMatches: 8, MaxResponseBytes: 1000}
+	if got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits); !errors.Is(err, ErrScanLimitExceeded) || got != nil {
+		t.Fatalf("expected scan limit, got=%#v err=%v", got, err)
+	}
+
+	base = &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a", Size: 4}}}, content: map[string][]byte{"a": []byte("xxxx")}}
+	service, _ = NewPathService(base, 10)
+	limits.MaxFiles, limits.MaxMatchesPerFile = 1, 2
+	if got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits); !errors.Is(err, ErrMatchLimitExceeded) || got != nil {
+		t.Fatalf("expected match limit, got=%#v err=%v", got, err)
+	}
+
+	limits.MaxMatchesPerFile, limits.MaxResponseBytes = 4, 20
+	if got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits); !errors.Is(err, ErrResponseLimitExceeded) || got != nil {
+		t.Fatalf("expected response limit, got=%#v err=%v", got, err)
 	}
 }
