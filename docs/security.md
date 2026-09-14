@@ -327,6 +327,13 @@ Operations/jobs use opaque non-guessable handles. All stateful objects are bound
 principal + profile + root + execution backend + service generation + expiry
 ```
 
+Operation handle generation is implemented with a 192-bit cryptographically
+secure random identifier prefixed by `op_`. The ownership binding is validated
+at creation and retained only in trusted server state; no principal, root,
+profile, backend, or service-generation value is encoded in the public ID.
+Possession of the ID is not authorization, and later registry/result operations
+must repeat the binding and expiry checks.
+
 This applies to:
 
 - operation/job handles;
