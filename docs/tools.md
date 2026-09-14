@@ -217,4 +217,10 @@ Planned contract changes include:
 - payload classes that transmit large content once instead of duplicating it in text and structured fields;
 - opaque principal-bound result/resource handles for content that should not be embedded in one tool response.
 
+The Version 1.0 [profile catalog and initialization budget contract](mcp-profile-budget-contract.md)
+sets deterministic per-profile ceilings for tool count, complete `tools/list`
+response bytes, schema bytes, descriptions, and initialization instructions.
+The limits are enforced against live server-generated responses and do not
+grant capabilities or replace server-side authorization.
+
 Version 1.0 tool names, schemas, annotations, limits, profiles, and error payloads become stable only after their canonical backlog tasks and the release gate are complete. The machine-readable catalog remains a current-implementation snapshot until replaced by generated Version 1.0 profile catalogs.
