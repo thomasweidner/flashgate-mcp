@@ -10,6 +10,18 @@ PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+### MCP response-size regression gate
+
+`cmd/server/call_tool_result_wire_test.go` pins the complete UTF-8 JSONL
+response size and the nested `result` size for representative successful
+`tools/call` responses. It also pins complete response sizes for generic,
+capability-gated, legacy-name, argument-validation, and path-policy failures.
+Together with the existing read-only/default `tools/list` size assertions,
+these deterministic fixtures make response-envelope growth an explicit review
+event rather than relying only on benchmark observations. The fixtures use
+fixed request IDs and repository-relative values so they do not depend on host
+paths or timing.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
