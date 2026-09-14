@@ -886,9 +886,11 @@ GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative 
 
 Limit and redaction behavior is primarily covered by Go unit tests. Additional limit-negative smoke coverage can be added later if it can be done without broad smoke-script refactoring.
 
+Focused `read_file` tests also cover inclusive one-based line windows, exact CRLF/LF preservation, unterminated final lines, beyond-EOF windows, invalid range pairs, selected-byte limits, and the independent server scan limit.
+
 Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
-The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
+The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. The historical `SPR-046` snapshot is 1239/2134 bytes for read-only and 3850/5657 bytes for default. The additive `BL-041` line-window input schema changes the current with-schema snapshots to 2411 bytes and 5934 bytes respectively; no persistent budget is enforced by this snapshot test.
 
 ### MCP Compatibility Testing
 

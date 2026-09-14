@@ -134,6 +134,43 @@ func TestReadFileToolCapsClientMaxBytesAtServerLimit(t *testing.T) {
 	}
 }
 
+func TestReadFileToolReadsLineWindow(t *testing.T) {
+	t.Parallel()
+
+	filesystem := newFakeFileSystem()
+	filesystem.readContent = []byte("second\nthird\n")
+	tool := NewReadFileTool(filesystem, 4096)
+
+	result, rpcErr := tool.Execute(context.Background(), json.RawMessage(
+		`{"path":"README.md","startLine":2,"endLine":3,"maxBytes":256}`,
+	))
+	if rpcErr != nil {
+		t.Fatalf("expected no error, got %v", rpcErr)
+	}
+	if filesystem.readPath != "README.md" || filesystem.readStartLine != 2 || filesystem.readEndLine != 3 || filesystem.readMaxBytes != 256 || filesystem.readMaxScanBytes != 4096 {
+		t.Fatalf("unexpected line read: path=%q start=%d end=%d max=%d scanMax=%d", filesystem.readPath, filesystem.readStartLine, filesystem.readEndLine, filesystem.readMaxBytes, filesystem.readMaxScanBytes)
+	}
+	if result != (readFileResult{Content: "second\nthird\n", Size: 13}) {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
+func TestReadFileToolRejectsInvalidLineWindow(t *testing.T) {
+	t.Parallel()
+
+	for _, arguments := range []string{
+		`{"path":"README.md","startLine":1}`,
+		`{"path":"README.md","endLine":1}`,
+		`{"path":"README.md","startLine":0,"endLine":1}`,
+		`{"path":"README.md","startLine":3,"endLine":2}`,
+	} {
+		_, rpcErr := NewReadFileTool(newFakeFileSystem(), 4096).Execute(context.Background(), json.RawMessage(arguments))
+		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+			t.Fatalf("expected invalid params for %s, got %#v", arguments, rpcErr)
+		}
+	}
+}
+
 func TestReadFileToolAcceptsOneByteLimit(t *testing.T) {
 	filesystem := newFakeFileSystem()
 	_, rpcErr := NewReadFileTool(filesystem, 4096).Execute(context.Background(), json.RawMessage(`{"path":"README.md","maxBytes":1}`))
