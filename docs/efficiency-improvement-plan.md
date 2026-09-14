@@ -19,6 +19,40 @@ FlashGate optimizes for fast responses, low model-token use, low RAM, low CPU, a
 9. Preserve server-side authorization regardless of tool visibility or annotations.
 10. Defer optional acceleration until benchmarks prove value.
 
+## Local deterministic work principle
+
+When FlashGate can express a bounded operation against an authorized local
+root, the client should ask FlashGate to perform that operation locally instead
+of reading the complete input into the model and sending a rewritten copy back.
+This applies especially to:
+
+- copying or moving an already authorized path;
+- exact range- or match-based edits with explicit preconditions;
+- hashing files and comparing content fingerprints;
+- filtering and searching paths or file content; and
+- sorting, selecting fields, paginating, or batching local results.
+
+The principle reduces model round trips, token use, wire bytes, and avoidable
+serialization while preserving the original bytes that are outside the
+requested transformation. Clients should transfer only the selectors,
+preconditions, bounded replacement data, and result fields needed for the
+operation. A preview, digest, compact summary, cursor, or opaque result handle
+should be preferred to retransmitting an unchanged or payload-heavy object.
+
+Local execution is not additional authority. Every operation still passes the
+same server-side principal, profile, capability, named-root, path, policy,
+limit, and redaction checks as an equivalent direct request. The server owns
+resource budgets and validates paths and preconditions at execution time;
+client-side inspection, a prior hash, tool visibility, or an MCP annotation
+never authorizes a later operation. Ambiguous targets, stale preconditions,
+unsupported content, and exceeded limits fail closed.
+
+This principle does not require FlashGate to infer edits, execute a free-form
+workflow or shell language, expose host paths, or retain unbounded state. When
+no reviewed bounded local operation exists, the client must use the existing
+safe primitive or receive an explicit unsupported/capability error rather than
+silently expanding the server's behavior.
+
 ## Adopted improvements from comparative review
 
 ### Partial and batch operations
