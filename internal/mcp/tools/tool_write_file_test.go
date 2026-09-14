@@ -158,6 +158,24 @@ func TestWriteFileToolForwardsOverwrite(t *testing.T) {
 	}
 }
 
+func TestWriteFileToolForwardsAtomic(t *testing.T) {
+	t.Parallel()
+
+	filesystem := newFakeFileSystem()
+	tool := NewWriteFileTool(filesystem)
+
+	_, rpcErr := tool.Execute(
+		context.Background(),
+		json.RawMessage(`{"path":"existing.txt","content":"new","overwrite":true,"atomic":true}`),
+	)
+	if rpcErr != nil {
+		t.Fatalf("expected no error, got %v", rpcErr)
+	}
+	if !filesystem.writeAtomic {
+		t.Fatal("expected atomic=true")
+	}
+}
+
 func TestWriteFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 	t.Parallel()
 

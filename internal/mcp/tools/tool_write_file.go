@@ -55,6 +55,10 @@ func (t *WriteFileTool) InputSchema() any {
 				"type":        "boolean",
 				"description": "Whether an existing file may be overwritten. Defaults to false.",
 			},
+			"atomic": map[string]any{
+				"type":        "boolean",
+				"description": "Whether to stage and publish the complete file atomically. Defaults to false.",
+			},
 		},
 		"required":             []string{"path"},
 		"additionalProperties": false,
@@ -85,7 +89,7 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 
 	content := []byte(arguments.Content)
 
-	if err := t.filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
+	if err := t.filesystem.Write(arguments.Path, content, arguments.Overwrite, arguments.Atomic); err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
@@ -100,6 +104,7 @@ type writeFileArguments struct {
 	Path      string `json:"path"`
 	Content   string `json:"content,omitempty"`
 	Overwrite bool   `json:"overwrite,omitempty"`
+	Atomic    bool   `json:"atomic,omitempty"`
 }
 
 type writeFileResult struct {

@@ -453,7 +453,7 @@ func TestLocalFileSystemWriteCreatesFile(t *testing.T) {
 	root := t.TempDir()
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write("created.txt", []byte("created-content"), false)
+	err := filesystem.Write("created.txt", []byte("created-content"), false, false)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -472,7 +472,7 @@ func TestLocalFileSystemWriteRejectsExistingFileWithoutOverwrite(t *testing.T) {
 
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write("file.txt", []byte("new-content"), false)
+	err := filesystem.Write("file.txt", []byte("new-content"), false, false)
 
 	if !errors.Is(err, ErrFileExists) {
 		t.Fatalf("expected ErrFileExists, got %v", err)
@@ -492,7 +492,7 @@ func TestLocalFileSystemWriteOverwritesExistingFile(t *testing.T) {
 
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write("file.txt", []byte("new-content"), true)
+	err := filesystem.Write("file.txt", []byte("new-content"), true, false)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -500,6 +500,66 @@ func TestLocalFileSystemWriteOverwritesExistingFile(t *testing.T) {
 	content := readTestFile(t, filepath.Join(root, "file.txt"))
 	if content != "new-content" {
 		t.Fatalf("expected %q, got %q", "new-content", content)
+	}
+}
+
+func TestLocalFileSystemWriteAtomicCreatesFile(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	if err := filesystem.Write("created.txt", []byte("created-content"), false, true); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if content := readTestFile(t, filepath.Join(root, "created.txt")); content != "created-content" {
+		t.Fatalf("expected created content, got %q", content)
+	}
+	assertNoAtomicWriteStages(t, root)
+}
+
+func TestLocalFileSystemWriteAtomicReplacesExistingFile(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.txt"), "old-content")
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	if err := filesystem.Write("file.txt", []byte("new-content"), true, true); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if content := readTestFile(t, filepath.Join(root, "file.txt")); content != "new-content" {
+		t.Fatalf("expected replacement content, got %q", content)
+	}
+	assertNoAtomicWriteStages(t, root)
+}
+
+func TestLocalFileSystemWriteAtomicPreservesExistingFileWithoutOverwrite(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.txt"), "old-content")
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	err := filesystem.Write("file.txt", []byte("new-content"), false, true)
+	if !errors.Is(err, ErrFileExists) {
+		t.Fatalf("expected ErrFileExists, got %v", err)
+	}
+	if content := readTestFile(t, filepath.Join(root, "file.txt")); content != "old-content" {
+		t.Fatalf("expected original content, got %q", content)
+	}
+	assertNoAtomicWriteStages(t, root)
+}
+
+func assertNoAtomicWriteStages(t *testing.T, root string) {
+	t.Helper()
+
+	matches, err := filepath.Glob(filepath.Join(root, ".flashgate-write-*"))
+	if err != nil {
+		t.Fatalf("glob atomic stages: %v", err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("expected atomic stages to be cleaned, got %v", matches)
 	}
 }
 
@@ -511,7 +571,7 @@ func TestLocalFileSystemWriteRejectsDirectory(t *testing.T) {
 
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write("subdir", []byte("content"), true)
+	err := filesystem.Write("subdir", []byte("content"), true, false)
 
 	if !errors.Is(err, ErrPathIsDirectory) {
 		t.Fatalf("expected ErrPathIsDirectory, got %v", err)
@@ -524,7 +584,7 @@ func TestLocalFileSystemWriteRejectsTraversal(t *testing.T) {
 	root := t.TempDir()
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write("..", []byte("content"), false)
+	err := filesystem.Write("..", []byte("content"), false, false)
 
 	if !errors.Is(err, security.ErrPathTraversal) {
 		t.Fatalf("expected ErrPathTraversal, got %v", err)
@@ -537,7 +597,7 @@ func TestLocalFileSystemWriteRejectsAbsolutePath(t *testing.T) {
 	root := t.TempDir()
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write(filepath.Join(root, "file.txt"), []byte("content"), false)
+	err := filesystem.Write(filepath.Join(root, "file.txt"), []byte("content"), false, false)
 
 	if !errors.Is(err, security.ErrAbsolutePath) {
 		t.Fatalf("expected ErrAbsolutePath, got %v", err)
@@ -553,7 +613,7 @@ func TestLocalFileSystemWriteRejectsSymlinkedParentEscape(t *testing.T) {
 
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write(filepath.Join("escape-dir", "created.txt"), []byte("content"), false)
+	err := filesystem.Write(filepath.Join("escape-dir", "created.txt"), []byte("content"), false, false)
 
 	if !errors.Is(err, security.ErrSymlinkDenied) {
 		t.Fatalf("expected ErrSymlinkDenied, got %v", err)
@@ -570,7 +630,7 @@ func TestLocalFileSystemWriteRejectsHiddenTargetByDefault(t *testing.T) {
 	root := t.TempDir()
 	filesystem := mustNewLocalFileSystem(t, root)
 
-	err := filesystem.Write(".secret", []byte("secret"), false)
+	err := filesystem.Write(".secret", []byte("secret"), false, false)
 
 	if !errors.Is(err, security.ErrHiddenPathDenied) {
 		t.Fatalf("expected ErrHiddenPathDenied, got %v", err)
@@ -1438,7 +1498,7 @@ func TestLocalFileSystemWriteRejectsContentOverLimit(t *testing.T) {
 		MaxDeleteEntries: 10,
 	})
 
-	err := filesystem.Write("created.txt", []byte("12345"), false)
+	err := filesystem.Write("created.txt", []byte("12345"), false, false)
 
 	if !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("expected ErrLimitExceeded, got %v", err)

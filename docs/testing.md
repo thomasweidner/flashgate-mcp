@@ -2,6 +2,11 @@
 
 ## Slim project validation
 
+Atomic filesystem writes have focused cross-platform gates for create,
+replacement, no-overwrite preservation, and temporary-stage cleanup. Cloud
+validation may cross-compile the Windows implementation, but real Windows
+replacement and cleanup behavior remains part of Windows finalization.
+
 FlashGate inherits the central Slim Governance security and authorization
 boundaries through its thin project adapter. Normal development uses
 `DIRECTLY_AFFECTED_FIRST`, reuses valid unchanged evidence, and runs affected

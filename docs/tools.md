@@ -110,13 +110,14 @@ Only genuine missing-path errors become `exists:false`. Security and policy deni
 
 ## `write_file`
 
-Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (default `false`). Existing limits and root/security enforcement apply.
+Required: `path`. Optional: `content` (empty is allowed), `overwrite` (default `false`), and `atomic` (default `false`). Existing limits and root/security enforcement apply. With `atomic=true`, content is staged in the target directory, synchronized, and published as one same-filesystem replacement; an unpublished stage is cleaned on failure.
 
 ```json
 {
   "path": "output.txt",
   "content": "text",
-  "overwrite": false
+  "overwrite": false,
+  "atomic": true
 }
 ```
 
