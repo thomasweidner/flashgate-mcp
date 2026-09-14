@@ -33,6 +33,12 @@ type CallToolResult struct {
 	IsError           bool            `json:"isError,omitempty"`
 }
 
+// ToolError is the stable machine-readable body of an unsuccessful tool call.
+type ToolError struct {
+	Category string `json:"category"`
+	Message  string `json:"message"`
+}
+
 // NewCallToolResult creates a successful result from one serialized JSON object.
 func NewCallToolResult(structuredContent json.RawMessage) (CallToolResult, error) {
 	var compact bytes.Buffer
@@ -49,4 +55,23 @@ func NewCallToolResult(structuredContent json.RawMessage) (CallToolResult, error
 		Content:           []TextContent{NewTextContent(string(content))},
 		StructuredContent: content,
 	}, nil
+}
+
+// NewCallToolErrorResult creates an MCP tool result with isError=true. Tool
+// failures use this envelope instead of the JSON-RPC error channel.
+func NewCallToolErrorResult(category, message string) (CallToolResult, error) {
+	if category == "" || message == "" {
+		return CallToolResult{}, errors.New("tool error category and message are required")
+	}
+
+	structuredContent, err := json.Marshal(ToolError{Category: category, Message: message})
+	if err != nil {
+		return CallToolResult{}, err
+	}
+	result, err := NewCallToolResult(structuredContent)
+	if err != nil {
+		return CallToolResult{}, err
+	}
+	result.IsError = true
+	return result, nil
 }

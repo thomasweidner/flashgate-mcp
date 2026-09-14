@@ -245,16 +245,20 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		json.RawMessage(`{"name":"read_file","arguments":{"path":"../outside.txt"}}`),
 		outsideArguments,
 	} {
-		_, protocolErr := mcpRouter.Dispatch(
+		result, protocolErr := mcpRouter.Dispatch(
 			"tools/call",
 			handlers.Context{Context: context.Background()},
 			raw,
 		)
-		if protocolErr == nil || protocolErr.Code != protocol.ErrInvalidParams {
-			t.Fatalf("expected generic invalid params for outside path %s, got %#v", raw, protocolErr)
+		if protocolErr != nil {
+			t.Fatalf("expected MCP tool error result for outside path %s, got %#v", raw, protocolErr)
 		}
-		if protocolErr != nil && strings.Contains(protocolErr.Message, root) {
-			t.Fatalf("protocol error leaked root: %q", protocolErr.Message)
+		wrapped, ok := result.(protocol.CallToolResult)
+		if !ok || !wrapped.IsError {
+			t.Fatalf("expected isError result for outside path %s, got %#v", raw, result)
+		}
+		if strings.Contains(string(wrapped.StructuredContent), root) {
+			t.Fatalf("tool error leaked root: %q", wrapped.StructuredContent)
 		}
 	}
 

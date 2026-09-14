@@ -33,4 +33,7 @@ type Error struct {
 	Code    int             `json:"code"`
 	Message string          `json:"message"`
 	Data    json.RawMessage `json:"data,omitempty"`
+	// Category carries the normalized tool-error category between the domain
+	// adapter and tools/call. It is never serialized in a JSON-RPC error.
+	Category string `json:"-"`
 }

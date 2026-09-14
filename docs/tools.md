@@ -72,6 +72,8 @@ Content scanning uses fixed server-owned caps: 1,000 opened files, 1 MiB per fil
 
 Path search retains its server-owned cap of 1,000 returned paths and fails with a safe limit error before exceeding it. Only entries matching every supplied filename and metadata filter count against this result cap. Every traversal, metadata read, and content read goes through the central filesystem and path-policy boundary.
 
+Tool execution failures return a standard MCP `CallToolResult` with `isError: true`. The text block and `structuredContent` carry one identical compact object containing a stable `category` and a safe generic `message`; they never include a resolved host path or raw operating-system error. Request-shape, unknown-method, and unavailable-tool failures remain JSON-RPC errors because tool execution did not begin.
+
 ## `list_directory`
 
 Lists one directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid.

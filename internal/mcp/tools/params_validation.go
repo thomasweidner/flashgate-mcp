@@ -44,8 +44,9 @@ func isNonBlank(value string) bool {
 
 func invalidParamsError() *protocol.Error {
 	return &protocol.Error{
-		Code:    protocol.ErrInvalidParams,
-		Message: "invalid params",
+		Code:     protocol.ErrInvalidParams,
+		Message:  "invalid params",
+		Category: "invalid_arguments",
 	}
 }
 

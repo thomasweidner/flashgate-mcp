@@ -16,7 +16,7 @@ The current server:
 - writes protocol messages only to stdout;
 - returns successful filesystem results as one compact JSON text block plus the same object in `structuredContent`;
 - exposes successful `outputSchema` definitions for the current nine tools;
-- retains safe generic JSON-RPC errors for current tool failures.
+- returns normalized MCP `isError` results for tool execution failures while retaining JSON-RPC errors for request, routing, and transport failures.
 
 `flashgate-mcp --version` and `flashgate-mcp --version --verbose` are pre-protocol CLI exits. They print build identity and terminate before reading MCP input. During normal server operation, stdout remains reserved exclusively for JSON-RPC protocol messages.
 

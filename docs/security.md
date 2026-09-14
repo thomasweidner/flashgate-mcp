@@ -198,7 +198,7 @@ Notifications do not receive JSON-RPC responses. `notifications/initialized` is 
 
 Unexpected handler panics are contained at the request boundary and returned as generic Internal error responses when the request requires a response.
 
-Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification is intentionally unchanged in `SPR-045`; BL-203 owns a later complete `isError=true` migration.
+Every filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. Successful calls repeat the compact domain object in the text block and `structuredContent`. Tool execution failures instead repeat a normalized `{category,message}` object and set `isError: true`; raw host paths and operating-system errors remain excluded. Failures before tool execution, including malformed calls and unavailable tool names, remain generic JSON-RPC errors.
 
 ## Limits and Redaction
 
@@ -215,7 +215,7 @@ Every successful filesystem `tools/call` now crosses one central adapter boundar
 | `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries for recursive `delete_path`. |
 | `MCP_MAX_RESPONSE_BYTES` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
 
-Limit violations use generic client-visible messages. Filesystem limit denials are mapped to Invalid params with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
+Limit violations use generic client-visible messages. Filesystem limit denials are normalized as an MCP error result with category `limit_exceeded` and message `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
 
 `MCP_DEBUG=true` enables minimal stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
 

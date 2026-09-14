@@ -76,7 +76,7 @@ The adapter retains the existing JSON-RPC architecture:
 - expected argument, path, policy, and filesystem contract failures `-32602`;
 - unexpected I/O failures `-32603`.
 
-Internal classification uses `not_found`, `already_exists`, `access_denied`, `invalid_path`, `unsupported_path_type`, `unsupported_operation`, `limit_exceeded`, and `io_error`. Messages are safe and generic. Stable wire-level error objects are deferred.
+Tool execution failures use an MCP `CallToolResult` with `isError: true`. Its text block and `structuredContent` contain the same compact object with the stable fields `category` and `message`. Current categories are `invalid_arguments`, `not_found`, `already_exists`, `access_denied`, `invalid_path`, `unsupported_path_type`, `unsupported_operation`, `limit_exceeded`, `unavailable`, `canceled`, `deadline_exceeded`, `io_error`, and the fail-closed fallback `internal_error`. Messages are safe and generic; an unclassified failure is reduced to `internal_error` rather than forwarding its original message. Malformed `tools/call` envelopes and unavailable tool names remain JSON-RPC Invalid params errors because no tool execution occurred.
 
 ## Compatibility
 
