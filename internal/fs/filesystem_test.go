@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
@@ -367,6 +368,16 @@ func TestLocalFileSystemStatReturnsMetadata(t *testing.T) {
 	if metadata.Size != int64(len("hello")) {
 		t.Fatalf("expected size %d, got %d", len("hello"), metadata.Size)
 	}
+
+	if metadata.Type != "file" {
+		t.Fatalf("expected file type, got %q", metadata.Type)
+	}
+	if _, err := time.Parse(time.RFC3339Nano, metadata.ModifiedTime); err != nil {
+		t.Fatalf("expected RFC 3339 modified time, got %q: %v", metadata.ModifiedTime, err)
+	}
+	if runtime.GOOS != "windows" && metadata.Permissions != "0600" {
+		t.Fatalf("expected portable permissions 0600, got %q", metadata.Permissions)
+	}
 }
 
 func TestLocalFileSystemStatReturnsDirectoryMetadata(t *testing.T) {
@@ -388,6 +399,9 @@ func TestLocalFileSystemStatReturnsDirectoryMetadata(t *testing.T) {
 
 	if !metadata.IsDir {
 		t.Fatal("expected subdir to be a directory")
+	}
+	if metadata.Type != "directory" {
+		t.Fatalf("expected directory type, got %q", metadata.Type)
 	}
 }
 

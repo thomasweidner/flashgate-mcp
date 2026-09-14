@@ -49,7 +49,8 @@ func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessag
 	}
 
 	return getPathInfoExistingResult{
-		Path: arguments.Path, Exists: true, Name: metadata.Name, IsDir: metadata.IsDir, Size: metadata.Size,
+		Path: arguments.Path, Exists: true, Name: metadata.Name, Type: metadata.Type, IsDir: metadata.IsDir,
+		Size: metadata.Size, ModifiedTime: metadata.ModifiedTime, Permissions: metadata.Permissions,
 	}, nil
 }
 
@@ -61,9 +62,12 @@ type getPathInfoMissingResult struct {
 	Exists bool   `json:"exists"`
 }
 type getPathInfoExistingResult struct {
-	Path   string `json:"path"`
-	Exists bool   `json:"exists"`
-	Name   string `json:"name"`
-	IsDir  bool   `json:"isDir"`
-	Size   int64  `json:"size"`
+	Path         string `json:"path"`
+	Exists       bool   `json:"exists"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	IsDir        bool   `json:"isDir"`
+	Size         int64  `json:"size"`
+	ModifiedTime string `json:"modifiedTime"`
+	Permissions  string `json:"permissions,omitempty"`
 }
