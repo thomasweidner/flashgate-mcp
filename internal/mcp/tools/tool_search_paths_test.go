@@ -50,10 +50,38 @@ func TestSearchPathsDefaultsOnlyMissingPath(t *testing.T) {
 }
 
 func TestSearchPathsRejectsInvalidArguments(t *testing.T) {
-	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"unknown":true}`, `{} {}`} {
+	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"name":""}`, `{"name":"  "}`, `{"name":"dir/file"}`, `{"namePattern":"["}`, `{"name":"a","namePattern":"*"}`, `{"unknown":true}`, `{} {`} {
 		_, rpcErr := NewSearchPathsTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 		}
+	}
+}
+
+func TestSearchPathsMatchesLiteralFilename(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "wanted.txt"}, {Name: "other.txt"}}
+
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"name":"wanted.txt"}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	want := searchPathsResult{Paths: []search.Path{{Path: "wanted.txt"}}}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
+func TestSearchPathsMatchesFilenamePattern(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "one.go"}, {Name: "two.txt"}}
+
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"namePattern":"*.go"}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	want := searchPathsResult{Paths: []search.Path{{Path: "one.go"}}}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result: %#v", result)
 	}
 }

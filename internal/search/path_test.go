@@ -93,3 +93,67 @@ func TestNewPathServiceRequiresPositiveLimit(t *testing.T) {
 		t.Fatalf("expected invalid limit, got %v", err)
 	}
 }
+
+func TestFilenameSearchMatchesLiteralAndTraversesUnmatchedDirectories(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{
+		".":     {{Name: "target.txt"}, {Name: "other", IsDir: true}},
+		"other": {{Name: "target.txt"}, {Name: "TARGET.txt"}},
+	}}
+	service, _ := NewPathService(filesystem, 10)
+
+	got, err := service.SearchNames(context.Background(), ".", "target.txt", NameMatchLiteral)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Path{{Path: "other/target.txt"}, {Path: "target.txt"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected literal matches\nwant: %#v\n got: %#v", want, got)
+	}
+}
+
+func TestFilenameSearchMatchesPortablePatternAgainstBaseName(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{
+		".":        {{Name: "docs", IsDir: true}, {Name: "top.go"}},
+		"docs":     {{Name: "guide.md"}, {Name: "notes.txt"}, {Name: "sub", IsDir: true}},
+		"docs/sub": {{Name: "nested.md"}},
+	}}
+	service, _ := NewPathService(filesystem, 10)
+
+	got, err := service.SearchNames(context.Background(), ".", "*.md", NameMatchPattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Path{{Path: "docs/guide.md"}, {Path: "docs/sub/nested.md"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected pattern matches\nwant: %#v\n got: %#v", want, got)
+	}
+}
+
+func TestFilenameSearchRejectsInvalidSelectorBeforeTraversal(t *testing.T) {
+	for _, tc := range []struct {
+		selector string
+		kind     NameMatchKind
+	}{
+		{"", NameMatchLiteral},
+		{"dir/file.txt", NameMatchLiteral},
+		{"[", NameMatchPattern},
+		{"file.txt", NameMatchKind(99)},
+	} {
+		filesystem := &listingFS{}
+		service, _ := NewPathService(filesystem, 10)
+		results, err := service.SearchNames(context.Background(), ".", tc.selector, tc.kind)
+		if !errors.Is(err, ErrInvalidNameSelector) || results != nil || len(filesystem.calls) != 0 {
+			t.Fatalf("selector %q: expected pre-traversal rejection, results=%#v calls=%#v err=%v", tc.selector, results, filesystem.calls, err)
+		}
+	}
+}
+
+func TestFilenameSearchLimitCountsOnlyMatches(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a.txt"}, {Name: "b.go"}, {Name: "c.txt"}}}}
+	service, _ := NewPathService(filesystem, 1)
+
+	results, err := service.SearchNames(context.Background(), ".", "*.go", NameMatchPattern)
+	if err != nil || !reflect.DeepEqual(results, []Path{{Path: "b.go"}}) {
+		t.Fatalf("expected one bounded match, results=%#v err=%v", results, err)
+	}
+}

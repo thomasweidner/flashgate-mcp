@@ -30,7 +30,7 @@
     {
       "name": "search_paths",
       "title": "Search Paths",
-      "description": "Recursively lists root-relative paths below the configured filesystem root.",
+      "description": "Recursively searches root-relative paths, optionally matching literal or patterned filenames.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -39,7 +39,23 @@
             "type": "string",
             "minLength": 1,
             "description": "Relative directory path at which to start. Defaults to '.' when omitted."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact case-sensitive base filename to match."
+          },
+          "namePattern": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Case-sensitive path.Match pattern applied to each complete base filename."
           }
+        },
+        "not": {
+          "required": [
+            "name",
+            "namePattern"
+          ]
         }
       },
       "resultSchema": {
