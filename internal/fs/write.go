@@ -1,10 +1,51 @@
 package fs
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"os"
 )
+
+// EditMatches replaces every exact, non-overlapping oldContent occurrence only
+// when the observed count equals expectedMatches. A mismatch leaves the file
+// unchanged, making stale and ambiguous match-based edits fail closed.
+func (f *LocalFileSystem) EditMatches(path string, oldContent, newContent []byte, expectedMatches int) (int64, error) {
+	if len(oldContent) == 0 || expectedMatches < 1 || int64(len(newContent)) > f.limits.MaxWriteBytes {
+		return 0, ErrLimitExceeded
+	}
+
+	safePath, err := f.guard.ResolveExisting(path)
+	if err != nil {
+		return 0, err
+	}
+	info, err := os.Stat(safePath.String())
+	if err != nil {
+		return 0, err
+	}
+	if info.IsDir() {
+		return 0, ErrPathIsDirectory
+	}
+	if info.Size() > f.limits.MaxWriteBytes {
+		return 0, ErrLimitExceeded
+	}
+	existing, err := os.ReadFile(safePath.String())
+	if err != nil {
+		return 0, err
+	}
+	if bytes.Count(existing, oldContent) != expectedMatches {
+		return 0, ErrMatchCountMismatch
+	}
+	resultSize := int64(len(existing)) + int64(expectedMatches)*(int64(len(newContent))-int64(len(oldContent)))
+	if resultSize > f.limits.MaxWriteBytes {
+		return 0, ErrLimitExceeded
+	}
+	result := bytes.ReplaceAll(existing, oldContent, newContent)
+	if err := os.WriteFile(safePath.String(), result, info.Mode().Perm()); err != nil {
+		return 0, err
+	}
+	return resultSize, nil
+}
 
 // EditRange replaces the half-open byte range [startByte,endByte) in an
 // existing file. Both the source and resulting file are bounded by the

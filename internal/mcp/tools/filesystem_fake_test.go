@@ -3,40 +3,48 @@ package tools
 import "github.com/thomasweidner/flashgate-mcp/internal/fs"
 
 type fakeFileSystem struct {
-	entries         []fs.Entry
-	err             error
-	listPath        string
-	readPath        string
-	readMaxBytes    int64
-	readContent     []byte
-	readErr         error
-	statPath        string
-	statMetadata    fs.Metadata
-	statErr         error
-	writePath       string
-	writeContent    []byte
-	writeOverwrite  bool
-	writeErr        error
-	editPath        string
-	editStart       int64
-	editEnd         int64
-	editContent     []byte
-	editSize        int64
-	editErr         error
-	mkdirPath       string
-	mkdirCreated    bool
-	mkdirErr        error
-	deletePath      string
-	deleteRecursive bool
-	deleteErr       error
-	moveSource      string
-	moveTarget      string
-	moveOverwrite   bool
-	moveErr         error
-	copySource      string
-	copyTarget      string
-	copyOverwrite   bool
-	copyErr         error
+	entries             []fs.Entry
+	err                 error
+	listPath            string
+	readPath            string
+	readMaxBytes        int64
+	readContent         []byte
+	readErr             error
+	statPath            string
+	statMetadata        fs.Metadata
+	statErr             error
+	writePath           string
+	writeContent        []byte
+	writeOverwrite      bool
+	writeErr            error
+	editPath            string
+	editStart           int64
+	editEnd             int64
+	editContent         []byte
+	editSize            int64
+	editErr             error
+	editOldContent      []byte
+	editNewContent      []byte
+	editExpectedMatches int
+	mkdirPath           string
+	mkdirCreated        bool
+	mkdirErr            error
+	deletePath          string
+	deleteRecursive     bool
+	deleteErr           error
+	moveSource          string
+	moveTarget          string
+	moveOverwrite       bool
+	moveErr             error
+	copySource          string
+	copyTarget          string
+	copyOverwrite       bool
+	copyErr             error
+}
+
+func (f *fakeFileSystem) EditMatches(path string, oldContent, newContent []byte, expectedMatches int) (int64, error) {
+	f.editPath, f.editOldContent, f.editNewContent, f.editExpectedMatches = path, append([]byte(nil), oldContent...), append([]byte(nil), newContent...), expectedMatches
+	return f.editSize, f.editErr
 }
 
 func newFakeFileSystem() *fakeFileSystem { return &fakeFileSystem{} }
