@@ -10,6 +10,8 @@ type fakeFileSystem struct {
 	readMaxBytes    int64
 	readContent     []byte
 	readErr         error
+	readFunc        func(string, int64) ([]byte, error)
+	readPaths       []string
 	statPath        string
 	statMetadata    fs.Metadata
 	statErr         error
@@ -40,6 +42,10 @@ func (f *fakeFileSystem) List(path string) ([]fs.Entry, error) {
 }
 func (f *fakeFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	f.readPath, f.readMaxBytes = path, maxBytes
+	f.readPaths = append(f.readPaths, path)
+	if f.readFunc != nil {
+		return f.readFunc(path, maxBytes)
+	}
 	return f.readContent, f.readErr
 }
 func (f *fakeFileSystem) Stat(path string) (fs.Metadata, error) {
