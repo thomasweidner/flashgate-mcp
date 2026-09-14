@@ -886,9 +886,9 @@ GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative 
 
 Limit and redaction behavior is primarily covered by Go unit tests. Additional limit-negative smoke coverage can be added later if it can be done without broad smoke-script refactoring.
 
-Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
+Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, all four behavior annotations, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
-The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
+The `tools/list` JSON-RPC wire test checks schema and annotation exposure for both profiles and records deterministic UTF-8 JSONL sizes. The current annotated catalog is 2446 bytes for read-only and 6490 bytes for default, including the trailing newline; these values are also the current hard catalog-size ceilings.
 
 ### MCP Compatibility Testing
 
