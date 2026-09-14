@@ -303,6 +303,11 @@ Tool registration reflects effective capability but execution checks remain auth
 
 MCP annotations are accurate hints only and never grant permission.
 
+Payload placement and compatibility fallbacks are governed by the
+[payload-class result contract](payload-result-contracts.md). In particular, a
+fallback cannot expand authorization or server-owned limits, and opaque resource
+references must not disclose host paths or cross-principal existence.
+
 ### Per-root policies and execution backend
 
 Named roots use authoritative FlashGate configuration and root IDs plus relative paths. Each root may define:

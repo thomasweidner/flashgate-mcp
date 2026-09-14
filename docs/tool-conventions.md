@@ -133,6 +133,10 @@ Where the negotiated MCP revision supports them, every tool declares accurate:
 - `idempotentHint`;
 - `openWorldHint`.
 
+Payload-producing tools also follow the [payload-class result
+contract](payload-result-contracts.md): heavy text, binary/media, and process output
+appear once, while structured metadata remains compact and bounded.
+
 Annotations are discovery metadata only. They never replace server-side authorization, path validation, execution-identity selection, or risk policy.
 
 ### Partial, batch, and field-bounded operations
