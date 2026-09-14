@@ -48,10 +48,16 @@ func TestLocalFileSystemListReturnsFilesAndDirectories(t *testing.T) {
 	if fileEntry.Size != int64(len("hello")) {
 		t.Fatalf("expected file size %d, got %d", len("hello"), fileEntry.Size)
 	}
+	if fileEntry.ModifiedTime.IsZero() {
+		t.Fatal("expected file modification time")
+	}
 
 	dirEntry := findEntry(t, entries, "subdir")
 	if !dirEntry.IsDir {
 		t.Fatal("expected subdir to be a directory")
+	}
+	if dirEntry.ModifiedTime.IsZero() {
+		t.Fatal("expected directory modification time")
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -33,7 +34,7 @@ func NewSearchPathsTool(filesystem fs.DirectoryLister) *SearchPathsTool {
 func (t *SearchPathsTool) Name() string  { return searchPathsToolName }
 func (t *SearchPathsTool) Title() string { return "Search Paths" }
 func (t *SearchPathsTool) Description() string {
-	return "Recursively searches root-relative paths, optionally matching literal or patterned filenames."
+	return "Recursively searches root-relative paths with optional filename and portable metadata filters."
 }
 func (t *SearchPathsTool) InputSchema() any {
 	return map[string]any{
@@ -54,6 +55,15 @@ func (t *SearchPathsTool) InputSchema() any {
 				"minLength":   1,
 				"description": "Case-sensitive path.Match pattern applied to each complete base filename.",
 			},
+			"type": map[string]any{
+				"type":        "string",
+				"enum":        []string{"file", "directory"},
+				"description": "Portable entry type to return.",
+			},
+			"minSizeBytes":      map[string]any{"type": "integer", "minimum": 0, "description": "Inclusive minimum file size in bytes; directories never match size filters."},
+			"maxSizeBytes":      map[string]any{"type": "integer", "minimum": 0, "description": "Inclusive maximum file size in bytes; directories never match size filters."},
+			"modifiedNotBefore": map[string]any{"type": "string", "format": "date-time", "description": "Inclusive RFC 3339 lower modification-time bound."},
+			"modifiedNotAfter":  map[string]any{"type": "string", "format": "date-time", "description": "Inclusive RFC 3339 upper modification-time bound."},
 		},
 		"not":                  map[string]any{"required": []string{"name", "namePattern"}},
 		"additionalProperties": false,
@@ -77,8 +87,12 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 		startPath = *arguments.Path
 	}
 
-	var paths []search.Path
-	var err error
+	filter, rpcErr := arguments.metadataFilter()
+	if rpcErr != nil {
+		return nil, rpcErr
+	}
+	selector := ""
+	kind := search.NameMatchLiteral
 	switch {
 	case arguments.Name != nil && arguments.NamePattern != nil:
 		return nil, invalidParamsError()
@@ -86,18 +100,17 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 		if !isNonBlank(*arguments.Name) {
 			return nil, invalidParamsError()
 		}
-		paths, err = t.service.SearchNames(ctx, startPath, *arguments.Name, search.NameMatchLiteral)
+		selector = *arguments.Name
 	case arguments.NamePattern != nil:
 		if !isNonBlank(*arguments.NamePattern) {
 			return nil, invalidParamsError()
 		}
-		paths, err = t.service.SearchNames(ctx, startPath, *arguments.NamePattern, search.NameMatchPattern)
-	default:
-		paths, err = t.service.Search(ctx, startPath)
+		selector, kind = *arguments.NamePattern, search.NameMatchPattern
 	}
+	paths, err := t.service.SearchFiltered(ctx, startPath, selector, kind, filter)
 	if err != nil {
 		switch {
-		case errors.Is(err, search.ErrInvalidNameSelector):
+		case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter):
 			return nil, invalidParamsError()
 		case errors.Is(err, search.ErrLimitExceeded):
 			return nil, &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
@@ -112,9 +125,51 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 }
 
 type searchPathsArguments struct {
-	Path        *string `json:"path,omitempty"`
-	Name        *string `json:"name,omitempty"`
-	NamePattern *string `json:"namePattern,omitempty"`
+	Path              *string `json:"path,omitempty"`
+	Name              *string `json:"name,omitempty"`
+	NamePattern       *string `json:"namePattern,omitempty"`
+	Type              *string `json:"type,omitempty"`
+	MinSizeBytes      *int64  `json:"minSizeBytes,omitempty"`
+	MaxSizeBytes      *int64  `json:"maxSizeBytes,omitempty"`
+	ModifiedNotBefore *string `json:"modifiedNotBefore,omitempty"`
+	ModifiedNotAfter  *string `json:"modifiedNotAfter,omitempty"`
+}
+
+func (a searchPathsArguments) metadataFilter() (search.MetadataFilter, *protocol.Error) {
+	filter := search.MetadataFilter{Type: search.EntryTypeAny, MinSizeBytes: a.MinSizeBytes, MaxSizeBytes: a.MaxSizeBytes}
+	if a.Type != nil {
+		switch *a.Type {
+		case "file":
+			filter.Type = search.EntryTypeFile
+		case "directory":
+			filter.Type = search.EntryTypeDirectory
+		default:
+			return search.MetadataFilter{}, invalidParamsError()
+		}
+	}
+	parseTime := func(value *string) (*time.Time, bool) {
+		if value == nil {
+			return nil, true
+		}
+		parsed, err := time.Parse(time.RFC3339, *value)
+		if err != nil {
+			return nil, false
+		}
+		return &parsed, true
+	}
+	var valid bool
+	if filter.ModifiedNotBefore, valid = parseTime(a.ModifiedNotBefore); !valid {
+		return search.MetadataFilter{}, invalidParamsError()
+	}
+	if filter.ModifiedNotAfter, valid = parseTime(a.ModifiedNotAfter); !valid {
+		return search.MetadataFilter{}, invalidParamsError()
+	}
+	if filter.MinSizeBytes != nil && *filter.MinSizeBytes < 0 || filter.MaxSizeBytes != nil && *filter.MaxSizeBytes < 0 ||
+		filter.MinSizeBytes != nil && filter.MaxSizeBytes != nil && *filter.MinSizeBytes > *filter.MaxSizeBytes ||
+		filter.ModifiedNotBefore != nil && filter.ModifiedNotAfter != nil && filter.ModifiedNotBefore.After(*filter.ModifiedNotAfter) {
+		return search.MetadataFilter{}, invalidParamsError()
+	}
+	return filter, nil
 }
 
 type searchPathsResult struct {

@@ -40,13 +40,15 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The current deterministic UTF-8 JSONL `tools/list` response, including its trailing newline, is 3046 bytes for read-only and 6569 bytes for default. The older 1239/2134-byte and 3850/5657-byte measurements remain the historical `SPR-046` snapshots, not persistent payload budgets.
+The current deterministic UTF-8 JSONL `tools/list` response, including its trailing newline, is 3672 bytes for read-only and 7195 bytes for default. The older 1239/2134-byte, 3850/5657-byte, and 3046/6569-byte measurements remain historical snapshots, not persistent payload budgets.
 
 ## `search_paths`
 
 Recursively enumerates policy-visible descendants below a relative start directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid. The start directory itself is not returned. Results are normalized with `/`, remain relative to the configured root, and use deterministic UTF-8 byte ordering.
 
 An optional `name` selects an exact, case-sensitive base filename. Alternatively, `namePattern` uses Go `path.Match` syntax (`*`, `?`, and character classes) case-sensitively against each complete base filename. The two selectors are mutually exclusive, must be nonblank, and cannot contain `/`; malformed patterns fail before traversal. Both files and directories can match, while unmatched directories are still traversed so matching descendants remain discoverable. Omitting both selectors retains the path-search behavior.
+
+Portable metadata filters can be combined with either filename mode or path-only search. `type` accepts only `file` or `directory`. Inclusive `minSizeBytes` and `maxSizeBytes` bounds use the file byte size reported by the central filesystem abstraction; directories never match when either size bound is present. Inclusive `modifiedNotBefore` and `modifiedNotAfter` bounds accept RFC 3339 instants, compare the filesystem modification instant independent of its displayed time-zone offset, and apply to files and directories. Negative or reversed bounds, unsupported types, and malformed timestamps fail before traversal.
 
 ```json
 {
@@ -64,7 +66,7 @@ An optional `name` selects an exact, case-sensitive base filename. Alternatively
 }
 ```
 
-The search implementation has a server-owned cap of 1,000 returned paths and fails with a safe limit error before exceeding it. For filename searches, only matched results count against this result cap. Filters, client-selected limits, content search, and pagination remain owned by their separate search backlog tasks. Every directory traversal goes through the central filesystem and path-policy boundary.
+The search implementation has a server-owned cap of 1,000 returned paths and fails with a safe limit error before exceeding it. Only entries matching every supplied filename and metadata filter count against this result cap. Client-selected limits, content search, and pagination remain owned by their separate search backlog tasks. Every directory traversal and metadata read goes through the central filesystem and path-policy boundary.
 
 ## `list_directory`
 

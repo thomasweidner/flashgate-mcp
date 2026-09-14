@@ -30,7 +30,7 @@
     {
       "name": "search_paths",
       "title": "Search Paths",
-      "description": "Recursively searches root-relative paths, optionally matching literal or patterned filenames.",
+      "description": "Recursively searches root-relative paths with optional filename and portable metadata filters.",
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -49,6 +49,34 @@
             "type": "string",
             "minLength": 1,
             "description": "Case-sensitive path.Match pattern applied to each complete base filename."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "description": "Portable entry type to return."
+          },
+          "minSizeBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Inclusive minimum file size in bytes; directories never match size filters."
+          },
+          "maxSizeBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Inclusive maximum file size in bytes; directories never match size filters."
+          },
+          "modifiedNotBefore": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Inclusive RFC 3339 lower modification-time bound."
+          },
+          "modifiedNotAfter": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Inclusive RFC 3339 upper modification-time bound."
           }
         },
         "not": {
