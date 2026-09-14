@@ -209,7 +209,7 @@ Every successful filesystem `tools/call` now crosses one central adapter boundar
 | `MCP_MAX_FILE_SIZE` | `10485760` | Hard cap for `read_file`; client `maxBytes` can only lower it. |
 | `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `16777216` | Maximum single JSON-RPC message read from stdin. |
 | `MCP_MAX_TOOL_ARGUMENT_BYTES` | `12582912` | Maximum `tools/call` params or arguments payload. |
-| `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum `write_file` content size. |
+| `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum content size for each `write_file` or `append_file` call. |
 | `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum policy-visible `list_directory` entries. |
 | `MCP_MAX_COPY_BYTES` | `10485760` | Maximum `copy_path` source file size. |
 | `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries for recursive `delete_path`. |

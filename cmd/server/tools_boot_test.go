@@ -25,6 +25,7 @@ func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 		"read_file",
 		"get_path_info",
 		"write_file",
+		"append_file",
 		"create_directory",
 		"delete_path",
 		"copy_path",
@@ -46,6 +47,7 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 		"read_file",
 		"get_path_info",
 		"write_file",
+		"append_file",
 		"create_directory",
 		"delete_path",
 		"copy_path",
@@ -98,6 +100,7 @@ func TestCreateToolRegistryDoesNotResolveWriteToolsWhenReadOnly(t *testing.T) {
 
 	writeToolNames := []string{
 		"write_file",
+		"append_file",
 		"create_directory",
 		"delete_path",
 		"copy_path",
@@ -138,6 +141,10 @@ func (noopFileSystem) Stat(string) (fs.Metadata, error) {
 }
 
 func (noopFileSystem) Write(string, []byte, bool) error {
+	return errors.New("not implemented")
+}
+
+func (noopFileSystem) Append(string, []byte) error {
 	return errors.New("not implemented")
 }
 

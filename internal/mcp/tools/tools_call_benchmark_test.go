@@ -153,6 +153,7 @@ func (benchmarkParallelFileSystem) Stat(string) (fs.Metadata, error) {
 	return fs.Metadata{Name: "existing.txt", Size: 26}, nil
 }
 func (benchmarkParallelFileSystem) Write(string, []byte, bool) error { return nil }
+func (benchmarkParallelFileSystem) Append(string, []byte) error      { return nil }
 func (benchmarkParallelFileSystem) Mkdir(string) (bool, error)       { return false, nil }
 func (benchmarkParallelFileSystem) Delete(string, bool) error        { return nil }
 func (benchmarkParallelFileSystem) Move(string, string, bool) error  { return nil }

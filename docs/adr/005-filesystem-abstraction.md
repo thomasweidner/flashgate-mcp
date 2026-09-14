@@ -37,6 +37,7 @@ type FileSystem interface {
     Stat(path string) (Metadata, error)
     Exists(path string) (bool, error)
     Write(path string, content []byte, overwrite bool) error
+    Append(path string, content []byte) error
     Mkdir(path string) error
     Delete(path string, recursive bool) error
     Move(source string, target string, overwrite bool) error
@@ -87,6 +88,7 @@ It supports:
 - stat
 - exists
 - write
+- append
 - mkdir
 - delete
 - move
@@ -110,3 +112,11 @@ Directory creation now reports whether the leaf was actually created while prese
 Sprint 3.44 makes `MCP_ROOT` mandatory and requires absolute production roots. Missing, empty, whitespace-only and general relative roots fail closed. `MCP_ROOT=.` is development-only and requires exact `MCP_ALLOW_CWD_ROOT=true`; no other relative root is enabled.
 
 Root preflight verifies existence, current policy, canonical/effective resolution and directory type before constructing the Filesystem, tool Registry, Router or STDIO server. Expected root/configuration failures leave stdout empty, use safe stderr categories and exit code 3. This implements the existing centralized PathGuard decision without introducing named roots or a second filesystem boundary.
+
+## Implementation Amendment - BL-055
+
+The filesystem abstraction includes a distinct `Append` operation. It opens the
+authorized relative path with operating-system append semantics, creates the
+file when absent, never truncates existing content, rejects directories, and
+applies `MaxWriteBytes` to each append payload. The MCP adapter exposes this as
+the write-gated `append_file` tool rather than overloading `write_file`.
