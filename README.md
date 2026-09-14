@@ -12,13 +12,14 @@ It exposes secure filesystem operations to MCP-compatible clients through JSON-R
 
 ## Status
 
-The project currently implements the core MCP server loop, JSON-RPC routing and request validation, tool discovery, tool execution, MCP-conformant `CallToolResult` wrapping, filesystem abstraction, root-confined path handling, read-only tool gating, canonical build identity, native Windows/Linux metadata, deterministic release archives, reproducible resource/latency/payload benchmarks, tests, and documentation.
+The project currently implements the core MCP server loop, JSON-RPC routing and request validation, tool discovery, tool execution, MCP-conformant `CallToolResult` wrapping, filesystem abstraction, root-confined path handling, bounded root-relative path search, read-only tool gating, canonical build identity, native Windows/Linux metadata, deterministic release archives, reproducible resource/latency/payload benchmarks, tests, and documentation.
 
-The current implemented scope is filesystem operations. Version 1.0 plans bounded search, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, and optional local system-service deployment. These remain planned work.
+The current implemented scope is filesystem operations plus the first bounded path-search slice. Version 1.0 plans further search, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, and optional local system-service deployment. These remain planned work.
 
 Implemented tools:
 
 ```text
+search_paths
 list_directory
 read_file
 get_path_info
@@ -99,9 +100,9 @@ tools/list
 tools/call
 ```
 
-Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present eight-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
+Filesystem and path-search operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present nine-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
 
-Runtime `outputSchema` is exposed for all eight tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
+Runtime `outputSchema` is exposed for all nine tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
 
 JSON-RPC request envelopes are validated before dispatch. Unsupported batch requests, invalid protocol versions, missing or invalid methods, invalid IDs, and malformed method params are rejected with generic JSON-RPC errors. Parse errors and invalid requests without a valid request ID serialize `id:null`. Notifications do not receive responses; `notifications/initialized` is accepted as a no-op, and other notifications are not executed.
 
@@ -176,6 +177,7 @@ MCP_READ_ONLY=true
 When read-only mode is enabled, only these tools are registered and returned by `tools/list`:
 
 ```text
+search_paths
 list_directory
 read_file
 get_path_info
@@ -748,6 +750,7 @@ Each feature should include:
 
 | Tool | Description |
 |---|---|
+| `search_paths` | Recursively returns bounded, root-relative paths in deterministic order. |
 | `list_directory` | Lists files and directories below the configured filesystem root. |
 | `read_file` | Reads a text file below the configured filesystem root. |
 | `get_path_info` | Returns existence and metadata; missing paths return `exists:false`. |
@@ -757,7 +760,7 @@ Each feature should include:
 | `copy_path` | Copies a file. Directory copy is currently unsupported. |
 | `move_path` | Moves or renames a file or directory on the same volume. |
 
-When `MCP_READ_ONLY=true`, only `list_directory`, `read_file`, and `get_path_info` are exposed.
+When `MCP_READ_ONLY=true`, only `search_paths`, `list_directory`, `read_file`, and `get_path_info` are exposed.
 
 ## Roadmap
 

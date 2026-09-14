@@ -44,6 +44,15 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 		assertions func(*testing.T, map[string]any)
 	}{
 		{
+			name:   "search_paths",
+			params: `{"name":"search_paths","arguments":{}}`,
+			assertions: func(t *testing.T, value map[string]any) {
+				if _, ok := value["paths"].([]any); !ok {
+					t.Fatalf("expected paths array, got %#v", value)
+				}
+			},
+		},
+		{
 			name:   "list_directory",
 			params: `{"name":"list_directory","arguments":{}}`,
 			assertions: func(t *testing.T, value map[string]any) {

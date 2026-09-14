@@ -166,6 +166,7 @@ try {
     $toolNames = @($toolsList.result.tools | ForEach-Object { $_.name })
 
     $expectedTools = @(
+        "search_paths",
         "list_directory",
         "read_file",
         "get_path_info"

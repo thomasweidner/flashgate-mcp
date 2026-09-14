@@ -91,6 +91,13 @@ type FileSystem interface {
 	Copy(source string, target string, overwrite bool) error
 }
 
+// DirectoryLister is the read-only filesystem boundary consumed by path
+// search. Implementations retain responsibility for root and path-policy
+// enforcement on every call.
+type DirectoryLister interface {
+	List(path string) ([]Entry, error)
+}
+
 // LocalFileSystem implements FileSystem using the local operating system.
 type LocalFileSystem struct {
 	guard  *security.PathGuard

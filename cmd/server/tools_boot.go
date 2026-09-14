@@ -17,6 +17,7 @@ func capabilitiesFromReadOnly(readOnly bool) toolCapabilities {
 
 func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilities toolCapabilities) *tools.Registry {
 	toolRegistry := tools.NewRegistry()
+	toolRegistry.Register(tools.NewSearchPathsTool(filesystem))
 	toolRegistry.Register(tools.NewListDirectoryTool(filesystem))
 	toolRegistry.Register(tools.NewReadFileTool(filesystem, maxFileSize))
 	toolRegistry.Register(tools.NewGetPathInfoTool(filesystem))

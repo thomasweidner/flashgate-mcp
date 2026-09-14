@@ -115,6 +115,7 @@ if not tools:
 tool_names = [tool.get("name") for tool in tools]
 
 expected_tools = [
+    "search_paths",
     "list_directory",
     "read_file",
     "get_path_info",
