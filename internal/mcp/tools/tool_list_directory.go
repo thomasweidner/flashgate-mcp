@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
@@ -38,6 +39,26 @@ func (t *ListDirectoryTool) InputSchema() any {
 				"minLength":   1,
 				"description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
 			},
+			"filter": map[string]any{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties": map[string]any{
+					"namePrefix": map[string]any{"type": "string"},
+					"nameSuffix": map[string]any{"type": "string"},
+					"type": map[string]any{
+						"type": "string",
+						"enum": []string{"file", "directory"},
+					},
+				},
+			},
+			"sortBy": map[string]any{
+				"type": "string",
+				"enum": []string{"name", "type", "size"},
+			},
+			"sortOrder": map[string]any{
+				"type": "string",
+				"enum": []string{"ascending", "descending"},
+			},
 		},
 		"additionalProperties": false,
 	}
@@ -59,17 +80,107 @@ func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMess
 		}
 		path = *arguments.Path
 	}
+	if !arguments.valid() {
+		return nil, invalidParamsError()
+	}
 
 	entries, err := t.filesystem.List(path)
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
+	entries = filterListDirectoryEntries(entries, arguments.Filter)
+	sortListDirectoryEntries(entries, arguments.SortBy, arguments.SortOrder)
+
 	return listDirectoryResult{Entries: entries}, nil
 }
 
 type listDirectoryArguments struct {
-	Path *string `json:"path,omitempty"`
+	Path      *string              `json:"path,omitempty"`
+	Filter    *listDirectoryFilter `json:"filter,omitempty"`
+	SortBy    *string              `json:"sortBy,omitempty"`
+	SortOrder *string              `json:"sortOrder,omitempty"`
+}
+
+type listDirectoryFilter struct {
+	NamePrefix *string `json:"namePrefix,omitempty"`
+	NameSuffix *string `json:"nameSuffix,omitempty"`
+	Type       *string `json:"type,omitempty"`
+}
+
+func (a listDirectoryArguments) valid() bool {
+	if a.SortBy != nil && *a.SortBy != "name" && *a.SortBy != "type" && *a.SortBy != "size" {
+		return false
+	}
+	if a.SortOrder != nil && *a.SortOrder != "ascending" && *a.SortOrder != "descending" {
+		return false
+	}
+	if a.Filter != nil && a.Filter.Type != nil && *a.Filter.Type != "file" && *a.Filter.Type != "directory" {
+		return false
+	}
+	return true
+}
+
+func filterListDirectoryEntries(entries []fs.Entry, filter *listDirectoryFilter) []fs.Entry {
+	if filter == nil {
+		return entries
+	}
+	filtered := make([]fs.Entry, 0, len(entries))
+	for _, entry := range entries {
+		if filter.NamePrefix != nil && !strings.HasPrefix(entry.Name, *filter.NamePrefix) {
+			continue
+		}
+		if filter.NameSuffix != nil && !strings.HasSuffix(entry.Name, *filter.NameSuffix) {
+			continue
+		}
+		if filter.Type != nil && ((*filter.Type == "directory") != entry.IsDir) {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}
+
+func sortListDirectoryEntries(entries []fs.Entry, sortBy, sortOrder *string) {
+	field := "name"
+	if sortBy != nil {
+		field = *sortBy
+	}
+	descending := sortOrder != nil && *sortOrder == "descending"
+	sort.SliceStable(entries, func(i, j int) bool {
+		comparison := compareListDirectoryEntries(entries[i], entries[j], field)
+		if descending {
+			return comparison > 0
+		}
+		return comparison < 0
+	})
+}
+
+func compareListDirectoryEntries(left, right fs.Entry, field string) int {
+	comparison := 0
+	switch field {
+	case "type":
+		comparison = strings.Compare(listDirectoryEntryType(left), listDirectoryEntryType(right))
+	case "size":
+		if left.Size < right.Size {
+			comparison = -1
+		} else if left.Size > right.Size {
+			comparison = 1
+		}
+	default:
+		comparison = strings.Compare(left.Name, right.Name)
+	}
+	if comparison == 0 {
+		comparison = strings.Compare(left.Name, right.Name)
+	}
+	return comparison
+}
+
+func listDirectoryEntryType(entry fs.Entry) string {
+	if entry.IsDir {
+		return "directory"
+	}
+	return "file"
 }
 
 type listDirectoryResult struct {
