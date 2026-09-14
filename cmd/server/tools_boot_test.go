@@ -24,6 +24,7 @@ func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 		"list_directory",
 		"read_file",
 		"get_path_info",
+		"get_paths_info",
 		"write_file",
 		"create_directory",
 		"delete_path",
@@ -45,6 +46,7 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 		"list_directory",
 		"read_file",
 		"get_path_info",
+		"get_paths_info",
 		"write_file",
 		"create_directory",
 		"delete_path",
@@ -84,6 +86,7 @@ func TestCreateToolRegistryOmitsWriteToolsWhenReadOnly(t *testing.T) {
 		"list_directory",
 		"read_file",
 		"get_path_info",
+		"get_paths_info",
 	}
 
 	if !reflect.DeepEqual(gotNames, wantNames) {
