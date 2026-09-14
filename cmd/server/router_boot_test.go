@@ -198,6 +198,7 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 	)
 
 	positiveCalls := []string{
+		`{"name":"search_paths","arguments":{"path":"sub directory"}}`,
 		`{"name":"list_directory","arguments":{}}`,
 		`{"name":"list_directory","arguments":{"path":"sub directory"}}`,
 		`{"name":"read_file","arguments":{"path":"root.txt"}}`,
@@ -240,6 +241,7 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, raw := range []json.RawMessage{
+		json.RawMessage(`{"name":"search_paths","arguments":{"path":"../outside"}}`),
 		json.RawMessage(`{"name":"read_file","arguments":{"path":"../outside.txt"}}`),
 		outsideArguments,
 	} {

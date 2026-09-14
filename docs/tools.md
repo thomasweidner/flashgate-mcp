@@ -1,8 +1,9 @@
 # Filesystem MCP tools
 
-FlashGate MCP exposes eight filesystem tools in the default profile, in this exact order:
+FlashGate MCP exposes one search tool and eight filesystem tools in the default profile, in this exact order:
 
 ```text
+search_paths
 list_directory
 read_file
 get_path_info
@@ -13,7 +14,7 @@ copy_path
 move_path
 ```
 
-The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
+The read-only profile exposes `search_paths`, `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
 
 For later Codex activation, `MCP_READ_ONLY=true` must be explicit and `MCP_ROOT` must be an absolute preflighted directory. See [Codex read-only activation preparation](codex-read-only-activation.md). `SPR-044` does not activate a client.
 
@@ -35,11 +36,33 @@ The result examples below are domain objects. Every successful `tools/call` plac
 }
 ```
 
-The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
+The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All nine tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The current deterministic UTF-8 JSONL `tools/list` response, including its trailing newline, is 2750 bytes for read-only and 6273 bytes for default. The older 1239/2134-byte and 3850/5657-byte measurements remain the historical `SPR-046` snapshots, not persistent payload budgets.
+
+## `search_paths`
+
+Recursively enumerates policy-visible descendants below a relative start directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid. The start directory itself is not returned. Results are normalized with `/`, remain relative to the configured root, and use deterministic UTF-8 byte ordering.
+
+```json
+{
+  "path": "docs"
+}
+```
+
+```json
+{
+  "paths": [
+    { "path": "docs/adr", "isDir": true },
+    { "path": "docs/adr/001-use-go.md", "isDir": false },
+    { "path": "docs/tools.md", "isDir": false }
+  ]
+}
+```
+
+The initial path-search implementation has a server-owned cap of 1,000 returned paths and fails with a safe limit error before exceeding it. Filename matching, filters, client-selected limits, content search, and pagination remain owned by their separate search backlog tasks. Every directory traversal goes through the central filesystem and path-policy boundary.
 
 ## `list_directory`
 
@@ -202,7 +225,7 @@ The previous pre-1.0 contract and required client changes are documented in [fil
 
 ## Version 1.0 target contract direction
 
-The sections above describe the current eight-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
+The sections above describe the current one-search-tool and eight-filesystem-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
 
 Planned contract changes include:
 

@@ -21,6 +21,7 @@ func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 	}
 
 	wantNames := []string{
+		"search_paths",
 		"list_directory",
 		"read_file",
 		"get_path_info",
@@ -42,6 +43,7 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
 
 	expectedNames := []string{
+		"search_paths",
 		"list_directory",
 		"read_file",
 		"get_path_info",
@@ -81,6 +83,7 @@ func TestCreateToolRegistryOmitsWriteToolsWhenReadOnly(t *testing.T) {
 	}
 
 	wantNames := []string{
+		"search_paths",
 		"list_directory",
 		"read_file",
 		"get_path_info",

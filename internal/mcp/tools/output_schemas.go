@@ -2,6 +2,16 @@ package tools
 
 func filesystemOutputSchema(toolName string) map[string]any {
 	switch toolName {
+	case searchPathsToolName:
+		return objectOutputSchema(map[string]any{
+			"paths": map[string]any{
+				"type": "array",
+				"items": objectOutputSchema(map[string]any{
+					"path":  map[string]any{"type": "string"},
+					"isDir": map[string]any{"type": "boolean"},
+				}, "path", "isDir"),
+			},
+		}, "paths")
 	case listDirectoryToolName:
 		return objectOutputSchema(map[string]any{
 			"entries": map[string]any{
