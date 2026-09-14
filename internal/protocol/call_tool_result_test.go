@@ -74,6 +74,30 @@ func TestCallToolResultIsErrorMarshal(t *testing.T) {
 	}
 }
 
+func TestNewCallToolErrorResultMarshal(t *testing.T) {
+	result, err := NewCallToolErrorResult("invalid_path", "filesystem error: invalid path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatal("tool error result must set isError")
+	}
+	if result.Content[0].Text != `{"category":"invalid_path","message":"filesystem error: invalid path"}` {
+		t.Fatalf("unexpected error text: %s", result.Content[0].Text)
+	}
+	if string(result.StructuredContent) != result.Content[0].Text {
+		t.Fatalf("text and structured error differ: %s != %s", result.Content[0].Text, result.StructuredContent)
+	}
+}
+
+func TestNewCallToolErrorResultRejectsMissingFields(t *testing.T) {
+	for _, tc := range []struct{ category, message string }{{"", "message"}, {"category", ""}} {
+		if result, err := NewCallToolErrorResult(tc.category, tc.message); err == nil {
+			t.Fatalf("expected missing field to be rejected, got %#v", result)
+		}
+	}
+}
+
 func TestNewCallToolResultCompactsAndOwnsStructuredContent(t *testing.T) {
 	input := json.RawMessage(" \n { \"empty\" : {} } \t")
 	result, err := NewCallToolResult(input)

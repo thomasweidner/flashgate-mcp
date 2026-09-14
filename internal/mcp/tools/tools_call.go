@@ -46,7 +46,11 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 
 	result, rpcErr := tool.Execute(execCtx, params.Arguments)
 	if rpcErr != nil {
-		return nil, rpcErr
+		wrapped, err := wrapToolError(rpcErr)
+		if err != nil {
+			return nil, err
+		}
+		return wrapped, nil
 	}
 
 	wrapped, rpcErr := wrapSuccessfulToolResult(result)
@@ -54,6 +58,20 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		return nil, rpcErr
 	}
 
+	return wrapped, nil
+}
+
+func wrapToolError(toolErr *protocol.Error) (protocol.CallToolResult, *protocol.Error) {
+	category := toolErr.Category
+	message := toolErr.Message
+	if category == "" {
+		category = "internal_error"
+		message = "internal error"
+	}
+	wrapped, err := protocol.NewCallToolErrorResult(category, message)
+	if err != nil {
+		return protocol.CallToolResult{}, internalToolResultError()
+	}
 	return wrapped, nil
 }
 

@@ -232,13 +232,15 @@ func mapSearchError(err error) *protocol.Error {
 	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch):
 		return invalidParamsError()
 	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrMatchLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded):
-		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded", Category: "limit_exceeded"}
 	case errors.Is(err, fs.ErrFileTooLarge):
-		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded", Category: "limit_exceeded"}
 	case errors.Is(err, search.ErrContentSearchUnavailable):
-		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: unavailable"}
-	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: canceled"}
+		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: unavailable", Category: "unavailable"}
+	case errors.Is(err, context.Canceled):
+		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: canceled", Category: "canceled"}
+	case errors.Is(err, context.DeadlineExceeded):
+		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: deadline exceeded", Category: "deadline_exceeded"}
 	default:
 		return mapFilesystemError(err)
 	}

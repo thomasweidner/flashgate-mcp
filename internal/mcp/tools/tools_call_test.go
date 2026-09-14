@@ -218,12 +218,13 @@ func TestCallHandlerTreatsMissingAndNullArgumentsAsEmptyObject(t *testing.T) {
 	}
 }
 
-func TestCallHandlerReturnsToolError(t *testing.T) {
+func TestCallHandlerReturnsNormalizedToolError(t *testing.T) {
 	t.Parallel()
 
 	expectedErr := &protocol.Error{
-		Code:    protocol.ErrInvalidParams,
-		Message: "invalid path",
+		Code:     protocol.ErrInvalidParams,
+		Message:  "invalid path",
+		Category: "invalid_path",
 	}
 
 	registry := NewRegistry()
@@ -239,12 +240,38 @@ func TestCallHandlerReturnsToolError(t *testing.T) {
 		json.RawMessage(`{"name":"test_tool","arguments":{"path":"../outside"}}`),
 	)
 
-	if result != nil {
-		t.Fatalf("expected nil result, got %#v", result)
+	if rpcErr != nil {
+		t.Fatalf("expected MCP tool error result, got JSON-RPC error %#v", rpcErr)
 	}
+	want := protocol.CallToolResult{
+		Content:           []protocol.TextContent{protocol.NewTextContent(`{"category":"invalid_path","message":"invalid path"}`)},
+		StructuredContent: json.RawMessage(`{"category":"invalid_path","message":"invalid path"}`),
+		IsError:           true,
+	}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected tool error result: %#v", result)
+	}
+}
 
-	if rpcErr != expectedErr {
-		t.Fatal("expected tool error to be returned unchanged")
+func TestCallHandlerFailsClosedForUnclassifiedToolError(t *testing.T) {
+	registry := NewRegistry()
+	registry.Register(&testTool{
+		name: "test_tool",
+		err:  &protocol.Error{Code: protocol.ErrInternalError, Message: `open C:\\Users\\secret\\file.txt: access denied`},
+	})
+
+	result, rpcErr := NewCallHandler(registry).Handle(
+		handlers.Context{}, json.RawMessage(`{"name":"test_tool","arguments":{}}`),
+	)
+	if rpcErr != nil {
+		t.Fatalf("expected MCP tool error result, got %#v", rpcErr)
+	}
+	want, err := protocol.NewCallToolErrorResult("internal_error", "internal error")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unclassified error did not fail closed: %#v", result)
 	}
 }
 

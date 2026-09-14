@@ -130,5 +130,5 @@ func mapFilesystemError(err error) *protocol.Error {
 		code = protocol.ErrInternalError
 	}
 
-	return &protocol.Error{Code: code, Message: "filesystem error: " + strings.ReplaceAll(string(category), "_", " ")}
+	return &protocol.Error{Code: code, Message: "filesystem error: " + strings.ReplaceAll(string(category), "_", " "), Category: string(category)}
 }
