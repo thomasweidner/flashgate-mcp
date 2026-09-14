@@ -105,6 +105,46 @@ func TestSearchPathsMatchesFilenamePattern(t *testing.T) {
 	}
 }
 
+func TestSearchPathsAppliesRelativeIncludeExcludePatterns(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "keep.go"}, {Name: "skip.go"}, {Name: "note.txt"}}
+
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"includePatterns":["*.go"],"excludePatterns":["skip.go"]}`))
+	if rpcErr != nil {
+		t.Fatal(rpcErr)
+	}
+	want := searchPathsResult{Paths: []search.Path{{Path: "keep.go"}}}
+	if !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result: %#v", result)
+	}
+}
+
+func TestSearchPathsRejectsInvalidPathPatternsBeforeTraversal(t *testing.T) {
+	tooLong := strings.Repeat("a", maxSearchPatternBytes+1)
+	tooMany := make([]string, maxSearchPathPatterns+1)
+	for i := range tooMany {
+		tooMany[i] = fmt.Sprintf("%d", i)
+	}
+	cases := []any{
+		map[string]any{"includePatterns": []string{"["}},
+		map[string]any{"excludePatterns": []string{""}},
+		map[string]any{"includePatterns": []string{"same", "same"}},
+		map[string]any{"includePatterns": []string{tooLong}},
+		map[string]any{"excludePatterns": tooMany},
+	}
+	for _, arguments := range cases {
+		raw, err := json.Marshal(arguments)
+		if err != nil {
+			t.Fatal(err)
+		}
+		fake := newFakeFileSystem()
+		_, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), raw)
+		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.listPath != "" || fake.readPath != "" {
+			t.Fatalf("expected pre-traversal invalid params for %s, list=%q read=%q err=%#v", raw, fake.listPath, fake.readPath, rpcErr)
+		}
+	}
+}
+
 func TestSearchPathsMatchesLiteralText(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.entries = []fs.Entry{{Name: "wanted.txt", Size: 12}}

@@ -21,6 +21,8 @@ const (
 	maxSearchMatchesPerFile = 256
 	maxSearchContentMatches = 1000
 	maxSearchResponseBytes  = 1024 * 1024
+	maxSearchPathPatterns   = 32
+	maxSearchPatternBytes   = 256
 )
 
 // SearchPathsTool exposes bounded recursive path search as an MCP tool.
@@ -72,6 +74,8 @@ func (t *SearchPathsTool) InputSchema() any {
 				"minLength":   1,
 				"description": "Go RE2-style regular expression to find in files.",
 			},
+			"includePatterns": pathPatternArraySchema("Root-relative path.Match patterns; at least one must match when supplied."),
+			"excludePatterns": pathPatternArraySchema("Root-relative path.Match patterns that take precedence over inclusions."),
 			"type": map[string]any{
 				"type":        "string",
 				"enum":        []string{"file", "directory"},
@@ -114,6 +118,10 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 	if rpcErr != nil {
 		return nil, rpcErr
 	}
+	patterns, rpcErr := arguments.pathPatterns()
+	if rpcErr != nil {
+		return nil, rpcErr
+	}
 	selector := ""
 	kind := search.NameMatchLiteral
 	switch {
@@ -140,20 +148,20 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 		return nil, invalidParamsError()
 	}
 	if arguments.Text != nil {
-		matches, err := t.service.SearchLiteral(ctx, startPath, selector, kind, filter, *arguments.Text, contentSearchLimits())
+		matches, err := t.service.SearchLiteralPatterns(ctx, startPath, selector, kind, filter, patterns, *arguments.Text, contentSearchLimits())
 		if err != nil {
 			return nil, mapSearchError(err)
 		}
 		return searchContentResult{Matches: matches}, nil
 	}
 	if arguments.Regex != nil {
-		matches, err := t.service.SearchRegex(ctx, startPath, selector, kind, filter, *arguments.Regex, contentSearchLimits())
+		matches, err := t.service.SearchRegexPatterns(ctx, startPath, selector, kind, filter, patterns, *arguments.Regex, contentSearchLimits())
 		if err != nil {
 			return nil, mapSearchError(err)
 		}
 		return searchContentResult{Matches: matches}, nil
 	}
-	paths, err := t.service.SearchFiltered(ctx, startPath, selector, kind, filter)
+	paths, err := t.service.SearchFilteredPatterns(ctx, startPath, selector, kind, filter, patterns)
 	if err != nil {
 		return nil, mapSearchError(err)
 	}
@@ -162,16 +170,47 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 }
 
 type searchPathsArguments struct {
-	Path              *string `json:"path,omitempty"`
-	Name              *string `json:"name,omitempty"`
-	NamePattern       *string `json:"namePattern,omitempty"`
-	Text              *string `json:"text,omitempty"`
-	Regex             *string `json:"regex,omitempty"`
-	Type              *string `json:"type,omitempty"`
-	MinSizeBytes      *int64  `json:"minSizeBytes,omitempty"`
-	MaxSizeBytes      *int64  `json:"maxSizeBytes,omitempty"`
-	ModifiedNotBefore *string `json:"modifiedNotBefore,omitempty"`
-	ModifiedNotAfter  *string `json:"modifiedNotAfter,omitempty"`
+	Path              *string  `json:"path,omitempty"`
+	Name              *string  `json:"name,omitempty"`
+	NamePattern       *string  `json:"namePattern,omitempty"`
+	Text              *string  `json:"text,omitempty"`
+	Regex             *string  `json:"regex,omitempty"`
+	IncludePatterns   []string `json:"includePatterns,omitempty"`
+	ExcludePatterns   []string `json:"excludePatterns,omitempty"`
+	Type              *string  `json:"type,omitempty"`
+	MinSizeBytes      *int64   `json:"minSizeBytes,omitempty"`
+	MaxSizeBytes      *int64   `json:"maxSizeBytes,omitempty"`
+	ModifiedNotBefore *string  `json:"modifiedNotBefore,omitempty"`
+	ModifiedNotAfter  *string  `json:"modifiedNotAfter,omitempty"`
+}
+
+func pathPatternArraySchema(description string) map[string]any {
+	return map[string]any{
+		"type": "array", "maxItems": maxSearchPathPatterns, "uniqueItems": true,
+		"items":       map[string]any{"type": "string", "minLength": 1, "maxLength": maxSearchPatternBytes},
+		"description": description,
+	}
+}
+
+func (a searchPathsArguments) pathPatterns() (search.PathPatterns, *protocol.Error) {
+	patterns := search.PathPatterns{Include: a.IncludePatterns, Exclude: a.ExcludePatterns}
+	if len(patterns.Include) > maxSearchPathPatterns || len(patterns.Exclude) > maxSearchPathPatterns {
+		return search.PathPatterns{}, invalidParamsError()
+	}
+	seen := make(map[string]struct{}, len(patterns.Include)+len(patterns.Exclude))
+	for _, values := range [][]string{patterns.Include, patterns.Exclude} {
+		clear(seen)
+		for _, pattern := range values {
+			if pattern == "" || len(pattern) > maxSearchPatternBytes {
+				return search.PathPatterns{}, invalidParamsError()
+			}
+			if _, duplicate := seen[pattern]; duplicate {
+				return search.PathPatterns{}, invalidParamsError()
+			}
+			seen[pattern] = struct{}{}
+		}
+	}
+	return patterns, nil
 }
 
 func contentSearchLimits() search.LiteralLimits {
@@ -229,7 +268,7 @@ type searchContentResult struct {
 
 func mapSearchError(err error) *protocol.Error {
 	switch {
-	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch):
+	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch), errors.Is(err, search.ErrInvalidPathPatterns):
 		return invalidParamsError()
 	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrMatchLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}

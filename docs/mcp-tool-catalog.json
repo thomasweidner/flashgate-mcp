@@ -87,6 +87,28 @@
             "type": "string",
             "minLength": 1,
             "description": "Go RE2-style regular expression to find in files."
+          },
+          "includePatterns": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "description": "Root-relative path.Match patterns; at least one must match when supplied."
+          },
+          "excludePatterns": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "description": "Root-relative path.Match patterns that take precedence over inclusions."
           }
         },
         "allOf": [
