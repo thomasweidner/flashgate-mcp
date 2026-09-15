@@ -32,6 +32,7 @@
       "title": "List Directory",
       "description": "Lists files and directories below the configured filesystem root.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "additionalProperties": false,
         "properties": {
@@ -43,6 +44,7 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "entries": {
@@ -80,6 +82,7 @@
       "title": "Read File",
       "description": "Reads a text file below the configured filesystem root.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
           "path"
@@ -99,6 +102,7 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "content": {
@@ -120,6 +124,7 @@
       "title": "Get Path Info",
       "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
           "path"
@@ -134,27 +139,51 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "oneOf": [
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": false }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": false
+              }
             },
-            "required": ["path", "exists"],
+            "required": [
+              "path",
+              "exists"
+            ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": true },
-              "name": { "type": "string" },
-              "isDir": { "type": "boolean" },
-              "size": { "type": "integer" }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer"
+              }
             },
-            "required": ["path", "exists", "name", "isDir", "size"],
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
             "additionalProperties": false
           }
         ]
@@ -165,6 +194,7 @@
       "title": "Write File",
       "description": "Writes a text file below the configured filesystem root.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
           "path"
@@ -187,6 +217,7 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "path": {
@@ -212,6 +243,7 @@
       "title": "Create Directory",
       "description": "Creates a directory and any missing parents below the configured filesystem root.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
           "path"
@@ -226,6 +258,7 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "path": {
@@ -247,6 +280,7 @@
       "title": "Delete Path",
       "description": "Deletes a file or directory below the configured filesystem root.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
           "path"
@@ -265,6 +299,7 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "path": {
@@ -286,6 +321,7 @@
       "title": "Copy Path",
       "description": "Copies a file below the configured filesystem root. Directory copy is not supported.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
           "source",
@@ -310,6 +346,7 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "source": {
@@ -335,6 +372,7 @@
       "title": "Move Path",
       "description": "Moves or renames a file or directory on the same volume below the configured filesystem root.",
       "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "required": [
           "source",
@@ -359,6 +397,7 @@
         }
       },
       "resultSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "source": {
