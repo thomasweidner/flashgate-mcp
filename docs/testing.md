@@ -888,6 +888,8 @@ Limit and redaction behavior is primarily covered by Go unit tests. Additional l
 
 Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
+CI runs `TestRuntimeSchemasMatchStaticCatalog` in the dedicated `MCP schema snapshot` job. The checked-in machine-readable catalog is the reviewed snapshot: any input or result schema change fails that job until the runtime change and `docs/mcp-tool-catalog.json` update are reviewed together. `TestCIRunsSchemaSnapshotGate` protects the workflow job and its focused command from accidental removal.
+
 The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
 
 ### MCP Compatibility Testing

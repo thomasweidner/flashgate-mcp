@@ -10,19 +10,56 @@ import (
 )
 
 func TestRuntimeDefinitionsMatchStaticCatalog(t *testing.T) {
+	catalog, runtimeTools := loadCatalogAndRuntimeTools(t)
+
+	for index, runtimeTool := range runtimeTools {
+		definition := runtimeTool.Definition()
+		entry := catalog.Tools[index]
+		if definition.Name != entry.Name || definition.Title != entry.Title || definition.Description != entry.Description {
+			t.Fatalf("definition mismatch at index %d: runtime=%#v catalog=%#v", index, definition, entry)
+		}
+	}
+}
+
+// TestRuntimeSchemasMatchStaticCatalog is the focused schema-snapshot gate run
+// by CI. Any input or result schema change must update the reviewed static
+// catalog in the same change or this test fails.
+func TestRuntimeSchemasMatchStaticCatalog(t *testing.T) {
+	catalog, runtimeTools := loadCatalogAndRuntimeTools(t)
+
+	for index, runtimeTool := range runtimeTools {
+		definition := runtimeTool.Definition()
+		entry := catalog.Tools[index]
+
+		runtimeSchema := normalizeSchema(t, definition.InputSchema)
+		if !reflect.DeepEqual(runtimeSchema, entry.InputSchema) {
+			t.Fatalf("%s input schema mismatch: runtime=%#v catalog=%#v", definition.Name, runtimeSchema, entry.InputSchema)
+		}
+
+		runtimeOutputSchema := normalizeSchema(t, definition.OutputSchema)
+		if !reflect.DeepEqual(runtimeOutputSchema, entry.ResultSchema) {
+			t.Fatalf("%s output schema mismatch: runtime=%#v catalog=%#v", definition.Name, runtimeOutputSchema, entry.ResultSchema)
+		}
+	}
+}
+
+type staticCatalog struct {
+	Tools []struct {
+		Name         string         `json:"name"`
+		Title        string         `json:"title"`
+		Description  string         `json:"description"`
+		InputSchema  map[string]any `json:"inputSchema"`
+		ResultSchema map[string]any `json:"resultSchema"`
+	} `json:"tools"`
+}
+
+func loadCatalogAndRuntimeTools(t *testing.T) (staticCatalog, []Tool) {
+	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "docs", "mcp-tool-catalog.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var catalog struct {
-		Tools []struct {
-			Name         string         `json:"name"`
-			Title        string         `json:"title"`
-			Description  string         `json:"description"`
-			InputSchema  map[string]any `json:"inputSchema"`
-			ResultSchema map[string]any `json:"resultSchema"`
-		} `json:"tools"`
-	}
+	var catalog staticCatalog
 	raw = bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
 	if err := json.Unmarshal(raw, &catalog); err != nil {
 		t.Fatalf("invalid tool catalog: %v", err)
@@ -37,24 +74,7 @@ func TestRuntimeDefinitionsMatchStaticCatalog(t *testing.T) {
 	if len(catalog.Tools) != len(runtimeTools) {
 		t.Fatalf("catalog has %d tools, runtime has %d", len(catalog.Tools), len(runtimeTools))
 	}
-
-	for index, runtimeTool := range runtimeTools {
-		definition := runtimeTool.Definition()
-		entry := catalog.Tools[index]
-		if definition.Name != entry.Name || definition.Title != entry.Title || definition.Description != entry.Description {
-			t.Fatalf("definition mismatch at index %d: runtime=%#v catalog=%#v", index, definition, entry)
-		}
-
-		runtimeSchema := normalizeSchema(t, definition.InputSchema)
-		if !reflect.DeepEqual(runtimeSchema, entry.InputSchema) {
-			t.Fatalf("%s input schema mismatch: runtime=%#v catalog=%#v", definition.Name, runtimeSchema, entry.InputSchema)
-		}
-
-		runtimeOutputSchema := normalizeSchema(t, definition.OutputSchema)
-		if !reflect.DeepEqual(runtimeOutputSchema, entry.ResultSchema) {
-			t.Fatalf("%s output schema mismatch: runtime=%#v catalog=%#v", definition.Name, runtimeOutputSchema, entry.ResultSchema)
-		}
-	}
+	return catalog, runtimeTools
 }
 
 func normalizeSchema(t *testing.T, schema any) map[string]any {
