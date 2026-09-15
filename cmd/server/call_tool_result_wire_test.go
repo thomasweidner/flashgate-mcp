@@ -158,7 +158,7 @@ func runCallToolWireRequest(t *testing.T, registry *tools.Registry, params strin
 	t.Helper()
 	request := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":` + params + `}` + "\n"
 	output := &bytes.Buffer{}
-	server := mcpserver.New(strings.NewReader(request), output, createRouter("test-server", "test-version", registry))
+	server := mcpserver.New(strings.NewReader(request), output, createRouter("test-server", "test-version", registry, toolCapabilities{filesystemWrite: true}))
 	if err := server.Run(context.Background()); err != nil {
 		t.Fatal(err)
 	}

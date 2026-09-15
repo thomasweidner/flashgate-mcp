@@ -266,9 +266,9 @@ func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 	}
 	routerCalls := 0
 	originalRouterFactory := dependencies.newRouter
-	dependencies.newRouter = func(name string, version string, registry *tools.Registry) *router.Router {
+	dependencies.newRouter = func(name string, version string, registry *tools.Registry, capabilities toolCapabilities) *router.Router {
 		routerCalls++
-		return originalRouterFactory(name, version, registry)
+		return originalRouterFactory(name, version, registry, capabilities)
 	}
 	serverCalls := 0
 	dependencies.newServer = func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer {
@@ -319,7 +319,7 @@ func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) 
 			return dependencies
 		},
 		"nil router": func(dependencies bootstrapDependencies) bootstrapDependencies {
-			dependencies.newRouter = func(string, string, *tools.Registry) *router.Router { return nil }
+			dependencies.newRouter = func(string, string, *tools.Registry, toolCapabilities) *router.Router { return nil }
 			return dependencies
 		},
 		"nil server": func(dependencies bootstrapDependencies) bootstrapDependencies {
