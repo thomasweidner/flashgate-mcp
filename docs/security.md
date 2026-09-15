@@ -370,6 +370,11 @@ The server enforces:
 
 Server-started processes receive opaque handles. PIDs are diagnostic only and cannot be the sole authority because PID reuse may target the wrong process.
 
+The [process policy model](process-policy-model.md) defines the distinct
+`process.observe`, `process.manage`, and post-Version 1.0
+`process.control.external` authority classes, their server-derived policy
+inputs, and the ownership checks required on every lifecycle operation.
+
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
