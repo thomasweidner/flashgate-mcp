@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
@@ -124,6 +125,8 @@ func TestCapabilitiesFromReadOnly(t *testing.T) {
 }
 
 type noopFileSystem struct{}
+
+func (noopFileSystem) PathPolicy() security.Policy { return security.DefaultPolicy() }
 
 func (noopFileSystem) List(string) ([]fs.Entry, error) {
 	return nil, errors.New("not implemented")

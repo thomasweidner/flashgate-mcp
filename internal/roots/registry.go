@@ -14,14 +14,49 @@ import (
 const DefaultID = "default"
 
 var (
-	ErrInvalidEntry     = errors.New("invalid root entry")
-	ErrDuplicateID      = errors.New("duplicate root id")
-	ErrNoRoots          = errors.New("no roots configured")
-	ErrUnknownRoot      = errors.New("unknown root id")
-	ErrAccessDenied     = errors.New("root access denied")
-	ErrInvalidLimits    = errors.New("invalid root limits")
-	ErrInvalidFileTypes = errors.New("invalid root file types")
+	ErrInvalidEntry       = errors.New("invalid root entry")
+	ErrDuplicateID        = errors.New("duplicate root id")
+	ErrNoRoots            = errors.New("no roots configured")
+	ErrUnknownRoot        = errors.New("unknown root id")
+	ErrAccessDenied       = errors.New("root access denied")
+	ErrInvalidLimits      = errors.New("invalid root limits")
+	ErrInvalidFileTypes   = errors.New("invalid root file types")
+	ErrInvalidLinkRules   = errors.New("invalid root link rules")
+	ErrLinkPolicyMismatch = errors.New("root link rules do not match filesystem policy")
 )
+
+// SymlinkRule controls classic symbolic-link traversal for a root.
+type SymlinkRule uint8
+
+const (
+	DenySymlinks SymlinkRule = iota + 1
+	FollowInternalSymlinks
+)
+
+// ReparsePointRule controls Windows non-symlink reparse points. They remain
+// fail-closed because the current resolver cannot safely evaluate them.
+type ReparsePointRule uint8
+
+const DenyReparsePoints ReparsePointRule = 1
+
+// LinkRules is the explicit per-root symlink and Windows reparse-point policy.
+type LinkRules struct {
+	Symlinks      SymlinkRule
+	ReparsePoints ReparsePointRule
+}
+
+func (r LinkRules) valid() bool {
+	return (r.Symlinks == DenySymlinks || r.Symlinks == FollowInternalSymlinks) &&
+		r.ReparsePoints == DenyReparsePoints
+}
+
+func linkRulesFor(filesystem fs.FileSystem) LinkRules {
+	symlinks := DenySymlinks
+	if filesystem.PathPolicy().FollowSymlinks {
+		symlinks = FollowInternalSymlinks
+	}
+	return LinkRules{Symlinks: symlinks, ReparsePoints: DenyReparsePoints}
+}
 
 // Access is a set of operations permitted for a named root.
 type Access uint8
@@ -107,6 +142,7 @@ type Entry struct {
 	Access     Access
 	Limits     Limits
 	FileTypes  FileTypes
+	LinkRules  LinkRules
 }
 
 // Root is the resolved, authorized policy and filesystem for one root.
@@ -114,6 +150,7 @@ type Root struct {
 	FileSystem fs.FileSystem
 	Limits     Limits
 	FileTypes  FileTypes
+	LinkRules  LinkRules
 }
 
 // Registry is an immutable collection of named, independently confined roots.
@@ -136,6 +173,12 @@ func New(entries []Entry) (*Registry, error) {
 		}
 		if !entry.FileTypes.valid() {
 			return nil, ErrInvalidFileTypes
+		}
+		if !entry.LinkRules.valid() {
+			return nil, ErrInvalidLinkRules
+		}
+		if entry.LinkRules != linkRulesFor(entry.FileSystem) {
+			return nil, ErrLinkPolicyMismatch
 		}
 		if _, exists := registry.entries[entry.ID]; exists {
 			return nil, ErrDuplicateID
@@ -160,7 +203,7 @@ func SingleWithAccess(filesystem fs.FileSystem, access Access) (*Registry, error
 // SingleWithPolicy preserves the current single-root deployment with explicit
 // access and resource policies derived from configuration.
 func SingleWithPolicy(filesystem fs.FileSystem, access Access, limits Limits) (*Registry, error) {
-	return New([]Entry{{ID: DefaultID, FileSystem: filesystem, Access: access, Limits: limits, FileTypes: AllFileTypes()}})
+	return New([]Entry{{ID: DefaultID, FileSystem: filesystem, Access: access, Limits: limits, FileTypes: AllFileTypes(), LinkRules: linkRulesFor(filesystem)}})
 }
 
 // FileSystem returns a root only when all requested access is permitted.
@@ -180,7 +223,7 @@ func (r *Registry) Root(id string, required Access) (Root, error) {
 	}
 	fileTypes := entry.FileTypes
 	fileTypes.Extensions = append([]string(nil), entry.FileTypes.Extensions...)
-	return Root{FileSystem: entry.FileSystem, Limits: entry.Limits, FileTypes: fileTypes}, nil
+	return Root{FileSystem: entry.FileSystem, Limits: entry.Limits, FileTypes: fileTypes, LinkRules: entry.LinkRules}, nil
 }
 
 func (r *Registry) IDs() []string {

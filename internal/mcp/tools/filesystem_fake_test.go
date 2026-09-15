@@ -1,5 +1,7 @@
 package tools
 
+import "github.com/thomasweidner/flashgate-mcp/internal/security"
+
 import "github.com/thomasweidner/flashgate-mcp/internal/fs"
 
 type fakeFileSystem struct {
@@ -32,6 +34,8 @@ type fakeFileSystem struct {
 	copyOverwrite   bool
 	copyErr         error
 }
+
+func (*fakeFileSystem) PathPolicy() security.Policy { return security.DefaultPolicy() }
 
 func newFakeFileSystem() *fakeFileSystem { return &fakeFileSystem{} }
 func (f *fakeFileSystem) List(path string) ([]fs.Entry, error) {

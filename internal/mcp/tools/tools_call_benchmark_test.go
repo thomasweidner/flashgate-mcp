@@ -14,6 +14,7 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 var benchmarkResultSink []byte
@@ -146,6 +147,8 @@ func BenchmarkCallToolHandlerProcessingParallel(b *testing.B) {
 }
 
 type benchmarkParallelFileSystem struct{}
+
+func (benchmarkParallelFileSystem) PathPolicy() security.Policy { return security.DefaultPolicy() }
 
 func (benchmarkParallelFileSystem) List(string) ([]fs.Entry, error)    { return nil, nil }
 func (benchmarkParallelFileSystem) Read(string, int64) ([]byte, error) { return nil, nil }

@@ -330,10 +330,13 @@ invalid-parameters response as other root-policy denials. The current
 `read_file` path also enforces the selected root's file and result byte ceilings
 before filesystem I/O. Scan and temporary-data consumers remain planned and
 must consume the already-bound root policy when implemented. External
-configuration of multiple roots remains planned. Each root may additionally
-define:
+configuration of multiple roots remains planned. Each entry has explicit
+symlink/reparse rules, and registry construction rejects missing, unsupported,
+or filesystem-mismatched rules. A root may deny classic symlinks or follow them
+only while effective-path confinement remains satisfied. Windows non-symlink
+reparse points remain denied because the current resolver cannot safely
+evaluate them. Each root may additionally define:
 
-- symlink/reparse policy;
 - capability mapping;
 - process working-directory permission;
 - service execution backend.
