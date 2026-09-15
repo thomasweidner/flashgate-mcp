@@ -80,6 +80,15 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
+			name:   "write_file",
+			params: `{"name":"write_file","arguments":{"path":"written file.txt","content":"written through tools/call"}}`,
+			assertions: func(t *testing.T, value map[string]any) {
+				if value["path"] != "written file.txt" || value["size"] != json.Number("26") || value["written"] != true {
+					t.Fatalf("unexpected write result: %#v", value)
+				}
+			},
+		},
+		{
 			name:   "move_path default profile",
 			params: `{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {
@@ -113,6 +122,13 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(root, "new.txt")); err != nil {
 		t.Fatalf("expected move target: %v", err)
+	}
+	written, err := os.ReadFile(filepath.Join(root, "written file.txt"))
+	if err != nil {
+		t.Fatalf("expected written file: %v", err)
+	}
+	if string(written) != "written through tools/call" {
+		t.Fatalf("unexpected written content: %q", written)
 	}
 }
 
