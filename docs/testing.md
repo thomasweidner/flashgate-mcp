@@ -951,6 +951,9 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Operations and multi-principal tests
 
+- execution-unit selection defaults to a goroutine only when in-process cancellation is reliable;
+- every external, isolation, identity, cancellation, and platform gate selects a subprocess with a stable diagnostic reason;
+- simultaneous gates use deterministic precedence, while selection grants no execution authorization;
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
 - cross-principal status/result/cancel/cache/resource denial;
 - global, per-domain, and per-principal concurrency limits;
