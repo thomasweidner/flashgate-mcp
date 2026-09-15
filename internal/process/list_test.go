@@ -22,3 +22,21 @@ func TestLocalListerReturnsSortedBoundedFields(t *testing.T) {
 		}
 	}
 }
+
+func TestLocalTreeObserverReturnsSortedPortableSnapshot(t *testing.T) {
+	snapshot, err := (LocalTreeObserver{}).Tree(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(snapshot.Processes) == 0 {
+		t.Fatal("expected at least the test process")
+	}
+	for index, entry := range snapshot.Processes {
+		if entry.PID == 0 || entry.Name == "" || entry.ThreadCount == 0 {
+			t.Fatalf("entry %d has missing portable metadata: %+v", index, entry)
+		}
+		if index > 0 && snapshot.Processes[index-1].PID >= entry.PID {
+			t.Fatalf("entries are not strictly PID ordered: %+v then %+v", snapshot.Processes[index-1], entry)
+		}
+	}
+}

@@ -266,6 +266,13 @@ processes and access denials have distinct fixed client errors; unexpected
 native errors collapse to a generic observation failure so host details cannot
 cross the protocol boundary.
 
+The BL-117 `get_process_tree` implementation remains behind the same BL-118
+registration and authorization boundary. It exposes only portable PID, parent
+PID, name, and relative depth data. Both requested depth (maximum 8) and output
+size (maximum 200 nodes) are hard-bounded; truncation and partial native
+snapshots are explicit. It does not read process command lines, environments,
+users, executable paths, or working directories.
+
 Startup preflight completes before any tool Registry, Router or MCP server is created. Normal starts remain silent; diagnostics never share JSON-RPC stdout.
 
 ## Future Security Work

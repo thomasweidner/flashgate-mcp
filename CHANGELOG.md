@@ -8,6 +8,9 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added the unregistered BL-117 bounded `get_process_tree` implementation with
+  deterministic descendant ordering, explicit truncation/partial indicators,
+  portable Linux/Windows observation, and closed schemas and tests.
 - Added BL-116 explicit process-detail lookup for one PID with a closed
   `name`/`parentPid`/`threadCount` field allowlist, native Linux and Windows
   adapters, and safe missing/access-denied errors. The implementation remains

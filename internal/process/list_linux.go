@@ -63,6 +63,32 @@ func processDetails(ctx context.Context, pid uint32) (Details, error) {
 	return parseProcStat(pid, string(raw))
 }
 
+func processTree(ctx context.Context) (TreeSnapshot, error) {
+	directories, err := os.ReadDir("/proc")
+	if err != nil {
+		return TreeSnapshot{}, err
+	}
+	entries := make([]Details, 0, len(directories))
+	partial := false
+	for _, directory := range directories {
+		if err := ctx.Err(); err != nil {
+			return TreeSnapshot{}, err
+		}
+		pid, err := strconv.ParseUint(directory.Name(), 10, 32)
+		if err != nil || pid == 0 || !directory.IsDir() {
+			continue
+		}
+		details, err := processDetails(ctx, uint32(pid))
+		if err != nil {
+			// Processes may exit or become inaccessible during the snapshot.
+			partial = true
+			continue
+		}
+		entries = append(entries, details)
+	}
+	return TreeSnapshot{Processes: entries, Partial: partial}, nil
+}
+
 func parseProcStat(expectedPID uint32, value string) (Details, error) {
 	open := strings.IndexByte(value, '(')
 	close := strings.LastIndex(value, ") ")

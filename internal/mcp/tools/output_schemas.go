@@ -2,6 +2,15 @@ package tools
 
 func toolOutputSchema(toolName string) map[string]any {
 	switch toolName {
+	case getProcessTreeToolName:
+		return objectOutputSchema(map[string]any{
+			"rootPid": map[string]any{"type": "integer", "minimum": 1},
+			"processes": map[string]any{"type": "array", "maxItems": maximumProcessTreeNodes, "items": objectOutputSchema(map[string]any{
+				"pid": map[string]any{"type": "integer", "minimum": 1}, "parentPid": map[string]any{"type": "integer", "minimum": 0},
+				"name": map[string]any{"type": "string", "minLength": 1}, "depth": map[string]any{"type": "integer", "minimum": 0, "maximum": maximumProcessTreeDepth},
+			}, "pid", "parentPid", "name", "depth")},
+			"truncated": map[string]any{"type": "boolean"}, "partial": map[string]any{"type": "boolean"},
+		}, "rootPid", "processes", "truncated", "partial")
 	case getProcessDetailsToolName:
 		return objectOutputSchema(map[string]any{
 			"pid":         map[string]any{"type": "integer", "minimum": 1},
