@@ -27,7 +27,12 @@ the same generic Invalid params response as an unknown root and is rejected
 before filesystem I/O. Every root also carries positive file, result, scan, and
 temporary-data byte limits. `read_file` uses the smallest applicable server,
 root-file, root-result, and request maximum; future scan and temporary-data
-operations must consume those limits from the same resolved root policy.
+operations must consume those limits from the same resolved root policy. A
+root also explicitly allows all file types for compatibility or supplies a
+sorted allowlist of lower-case ASCII extensions such as `.md` and `.txt`.
+`read_file` and `write_file` reject extensions outside that root's policy before
+content I/O. Matching is case-insensitive and normalizes `/` and `\` so the
+same configured extension has identical Windows and Unix behavior.
 Absolute paths, traversal, denied hidden/UNC paths, and
 denied symlink, junction, or reparse access remain server-side errors. Inputs
 are strict JSON objects: unknown properties, malformed JSON, trailing JSON

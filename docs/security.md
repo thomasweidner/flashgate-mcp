@@ -321,13 +321,18 @@ MCP annotations are accurate hints only and never grant permission.
 Named roots use authoritative FlashGate configuration and root IDs plus
 relative paths. Explicit per-entry read/write enforcement is implemented in the
 registry and tool execution boundary. Positive per-entry file, result, scan,
-and temporary-data limits are also mandatory; the current `read_file` path
-enforces the selected root's file and result byte ceilings before filesystem
-I/O. Scan and temporary-data consumers remain planned and must consume the
-already-bound root policy when implemented. External configuration of multiple
-roots remains planned. Each root may additionally define:
+and temporary-data limits are also mandatory. Each entry also has an explicit
+file-type policy: either compatibility-wide access or a sorted allowlist of
+canonical lower-case ASCII extensions. `read_file` and `write_file` apply that
+policy before file-content I/O, using case-insensitive matching and identical
+slash handling on every platform. A denied type returns the same generic
+invalid-parameters response as other root-policy denials. The current
+`read_file` path also enforces the selected root's file and result byte ceilings
+before filesystem I/O. Scan and temporary-data consumers remain planned and
+must consume the already-bound root policy when implemented. External
+configuration of multiple roots remains planned. Each root may additionally
+define:
 
-- allowed file types;
 - symlink/reparse policy;
 - capability mapping;
 - process working-directory permission;

@@ -24,7 +24,7 @@ func (r singleFilesystemResolver) Root(id string, required roots.Access) (roots.
 	if required == 0 || required&^roots.ReadWrite != 0 {
 		return roots.Root{}, roots.ErrAccessDenied
 	}
-	return roots.Root{FileSystem: r.filesystem, Limits: roots.DefaultLimits(1<<62, 1<<62)}, nil
+	return roots.Root{FileSystem: r.filesystem, Limits: roots.DefaultLimits(1<<62, 1<<62), FileTypes: roots.AllFileTypes()}, nil
 }
 
 func resolveRoot(resolver filesystemResolver, id string, required roots.Access) (roots.Root, string, bool) {

@@ -4,6 +4,7 @@ package roots
 
 import (
 	"errors"
+	"path"
 	"sort"
 	"strings"
 
@@ -13,12 +14,13 @@ import (
 const DefaultID = "default"
 
 var (
-	ErrInvalidEntry  = errors.New("invalid root entry")
-	ErrDuplicateID   = errors.New("duplicate root id")
-	ErrNoRoots       = errors.New("no roots configured")
-	ErrUnknownRoot   = errors.New("unknown root id")
-	ErrAccessDenied  = errors.New("root access denied")
-	ErrInvalidLimits = errors.New("invalid root limits")
+	ErrInvalidEntry     = errors.New("invalid root entry")
+	ErrDuplicateID      = errors.New("duplicate root id")
+	ErrNoRoots          = errors.New("no roots configured")
+	ErrUnknownRoot      = errors.New("unknown root id")
+	ErrAccessDenied     = errors.New("root access denied")
+	ErrInvalidLimits    = errors.New("invalid root limits")
+	ErrInvalidFileTypes = errors.New("invalid root file types")
 )
 
 // Access is a set of operations permitted for a named root.
@@ -38,6 +40,50 @@ type Limits struct {
 	MaxResultBytes    int64
 	MaxScanBytes      int64
 	MaxTemporaryBytes int64
+}
+
+// FileTypes is a portable, extension-based allowlist for file-content access.
+// Extensions are canonical lower-case ASCII values including the leading dot.
+type FileTypes struct {
+	AllowAll   bool
+	Extensions []string
+}
+
+// AllFileTypes preserves the compatible single-root behavior.
+func AllFileTypes() FileTypes { return FileTypes{AllowAll: true} }
+
+func (f FileTypes) valid() bool {
+	if f.AllowAll {
+		return len(f.Extensions) == 0
+	}
+	if len(f.Extensions) == 0 {
+		return false
+	}
+	previous := ""
+	for _, extension := range f.Extensions {
+		if len(extension) < 2 || extension[0] != '.' || extension != strings.ToLower(extension) ||
+			strings.ContainsAny(extension, `/\\`) || extension == previous {
+			return false
+		}
+		for _, character := range extension[1:] {
+			if (character < 'a' || character > 'z') && (character < '0' || character > '9') {
+				return false
+			}
+		}
+		previous = extension
+	}
+	return sort.StringsAreSorted(f.Extensions)
+}
+
+// Allows reports whether a relative file path has an allowed extension. Both
+// slash forms are normalized before matching so policy does not vary by host OS.
+func (f FileTypes) Allows(filePath string) bool {
+	if f.AllowAll {
+		return true
+	}
+	extension := strings.ToLower(path.Ext(strings.ReplaceAll(filePath, `\`, "/")))
+	index := sort.SearchStrings(f.Extensions, extension)
+	return index < len(f.Extensions) && f.Extensions[index] == extension
 }
 
 // DefaultLimits preserves the limits used by the compatible single-root path.
@@ -60,12 +106,14 @@ type Entry struct {
 	FileSystem fs.FileSystem
 	Access     Access
 	Limits     Limits
+	FileTypes  FileTypes
 }
 
 // Root is the resolved, authorized policy and filesystem for one root.
 type Root struct {
 	FileSystem fs.FileSystem
 	Limits     Limits
+	FileTypes  FileTypes
 }
 
 // Registry is an immutable collection of named, independently confined roots.
@@ -86,9 +134,13 @@ func New(entries []Entry) (*Registry, error) {
 		if !entry.Limits.valid() {
 			return nil, ErrInvalidLimits
 		}
+		if !entry.FileTypes.valid() {
+			return nil, ErrInvalidFileTypes
+		}
 		if _, exists := registry.entries[entry.ID]; exists {
 			return nil, ErrDuplicateID
 		}
+		entry.FileTypes.Extensions = append([]string(nil), entry.FileTypes.Extensions...)
 		registry.entries[entry.ID] = entry
 	}
 	return registry, nil
@@ -108,7 +160,7 @@ func SingleWithAccess(filesystem fs.FileSystem, access Access) (*Registry, error
 // SingleWithPolicy preserves the current single-root deployment with explicit
 // access and resource policies derived from configuration.
 func SingleWithPolicy(filesystem fs.FileSystem, access Access, limits Limits) (*Registry, error) {
-	return New([]Entry{{ID: DefaultID, FileSystem: filesystem, Access: access, Limits: limits}})
+	return New([]Entry{{ID: DefaultID, FileSystem: filesystem, Access: access, Limits: limits, FileTypes: AllFileTypes()}})
 }
 
 // FileSystem returns a root only when all requested access is permitted.
@@ -126,7 +178,9 @@ func (r *Registry) Root(id string, required Access) (Root, error) {
 	if required == 0 || required&^ReadWrite != 0 || entry.Access&required != required {
 		return Root{}, ErrAccessDenied
 	}
-	return Root{FileSystem: entry.FileSystem, Limits: entry.Limits}, nil
+	fileTypes := entry.FileTypes
+	fileTypes.Extensions = append([]string(nil), entry.FileTypes.Extensions...)
+	return Root{FileSystem: entry.FileSystem, Limits: entry.Limits, FileTypes: fileTypes}, nil
 }
 
 func (r *Registry) IDs() []string {
