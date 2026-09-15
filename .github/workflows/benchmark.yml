@@ -1,0 +1,57 @@
+name: Benchmark Diagnostics
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quick-benchmark:
+    name: Quick benchmark (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-amd64
+            runner: windows-latest
+            result: build/benchmark-ci.windows-amd64.json
+          - platform: linux-amd64
+            runner: ubuntu-latest
+            result: build/benchmark-ci.linux-amd64.json
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run Windows quick benchmark
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/benchmark.ps1 -Quick -OutputPath '${{ matrix.result }}'
+
+      - name: Run Linux quick benchmark
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash scripts/benchmark.sh --quick --output '${{ matrix.result }}'
+
+      - name: Upload benchmark diagnostics
+        if: ${{ always() && hashFiles(matrix.result) != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ matrix.result }}
+          if-no-files-found: error
+          retention-days: 14
