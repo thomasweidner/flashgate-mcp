@@ -338,10 +338,12 @@ symlink/reparse rules, and registry construction rejects missing, unsupported,
 or filesystem-mismatched rules. A root may deny classic symlinks or follow them
 only while effective-path confinement remains satisfied. Windows non-symlink
 reparse points remain denied because the current resolver cannot safely
-evaluate them. Each root may additionally define:
-
-- process working-directory permission;
-- service execution backend.
+evaluate them. Each root has an independent process working-directory
+permission. Filesystem read/write access and capabilities do not imply it, and
+the compatible single-root bootstrap denies it by default. Process and command
+execution must resolve the selected root through the working-directory
+authorization gate before use. Each root may additionally define a service
+execution backend.
 
 Version 1.0 system-service roots support `service-account`. A reserved `user-worker` root must fail closed until the post-Version-1.0 backend exists. Tool input cannot choose the backend.
 

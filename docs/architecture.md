@@ -314,11 +314,13 @@ values with a leading dot; matching lower-cases the candidate extension and
 normalizes both slash forms so it is independent of the host OS. The compatible
 single-root path explicitly allows every type. `read_file` also applies the
 stricter of its server, selected-root file, selected-root result, and optional
-request limits. External multi-root configuration remains planned. The target
-additionally allows each root to define:
-
-- process working-directory permission;
-- service execution backend.
+request limits. `ProcessWorkingDirectory` is an independent per-root
+permission. Managed process or command execution must resolve the selected root
+through `WorkingDirectoryRoot` before using it as a working directory;
+filesystem access or capability grants do not imply this permission. The
+compatible single-root bootstrap denies process working-directory use by
+default. External multi-root configuration remains planned. The target
+additionally allows each root to define a service execution backend.
 
 For Version 1.0 system services, supported backend is `service-account`. A reserved `user-worker` selection fails closed until post-Version-1.0 implementation. Tool calls cannot choose the backend.
 
