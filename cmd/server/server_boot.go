@@ -83,7 +83,9 @@ func runWithIO(
 	if cfg.Filesystem().ReadOnly() {
 		rootAccess = roots.Read
 	}
-	rootRegistry, err := roots.SingleWithAccess(filesystem, rootAccess)
+	rootRegistry, err := roots.SingleWithPolicy(filesystem, rootAccess, roots.DefaultLimits(
+		cfg.Filesystem().MaxFileSize(), cfg.Server().MaxResponseBytes(),
+	))
 	if err != nil {
 		return config.NewError(config.CategoryStartupFailed, err)
 	}

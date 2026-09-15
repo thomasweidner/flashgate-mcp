@@ -7,18 +7,36 @@ import (
 
 type filesystemResolver interface {
 	FileSystem(string, roots.Access) (fs.FileSystem, error)
+	Root(string, roots.Access) (roots.Root, error)
 }
 
 type singleFilesystemResolver struct{ filesystem fs.FileSystem }
 
 func (r singleFilesystemResolver) FileSystem(id string, required roots.Access) (fs.FileSystem, error) {
+	root, err := r.Root(id, required)
+	return root.FileSystem, err
+}
+
+func (r singleFilesystemResolver) Root(id string, required roots.Access) (roots.Root, error) {
 	if id != roots.DefaultID {
-		return nil, roots.ErrUnknownRoot
+		return roots.Root{}, roots.ErrUnknownRoot
 	}
 	if required == 0 || required&^roots.ReadWrite != 0 {
-		return nil, roots.ErrAccessDenied
+		return roots.Root{}, roots.ErrAccessDenied
 	}
-	return r.filesystem, nil
+	return roots.Root{FileSystem: r.filesystem, Limits: roots.DefaultLimits(1<<62, 1<<62)}, nil
+}
+
+func resolveRoot(resolver filesystemResolver, id string, required roots.Access) (roots.Root, string, bool) {
+	id = effectiveRootID(id)
+	if !isNonBlank(id) {
+		return roots.Root{}, "", false
+	}
+	root, err := resolver.Root(id, required)
+	if err != nil {
+		return roots.Root{}, "", false
+	}
+	return root, id, true
 }
 
 func rootIDSchema() map[string]any {

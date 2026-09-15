@@ -6,7 +6,9 @@ read-only and write-only policies, and fail-closed empty, blank, duplicate,
 nil-filesystem, invalid-policy, unknown-root, and access-denied cases.
 Filesystem target tests additionally prove that an explicit opaque root ID
 selects only its independently confined filesystem and that unknown or
-access-denied selections are rejected before filesystem access.
+access-denied selections are rejected before filesystem access. They also
+verify that `read_file` applies the selected root's independent file and result
+byte ceilings rather than a limit belonging to another root.
 
 ## Slim project validation
 

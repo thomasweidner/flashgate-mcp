@@ -84,23 +84,20 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		return nil, invalidParamsError()
 	}
 
-	maxBytes := t.serverMaxBytes
-	if arguments.MaxBytes != nil {
-		if *arguments.MaxBytes < 1 {
-			return nil, invalidParamsError()
-		}
-		maxBytes = *arguments.MaxBytes
-	}
-	if maxBytes > t.serverMaxBytes {
-		maxBytes = t.serverMaxBytes
-	}
-
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Read)
+	root, _, ok := resolveRoot(t.resolver, arguments.RootID, roots.Read)
 	if !ok {
 		return nil, invalidParamsError()
 	}
 
-	content, err := filesystem.Read(arguments.Path, maxBytes)
+	maxBytes := min(t.serverMaxBytes, root.Limits.MaxFileBytes, root.Limits.MaxResultBytes)
+	if arguments.MaxBytes != nil {
+		if *arguments.MaxBytes < 1 {
+			return nil, invalidParamsError()
+		}
+		maxBytes = min(maxBytes, *arguments.MaxBytes)
+	}
+
+	content, err := root.FileSystem.Read(arguments.Path, maxBytes)
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}

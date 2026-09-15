@@ -10,12 +10,14 @@ import (
 
 type fakeFileSystem struct{ fs.FileSystem }
 
+var testLimits = DefaultLimits(1024, 2048)
+
 func TestRegistrySupportsMultipleIndependentRoots(t *testing.T) {
 	first := &fakeFileSystem{}
 	second := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "source", FileSystem: first, Access: Read},
-		{ID: "target", FileSystem: second, Access: ReadWrite},
+		{ID: "source", FileSystem: first, Access: Read, Limits: testLimits},
+		{ID: "target", FileSystem: second, Access: ReadWrite, Limits: testLimits},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -41,7 +43,8 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 		{name: "nil filesystem", entries: []Entry{{ID: "root"}}, want: ErrInvalidEntry},
 		{name: "missing access", entries: []Entry{{ID: "root", FileSystem: filesystem}}, want: ErrInvalidEntry},
 		{name: "unknown access", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: 4}}, want: ErrInvalidEntry},
-		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read}, {ID: "root", FileSystem: filesystem, Access: Write}}, want: ErrDuplicateID},
+		{name: "invalid limits", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read}}, want: ErrInvalidLimits},
+		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits}, {ID: "root", FileSystem: filesystem, Access: Write, Limits: testLimits}}, want: ErrDuplicateID},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -67,8 +70,8 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 func TestRegistryEnforcesIndependentRootAccess(t *testing.T) {
 	filesystem := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "read", FileSystem: filesystem, Access: Read},
-		{ID: "write", FileSystem: filesystem, Access: Write},
+		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits},
+		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits},
 	})
 	if err != nil {
 		t.Fatal(err)
