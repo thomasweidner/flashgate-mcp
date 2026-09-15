@@ -100,6 +100,33 @@ The machine-readable catalog is `workflows.json`. It covers initialize, initiali
 
 The corpus is created below the operating-system temporary directory, is removed after the run, and is never serialized into results.
 
+## Representative filesystem corpus
+
+`filesystem-corpus.json` is the machine-readable, deterministic corpus contract
+for filesystem integration and comparative benchmarks. It fixes a seed and
+describes small and large files, deep and wide directory trees, and binary
+fixtures without committing generated payloads to Git. Its closed JSON Schema
+is `filesystem-corpus.schema.json`.
+
+The cross-volume cases describe a primary source and secondary target. A runner
+must prove that those roots are on distinct filesystem volumes before reporting
+such a case as executed; when a second volume is unavailable, the case is
+`not_supported`, not emulated inside one volume. Generating or validating this
+corpus does not alter the existing `flashgate-benchmark-corpus/v1` performance
+baseline. A future benchmark workflow must change its corpus-version binding
+when it begins consuming this broader corpus.
+
+Generators consume the entries in their JSON order and use slash-separated
+relative paths. Small files use `small/file-%04d.txt`; deep-tree levels use
+`deep/level-%02d` and contain `file-%02d-%02d.txt`; wide-tree files use
+`wide/dir-%03d/file-%03d.bin`. `deterministic-text` repeats the UTF-8 bytes of
+`FlashGate benchmark text.\n`. `repeated-byte-sequence-0-255` writes the byte at
+offset `n` as `n mod 256`. `deterministic-binary` writes `(seed + 31*n) mod 256`.
+`deterministic-binary-with-nuls` uses the same sequence except every sixteenth
+byte is zero. Writers truncate the final repetition to the declared byte size.
+These rules make corpus bytes reproducible without storing large generated
+files.
+
 ## Token approximation
 
 `approx_tokens_bytes4` is exactly:

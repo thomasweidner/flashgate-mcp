@@ -1,0 +1,56 @@
+{
+  "schemaVersion": "flashgate-filesystem-corpus/v1",
+  "seed": 6727267,
+  "fixtures": {
+    "smallFiles": {
+      "count": 32,
+      "bytesPerFile": 64
+    },
+    "largeFiles": [
+      {
+        "name": "large-text-8mib.txt",
+        "sizeBytes": 8388608,
+        "content": "deterministic-text"
+      },
+      {
+        "name": "large-binary-8mib.bin",
+        "sizeBytes": 8388608,
+        "content": "deterministic-binary"
+      }
+    ],
+    "deepTree": {
+      "depth": 32,
+      "filesPerLevel": 2
+    },
+    "wideTree": {
+      "directories": 32,
+      "filesPerDirectory": 32
+    },
+    "binaryFiles": [
+      {
+        "name": "all-byte-values.bin",
+        "sizeBytes": 65536,
+        "content": "repeated-byte-sequence-0-255"
+      },
+      {
+        "name": "embedded-nuls.bin",
+        "sizeBytes": 65536,
+        "content": "deterministic-binary-with-nuls"
+      }
+    ]
+  },
+  "crossVolumeCases": [
+    {
+      "name": "file-move",
+      "source": "primary/cross-volume/file.bin",
+      "target": "secondary/cross-volume/file.bin",
+      "requiresDistinctVolumes": true
+    },
+    {
+      "name": "directory-move",
+      "source": "primary/cross-volume/tree",
+      "target": "secondary/cross-volume/tree",
+      "requiresDistinctVolumes": true
+    }
+  ]
+}

@@ -523,6 +523,16 @@ change.
 
 FlashGate MCP uses Go's standard testing framework and the `flashgate-mcp` binary.
 
+The representative filesystem benchmark corpus is defined by
+[`benchmarks/filesystem-corpus.json`](../benchmarks/filesystem-corpus.json) and
+its closed [JSON Schema](../benchmarks/filesystem-corpus.schema.json). It covers
+small and large files, deep and wide trees, deterministic binary data, and
+explicit cross-volume file and directory cases. Cross-volume execution evidence
+is valid only when the runner proves distinct source and target volumes; a
+single-volume simulation is not native cross-volume evidence. Generated corpus
+payloads remain temporary and must not be committed or embedded in benchmark
+results.
+
 The project aims for high test coverage in security-sensitive and filesystem-related code.
 
 ## Test Commands

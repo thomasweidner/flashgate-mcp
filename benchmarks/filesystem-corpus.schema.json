@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:flashgate:benchmark:filesystem-corpus:v1",
+  "title": "FlashGate representative filesystem corpus",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "seed", "fixtures", "crossVolumeCases"],
+  "properties": {
+    "schemaVersion": { "const": "flashgate-filesystem-corpus/v1" },
+    "seed": { "type": "integer", "minimum": 0 },
+    "fixtures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["smallFiles", "largeFiles", "deepTree", "wideTree", "binaryFiles"],
+      "properties": {
+        "smallFiles": { "$ref": "#/$defs/fileSet" },
+        "largeFiles": { "$ref": "#/$defs/generatedFiles" },
+        "deepTree": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["depth", "filesPerLevel"],
+          "properties": {
+            "depth": { "type": "integer", "minimum": 1 },
+            "filesPerLevel": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "wideTree": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["directories", "filesPerDirectory"],
+          "properties": {
+            "directories": { "type": "integer", "minimum": 1 },
+            "filesPerDirectory": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "binaryFiles": { "$ref": "#/$defs/generatedFiles" }
+      }
+    },
+    "crossVolumeCases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "source", "target", "requiresDistinctVolumes"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "source": { "type": "string", "pattern": "^primary/" },
+          "target": { "type": "string", "pattern": "^secondary/" },
+          "requiresDistinctVolumes": { "const": true }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "fileSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "bytesPerFile"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "bytesPerFile": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "generatedFiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "sizeBytes", "content"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "sizeBytes": { "type": "integer", "minimum": 1 },
+          "content": {
+            "enum": [
+              "deterministic-text",
+              "deterministic-binary",
+              "repeated-byte-sequence-0-255",
+              "deterministic-binary-with-nuls"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
