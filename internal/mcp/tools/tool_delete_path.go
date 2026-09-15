@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 )
 
 const deletePathToolName = "delete_path"
@@ -78,7 +79,7 @@ func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage
 		return nil, invalidParamsError()
 	}
 
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Write)
 	if !ok {
 		return nil, invalidParamsError()
 	}

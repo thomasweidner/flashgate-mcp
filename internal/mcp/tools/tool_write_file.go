@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 )
 
 const writeFileToolName = "write_file"
@@ -84,7 +85,7 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 
 	content := []byte(arguments.Content)
 
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Write)
 	if !ok {
 		return nil, invalidParamsError()
 	}

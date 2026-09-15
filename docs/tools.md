@@ -20,7 +20,11 @@ For later Codex activation, `MCP_READ_ONLY=true` must be explicit and `MCP_ROOT`
 Every filesystem input accepts an opaque `rootId` alongside paths that remain
 relative to that root. Omitting `rootId` selects `default` during the compatible
 single-root migration; an explicit unknown or blank ID is rejected before any
-filesystem access. Absolute paths, traversal, denied hidden/UNC paths, and
+filesystem access. Each selected root must explicitly allow the access required
+by the tool: listing, reading, and path inspection require read access, while
+write, create, delete, copy, and move require write access. A denied root uses
+the same generic Invalid params response as an unknown root and is rejected
+before filesystem I/O. Absolute paths, traversal, denied hidden/UNC paths, and
 denied symlink, junction, or reparse access remain server-side errors. Inputs
 are strict JSON objects: unknown properties, malformed JSON, trailing JSON
 values, wrong field types, explicit `null` field values, missing required

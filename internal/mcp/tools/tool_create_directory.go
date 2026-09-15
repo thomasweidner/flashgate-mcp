@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 )
 
 const createDirectoryToolName = "create_directory"
@@ -40,7 +41,7 @@ func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMe
 		return nil, invalidParamsError()
 	}
 
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Write)
 	if !ok {
 		return nil, invalidParamsError()
 	}

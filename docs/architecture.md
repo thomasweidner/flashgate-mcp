@@ -83,7 +83,8 @@ Not yet implemented:
 
 - external configuration for multiple named roots (the application-level
   immutable registry, MCP `rootId` selection with relative paths, and compatible
-  `default` single-root migration are implemented);
+  `default` single-root migration are implemented, as is per-entry read/write
+  enforcement);
 - general profiles/capabilities;
 - safe read-only as the profile-system default;
 - search;
@@ -297,7 +298,11 @@ valid root, no explicit profile  -> safe read-only profile
 higher-risk profile              -> explicit validated activation
 ```
 
-The target uses multiple named roots and model-visible root IDs plus relative paths. Each root can define:
+The named-root registry already assigns each entry explicit read, write, or
+combined access. Filesystem tools resolve the selected root with their required
+access before performing I/O; a denial fails closed. External multi-root
+configuration remains planned. The target additionally allows each root to
+define:
 
 - read/write access;
 - size/result/scan/temp limits;

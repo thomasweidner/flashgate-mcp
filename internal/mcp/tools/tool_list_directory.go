@@ -9,6 +9,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
@@ -61,7 +62,7 @@ func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMess
 		path = *arguments.Path
 	}
 
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Read)
 	if !ok {
 		return nil, invalidParamsError()
 	}
