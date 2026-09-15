@@ -11,6 +11,13 @@ import (
 // observation adapter.
 var ErrObservationUnsupported = errors.New("process observation unsupported")
 
+// ErrNotFound indicates that the requested PID was not present when observed.
+var ErrNotFound = errors.New("process not found")
+
+// ErrAccessDenied indicates that the operating system refused process metadata
+// access. Callers must not expose the underlying platform error.
+var ErrAccessDenied = errors.New("process access denied")
+
 // Entry is the deliberately small, portable process-list representation.
 // Additional fields belong to BL-115 and BL-116.
 type Entry struct {
@@ -22,6 +29,21 @@ type Entry struct {
 // order.
 type Lister interface {
 	List(context.Context) ([]Entry, error)
+}
+
+// Details is the bounded, portable process-detail representation. It
+// deliberately excludes command lines, environments, users, executable paths,
+// and working directories.
+type Details struct {
+	PID         uint32
+	Name        string
+	ParentPID   uint32
+	ThreadCount uint32
+}
+
+// Detailer obtains portable details for one PID.
+type Detailer interface {
+	Details(context.Context, uint32) (Details, error)
 }
 
 // LocalLister observes processes through the native operating-system adapter.
@@ -40,4 +62,13 @@ func (LocalLister) List(ctx context.Context) ([]Entry, error) {
 		return entries[i].PID < entries[j].PID
 	})
 	return entries, nil
+}
+
+// LocalDetailer observes one process through the native operating-system
+// adapter.
+type LocalDetailer struct{}
+
+// Details returns a point-in-time portable detail snapshot for pid.
+func (LocalDetailer) Details(ctx context.Context, pid uint32) (Details, error) {
+	return processDetails(ctx, pid)
 }

@@ -258,6 +258,14 @@ unregistered, so there is no new runtime observation surface before BL-118 adds
 effective `process.observe` registration and execution authorization. The
 implementation performs no process-control operation.
 
+The BL-116 `get_process_details` implementation is likewise unregistered and
+requires an explicit, non-empty field selection. Its portable allowlist is
+limited to name, parent PID, and thread count. It never reads or returns command
+lines, environments, users, executable paths, or working directories. Missing
+processes and access denials have distinct fixed client errors; unexpected
+native errors collapse to a generic observation failure so host details cannot
+cross the protocol boundary.
+
 Startup preflight completes before any tool Registry, Router or MCP server is created. Normal starts remain silent; diagnostics never share JSON-RPC stdout.
 
 ## Future Security Work

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	processdomain "github.com/thomasweidner/flashgate-mcp/internal/process"
 )
 
 func TestFilesystemRuntimeOutputSchemas(t *testing.T) {
@@ -30,6 +31,19 @@ func TestFilesystemRuntimeOutputSchemas(t *testing.T) {
 			t.Fatalf("%s root outputSchema must have type object, got %#v", runtimeTool.Name(), schema["type"])
 		}
 		assertRequiredPropertiesExist(t, runtimeTool.Name(), schema)
+	}
+}
+
+func TestProcessStructuredResultsMatchOutputSchemas(t *testing.T) {
+	name := "worker"
+	threads := uint32(2)
+	result := getProcessDetailsResult{PID: 42, Name: &name, ThreadCount: &threads}
+	if err := validateProjectSchema(normalizeSchema(t, toolOutputSchema(getProcessDetailsToolName)), normalizeResultValue(t, result)); err != nil {
+		t.Fatalf("get_process_details result does not match outputSchema: %v", err)
+	}
+	list := listProcessesResult{Processes: []processdomain.Entry{{PID: 42, Name: name}}, More: false}
+	if err := validateProjectSchema(normalizeSchema(t, toolOutputSchema(listProcessesToolName)), normalizeResultValue(t, list)); err != nil {
+		t.Fatalf("list_processes result does not match outputSchema: %v", err)
 	}
 }
 
