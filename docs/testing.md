@@ -636,6 +636,12 @@ go build -o build/flashgate-mcp.exe ./cmd/server
 
 ## Controlled native Linux validation
 
+The Windows orchestrator supplies the current user-profile path, its WSL path,
+and any configured OneDrive roots to native artifact leak validation at run
+time. Repository scripts retain only generic synthetic path markers for stable
+regression coverage; contributor and organization-specific path literals are
+not part of the native leak gate.
+
 Windows remains the leading FlashGate development environment. WSL2/Linux is
 only a native build, test, and validation environment. The canonical runner
 copies the Windows source one way into a new ext4 test copy below `/home`; no
