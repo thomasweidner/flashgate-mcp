@@ -14,6 +14,7 @@ func filesystemOutputSchema(toolName string) map[string]any {
 		}, "paths"), objectOutputSchema(map[string]any{
 			"matches": map[string]any{"type": "array", "items": objectOutputSchema(map[string]any{
 				"path": map[string]any{"type": "string"}, "byteOffset": map[string]any{"type": "integer", "minimum": 0},
+				"context": map[string]any{"type": "string"},
 			}, "path", "byteOffset")},
 			"truncated": map[string]any{"type": "boolean"},
 			"limit": objectOutputSchema(map[string]any{

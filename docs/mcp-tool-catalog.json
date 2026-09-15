@@ -99,6 +99,12 @@
             "minimum": 1,
             "maximum": 1000,
             "description": "Optional total match limit, capped by the server maximum."
+          },
+          "contextLines": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 10,
+            "description": "Optional number of complete UTF-8 lines before and after each content match."
           }
         },
         "allOf": [
@@ -165,6 +171,9 @@
                     "byteOffset": {
                       "type": "integer",
                       "minimum": 0
+                    },
+                    "context": {
+                      "type": "string"
                     }
                   },
                   "required": [
