@@ -957,6 +957,7 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - fallback behavior for clients without resource-link support;
 - deterministic tool ordering and catalog fingerprint;
 - profile-specific `tools/list`, schema, description, and initialization-instruction budgets;
+- exact profile-specific initialization guidance, including omission of mutation guidance from the read-only profile and a 512-byte UTF-8 ceiling;
 - safe read-only catalog when roots exist and no explicit profile is selected.
 
 ### Operations and multi-principal tests

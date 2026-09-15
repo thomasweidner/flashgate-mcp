@@ -11,7 +11,7 @@ import (
 func TestHandlerMethod(t *testing.T) {
 	t.Parallel()
 
-	handler := NewHandler("flashgate", "0.1.0-dev")
+	handler := NewHandler("flashgate", "0.1.0-dev", ProfileInstructions(false))
 
 	if handler.Method() != "initialize" {
 		t.Fatalf("expected initialize, got %q", handler.Method())
@@ -21,7 +21,7 @@ func TestHandlerMethod(t *testing.T) {
 func TestHandlerReturnsInitializeResult(t *testing.T) {
 	t.Parallel()
 
-	handler := NewHandler("flashgate", "0.1.0-dev")
+	handler := NewHandler("flashgate", "0.1.0-dev", ProfileInstructions(false))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -53,6 +53,7 @@ func TestHandlerReturnsInitializeResult(t *testing.T) {
 			Name    string `json:"name"`
 			Version string `json:"version"`
 		} `json:"serverInfo"`
+		Instructions string `json:"instructions"`
 	}
 
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
@@ -74,12 +75,33 @@ func TestHandlerReturnsInitializeResult(t *testing.T) {
 	if decoded.Capabilities.Tools == nil {
 		t.Fatal("expected tools capability")
 	}
+	if decoded.Instructions != ProfileInstructions(false) {
+		t.Fatalf("instructions=%q, want default profile instructions", decoded.Instructions)
+	}
+}
+
+func TestProfileInstructionsAreBoundedAndProfileSpecific(t *testing.T) {
+	t.Parallel()
+
+	readOnly := ProfileInstructions(true)
+	defaultProfile := ProfileInstructions(false)
+	if readOnly == defaultProfile {
+		t.Fatal("expected profile-specific instructions")
+	}
+	for profile, instructions := range map[string]string{"read-only": readOnly, "default": defaultProfile} {
+		if instructions == "" {
+			t.Fatalf("%s instructions are empty", profile)
+		}
+		if len([]byte(instructions)) > MaxInstructionsBytes {
+			t.Fatalf("%s instructions=%d bytes, budget=%d", profile, len([]byte(instructions)), MaxInstructionsBytes)
+		}
+	}
 }
 
 func TestHandlerReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 	t.Parallel()
 
-	handler := NewHandler("flashgate", "0.1.0-dev")
+	handler := NewHandler("flashgate", "0.1.0-dev", ProfileInstructions(false))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -102,7 +124,7 @@ func TestHandlerReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 func TestHandlerReturnsInvalidParamsForMissingProtocolVersion(t *testing.T) {
 	t.Parallel()
 
-	handler := NewHandler("flashgate", "0.1.0-dev")
+	handler := NewHandler("flashgate", "0.1.0-dev", ProfileInstructions(false))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -131,7 +153,7 @@ func TestHandlerReturnsInvalidParamsForMissingProtocolVersion(t *testing.T) {
 func TestHandlerAcceptsDifferentClientProtocolVersion(t *testing.T) {
 	t.Parallel()
 
-	handler := NewHandler("flashgate", "0.1.0-dev")
+	handler := NewHandler("flashgate", "0.1.0-dev", ProfileInstructions(false))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
