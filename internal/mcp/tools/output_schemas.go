@@ -2,6 +2,13 @@ package tools
 
 func toolOutputSchema(toolName string) map[string]any {
 	switch toolName {
+	case getProcessDetailsToolName:
+		return objectOutputSchema(map[string]any{
+			"pid":         map[string]any{"type": "integer", "minimum": 1},
+			"name":        map[string]any{"type": "string", "minLength": 1},
+			"parentPid":   map[string]any{"type": "integer", "minimum": 0},
+			"threadCount": map[string]any{"type": "integer", "minimum": 1},
+		}, "pid")
 	case listProcessesToolName:
 		return objectOutputSchema(map[string]any{
 			"processes": map[string]any{

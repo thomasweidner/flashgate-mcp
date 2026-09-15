@@ -8,6 +8,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added BL-116 explicit process-detail lookup for one PID with a closed
+  `name`/`parentPid`/`threadCount` field allowlist, native Linux and Windows
+  adapters, and safe missing/access-denied errors. The implementation remains
+  unregistered until BL-118 supplies `process.observe` authorization.
 - Added BL-114 bounded native process observation with deterministic PID-order
   pagination, opaque continuation cursors, strict pre-observation validation,
   Linux procfs and Windows Toolhelp adapters, and a bounded MCP schema. Runtime

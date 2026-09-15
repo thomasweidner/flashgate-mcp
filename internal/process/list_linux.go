@@ -44,3 +44,50 @@ func listProcesses(ctx context.Context) ([]Entry, error) {
 	}
 	return entries, nil
 }
+
+func processDetails(ctx context.Context, pid uint32) (Details, error) {
+	if err := ctx.Err(); err != nil {
+		return Details{}, err
+	}
+	raw, err := os.ReadFile(filepath.Join("/proc", strconv.FormatUint(uint64(pid), 10), "stat"))
+	if err != nil {
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			return Details{}, ErrNotFound
+		case errors.Is(err, os.ErrPermission):
+			return Details{}, ErrAccessDenied
+		default:
+			return Details{}, err
+		}
+	}
+	return parseProcStat(pid, string(raw))
+}
+
+func parseProcStat(expectedPID uint32, value string) (Details, error) {
+	open := strings.IndexByte(value, '(')
+	close := strings.LastIndex(value, ") ")
+	if open < 1 || close <= open+1 {
+		return Details{}, errors.New("invalid proc stat")
+	}
+	parsedPID, err := strconv.ParseUint(strings.TrimSpace(value[:open]), 10, 32)
+	if err != nil || uint32(parsedPID) != expectedPID {
+		return Details{}, errors.New("invalid proc stat pid")
+	}
+	fields := strings.Fields(value[close+2:])
+	// fields begins with field 3 (state); ppid is field 4 and num_threads is
+	// field 20 in proc_pid_stat(5).
+	if len(fields) <= 17 {
+		return Details{}, errors.New("short proc stat")
+	}
+	parentPID, err := strconv.ParseUint(fields[1], 10, 32)
+	if err != nil {
+		return Details{}, errors.New("invalid proc stat parent pid")
+	}
+	threadCount, err := strconv.ParseUint(fields[17], 10, 32)
+	if err != nil || threadCount == 0 {
+		return Details{}, errors.New("invalid proc stat thread count")
+	}
+	return Details{
+		PID: expectedPID, Name: value[open+1 : close], ParentPID: uint32(parentPID), ThreadCount: uint32(threadCount),
+	}, nil
+}

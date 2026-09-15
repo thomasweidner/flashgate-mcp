@@ -67,3 +67,40 @@ func listProcesses(ctx context.Context) ([]Entry, error) {
 	}
 	return entries, nil
 }
+
+func processDetails(ctx context.Context, pid uint32) (Details, error) {
+	handle, _, callErr := procCreateToolhelpSnapshot.Call(th32csSnapProcess, 0)
+	if handle == uintptr(syscall.InvalidHandle) {
+		if errors.Is(callErr, syscall.ERROR_ACCESS_DENIED) {
+			return Details{}, ErrAccessDenied
+		}
+		return Details{}, callErr
+	}
+	defer syscall.CloseHandle(syscall.Handle(handle))
+
+	current := processEntry32{Size: uint32(unsafe.Sizeof(processEntry32{}))}
+	ok, _, callErr := procProcess32FirstW.Call(handle, uintptr(unsafe.Pointer(&current)))
+	if ok == 0 {
+		return Details{}, callErr
+	}
+	for {
+		if err := ctx.Err(); err != nil {
+			return Details{}, err
+		}
+		if current.ProcessID == pid {
+			name := syscall.UTF16ToString(current.ExeFile[:])
+			if name == "" || current.Threads == 0 {
+				return Details{}, errors.New("invalid process snapshot entry")
+			}
+			return Details{PID: pid, Name: name, ParentPID: current.ParentProcessID, ThreadCount: current.Threads}, nil
+		}
+		current.Size = uint32(unsafe.Sizeof(processEntry32{}))
+		ok, _, callErr = procProcess32NextW.Call(handle, uintptr(unsafe.Pointer(&current)))
+		if ok == 0 {
+			if errors.Is(callErr, syscall.ERROR_NO_MORE_FILES) {
+				return Details{}, ErrNotFound
+			}
+			return Details{}, callErr
+		}
+	}
+}

@@ -72,11 +72,22 @@ the tool returns a point-in-time, PID-ordered page containing only the portable 
 is true, pass the opaque `nextCursor` back unchanged to continue after the last
 PID in the preceding page. Because each request observes the live process
 table, processes that start or exit between pages can change later results.
-Field selection and detailed process metadata remain assigned to BL-115 and
-BL-116; capability enforcement remains assigned to BL-118.
+Field selection for process-list pages remains assigned to BL-115. BL-116 also
+provides an unregistered `get_process_details` implementation for a single PID.
+Its required `fields` array accepts only `name`, `parentPid`, and `threadCount`;
+the result always identifies the requested `pid` and includes only selected
+fields. Command lines, environments, users, executable paths, and working
+directories are not available. A process that exits during observation and an
+OS access denial produce distinct safe errors without disclosing native error
+text. Capability enforcement and runtime registration remain assigned to
+BL-118.
 
 ```json
 { "pageSize": 50 }
+```
+
+```json
+{ "pid": 4242, "fields": ["name", "parentPid", "threadCount"] }
 ```
 
 ```json
