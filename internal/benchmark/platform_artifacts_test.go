@@ -104,8 +104,9 @@ func TestLoadRequiredPlatformBaselinesRejectsInvalidSets(t *testing.T) {
 		omitLinux bool
 	}{
 		{"missing platform", validWindows, validLinux, true},
-		{"unknown platform", validWindows, Result{OS: "darwin", Architecture: expectedBaselineArch}, false},
-		{"duplicate platform", validWindows, Result{OS: "windows", Architecture: expectedBaselineArch}, false},
+		{"unknown platform in Linux file", validWindows, Result{OS: "darwin", Architecture: expectedBaselineArch}, false},
+		{"Windows identity in Linux file", validWindows, validWindows, false},
+		{"swapped platform contents", validLinux, validWindows, false},
 		{"wrong architecture", validWindows, Result{OS: "linux", Architecture: "arm64"}, false},
 	}
 	for _, tc := range tests {
@@ -123,26 +124,25 @@ func TestLoadRequiredPlatformBaselinesRejectsInvalidSets(t *testing.T) {
 }
 
 func loadRequiredPlatformBaselines(directory string, budgetPath string) (map[string]loadedPlatformBaseline, error) {
-	paths := []string{
-		filepath.Join(directory, "baseline.windows-amd64.json"),
-		filepath.Join(directory, "baseline.linux-amd64.json"),
+	required := []struct {
+		filename     string
+		expectedOS   string
+		expectedArch string
+	}{
+		{"baseline.windows-amd64.json", "windows", "amd64"},
+		{"baseline.linux-amd64.json", "linux", "amd64"},
 	}
-	baselines := make(map[string]loadedPlatformBaseline, len(paths))
-	for _, path := range paths {
+	baselines := make(map[string]loadedPlatformBaseline, len(required))
+	for _, expected := range required {
+		path := filepath.Join(directory, expected.filename)
 		result, raw, err := loadValidatedBaselineArtifact(path, budgetPath)
 		if err != nil {
 			return nil, err
 		}
-		if result.OS != "windows" && result.OS != "linux" {
-			return nil, fmt.Errorf("unknown baseline platform %q", result.OS)
+		if result.OS != expected.expectedOS || result.Architecture != expected.expectedArch {
+			return nil, fmt.Errorf("baseline %s identity=%s/%s, want %s/%s", expected.filename, result.OS, result.Architecture, expected.expectedOS, expected.expectedArch)
 		}
-		if result.Architecture != expectedBaselineArch {
-			return nil, fmt.Errorf("baseline platform %s architecture=%q", result.OS, result.Architecture)
-		}
-		if _, exists := baselines[result.OS]; exists {
-			return nil, fmt.Errorf("duplicate baseline platform %q", result.OS)
-		}
-		baselines[result.OS] = loadedPlatformBaseline{result: result, raw: raw}
+		baselines[expected.expectedOS] = loadedPlatformBaseline{result: result, raw: raw}
 	}
 	if len(baselines) != 2 || baselines["windows"].raw == nil || baselines["linux"].raw == nil {
 		return nil, fmt.Errorf("required Windows and Linux baselines are incomplete")
