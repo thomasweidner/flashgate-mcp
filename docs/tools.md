@@ -40,7 +40,7 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The current deterministic UTF-8 JSONL `tools/list` response, including its trailing newline, is 5074 bytes for read-only and 8597 bytes for default. The older 1239/2134-byte, 3850/5657-byte, 3046/6569-byte, 4271/7794-byte, and 4894/8417-byte measurements remain historical snapshots, not persistent payload budgets.
+The current deterministic UTF-8 JSONL `tools/list` response, including its trailing newline, is 5594 bytes for read-only and 9117 bytes for default. The older 1239/2134-byte, 3850/5657-byte, 3046/6569-byte, 4271/7794-byte, and 4894/8417-byte measurements remain historical snapshots, not persistent payload budgets.
 
 ## `search_paths`
 

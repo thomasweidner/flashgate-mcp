@@ -183,6 +183,15 @@ func TestSearchPathsAppliesAndValidatesContextLines(t *testing.T) {
 	}
 }
 
+func TestSearchPathsValidatesBinaryAndEncodingModes(t *testing.T) {
+	for _, raw := range []string{`{"binaryMode":"skip"}`, `{"text":"x","binaryMode":"unknown"}`, `{"text":"x","encoding":"utf-16"}`, `{"text":"x","binaryMode":"explicit","contextLines":1}`} {
+		fake := newFakeFileSystem()
+		if _, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(raw)); rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.listPath != "" {
+			t.Fatalf("expected pre-traversal rejection for %s, err=%#v", raw, rpcErr)
+		}
+	}
+}
+
 func TestSearchPathsLiteralTextRejectsDirectoryFilter(t *testing.T) {
 	_, rpcErr := NewSearchPathsTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(`{"text":"x","type":"directory"}`))
 	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {

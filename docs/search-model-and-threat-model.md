@@ -44,7 +44,7 @@ Accounting uses bytes actually read for content scanning and counts entries befo
 
 ## Content, encoding, and errors
 
-The pure-Go baseline is mandatory. Literal matching operates on a documented text decoding mode; regular expressions use Go's bounded RE2-style engine and never a backtracking engine. Binary detection, supported encodings, context extraction, and explicit skip/error modes are finalized by `BL-078`; until then, no implementation may guess or silently decode binary content.
+The pure-Go baseline is mandatory. Content search supports UTF-8 only and never guesses, replaces, or transcodes bytes. A file is classified as binary when it contains a NUL byte; otherwise malformed UTF-8 is classified as an unsupported encoding. The default `binaryMode=skip` omits either class and reports each root-relative path and reason. `binaryMode=error` fails the request without partial results, while `binaryMode=explicit` permits byte matching only when the caller opts in and does not request text context. Literal matching remains UTF-8 input; regular expressions use Go's bounded RE2-style engine and never a backtracking engine.
 
 Errors use stable safe categories rather than raw operating-system strings. The contract distinguishes invalid input, authorization/policy denial, unavailable capability, unsupported content or encoding, resource limit, cancellation/deadline, stale cursor, path changed during scan, and internal I/O failure. Host absolute paths, file contents outside requested result fields, credentials, and raw OS errors are never included in results or diagnostics.
 

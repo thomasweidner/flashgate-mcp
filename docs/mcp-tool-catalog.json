@@ -105,6 +105,22 @@
             "minimum": 1,
             "maximum": 10,
             "description": "Optional number of complete UTF-8 lines before and after each content match."
+          },
+          "binaryMode": {
+            "type": "string",
+            "enum": [
+              "skip",
+              "error",
+              "explicit"
+            ],
+            "description": "Binary/non-UTF-8 handling: skip with diagnostics (default), fail, or explicitly byte-search without context."
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "utf-8"
+            ],
+            "description": "Explicit text encoding; only UTF-8 is supported."
           }
         },
         "allOf": [
@@ -214,6 +230,29 @@
                   "returnedMatches"
                 ],
                 "additionalProperties": false
+              },
+              "skipped": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string",
+                      "enum": [
+                        "binary",
+                        "unsupportedEncoding"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "reason"
+                  ],
+                  "additionalProperties": false
+                }
               }
             },
             "required": [

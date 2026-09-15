@@ -52,6 +52,18 @@ var (
 	// ErrContextUnavailable is returned when context cannot be represented as
 	// UTF-8 without guessing an encoding or replacing input bytes.
 	ErrContextUnavailable = errors.New("content search context unavailable")
+	// ErrUnsupportedContent is returned when error mode encounters binary data
+	// or content that is not valid UTF-8.
+	ErrUnsupportedContent = errors.New("content search unsupported content")
+)
+
+// BinaryMode controls how content search handles binary or non-UTF-8 files.
+type BinaryMode uint8
+
+const (
+	BinarySkip BinaryMode = iota
+	BinaryError
+	BinaryExplicit
 )
 
 // NameMatchKind identifies how a filename selector is interpreted.
@@ -82,6 +94,13 @@ type ContentSearchResult struct {
 	Matches   []LiteralMatch        `json:"matches"`
 	Truncated bool                  `json:"truncated"`
 	Limit     *MatchLimitDiagnostic `json:"limit,omitempty"`
+	Skipped   []ContentSkip         `json:"skipped,omitempty"`
+}
+
+// ContentSkip reports a policy-visible file omitted by the selected binary mode.
+type ContentSkip struct {
+	Path   string `json:"path"`
+	Reason string `json:"reason"`
 }
 
 // MatchLimitDiagnostic identifies the match budget that stopped the search.
@@ -104,6 +123,7 @@ type LiteralLimits struct {
 	ContextLines            int
 	MaxContextBytesPerMatch int
 	MaxContextBytes         int
+	BinaryMode              BinaryMode
 }
 
 // EntryType is a portable classification of policy-visible search entries.
@@ -247,7 +267,8 @@ func validLiteralLimits(limits LiteralLimits) bool {
 	return limits.MaxFiles > 0 && limits.MaxBytesPerFile > 0 && limits.MaxScannedBytes > 0 &&
 		limits.MaxMatchesPerFile > 0 && limits.MaxMatches > 0 && limits.MaxResponseBytes > 0 &&
 		limits.ContextLines >= 0 && (limits.ContextLines == 0 ||
-		limits.MaxContextBytesPerMatch > 0 && limits.MaxContextBytes > 0)
+		limits.MaxContextBytesPerMatch > 0 && limits.MaxContextBytes > 0) &&
+		limits.BinaryMode <= BinaryExplicit && !(limits.BinaryMode == BinaryExplicit && limits.ContextLines > 0)
 }
 
 func (s *PathService) searchContent(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, limits LiteralLimits, find func([]byte, int) [][2]int) (ContentSearchResult, error) {
@@ -270,6 +291,7 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 	}
 	pending := []pendingDirectory{{path: startPath}}
 	matches := make([]LiteralMatch, 0)
+	var skipped []ContentSkip
 	files, entriesVisited, scanned, contextBytes := 0, 0, int64(0), 0
 	for len(pending) > 0 {
 		if err := ctx.Err(); err != nil {
@@ -313,6 +335,25 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 			}
 			files++
 			scanned += int64(len(content))
+			reason := ""
+			if bytes.IndexByte(content, 0) >= 0 {
+				reason = "binary"
+			} else if !utf8.Valid(content) {
+				reason = "unsupportedEncoding"
+			}
+			if reason != "" && limits.ContextLines > 0 {
+				return ContentSearchResult{}, ErrContextUnavailable
+			}
+			if reason != "" && limits.BinaryMode != BinaryExplicit {
+				if limits.BinaryMode == BinaryError {
+					return ContentSearchResult{}, ErrUnsupportedContent
+				}
+				skipped = append(skipped, ContentSkip{Path: relativePath, Reason: reason})
+				if !contentResultFits(matches, skipped, limits.MaxResponseBytes) {
+					return ContentSearchResult{}, ErrResponseLimitExceeded
+				}
+				continue
+			}
 			fileMatches := 0
 			maxFound := limits.MaxMatchesPerFile + 1
 			if remaining := limits.MaxMatches - len(matches) + 1; remaining < maxFound {
@@ -323,12 +364,12 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 					return ContentSearchResult{}, err
 				}
 				if fileMatches == limits.MaxMatchesPerFile {
-					return boundedContentResult(matches, limits.MaxResponseBytes, &MatchLimitDiagnostic{
+					return boundedContentResult(matches, skipped, limits.MaxResponseBytes, &MatchLimitDiagnostic{
 						Kind: "perFileMatches", MaxMatches: limits.MaxMatchesPerFile, ReturnedMatches: fileMatches, Path: relativePath,
 					})
 				}
 				if len(matches) == limits.MaxMatches {
-					return boundedContentResult(matches, limits.MaxResponseBytes, &MatchLimitDiagnostic{
+					return boundedContentResult(matches, skipped, limits.MaxResponseBytes, &MatchLimitDiagnostic{
 						Kind: "totalMatches", MaxMatches: limits.MaxMatches, ReturnedMatches: len(matches),
 					})
 				}
@@ -359,7 +400,12 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 		}
 		return matches[i].Path < matches[j].Path
 	})
-	return ContentSearchResult{Matches: matches}, nil
+	return ContentSearchResult{Matches: matches, Skipped: skipped}, nil
+}
+
+func contentResultFits(matches []LiteralMatch, skipped []ContentSkip, maxResponseBytes int) bool {
+	encoded, _ := json.Marshal(ContentSearchResult{Matches: matches, Skipped: skipped})
+	return len(encoded) <= maxResponseBytes
 }
 
 func extractLineContext(content []byte, matchStart, matchEnd, contextLines int) string {
@@ -380,14 +426,14 @@ func extractLineContext(content []byte, matchStart, matchEnd, contextLines int) 
 	return string(content[start:end])
 }
 
-func boundedContentResult(matches []LiteralMatch, maxResponseBytes int, limit *MatchLimitDiagnostic) (ContentSearchResult, error) {
+func boundedContentResult(matches []LiteralMatch, skipped []ContentSkip, maxResponseBytes int, limit *MatchLimitDiagnostic) (ContentSearchResult, error) {
 	sort.Slice(matches, func(i, j int) bool {
 		if matches[i].Path == matches[j].Path {
 			return matches[i].ByteOffset < matches[j].ByteOffset
 		}
 		return matches[i].Path < matches[j].Path
 	})
-	result := ContentSearchResult{Matches: matches, Truncated: true, Limit: limit}
+	result := ContentSearchResult{Matches: matches, Truncated: true, Limit: limit, Skipped: skipped}
 	encoded, _ := json.Marshal(result)
 	if len(encoded) > maxResponseBytes {
 		return ContentSearchResult{}, ErrResponseLimitExceeded
