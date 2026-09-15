@@ -291,6 +291,10 @@ External providers, when later implemented, cannot bypass these controls.
 
 ### Safe default profiles and capability enforcement
 
+The [capabilities, profiles, and named roots guide](capabilities-profiles-and-named-roots.md)
+provides the operator-facing target model and makes its current-versus-planned
+boundary explicit.
+
 Version 1.0 target behavior:
 
 ```text
