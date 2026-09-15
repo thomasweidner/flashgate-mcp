@@ -11,10 +11,10 @@ import (
 const createDirectoryToolName = "create_directory"
 
 // CreateDirectoryTool exposes directory creation as an MCP tool.
-type CreateDirectoryTool struct{ filesystem fs.FileSystem }
+type CreateDirectoryTool struct{ resolver filesystemResolver }
 
 func NewCreateDirectoryTool(filesystem fs.FileSystem) *CreateDirectoryTool {
-	return &CreateDirectoryTool{filesystem: filesystem}
+	return &CreateDirectoryTool{resolver: singleFilesystemResolver{filesystem}}
 }
 func (t *CreateDirectoryTool) Name() string  { return createDirectoryToolName }
 func (t *CreateDirectoryTool) Title() string { return "Create Directory" }
@@ -25,7 +25,8 @@ func (t *CreateDirectoryTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path below the configured filesystem root."},
+			"rootId": rootIDSchema(),
+			"path":   map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path below the configured filesystem root."},
 		},
 		"required": []string{"path"}, "additionalProperties": false,
 	}
@@ -39,7 +40,12 @@ func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMe
 		return nil, invalidParamsError()
 	}
 
-	created, err := t.filesystem.Mkdir(arguments.Path)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	created, err := filesystem.Mkdir(arguments.Path)
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}
@@ -48,7 +54,8 @@ func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMe
 }
 
 type createDirectoryArguments struct {
-	Path string `json:"path"`
+	RootID string `json:"rootId,omitempty"`
+	Path   string `json:"path"`
 }
 type createDirectoryResult struct {
 	Path    string `json:"path"`

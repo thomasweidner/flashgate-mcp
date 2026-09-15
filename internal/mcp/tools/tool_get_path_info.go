@@ -12,10 +12,10 @@ import (
 const getPathInfoToolName = "get_path_info"
 
 // GetPathInfoTool exposes filesystem metadata lookup as an MCP tool.
-type GetPathInfoTool struct{ filesystem fs.FileSystem }
+type GetPathInfoTool struct{ resolver filesystemResolver }
 
 func NewGetPathInfoTool(filesystem fs.FileSystem) *GetPathInfoTool {
-	return &GetPathInfoTool{filesystem: filesystem}
+	return &GetPathInfoTool{resolver: singleFilesystemResolver{filesystem}}
 }
 func (t *GetPathInfoTool) Name() string  { return getPathInfoToolName }
 func (t *GetPathInfoTool) Title() string { return "Get Path Info" }
@@ -26,7 +26,8 @@ func (t *GetPathInfoTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative file or directory path below the configured filesystem root."},
+			"rootId": rootIDSchema(),
+			"path":   map[string]any{"type": "string", "minLength": 1, "description": "Relative file or directory path below the configured filesystem root."},
 		},
 		"required": []string{"path"}, "additionalProperties": false,
 	}
@@ -40,7 +41,12 @@ func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessag
 		return nil, invalidParamsError()
 	}
 
-	metadata, err := t.filesystem.Stat(arguments.Path)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	metadata, err := filesystem.Stat(arguments.Path)
 	if errors.Is(err, fs.ErrNotFound) {
 		return getPathInfoMissingResult{Path: arguments.Path, Exists: false}, nil
 	}
@@ -54,7 +60,8 @@ func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessag
 }
 
 type getPathInfoArguments struct {
-	Path string `json:"path"`
+	RootID string `json:"rootId,omitempty"`
+	Path   string `json:"path"`
 }
 type getPathInfoMissingResult struct {
 	Path   string `json:"path"`

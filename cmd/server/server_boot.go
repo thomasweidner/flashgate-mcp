@@ -83,16 +83,16 @@ func runWithIO(
 	if err != nil {
 		return config.NewError(config.CategoryStartupFailed, err)
 	}
-	filesystem, err = rootRegistry.FileSystem(roots.DefaultID)
-	if err != nil {
-		return config.NewError(config.CategoryStartupFailed, err)
-	}
-
 	toolRegistry := dependencies.newToolRegistry(
 		filesystem,
 		cfg.Filesystem().MaxFileSize(),
 		capabilitiesFromReadOnly(cfg.Filesystem().ReadOnly()),
 	)
+	if toolRegistry != nil {
+		for _, tool := range toolRegistry.List() {
+			tools.BindRootRegistry(tool, rootRegistry)
+		}
+	}
 	if toolRegistry == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}

@@ -12,14 +12,12 @@ const copyPathToolName = "copy_path"
 
 // CopyPathTool exposes filesystem copy operations as an MCP tool.
 type CopyPathTool struct {
-	filesystem fs.FileSystem
+	resolver filesystemResolver
 }
 
 // NewCopyPathTool creates a new copy_path tool.
 func NewCopyPathTool(filesystem fs.FileSystem) *CopyPathTool {
-	return &CopyPathTool{
-		filesystem: filesystem,
-	}
+	return &CopyPathTool{resolver: singleFilesystemResolver{filesystem}}
 }
 
 // Name returns the tool name.
@@ -42,6 +40,7 @@ func (t *CopyPathTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"rootId": rootIDSchema(),
 			"source": map[string]any{
 				"type":        "string",
 				"minLength":   1,
@@ -84,7 +83,12 @@ func (t *CopyPathTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		return nil, invalidParamsError()
 	}
 
-	if err := t.filesystem.Copy(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	if err := filesystem.Copy(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
@@ -96,6 +100,7 @@ func (t *CopyPathTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 }
 
 type copyPathArguments struct {
+	RootID    string `json:"rootId,omitempty"`
 	Source    string `json:"source"`
 	Target    string `json:"target"`
 	Overwrite bool   `json:"overwrite,omitempty"`

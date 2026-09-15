@@ -12,14 +12,12 @@ const deletePathToolName = "delete_path"
 
 // DeletePathTool exposes filesystem deletion as an MCP tool.
 type DeletePathTool struct {
-	filesystem fs.FileSystem
+	resolver filesystemResolver
 }
 
 // NewDeletePathTool creates a new delete_path tool.
 func NewDeletePathTool(filesystem fs.FileSystem) *DeletePathTool {
-	return &DeletePathTool{
-		filesystem: filesystem,
-	}
+	return &DeletePathTool{resolver: singleFilesystemResolver{filesystem}}
 }
 
 // Name returns the tool name.
@@ -42,6 +40,7 @@ func (t *DeletePathTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"rootId": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
@@ -79,7 +78,12 @@ func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage
 		return nil, invalidParamsError()
 	}
 
-	if err := t.filesystem.Delete(arguments.Path, arguments.Recursive); err != nil {
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	if err := filesystem.Delete(arguments.Path, arguments.Recursive); err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
@@ -90,6 +94,7 @@ func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage
 }
 
 type deletePathArguments struct {
+	RootID    string `json:"rootId,omitempty"`
 	Path      string `json:"path"`
 	Recursive bool   `json:"recursive,omitempty"`
 }
