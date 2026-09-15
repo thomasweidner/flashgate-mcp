@@ -44,6 +44,12 @@ func TestLoadBudgetFileRejectsNonCanonicalJSON(t *testing.T) {
 			name: "trailing content", want: "trailing JSON data",
 			mutate: func(data []byte) []byte { return append(append([]byte{}, data...), []byte("\n{}")...) },
 		},
+		{
+			name: "unpaired surrogate in nested budget key", want: "invalid JSON Unicode",
+			mutate: func(data []byte) []byte {
+				return []byte(strings.Replace(string(data), `"read_only"`, `"\uD800"`, 1))
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -55,6 +61,21 @@ func TestLoadBudgetFileRejectsNonCanonicalJSON(t *testing.T) {
 				t.Fatalf("strict budget decoder error=%v, want substring %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestLoadExpectedWorkflowNamesRejectsMalformedUnicode(t *testing.T) {
+	canonical, err := os.ReadFile(filepath.Join("..", "..", "benchmarks", "workflows.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	malformed := []byte(strings.Replace(string(canonical), `"name": "initialize"`, `"name": "\uD800"`, 1))
+	path := filepath.Join(t.TempDir(), "workflows.json")
+	if err := os.WriteFile(path, malformed, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadExpectedWorkflowNames(path); err == nil || !strings.Contains(err.Error(), "invalid JSON Unicode") {
+		t.Fatalf("workflow catalog error=%v, want invalid JSON Unicode", err)
 	}
 }
 
