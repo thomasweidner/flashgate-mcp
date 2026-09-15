@@ -951,6 +951,10 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Operations and multi-principal tests
 
+The planned suite validates the lifecycle and security targets in the
+[Operations/Job Manager documentation](operations-and-job-manager.md); it does
+not imply that the manager is present in the current filesystem-only runtime.
+
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
 - cross-principal status/result/cancel/cache/resource denial;
 - global, per-domain, and per-principal concurrency limits;
