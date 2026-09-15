@@ -217,6 +217,11 @@ Every successful filesystem `tools/call` now crosses one central adapter boundar
 
 Limit violations use generic client-visible messages. Filesystem limit denials are mapped to Invalid params with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
 
+`read_file` opens the policy-resolved file once, checks metadata on that handle, and
+reads through a stream capped at the effective limit plus one detection byte. This
+keeps concurrent file growth from turning the size preflight into an unbounded read;
+an over-limit result is discarded and reported through the existing safe limit error.
+
 `MCP_DEBUG=true` enables minimal stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
 
 ## Security Testing
