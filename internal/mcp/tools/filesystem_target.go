@@ -6,14 +6,17 @@ import (
 )
 
 type filesystemResolver interface {
-	FileSystem(string) (fs.FileSystem, error)
+	FileSystem(string, roots.Access) (fs.FileSystem, error)
 }
 
 type singleFilesystemResolver struct{ filesystem fs.FileSystem }
 
-func (r singleFilesystemResolver) FileSystem(id string) (fs.FileSystem, error) {
+func (r singleFilesystemResolver) FileSystem(id string, required roots.Access) (fs.FileSystem, error) {
 	if id != roots.DefaultID {
 		return nil, roots.ErrUnknownRoot
+	}
+	if required == 0 || required&^roots.ReadWrite != 0 {
+		return nil, roots.ErrAccessDenied
 	}
 	return r.filesystem, nil
 }
@@ -33,12 +36,12 @@ func effectiveRootID(id string) string {
 	return id
 }
 
-func resolveFilesystem(resolver filesystemResolver, id string) (fs.FileSystem, string, bool) {
+func resolveFilesystem(resolver filesystemResolver, id string, required roots.Access) (fs.FileSystem, string, bool) {
 	id = effectiveRootID(id)
 	if !isNonBlank(id) {
 		return nil, "", false
 	}
-	filesystem, err := resolver.FileSystem(id)
+	filesystem, err := resolver.FileSystem(id, required)
 	if err != nil {
 		return nil, "", false
 	}

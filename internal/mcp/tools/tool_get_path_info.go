@@ -7,6 +7,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 )
 
 const getPathInfoToolName = "get_path_info"
@@ -41,7 +42,7 @@ func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessag
 		return nil, invalidParamsError()
 	}
 
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Read)
 	if !ok {
 		return nil, invalidParamsError()
 	}

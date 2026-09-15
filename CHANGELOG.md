@@ -8,6 +8,11 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added BL-104 per-root read/write enforcement. Named-root registry entries
+  carry an explicit read, write, or combined access policy; every filesystem
+  tool checks the selected root's required access before filesystem I/O, and
+  denied access uses the same generic invalid-parameters boundary as an
+  unknown root.
 - Added the BL-102 filesystem target contract: every tool schema accepts an
   opaque `rootId` with root-relative paths, the current single-root deployment
   migrates compatibly through `default`, and unknown roots fail before any

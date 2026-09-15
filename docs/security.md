@@ -31,12 +31,14 @@ The opt-in accepts only lowercase `true` or `false`, never supplies a missing ro
 
 Each configured root is represented by an independently root-confined
 `FileSystem` in an immutable application-level named-root registry. Blank or
-duplicate IDs, missing filesystems, empty registries, and unknown lookups fail
-closed. The current single `MCP_ROOT` is registered under the compatible
+duplicate IDs, missing filesystems, invalid or empty access policies, empty
+registries, unknown lookups, and requests outside a root's explicit read/write
+policy fail closed. The current single `MCP_ROOT` is registered under the compatible
 ID `default`. Every filesystem tool accepts an opaque `rootId` and resolves it
-before filesystem access; omission selects `default` during migration, while
-blank and unknown explicit IDs fail with the generic invalid-parameters
-contract. Paths remain relative and neither configured nor resolved absolute
+with its required read or write access before filesystem I/O; omission selects
+`default` during migration, while blank, unknown, and access-denied selections
+fail with the same generic invalid-parameters contract. Paths remain relative
+and neither configured nor resolved absolute
 host paths are exposed. External multi-root configuration remains separate and
 is not inferred from client paths.
 
@@ -316,9 +318,11 @@ MCP annotations are accurate hints only and never grant permission.
 
 ### Per-root policies and execution backend
 
-Named roots use authoritative FlashGate configuration and root IDs plus relative paths. Each root may define:
+Named roots use authoritative FlashGate configuration and root IDs plus
+relative paths. Explicit per-entry read/write enforcement is implemented in the
+registry and tool execution boundary; external configuration of multiple roots
+remains planned. Each root may additionally define:
 
-- read/write permission;
 - file/result/scan/temp limits;
 - allowed file types;
 - symlink/reparse policy;

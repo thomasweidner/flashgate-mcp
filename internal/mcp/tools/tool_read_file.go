@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 )
 
 const readFileToolName = "read_file"
@@ -94,7 +95,7 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		maxBytes = t.serverMaxBytes
 	}
 
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Read)
 	if !ok {
 		return nil, invalidParamsError()
 	}

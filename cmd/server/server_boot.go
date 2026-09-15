@@ -79,7 +79,11 @@ func runWithIO(
 	if isNilBootstrapValue(filesystem) {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
-	rootRegistry, err := roots.Single(filesystem)
+	rootAccess := roots.ReadWrite
+	if cfg.Filesystem().ReadOnly() {
+		rootAccess = roots.Read
+	}
+	rootRegistry, err := roots.SingleWithAccess(filesystem, rootAccess)
 	if err != nil {
 		return config.NewError(config.CategoryStartupFailed, err)
 	}

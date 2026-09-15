@@ -1,11 +1,12 @@
 # Testing
 
 Named-root registry tests cover multiple independent filesystem mappings,
-deterministic ID enumeration, compatible single-root registration, and
-fail-closed empty, blank, duplicate, nil-filesystem, and unknown-root cases.
+deterministic ID enumeration, compatible single-root registration, independent
+read-only and write-only policies, and fail-closed empty, blank, duplicate,
+nil-filesystem, invalid-policy, unknown-root, and access-denied cases.
 Filesystem target tests additionally prove that an explicit opaque root ID
-selects only its independently confined filesystem and that an unknown ID is
-rejected before filesystem access.
+selects only its independently confined filesystem and that unknown or
+access-denied selections are rejected before filesystem access.
 
 ## Slim project validation
 
