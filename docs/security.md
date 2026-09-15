@@ -542,6 +542,8 @@ The vendored Windows resource generator and committed icon source are covered by
 | Supply chain | dependency/workflow compromise, artifact substitution, unsigned updates, provenance, rollback |
 | Future providers | policy bypass, capability inflation, dependency/update risk, in-process versus IPC isolation |
 
+The typed-command row is governed by the normative [Command Execution Threat Model](command-execution-threat-model.md). It requires a server-resolved native executable identity, closed typed arguments, root-bound paths, a minimal environment, one managed execution engine, bounded/redacted output, and fail-closed handling when required platform isolation is unavailable.
+
 Stateful components require race-detector coverage, restart/shutdown analysis, negative capability tests, quota/fairness tests, and cleanup verification.
 
 ### MCP host lifecycle
