@@ -146,6 +146,12 @@ type MetadataFilter struct {
 	ModifiedNotAfter  *time.Time
 }
 
+// IgnoreFile explicitly opts a request into bounded gitignore-compatible
+// filtering. An empty path disables ignore-file interpretation.
+type IgnoreFile struct {
+	Path string
+}
+
 // PathService recursively enumerates root-relative paths through the central
 // filesystem boundary. It never receives or exposes an absolute host path.
 type PathService struct {
@@ -185,6 +191,10 @@ func (s *PathService) SearchNames(ctx context.Context, startPath, selector strin
 // SearchFiltered returns descendants matching optional filename and portable
 // metadata filters. All filters are validated before filesystem traversal.
 func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter) ([]Path, error) {
+	return s.SearchFilteredWithIgnore(ctx, startPath, selector, kind, filter, IgnoreFile{})
+}
+
+func (s *PathService) SearchFilteredWithIgnore(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, ignore IgnoreFile) ([]Path, error) {
 	if err := validateMetadataFilter(filter); err != nil {
 		return nil, err
 	}
@@ -211,7 +221,11 @@ func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector st
 		return nil, ErrInvalidNameSelector
 	}
 
-	return s.search(ctx, startPath, func(entry fs.Entry) bool {
+	matcher, err := s.matcherForIgnore(ignore)
+	if err != nil {
+		return nil, err
+	}
+	return s.search(ctx, startPath, matcher, func(entry fs.Entry) bool {
 		return (nameMatches == nil || nameMatches(entry.Name)) && matchesMetadata(entry, filter)
 	})
 }
@@ -221,11 +235,15 @@ func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector st
 // selector is validated as UTF-8; binary classification and alternate
 // encodings remain outside this baseline operation.
 func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, term string, limits LiteralLimits) (ContentSearchResult, error) {
+	return s.SearchLiteralWithIgnore(ctx, startPath, selector, kind, filter, term, limits, IgnoreFile{})
+}
+
+func (s *PathService) SearchLiteralWithIgnore(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, term string, limits LiteralLimits, ignore IgnoreFile) (ContentSearchResult, error) {
 	if term == "" || !utf8.ValidString(term) || filter.Type == EntryTypeDirectory || !validLiteralLimits(limits) {
 		return ContentSearchResult{}, ErrInvalidLiteralSearch
 	}
 	needle := []byte(term)
-	return s.searchContent(ctx, startPath, selector, kind, filter, limits, func(content []byte, maxMatches int) [][2]int {
+	return s.searchContent(ctx, startPath, selector, kind, filter, limits, ignore, func(content []byte, maxMatches int) [][2]int {
 		var offsets [][2]int
 		for base := 0; base <= len(content)-len(needle); {
 			offset := bytes.Index(content[base:], needle)
@@ -247,6 +265,10 @@ func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector str
 // linear-time regular-expression engine. The same server-owned scan, match,
 // response, and cancellation budgets as literal content search are enforced.
 func (s *PathService) SearchRegex(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, expression string, limits LiteralLimits) (ContentSearchResult, error) {
+	return s.SearchRegexWithIgnore(ctx, startPath, selector, kind, filter, expression, limits, IgnoreFile{})
+}
+
+func (s *PathService) SearchRegexWithIgnore(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, expression string, limits LiteralLimits, ignore IgnoreFile) (ContentSearchResult, error) {
 	if expression == "" || !utf8.ValidString(expression) || filter.Type == EntryTypeDirectory || !validLiteralLimits(limits) {
 		return ContentSearchResult{}, ErrInvalidRegexSearch
 	}
@@ -254,7 +276,7 @@ func (s *PathService) SearchRegex(ctx context.Context, startPath, selector strin
 	if err != nil {
 		return ContentSearchResult{}, ErrInvalidRegexSearch
 	}
-	return s.searchContent(ctx, startPath, selector, kind, filter, limits, func(content []byte, maxMatches int) [][2]int {
+	return s.searchContent(ctx, startPath, selector, kind, filter, limits, ignore, func(content []byte, maxMatches int) [][2]int {
 		indexes := compiled.FindAllIndex(content, maxMatches)
 		offsets := make([][2]int, len(indexes))
 		for i, index := range indexes {
@@ -272,7 +294,7 @@ func validLiteralLimits(limits LiteralLimits) bool {
 		limits.BinaryMode <= BinaryExplicit && !(limits.BinaryMode == BinaryExplicit && limits.ContextLines > 0)
 }
 
-func (s *PathService) searchContent(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, limits LiteralLimits, find func([]byte, int) [][2]int) (ContentSearchResult, error) {
+func (s *PathService) searchContent(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, limits LiteralLimits, ignore IgnoreFile, find func([]byte, int) [][2]int) (ContentSearchResult, error) {
 	if err := validateMetadataFilter(filter); err != nil {
 		return ContentSearchResult{}, err
 	}
@@ -283,6 +305,10 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 	reader, ok := s.filesystem.(fs.ContentReader)
 	if !ok {
 		return ContentSearchResult{}, ErrContentSearchUnavailable
+	}
+	matcher, err := s.matcherForIgnore(ignore)
+	if err != nil {
+		return ContentSearchResult{}, err
 	}
 
 	startPath = normalizeRelativePath(startPath)
@@ -314,6 +340,9 @@ func (s *PathService) searchContent(ctx context.Context, startPath, selector str
 			}
 			entriesVisited++
 			relativePath := joinRelativePath(directory.path, entry.Name)
+			if matcher.ignored(relativePath, entry.IsDir) {
+				continue
+			}
 			if entry.IsDir {
 				if directory.depth == s.maxDepth-1 {
 					return ContentSearchResult{}, ErrTraversalLimitExceeded
@@ -491,7 +520,7 @@ func matchesMetadata(entry fs.Entry, filter MetadataFilter) bool {
 	return true
 }
 
-func (s *PathService) search(ctx context.Context, startPath string, matches func(fs.Entry) bool) ([]Path, error) {
+func (s *PathService) search(ctx context.Context, startPath string, ignore *ignoreMatcher, matches func(fs.Entry) bool) ([]Path, error) {
 	startPath = normalizeRelativePath(startPath)
 	results := make([]Path, 0)
 	type pendingDirectory struct {
@@ -523,6 +552,9 @@ func (s *PathService) search(ctx context.Context, startPath string, matches func
 			}
 			entriesVisited++
 			relativePath := joinRelativePath(directory.path, entry.Name)
+			if ignore.ignored(relativePath, entry.IsDir) {
+				continue
+			}
 			if matches(entry) {
 				if len(results) == s.maxResults {
 					return nil, ErrLimitExceeded
@@ -540,6 +572,24 @@ func (s *PathService) search(ctx context.Context, startPath string, matches func
 
 	sort.Slice(results, func(i, j int) bool { return results[i].Path < results[j].Path })
 	return results, nil
+}
+
+func (s *PathService) matcherForIgnore(ignore IgnoreFile) (*ignoreMatcher, error) {
+	if ignore.Path == "" {
+		return nil, nil
+	}
+	reader, ok := s.filesystem.(fs.ContentReader)
+	if !ok {
+		return nil, ErrContentSearchUnavailable
+	}
+	content, err := reader.Read(ignore.Path, MaxIgnoreFileBytes)
+	if err != nil {
+		if errors.Is(err, fs.ErrFileTooLarge) {
+			return nil, ErrInvalidIgnoreFile
+		}
+		return nil, err
+	}
+	return compileIgnoreFile(ignore.Path, content)
 }
 
 func normalizeRelativePath(value string) string {

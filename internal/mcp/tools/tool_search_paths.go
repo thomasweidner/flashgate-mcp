@@ -85,6 +85,7 @@ func (t *SearchPathsTool) InputSchema() any {
 			"encoding":          map[string]any{"type": "string", "enum": []string{"utf-8"}, "description": "Explicit text encoding; only UTF-8 is supported."},
 			"pageSize":          map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchPageSize, "description": "Optional maximum paths or matches in this page. Enables cursor pagination."},
 			"cursor":            map[string]any{"type": "string", "minLength": 1, "description": "Opaque single-use cursor returned by the preceding page; no query fields may accompany it."},
+			"ignoreFile":        map[string]any{"type": "string", "minLength": 1, "description": "Optional root-relative ignore file. When explicitly set, applies bounded gitignore-compatible rules; no ignore file is read by default."},
 			"type": map[string]any{
 				"type":        "string",
 				"enum":        []string{"file", "directory"},
@@ -171,21 +172,25 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 	if rpcErr != nil {
 		return nil, rpcErr
 	}
+	ignore, rpcErr := parseIgnoreFile(arguments.IgnoreFile)
+	if rpcErr != nil {
+		return nil, rpcErr
+	}
 	if arguments.Text != nil {
-		result, err := t.service.SearchLiteral(ctx, startPath, selector, kind, filter, *arguments.Text, limits)
+		result, err := t.service.SearchLiteralWithIgnore(ctx, startPath, selector, kind, filter, *arguments.Text, limits, ignore)
 		if err != nil {
 			return nil, mapSearchError(err)
 		}
 		return t.firstContentPage(result, arguments.PageSize)
 	}
 	if arguments.Regex != nil {
-		result, err := t.service.SearchRegex(ctx, startPath, selector, kind, filter, *arguments.Regex, limits)
+		result, err := t.service.SearchRegexWithIgnore(ctx, startPath, selector, kind, filter, *arguments.Regex, limits, ignore)
 		if err != nil {
 			return nil, mapSearchError(err)
 		}
 		return t.firstContentPage(result, arguments.PageSize)
 	}
-	paths, err := t.service.SearchFiltered(ctx, startPath, selector, kind, filter)
+	paths, err := t.service.SearchFilteredWithIgnore(ctx, startPath, selector, kind, filter, ignore)
 	if err != nil {
 		return nil, mapSearchError(err)
 	}
@@ -211,10 +216,21 @@ type searchPathsArguments struct {
 	Encoding          *string `json:"encoding,omitempty"`
 	PageSize          *int    `json:"pageSize,omitempty"`
 	Cursor            *string `json:"cursor,omitempty"`
+	IgnoreFile        *string `json:"ignoreFile,omitempty"`
 }
 
 func (a searchPathsArguments) cursorOnly() bool {
-	return a.Cursor != nil && isNonBlank(*a.Cursor) && a.Path == nil && a.Name == nil && a.NamePattern == nil && a.Text == nil && a.Regex == nil && a.Type == nil && a.MinSizeBytes == nil && a.MaxSizeBytes == nil && a.ModifiedNotBefore == nil && a.ModifiedNotAfter == nil && a.MaxMatchesPerFile == nil && a.MaxMatches == nil && a.ContextLines == nil && a.BinaryMode == nil && a.Encoding == nil && a.PageSize == nil
+	return a.Cursor != nil && isNonBlank(*a.Cursor) && a.Path == nil && a.Name == nil && a.NamePattern == nil && a.Text == nil && a.Regex == nil && a.Type == nil && a.MinSizeBytes == nil && a.MaxSizeBytes == nil && a.ModifiedNotBefore == nil && a.ModifiedNotAfter == nil && a.MaxMatchesPerFile == nil && a.MaxMatches == nil && a.ContextLines == nil && a.BinaryMode == nil && a.Encoding == nil && a.PageSize == nil && a.IgnoreFile == nil
+}
+
+func parseIgnoreFile(ignorePath *string) (search.IgnoreFile, *protocol.Error) {
+	if ignorePath == nil {
+		return search.IgnoreFile{}, nil
+	}
+	if !isNonBlank(*ignorePath) {
+		return search.IgnoreFile{}, invalidParamsError()
+	}
+	return search.IgnoreFile{Path: *ignorePath}, nil
 }
 
 func (a searchPathsArguments) contentSearchLimits() (search.LiteralLimits, *protocol.Error) {
@@ -359,7 +375,7 @@ func (t *SearchPathsTool) continuePage(token string) (any, *protocol.Error) {
 
 func mapSearchError(err error) *protocol.Error {
 	switch {
-	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch):
+	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch), errors.Is(err, search.ErrInvalidIgnoreFile):
 		return invalidParamsError()
 	case errors.Is(err, errSearchCursorInvalid):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: stale cursor"}

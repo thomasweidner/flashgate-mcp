@@ -50,6 +50,17 @@ func TestSearchPathsDefaultsOnlyMissingPath(t *testing.T) {
 	}
 }
 
+func TestSearchPathsExplicitlyAppliesIgnoreFile(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: ".gitignore", Size: 6}, {Name: "keep.go"}, {Name: "skip.log"}}
+	fake.readContent = []byte("*.log\n")
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"ignoreFile":".gitignore"}`))
+	want := searchPathsResult{Paths: []search.Path{{Path: ".gitignore"}, {Path: "keep.go"}}}
+	if rpcErr != nil || !reflect.DeepEqual(result, want) || fake.readPath != ".gitignore" || fake.readMaxBytes != search.MaxIgnoreFileBytes {
+		t.Fatalf("unexpected ignore result=%#v read=%q max=%d err=%#v", result, fake.readPath, fake.readMaxBytes, rpcErr)
+	}
+}
+
 func TestSearchPathsPaginatesPathsWithSingleUseOpaqueCursor(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.entries = []fs.Entry{{Name: "c.txt"}, {Name: "a.txt"}, {Name: "b.txt"}}
@@ -110,7 +121,7 @@ func TestSearchPathsRejectsExpiredOrQueryBearingCursor(t *testing.T) {
 }
 
 func TestSearchPathsRejectsInvalidArguments(t *testing.T) {
-	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"name":""}`, `{"name":"  "}`, `{"name":"dir/file"}`, `{"namePattern":"["}`, `{"name":"a","namePattern":"*"}`, `{"type":"link"}`, `{"minSizeBytes":-1}`, `{"minSizeBytes":2,"maxSizeBytes":1}`, `{"modifiedNotBefore":"yesterday"}`, `{"modifiedNotBefore":"2026-01-02T00:00:00Z","modifiedNotAfter":"2026-01-01T00:00:00Z"}`, `{"pageSize":0}`, `{"pageSize":101}`, `{"cursor":""}`, `{"unknown":true}`, `{} {`} {
+	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"name":""}`, `{"name":"  "}`, `{"name":"dir/file"}`, `{"namePattern":"["}`, `{"name":"a","namePattern":"*"}`, `{"type":"link"}`, `{"minSizeBytes":-1}`, `{"minSizeBytes":2,"maxSizeBytes":1}`, `{"modifiedNotBefore":"yesterday"}`, `{"modifiedNotBefore":"2026-01-02T00:00:00Z","modifiedNotAfter":"2026-01-01T00:00:00Z"}`, `{"pageSize":0}`, `{"pageSize":101}`, `{"cursor":""}`, `{"ignoreFile":""}`, `{"ignoreFile":"  "}`, `{"unknown":true}`, `{} {`} {
 		_, rpcErr := NewSearchPathsTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
