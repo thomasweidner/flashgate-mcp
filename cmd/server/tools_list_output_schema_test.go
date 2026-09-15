@@ -20,8 +20,8 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 		expectedResponseBytes int
 		expectedResultBytes   int
 	}{
-		{"read-only", capabilitiesFromReadOnly(true), 3, 2134, 2099},
-		{"default", toolCapabilities{filesystemWrite: true}, 8, 5657, 5622},
+		{"read-only", capabilitiesFromReadOnly(true), 3, 2446, 2411},
+		{"default", toolCapabilities{filesystemWrite: true}, 8, 6490, 6455},
 	}
 
 	for _, tc := range tests {
@@ -60,6 +60,7 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 				t.Fatalf("got %d tools, want %d", len(response.Result.Tools), tc.toolCount)
 			}
 			schemaCount := 0
+			annotationCount := 0
 			for _, tool := range response.Result.Tools {
 				if tool.OutputSchema == nil {
 					t.Fatalf("tools/list omitted outputSchema for %s", tool.Name)
@@ -68,6 +69,10 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 					t.Fatalf("%s outputSchema root type=%#v", tool.Name, tool.OutputSchema["type"])
 				}
 				schemaCount++
+				if !tool.Annotations.IdempotentHint || tool.Annotations.OpenWorldHint {
+					t.Fatalf("%s has unexpected annotations: %#v", tool.Name, tool.Annotations)
+				}
+				annotationCount++
 			}
 
 			withSchemas := output.Len()
@@ -81,8 +86,8 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 			withoutSchemas := len(historical) + 1 // STDIO JSONL newline, matching the runtime response.
 			delta := withSchemas - withoutSchemas
 			percent := float64(delta) * 100 / float64(withoutSchemas)
-			t.Logf("profile=%s without=%dB with=%dB delta=%dB change=%.2f%% tools=%d schemas=%d",
-				tc.name, withoutSchemas, withSchemas, delta, percent, tc.toolCount, schemaCount)
+			t.Logf("profile=%s without=%dB with=%dB delta=%dB change=%.2f%% tools=%d schemas=%d annotations=%d",
+				tc.name, withoutSchemas, withSchemas, delta, percent, tc.toolCount, schemaCount, annotationCount)
 		})
 	}
 }

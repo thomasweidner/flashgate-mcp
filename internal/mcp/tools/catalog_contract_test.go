@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestRuntimeDefinitionsMatchStaticCatalog(t *testing.T) {
@@ -16,11 +18,12 @@ func TestRuntimeDefinitionsMatchStaticCatalog(t *testing.T) {
 	}
 	var catalog struct {
 		Tools []struct {
-			Name         string         `json:"name"`
-			Title        string         `json:"title"`
-			Description  string         `json:"description"`
-			InputSchema  map[string]any `json:"inputSchema"`
-			ResultSchema map[string]any `json:"resultSchema"`
+			Name         string                   `json:"name"`
+			Title        string                   `json:"title"`
+			Description  string                   `json:"description"`
+			Annotations  protocol.ToolAnnotations `json:"annotations"`
+			InputSchema  map[string]any           `json:"inputSchema"`
+			ResultSchema map[string]any           `json:"resultSchema"`
 		} `json:"tools"`
 	}
 	raw = bytes.TrimPrefix(raw, []byte{0xEF, 0xBB, 0xBF})
@@ -43,6 +46,9 @@ func TestRuntimeDefinitionsMatchStaticCatalog(t *testing.T) {
 		entry := catalog.Tools[index]
 		if definition.Name != entry.Name || definition.Title != entry.Title || definition.Description != entry.Description {
 			t.Fatalf("definition mismatch at index %d: runtime=%#v catalog=%#v", index, definition, entry)
+		}
+		if definition.Annotations != entry.Annotations {
+			t.Fatalf("%s annotations mismatch: runtime=%#v catalog=%#v", definition.Name, definition.Annotations, entry.Annotations)
 		}
 
 		runtimeSchema := normalizeSchema(t, definition.InputSchema)
