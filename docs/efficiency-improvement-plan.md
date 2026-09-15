@@ -19,6 +19,12 @@ FlashGate optimizes for fast responses, low model-token use, low RAM, low CPU, a
 9. Preserve server-side authorization regardless of tool visibility or annotations.
 10. Defer optional acceleration until benchmarks prove value.
 
+The normative decision rule, security boundary, client guidance, and concrete
+copy/edit/hash/search examples are documented in the
+[Local deterministic work principle](local-deterministic-work.md). Local
+execution reduces retransmission but never expands authorization or permits
+unbounded hidden work.
+
 ## Adopted improvements from comparative review
 
 ### Partial and batch operations
