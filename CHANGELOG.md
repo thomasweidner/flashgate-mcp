@@ -8,6 +8,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added BL-105's immutable per-root file, result, scan, and temporary-data
+  limits. Named-root validation now rejects missing or non-positive limits, and
+  `read_file` enforces the selected root's file/result ceilings independently
+  of other roots while preserving the compatible single-root configuration.
 - Added BL-104 per-root read/write enforcement. Named-root registry entries
   carry an explicit read, write, or combined access policy; every filesystem
   tool checks the selected root's required access before filesystem I/O, and

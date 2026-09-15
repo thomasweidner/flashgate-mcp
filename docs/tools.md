@@ -24,7 +24,11 @@ filesystem access. Each selected root must explicitly allow the access required
 by the tool: listing, reading, and path inspection require read access, while
 write, create, delete, copy, and move require write access. A denied root uses
 the same generic Invalid params response as an unknown root and is rejected
-before filesystem I/O. Absolute paths, traversal, denied hidden/UNC paths, and
+before filesystem I/O. Every root also carries positive file, result, scan, and
+temporary-data byte limits. `read_file` uses the smallest applicable server,
+root-file, root-result, and request maximum; future scan and temporary-data
+operations must consume those limits from the same resolved root policy.
+Absolute paths, traversal, denied hidden/UNC paths, and
 denied symlink, junction, or reparse access remain server-side errors. Inputs
 are strict JSON objects: unknown properties, malformed JSON, trailing JSON
 values, wrong field types, explicit `null` field values, missing required

@@ -299,13 +299,14 @@ higher-risk profile              -> explicit validated activation
 ```
 
 The named-root registry already assigns each entry explicit read, write, or
-combined access. Filesystem tools resolve the selected root with their required
-access before performing I/O; a denial fails closed. External multi-root
-configuration remains planned. The target additionally allows each root to
-define:
+combined access plus positive file, result, scan, and temporary-data byte
+limits. Filesystem tools resolve the selected root with their required access
+before performing I/O; a denial fails closed. `read_file` applies the stricter
+of its server, selected-root file, selected-root result, and optional request
+limits. External multi-root configuration remains planned. The target
+additionally allows each root to define:
 
 - read/write access;
-- size/result/scan/temp limits;
 - allowed file types;
 - symlink/reparse policy;
 - capability mapping;

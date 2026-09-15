@@ -14,8 +14,8 @@ func TestFilesystemToolSelectsConfiguredRootByOpaqueID(t *testing.T) {
 	notesFS := newFakeFileSystem()
 	notesFS.readContent = []byte("selected")
 	registry, err := roots.New([]roots.Entry{
-		{ID: roots.DefaultID, FileSystem: defaultFS, Access: roots.ReadWrite},
-		{ID: "notes", FileSystem: notesFS, Access: roots.Read},
+		{ID: roots.DefaultID, FileSystem: defaultFS, Access: roots.ReadWrite, Limits: roots.DefaultLimits(1024, 2048)},
+		{ID: "notes", FileSystem: notesFS, Access: roots.Read, Limits: roots.DefaultLimits(1024, 2048)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -40,8 +40,8 @@ func TestFilesystemToolSelectsConfiguredRootByOpaqueID(t *testing.T) {
 func TestFilesystemToolsEnforcePerRootReadWritePolicy(t *testing.T) {
 	filesystem := newFakeFileSystem()
 	registry, err := roots.New([]roots.Entry{
-		{ID: "read-only", FileSystem: filesystem, Access: roots.Read},
-		{ID: "write-only", FileSystem: filesystem, Access: roots.Write},
+		{ID: "read-only", FileSystem: filesystem, Access: roots.Read, Limits: roots.DefaultLimits(1024, 2048)},
+		{ID: "write-only", FileSystem: filesystem, Access: roots.Write, Limits: roots.DefaultLimits(1024, 2048)},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -64,6 +64,35 @@ func TestFilesystemToolsEnforcePerRootReadWritePolicy(t *testing.T) {
 	}
 	if filesystem.writePath != "" {
 		t.Fatalf("denied write reached filesystem with path %q", filesystem.writePath)
+	}
+}
+
+func TestReadFileEnforcesSelectedRootFileAndResultLimits(t *testing.T) {
+	filesystem := newFakeFileSystem()
+	registry, err := roots.New([]roots.Entry{
+		{ID: "file-limited", FileSystem: filesystem, Access: roots.Read, Limits: roots.Limits{
+			MaxFileBytes: 64, MaxResultBytes: 256, MaxScanBytes: 512, MaxTemporaryBytes: 512,
+		}},
+		{ID: "result-limited", FileSystem: filesystem, Access: roots.Read, Limits: roots.Limits{
+			MaxFileBytes: 256, MaxResultBytes: 32, MaxScanBytes: 512, MaxTemporaryBytes: 512,
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tool := NewReadFileTool(filesystem, 1024)
+	BindRootRegistry(tool, registry)
+	for rootID, want := range map[string]int64{"file-limited": 64, "result-limited": 32} {
+		_, rpcErr := tool.Execute(context.Background(), json.RawMessage(
+			`{"rootId":"`+rootID+`","path":"data.txt","maxBytes":900}`,
+		))
+		if rpcErr != nil {
+			t.Fatalf("%s: unexpected error: %#v", rootID, rpcErr)
+		}
+		if filesystem.readMaxBytes != want {
+			t.Fatalf("%s: read maximum = %d, want %d", rootID, filesystem.readMaxBytes, want)
+		}
 	}
 }
 
