@@ -544,6 +544,8 @@ The vendored Windows resource generator and committed icon source are covered by
 
 The typed-command row is governed by the normative [Command Execution Threat Model](command-execution-threat-model.md). It requires a server-resolved native executable identity, closed typed arguments, root-bound paths, a minimal environment, one managed execution engine, bounded/redacted output, and fail-closed handling when required platform isolation is unavailable.
 
+The server-owned [Typed Command Definitions](typed-command-definitions.md) registry validates and freezes executable IDs, approved absolute paths, optional SHA-256 pins, argument constraints, and timeout/output/network policy before lookup. It contains no process-launch fallback.
+
 Stateful components require race-detector coverage, restart/shutdown analysis, negative capability tests, quota/fairness tests, and cleanup verification.
 
 ### MCP host lifecycle

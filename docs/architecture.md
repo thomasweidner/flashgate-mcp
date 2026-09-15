@@ -193,6 +193,8 @@ Owns typed allowlisted commands, executable identity/path resolution, structured
 
 The [Command Execution Threat Model](command-execution-threat-model.md) defines the normative Version 1.0 trust boundaries and required policy outcomes before this domain is implemented.
 
+The [Typed Command Definitions](typed-command-definitions.md) contract defines the immutable server-side registry, executable-ID mapping, closed argument-rule types, and per-command policy maxima without adding a process-launch path.
+
 Execution does not expose a general shell. A command definition can fix subcommands, allow named flags and typed values, bind path arguments to roots, disable network use, and constrain timeout/output.
 
 ### System information
