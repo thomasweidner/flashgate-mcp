@@ -321,6 +321,13 @@ Deprecated MCP Roots is never authoritative and is post-Version-1.0 compatibilit
 
 ### Operations, handles, resources, quotas, and fairness
 
+The currently implemented transport-neutral registry requires a domain owner
+for retrieval, replacement, and removal, and returns the same not-found result
+for unknown IDs and owner mismatches. This prevents cross-domain enumeration at
+the registry boundary, but it is defense in depth rather than caller
+authorization. Its internal IDs are not public handles; the principal/profile/
+root/backend/service-generation binding below remains planned handle-layer work.
+
 Operations/jobs use opaque non-guessable handles. All stateful objects are bound to:
 
 ```text
