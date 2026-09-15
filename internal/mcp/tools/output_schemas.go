@@ -14,6 +14,21 @@ func filesystemOutputSchema(toolName string) map[string]any {
 			},
 			"nextCursor": map[string]any{"type": "string", "minLength": 1},
 		}, "entries")
+	case getDirectoryTreeToolName:
+		return objectOutputSchema(map[string]any{
+			"entries": map[string]any{
+				"type": "array",
+				"items": objectOutputSchema(map[string]any{
+					"path":  map[string]any{"type": "string"},
+					"depth": map[string]any{"type": "integer", "minimum": 1},
+					"name":  map[string]any{"type": "string"},
+					"isDir": map[string]any{"type": "boolean"},
+					"size":  map[string]any{"type": "integer"},
+				}, "path", "depth"),
+			},
+			"nextCursor": map[string]any{"type": "string", "minLength": 1},
+			"truncated":  map[string]any{"type": "boolean"},
+		}, "entries", "truncated")
 	case readFileToolName:
 		return objectOutputSchema(map[string]any{
 			"content": map[string]any{"type": "string"},

@@ -20,6 +20,7 @@ Implemented tools:
 
 ```text
 list_directory
+get_directory_tree
 read_file
 get_path_info
 write_file
@@ -99,9 +100,9 @@ tools/list
 tools/call
 ```
 
-Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present eight-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
+Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present nine-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
 
-Runtime `outputSchema` is exposed for all eight tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
+Runtime `outputSchema` is exposed for all nine tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
 
 JSON-RPC request envelopes are validated before dispatch. Unsupported batch requests, invalid protocol versions, missing or invalid methods, invalid IDs, and malformed method params are rejected with generic JSON-RPC errors. Parse errors and invalid requests without a valid request ID serialize `id:null`. Notifications do not receive responses; `notifications/initialized` is accepted as a no-op, and other notifications are not executed.
 
@@ -177,6 +178,7 @@ When read-only mode is enabled, only these tools are registered and returned by 
 
 ```text
 list_directory
+get_directory_tree
 read_file
 get_path_info
 ```
@@ -749,6 +751,7 @@ Each feature should include:
 | Tool | Description |
 |---|---|
 | `list_directory` | Lists files and directories below the configured filesystem root. |
+| `get_directory_tree` | Returns bounded, field-selectable, paginated directory-tree entries. |
 | `read_file` | Reads a text file below the configured filesystem root. |
 | `get_path_info` | Returns existence and metadata; missing paths return `exists:false`. |
 | `write_file` | Writes a text file. |
@@ -757,7 +760,7 @@ Each feature should include:
 | `copy_path` | Copies a file. Directory copy is currently unsupported. |
 | `move_path` | Moves or renames a file or directory on the same volume. |
 
-When `MCP_READ_ONLY=true`, only `list_directory`, `read_file`, and `get_path_info` are exposed.
+When `MCP_READ_ONLY=true`, only `list_directory`, `get_directory_tree`, `read_file`, and `get_path_info` are exposed.
 
 ## Roadmap
 

@@ -116,6 +116,7 @@ tool_names = [tool.get("name") for tool in tools]
 
 expected_tools = [
     "list_directory",
+    "get_directory_tree",
     "read_file",
     "get_path_info",
 ]

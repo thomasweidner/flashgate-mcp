@@ -4,8 +4,8 @@
 
 This document defines the Version 1.0 contract for cursors returned by bounded
 FlashGate collection and stream operations. It applies to directory and search
-pages and to incremental process output. `list_directory` implements the
-directory subset of this contract; this document does not define a new MCP tool.
+pages and to incremental process output. `list_directory` and `get_directory_tree` implement the directory subset of this
+contract.
 
 A cursor is an opaque continuation capability for one logical result sequence.
 It is neither a path, an offset supplied by the caller, an authorization token,

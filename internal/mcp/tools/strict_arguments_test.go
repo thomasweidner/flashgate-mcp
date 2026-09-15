@@ -14,6 +14,7 @@ func TestAllToolsRejectMalformedUnknownTrailingAndWrongTypes(t *testing.T) {
 		tool Tool
 	}{
 		{"list_directory", NewListDirectoryTool(newFakeFileSystem())},
+		{"get_directory_tree", NewGetDirectoryTreeTool(newFakeFileSystem())},
 		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024)},
 		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem())},
 		{"write_file", NewWriteFileTool(newFakeFileSystem())},
@@ -71,6 +72,7 @@ func TestAllToolsRejectExplicitNullFields(t *testing.T) {
 		raw  []string
 	}{
 		{"list_directory", NewListDirectoryTool(newFakeFileSystem()), []string{`{"path":null}`}},
+		{"get_directory_tree", NewGetDirectoryTreeTool(newFakeFileSystem()), []string{`{"path":null}`, `{"maxDepth":null}`}},
 		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024), []string{`{"path":null}`, `{"path":"file","maxBytes":null}`}},
 		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem()), []string{`{"path":null}`}},
 		{"write_file", NewWriteFileTool(newFakeFileSystem()), []string{`{"path":"file","content":null}`, `{"path":"file","overwrite":null}`}},

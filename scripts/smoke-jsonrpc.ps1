@@ -167,6 +167,7 @@ try {
 
     $expectedTools = @(
         "list_directory",
+        "get_directory_tree",
         "read_file",
         "get_path_info"
     )
