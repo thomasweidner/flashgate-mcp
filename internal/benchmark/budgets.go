@@ -357,7 +357,7 @@ func validateToolsListMeasurements(measurements []ToolsListMeasurement, budgets 
 			hardFailure("tools/list profile %s measurement is structurally incomplete", measurement.Profile)
 		}
 	}
-	for profile := range expected {
+	for _, profile := range sortedBudgetKeys(expected) {
 		if _, ok := seen[profile]; !ok {
 			hardFailure("tools/list profile %s measurement is missing", profile)
 		}
@@ -365,7 +365,7 @@ func validateToolsListMeasurements(measurements []ToolsListMeasurement, budgets 
 			hardFailure("tools/list profile %s budget is missing", profile)
 		}
 	}
-	for profile := range budgets {
+	for _, profile := range sortedBudgetKeys(budgets) {
 		if _, ok := expected[profile]; !ok {
 			hardFailure("tools/list budget profile %s is unknown", profile)
 		}
@@ -399,7 +399,7 @@ func validateWorkflowMeasurements(measurements []WorkflowMeasurement, expectedNa
 			hardFailure("workflow %s measurement is structurally incomplete", measurement.Name)
 		}
 	}
-	for name := range expected {
+	for _, name := range sortedBudgetKeys(expected) {
 		if _, ok := seen[name]; !ok {
 			hardFailure("workflow %s measurement is missing", name)
 		}
@@ -407,7 +407,7 @@ func validateWorkflowMeasurements(measurements []WorkflowMeasurement, expectedNa
 			hardFailure("workflow %s budget is missing", name)
 		}
 	}
-	for name := range budgets {
+	for _, name := range sortedBudgetKeys(budgets) {
 		if _, ok := expected[name]; !ok {
 			hardFailure("workflow budget %s is unknown", name)
 		}
