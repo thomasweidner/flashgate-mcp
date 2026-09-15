@@ -14,16 +14,39 @@ import (
 const DefaultID = "default"
 
 var (
-	ErrInvalidEntry       = errors.New("invalid root entry")
-	ErrDuplicateID        = errors.New("duplicate root id")
-	ErrNoRoots            = errors.New("no roots configured")
-	ErrUnknownRoot        = errors.New("unknown root id")
-	ErrAccessDenied       = errors.New("root access denied")
-	ErrInvalidLimits      = errors.New("invalid root limits")
-	ErrInvalidFileTypes   = errors.New("invalid root file types")
-	ErrInvalidLinkRules   = errors.New("invalid root link rules")
-	ErrLinkPolicyMismatch = errors.New("root link rules do not match filesystem policy")
+	ErrInvalidEntry        = errors.New("invalid root entry")
+	ErrDuplicateID         = errors.New("duplicate root id")
+	ErrNoRoots             = errors.New("no roots configured")
+	ErrUnknownRoot         = errors.New("unknown root id")
+	ErrAccessDenied        = errors.New("root access denied")
+	ErrInvalidLimits       = errors.New("invalid root limits")
+	ErrInvalidFileTypes    = errors.New("invalid root file types")
+	ErrInvalidLinkRules    = errors.New("invalid root link rules")
+	ErrLinkPolicyMismatch  = errors.New("root link rules do not match filesystem policy")
+	ErrInvalidCapabilities = errors.New("invalid root capabilities")
+	ErrCapabilityDenied    = errors.New("root capability denied")
 )
+
+// Capability is a set of functional operations authorized for a root. It is
+// deliberately separate from coarse filesystem access so both gates must pass.
+type Capability uint8
+
+const (
+	FilesystemRead Capability = 1 << iota
+	FilesystemWrite
+	FilesystemReadWrite = FilesystemRead | FilesystemWrite
+)
+
+func capabilitiesFor(access Access) Capability {
+	var capabilities Capability
+	if access&Read != 0 {
+		capabilities |= FilesystemRead
+	}
+	if access&Write != 0 {
+		capabilities |= FilesystemWrite
+	}
+	return capabilities
+}
 
 // SymlinkRule controls classic symbolic-link traversal for a root.
 type SymlinkRule uint8
@@ -137,20 +160,22 @@ func (l Limits) valid() bool {
 }
 
 type Entry struct {
-	ID         string
-	FileSystem fs.FileSystem
-	Access     Access
-	Limits     Limits
-	FileTypes  FileTypes
-	LinkRules  LinkRules
+	ID           string
+	FileSystem   fs.FileSystem
+	Access       Access
+	Limits       Limits
+	FileTypes    FileTypes
+	LinkRules    LinkRules
+	Capabilities Capability
 }
 
 // Root is the resolved, authorized policy and filesystem for one root.
 type Root struct {
-	FileSystem fs.FileSystem
-	Limits     Limits
-	FileTypes  FileTypes
-	LinkRules  LinkRules
+	FileSystem   fs.FileSystem
+	Limits       Limits
+	FileTypes    FileTypes
+	LinkRules    LinkRules
+	Capabilities Capability
 }
 
 // Registry is an immutable collection of named, independently confined roots.
@@ -180,6 +205,10 @@ func New(entries []Entry) (*Registry, error) {
 		if entry.LinkRules != linkRulesFor(entry.FileSystem) {
 			return nil, ErrLinkPolicyMismatch
 		}
+		if entry.Capabilities == 0 || entry.Capabilities&^FilesystemReadWrite != 0 ||
+			entry.Capabilities&^capabilitiesFor(entry.Access) != 0 {
+			return nil, ErrInvalidCapabilities
+		}
 		if _, exists := registry.entries[entry.ID]; exists {
 			return nil, ErrDuplicateID
 		}
@@ -203,7 +232,7 @@ func SingleWithAccess(filesystem fs.FileSystem, access Access) (*Registry, error
 // SingleWithPolicy preserves the current single-root deployment with explicit
 // access and resource policies derived from configuration.
 func SingleWithPolicy(filesystem fs.FileSystem, access Access, limits Limits) (*Registry, error) {
-	return New([]Entry{{ID: DefaultID, FileSystem: filesystem, Access: access, Limits: limits, FileTypes: AllFileTypes(), LinkRules: linkRulesFor(filesystem)}})
+	return New([]Entry{{ID: DefaultID, FileSystem: filesystem, Access: access, Limits: limits, FileTypes: AllFileTypes(), LinkRules: linkRulesFor(filesystem), Capabilities: capabilitiesFor(access)}})
 }
 
 // FileSystem returns a root only when all requested access is permitted.
@@ -212,8 +241,15 @@ func (r *Registry) FileSystem(id string, required Access) (fs.FileSystem, error)
 	return root.FileSystem, err
 }
 
-// Root returns the complete root policy only when access is permitted.
+// Root returns the complete root policy only when both the requested access
+// and its corresponding filesystem capabilities are permitted.
 func (r *Registry) Root(id string, required Access) (Root, error) {
+	return r.RootWithCapability(id, required, capabilitiesFor(required))
+}
+
+// RootWithCapability returns the root only when both its coarse access and
+// functional capability mapping authorize the requested operation.
+func (r *Registry) RootWithCapability(id string, required Access, requiredCapability Capability) (Root, error) {
 	entry, ok := r.entries[id]
 	if !ok {
 		return Root{}, ErrUnknownRoot
@@ -221,9 +257,13 @@ func (r *Registry) Root(id string, required Access) (Root, error) {
 	if required == 0 || required&^ReadWrite != 0 || entry.Access&required != required {
 		return Root{}, ErrAccessDenied
 	}
+	if requiredCapability == 0 || requiredCapability&^FilesystemReadWrite != 0 ||
+		entry.Capabilities&requiredCapability != requiredCapability {
+		return Root{}, ErrCapabilityDenied
+	}
 	fileTypes := entry.FileTypes
 	fileTypes.Extensions = append([]string(nil), entry.FileTypes.Extensions...)
-	return Root{FileSystem: entry.FileSystem, Limits: entry.Limits, FileTypes: fileTypes, LinkRules: entry.LinkRules}, nil
+	return Root{FileSystem: entry.FileSystem, Limits: entry.Limits, FileTypes: fileTypes, LinkRules: entry.LinkRules, Capabilities: entry.Capabilities}, nil
 }
 
 func (r *Registry) IDs() []string {

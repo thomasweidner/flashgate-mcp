@@ -15,6 +15,9 @@ of disallowed reads and writes before content I/O. They also require explicit
 per-root symlink/reparse rules, reject unsupported rules and mismatches with the
 filesystem's immutable path policy, and prove independent roots may select deny
 or confined-follow symlink behavior while reparse points remain denied.
+Per-root capability tests reject missing, unknown, or access-escalating maps and
+prove read and write tools fail generically before filesystem I/O when coarse
+access permits an operation but its functional capability is absent.
 
 ## Slim project validation
 

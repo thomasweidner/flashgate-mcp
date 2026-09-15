@@ -23,8 +23,8 @@ func TestRegistrySupportsMultipleIndependentRoots(t *testing.T) {
 	first := &fakeFileSystem{}
 	second := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "source", FileSystem: first, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
-		{ID: "target", FileSystem: second, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
+		{ID: "source", FileSystem: first, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemRead},
+		{ID: "target", FileSystem: second, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemReadWrite},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -52,12 +52,15 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 		{name: "unknown access", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: 4}}, want: ErrInvalidEntry},
 		{name: "invalid limits", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read}}, want: ErrInvalidLimits},
 		{name: "missing file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits}}, want: ErrInvalidFileTypes},
-		{name: "unsorted file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{".txt", ".md"}}, LinkRules: testLinkRules}}, want: ErrInvalidFileTypes},
-		{name: "nonportable file type", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{"*.txt"}}, LinkRules: testLinkRules}}, want: ErrInvalidFileTypes},
+		{name: "unsorted file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{".txt", ".md"}}, LinkRules: testLinkRules, Capabilities: FilesystemRead}}, want: ErrInvalidFileTypes},
+		{name: "nonportable file type", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{"*.txt"}}, LinkRules: testLinkRules, Capabilities: FilesystemRead}}, want: ErrInvalidFileTypes},
 		{name: "missing link rules", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()}}, want: ErrInvalidLinkRules},
-		{name: "allows reparse points", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: DenySymlinks, ReparsePoints: 2}}}, want: ErrInvalidLinkRules},
-		{name: "filesystem policy mismatch", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: FollowInternalSymlinks, ReparsePoints: DenyReparsePoints}}}, want: ErrLinkPolicyMismatch},
-		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules}, {ID: "root", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules}}, want: ErrDuplicateID},
+		{name: "allows reparse points", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: DenySymlinks, ReparsePoints: 2}, Capabilities: FilesystemRead}}, want: ErrInvalidLinkRules},
+		{name: "filesystem policy mismatch", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: FollowInternalSymlinks, ReparsePoints: DenyReparsePoints}, Capabilities: FilesystemRead}}, want: ErrLinkPolicyMismatch},
+		{name: "missing capabilities", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules}}, want: ErrInvalidCapabilities},
+		{name: "unknown capability", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: 4}}, want: ErrInvalidCapabilities},
+		{name: "capability exceeds access", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemWrite}}, want: ErrInvalidCapabilities},
+		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemRead}, {ID: "root", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemWrite}}, want: ErrDuplicateID},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -80,11 +83,32 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 	}
 }
 
+func TestRegistryEnforcesCapabilityIndependentlyOfAccess(t *testing.T) {
+	filesystem := &fakeFileSystem{}
+	registry, err := New([]Entry{
+		{ID: "read-capability", FileSystem: filesystem, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemRead},
+		{ID: "write-capability", FileSystem: filesystem, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemWrite},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := registry.RootWithCapability("read-capability", Write, FilesystemWrite); !errors.Is(err, ErrCapabilityDenied) {
+		t.Fatalf("write capability error = %v", err)
+	}
+	if _, err := registry.RootWithCapability("write-capability", Read, FilesystemRead); !errors.Is(err, ErrCapabilityDenied) {
+		t.Fatalf("read capability error = %v", err)
+	}
+	root, err := registry.RootWithCapability("read-capability", Read, FilesystemRead)
+	if err != nil || root.Capabilities != FilesystemRead {
+		t.Fatalf("authorized root = (%#v, %v)", root, err)
+	}
+}
+
 func TestRegistryEnforcesIndependentRootAccess(t *testing.T) {
 	filesystem := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
-		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
+		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemRead},
+		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemWrite},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -107,7 +131,7 @@ func TestRegistryCopiesFileTypePolicy(t *testing.T) {
 	extensions := []string{".md", ".txt"}
 	registry, err := New([]Entry{{
 		ID: "docs", FileSystem: &fakeFileSystem{}, Access: Read, Limits: testLimits,
-		FileTypes: FileTypes{Extensions: extensions}, LinkRules: testLinkRules,
+		FileTypes: FileTypes{Extensions: extensions}, LinkRules: testLinkRules, Capabilities: FilesystemRead,
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -131,8 +155,8 @@ func TestRegistryPreservesMatchingPerRootLinkRules(t *testing.T) {
 	deny := &fakeFileSystem{}
 	follow := &fakeFileSystem{policy: security.Policy{FollowSymlinks: true}}
 	registry, err := New([]Entry{
-		{ID: "deny", FileSystem: deny, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
-		{ID: "follow", FileSystem: follow, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: FollowInternalSymlinks, ReparsePoints: DenyReparsePoints}},
+		{ID: "deny", FileSystem: deny, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemRead},
+		{ID: "follow", FileSystem: follow, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: FollowInternalSymlinks, ReparsePoints: DenyReparsePoints}, Capabilities: FilesystemRead},
 	})
 	if err != nil {
 		t.Fatal(err)
