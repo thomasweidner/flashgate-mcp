@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "flashgate-native-os-adapter-policy/v1",
+  "implementationPriority": [
+    "go-standard-library",
+    "platform-go-adapter",
+    "direct-os-api-or-stable-interface",
+    "allowlisted-native-program"
+  ],
+  "runtimeRoots": [
+    "cmd/server",
+    "internal"
+  ],
+  "excludedDevelopmentPackages": [
+    "internal/benchmark"
+  ],
+  "forbiddenInterpreters": [
+    "bash",
+    "cmd",
+    "java",
+    "node",
+    "php",
+    "powershell",
+    "pwsh",
+    "python",
+    "sh"
+  ],
+  "externalNativePrograms": []
+}
