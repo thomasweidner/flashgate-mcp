@@ -57,6 +57,19 @@ type validSourceEpochFixture struct {
 	SourceTime string `json:"sourceTime"`
 }
 
+func decodeStrictFixture(t *testing.T, data []byte, target any) {
+	t.Helper()
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(target); err != nil {
+		t.Fatalf("decode fixture file: %v", err)
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		t.Fatalf("fixture file contains trailing JSON data: %v", err)
+	}
+}
+
 func TestBuildMetadataFixtures(t *testing.T) {
 	t.Parallel()
 
@@ -66,17 +79,8 @@ func TestBuildMetadataFixtures(t *testing.T) {
 		t.Fatalf("read fixture file: %v", err)
 	}
 
-	decoder := json.NewDecoder(strings.NewReader(string(data)))
-	decoder.DisallowUnknownFields()
-
 	var fixtureFile buildMetadataFixtureFile
-	if err := decoder.Decode(&fixtureFile); err != nil {
-		t.Fatalf("decode fixture file: %v", err)
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		t.Fatalf("fixture file contains trailing JSON data: %v", err)
-	}
+	decodeStrictFixture(t, data, &fixtureFile)
 	if fixtureFile.Schema != "flashgate-build-metadata-fixtures/v1" {
 		t.Fatalf("unexpected fixture schema %q", fixtureFile.Schema)
 	}
