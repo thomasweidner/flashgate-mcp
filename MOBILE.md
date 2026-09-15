@@ -218,7 +218,7 @@ Earlier-sprint work does not become executable merely because its BL/sprint numb
 
 - **Filesystem:** `BL-049` remains reserved by PR #169. `BL-056`, `BL-060–061`, `BL-063–064` currently intersect multiple open write/list/job foundations and default to `WAIT_MULTI`; `BL-057` normally follows `BL-056`.
 - **Search:** all current Version-1.0 Search candidates are reserved. Do not start another Search BL from this catalog.
-- **Named roots:** `BL-102` and `BL-104–111` are now reserved by PR #180 and PRs #182–#194. `BL-103` is the only unreserved Planned row and crosses profile/risk-policy plus named-root/capability foundations, so reclassify it from the actual checkout before mutation.
+- **Named roots:** `BL-102` and `BL-104–111` are now reserved by PR #180 and PRs #182, #183, #184, #185, #187, #189, #190 and #194 respectively. `BL-103` is the only unreserved Planned row and crosses profile/risk-policy plus named-root/capability foundations, so reclassify it from the actual checkout before mutation.
 - **Operations/Job:** required primitives are distributed across independent open PRs; `BL-095`, `BL-098–099` default to `WAIT_MULTI` until current topology proves otherwise.
 - **Process:** `BL-114–117` are now reserved by PR #188 and PRs #191–#193. `BL-118` is the remaining observation authorization gate and must be rebound against both the current process-observation stack and capability/authorization foundations. `BL-120/121` may follow BL-119 if it is the only real prerequisite; otherwise managed-process work defaults to `WAIT_MULTI`.
 - **Command:** `BL-137` is now reserved by PR #186. `BL-138` is the cleanest direct command child to inspect from that head. `BL-143` must reuse the Managed Process Engine.
