@@ -6,18 +6,25 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
-type fakeFileSystem struct{ fs.FileSystem }
+type fakeFileSystem struct {
+	fs.FileSystem
+	policy security.Policy
+}
+
+func (f *fakeFileSystem) PathPolicy() security.Policy { return f.policy }
 
 var testLimits = DefaultLimits(1024, 2048)
+var testLinkRules = LinkRules{Symlinks: DenySymlinks, ReparsePoints: DenyReparsePoints}
 
 func TestRegistrySupportsMultipleIndependentRoots(t *testing.T) {
 	first := &fakeFileSystem{}
 	second := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "source", FileSystem: first, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()},
-		{ID: "target", FileSystem: second, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes()},
+		{ID: "source", FileSystem: first, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
+		{ID: "target", FileSystem: second, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -45,9 +52,12 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 		{name: "unknown access", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: 4}}, want: ErrInvalidEntry},
 		{name: "invalid limits", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read}}, want: ErrInvalidLimits},
 		{name: "missing file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits}}, want: ErrInvalidFileTypes},
-		{name: "unsorted file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{".txt", ".md"}}}}, want: ErrInvalidFileTypes},
-		{name: "nonportable file type", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{"*.txt"}}}}, want: ErrInvalidFileTypes},
-		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()}, {ID: "root", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes()}}, want: ErrDuplicateID},
+		{name: "unsorted file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{".txt", ".md"}}, LinkRules: testLinkRules}}, want: ErrInvalidFileTypes},
+		{name: "nonportable file type", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{"*.txt"}}, LinkRules: testLinkRules}}, want: ErrInvalidFileTypes},
+		{name: "missing link rules", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()}}, want: ErrInvalidLinkRules},
+		{name: "allows reparse points", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: DenySymlinks, ReparsePoints: 2}}}, want: ErrInvalidLinkRules},
+		{name: "filesystem policy mismatch", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: FollowInternalSymlinks, ReparsePoints: DenyReparsePoints}}}, want: ErrLinkPolicyMismatch},
+		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules}, {ID: "root", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules}}, want: ErrDuplicateID},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -73,8 +83,8 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 func TestRegistryEnforcesIndependentRootAccess(t *testing.T) {
 	filesystem := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()},
-		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes()},
+		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
+		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -97,7 +107,7 @@ func TestRegistryCopiesFileTypePolicy(t *testing.T) {
 	extensions := []string{".md", ".txt"}
 	registry, err := New([]Entry{{
 		ID: "docs", FileSystem: &fakeFileSystem{}, Access: Read, Limits: testLimits,
-		FileTypes: FileTypes{Extensions: extensions},
+		FileTypes: FileTypes{Extensions: extensions}, LinkRules: testLinkRules,
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -114,5 +124,26 @@ func TestRegistryCopiesFileTypePolicy(t *testing.T) {
 	}
 	if !again.FileTypes.Allows("README.MD") || again.FileTypes.Allows("payload.exe") {
 		t.Fatalf("registry file-type policy was mutated: %#v", again.FileTypes)
+	}
+}
+
+func TestRegistryPreservesMatchingPerRootLinkRules(t *testing.T) {
+	deny := &fakeFileSystem{}
+	follow := &fakeFileSystem{policy: security.Policy{FollowSymlinks: true}}
+	registry, err := New([]Entry{
+		{ID: "deny", FileSystem: deny, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules},
+		{ID: "follow", FileSystem: follow, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: LinkRules{Symlinks: FollowInternalSymlinks, ReparsePoints: DenyReparsePoints}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]SymlinkRule{"deny": DenySymlinks, "follow": FollowInternalSymlinks} {
+		root, err := registry.Root(id, Read)
+		if err != nil {
+			t.Fatalf("%s: %v", id, err)
+		}
+		if root.LinkRules.Symlinks != want || root.LinkRules.ReparsePoints != DenyReparsePoints {
+			t.Fatalf("%s link rules = %#v", id, root.LinkRules)
+		}
 	}
 }

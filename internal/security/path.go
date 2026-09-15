@@ -132,6 +132,11 @@ func (g *PathGuard) Root() string {
 	return g.root
 }
 
+// Policy returns the immutable policy enforced by this guard.
+func (g *PathGuard) Policy() Policy {
+	return g.policy
+}
+
 // Resolve validates and resolves a user path against the sandbox root.
 func (g *PathGuard) Resolve(userPath string) (SafePath, error) {
 	return g.ResolveForCreate(userPath)

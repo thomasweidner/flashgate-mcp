@@ -89,6 +89,13 @@ type FileSystem interface {
 	Delete(path string, recursive bool) error
 	Move(source string, target string, overwrite bool) error
 	Copy(source string, target string, overwrite bool) error
+	// PathPolicy reports the immutable path policy enforced by this filesystem.
+	PathPolicy() security.Policy
+}
+
+// PathPolicy returns the immutable path policy enforced by this filesystem.
+func (f *LocalFileSystem) PathPolicy() security.Policy {
+	return f.guard.Policy()
 }
 
 // LocalFileSystem implements FileSystem using the local operating system.

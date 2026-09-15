@@ -14,8 +14,8 @@ func TestFilesystemToolSelectsConfiguredRootByOpaqueID(t *testing.T) {
 	notesFS := newFakeFileSystem()
 	notesFS.readContent = []byte("selected")
 	registry, err := roots.New([]roots.Entry{
-		{ID: roots.DefaultID, FileSystem: defaultFS, Access: roots.ReadWrite, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes()},
-		{ID: "notes", FileSystem: notesFS, Access: roots.Read, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes()},
+		{ID: roots.DefaultID, FileSystem: defaultFS, Access: roots.ReadWrite, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes(), LinkRules: roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints}},
+		{ID: "notes", FileSystem: notesFS, Access: roots.Read, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes(), LinkRules: roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -40,8 +40,8 @@ func TestFilesystemToolSelectsConfiguredRootByOpaqueID(t *testing.T) {
 func TestFilesystemToolsEnforcePerRootReadWritePolicy(t *testing.T) {
 	filesystem := newFakeFileSystem()
 	registry, err := roots.New([]roots.Entry{
-		{ID: "read-only", FileSystem: filesystem, Access: roots.Read, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes()},
-		{ID: "write-only", FileSystem: filesystem, Access: roots.Write, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes()},
+		{ID: "read-only", FileSystem: filesystem, Access: roots.Read, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes(), LinkRules: roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints}},
+		{ID: "write-only", FileSystem: filesystem, Access: roots.Write, Limits: roots.DefaultLimits(1024, 2048), FileTypes: roots.AllFileTypes(), LinkRules: roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -72,10 +72,10 @@ func TestReadFileEnforcesSelectedRootFileAndResultLimits(t *testing.T) {
 	registry, err := roots.New([]roots.Entry{
 		{ID: "file-limited", FileSystem: filesystem, Access: roots.Read, Limits: roots.Limits{
 			MaxFileBytes: 64, MaxResultBytes: 256, MaxScanBytes: 512, MaxTemporaryBytes: 512,
-		}, FileTypes: roots.AllFileTypes()},
+		}, FileTypes: roots.AllFileTypes(), LinkRules: roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints}},
 		{ID: "result-limited", FileSystem: filesystem, Access: roots.Read, Limits: roots.Limits{
 			MaxFileBytes: 256, MaxResultBytes: 32, MaxScanBytes: 512, MaxTemporaryBytes: 512,
-		}, FileTypes: roots.AllFileTypes()},
+		}, FileTypes: roots.AllFileTypes(), LinkRules: roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -102,6 +102,7 @@ func TestFileContentToolsEnforceSelectedRootFileTypes(t *testing.T) {
 		ID: "text", FileSystem: filesystem, Access: roots.ReadWrite,
 		Limits:    roots.DefaultLimits(1024, 2048),
 		FileTypes: roots.FileTypes{Extensions: []string{".md", ".txt"}},
+		LinkRules: roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints},
 	}})
 	if err != nil {
 		t.Fatal(err)
