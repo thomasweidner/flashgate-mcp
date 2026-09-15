@@ -951,6 +951,12 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Operations and multi-principal tests
 
+The transport-neutral operation progress tracker has focused unit and race
+coverage for its zero value, cumulative read/written/scanned byte accounting,
+atomic overflow rejection, bounded domain progress, and concurrent updates.
+These counters are accounting data only; authorization and public MCP mapping
+remain separate gates.
+
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
 - cross-principal status/result/cancel/cache/resource denial;
 - global, per-domain, and per-principal concurrency limits;
