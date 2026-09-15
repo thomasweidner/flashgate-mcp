@@ -18,6 +18,9 @@ or confined-follow symlink behavior while reparse points remain denied.
 Per-root capability tests reject missing, unknown, or access-escalating maps and
 prove read and write tools fail generically before filesystem I/O when coarse
 access permits an operation but its functional capability is absent.
+Per-root process working-directory tests prove explicit allow and deny outcomes,
+unknown-root rejection, independence from filesystem read/write grants, and the
+compatible single-root bootstrap's fail-closed default.
 
 ## Slim project validation
 

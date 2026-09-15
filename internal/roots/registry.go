@@ -14,17 +14,18 @@ import (
 const DefaultID = "default"
 
 var (
-	ErrInvalidEntry        = errors.New("invalid root entry")
-	ErrDuplicateID         = errors.New("duplicate root id")
-	ErrNoRoots             = errors.New("no roots configured")
-	ErrUnknownRoot         = errors.New("unknown root id")
-	ErrAccessDenied        = errors.New("root access denied")
-	ErrInvalidLimits       = errors.New("invalid root limits")
-	ErrInvalidFileTypes    = errors.New("invalid root file types")
-	ErrInvalidLinkRules    = errors.New("invalid root link rules")
-	ErrLinkPolicyMismatch  = errors.New("root link rules do not match filesystem policy")
-	ErrInvalidCapabilities = errors.New("invalid root capabilities")
-	ErrCapabilityDenied    = errors.New("root capability denied")
+	ErrInvalidEntry           = errors.New("invalid root entry")
+	ErrDuplicateID            = errors.New("duplicate root id")
+	ErrNoRoots                = errors.New("no roots configured")
+	ErrUnknownRoot            = errors.New("unknown root id")
+	ErrAccessDenied           = errors.New("root access denied")
+	ErrInvalidLimits          = errors.New("invalid root limits")
+	ErrInvalidFileTypes       = errors.New("invalid root file types")
+	ErrInvalidLinkRules       = errors.New("invalid root link rules")
+	ErrLinkPolicyMismatch     = errors.New("root link rules do not match filesystem policy")
+	ErrInvalidCapabilities    = errors.New("invalid root capabilities")
+	ErrCapabilityDenied       = errors.New("root capability denied")
+	ErrWorkingDirectoryDenied = errors.New("process working directory denied")
 )
 
 // Capability is a set of functional operations authorized for a root. It is
@@ -160,22 +161,24 @@ func (l Limits) valid() bool {
 }
 
 type Entry struct {
-	ID           string
-	FileSystem   fs.FileSystem
-	Access       Access
-	Limits       Limits
-	FileTypes    FileTypes
-	LinkRules    LinkRules
-	Capabilities Capability
+	ID                      string
+	FileSystem              fs.FileSystem
+	Access                  Access
+	Limits                  Limits
+	FileTypes               FileTypes
+	LinkRules               LinkRules
+	Capabilities            Capability
+	ProcessWorkingDirectory bool
 }
 
 // Root is the resolved, authorized policy and filesystem for one root.
 type Root struct {
-	FileSystem   fs.FileSystem
-	Limits       Limits
-	FileTypes    FileTypes
-	LinkRules    LinkRules
-	Capabilities Capability
+	FileSystem              fs.FileSystem
+	Limits                  Limits
+	FileTypes               FileTypes
+	LinkRules               LinkRules
+	Capabilities            Capability
+	ProcessWorkingDirectory bool
 }
 
 // Registry is an immutable collection of named, independently confined roots.
@@ -261,9 +264,34 @@ func (r *Registry) RootWithCapability(id string, required Access, requiredCapabi
 		entry.Capabilities&requiredCapability != requiredCapability {
 		return Root{}, ErrCapabilityDenied
 	}
+	return rootFromEntry(entry), nil
+}
+
+// WorkingDirectoryRoot resolves a root only when it explicitly permits use as
+// a managed process working directory. This policy is independent of
+// filesystem read/write access and capabilities.
+func (r *Registry) WorkingDirectoryRoot(id string) (Root, error) {
+	entry, ok := r.entries[id]
+	if !ok {
+		return Root{}, ErrUnknownRoot
+	}
+	if !entry.ProcessWorkingDirectory {
+		return Root{}, ErrWorkingDirectoryDenied
+	}
+	return rootFromEntry(entry), nil
+}
+
+func rootFromEntry(entry Entry) Root {
 	fileTypes := entry.FileTypes
 	fileTypes.Extensions = append([]string(nil), entry.FileTypes.Extensions...)
-	return Root{FileSystem: entry.FileSystem, Limits: entry.Limits, FileTypes: fileTypes, LinkRules: entry.LinkRules, Capabilities: entry.Capabilities}, nil
+	return Root{
+		FileSystem:              entry.FileSystem,
+		Limits:                  entry.Limits,
+		FileTypes:               fileTypes,
+		LinkRules:               entry.LinkRules,
+		Capabilities:            entry.Capabilities,
+		ProcessWorkingDirectory: entry.ProcessWorkingDirectory,
+	}
 }
 
 func (r *Registry) IDs() []string {

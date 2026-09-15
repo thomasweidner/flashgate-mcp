@@ -127,6 +127,37 @@ func TestRegistryEnforcesIndependentRootAccess(t *testing.T) {
 	}
 }
 
+func TestRegistryEnforcesProcessWorkingDirectoryPermissionPerRoot(t *testing.T) {
+	filesystem := &fakeFileSystem{}
+	registry, err := New([]Entry{
+		{ID: "workspace", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemRead, ProcessWorkingDirectory: true},
+		{ID: "documents", FileSystem: filesystem, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemReadWrite},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := registry.WorkingDirectoryRoot("workspace")
+	if err != nil || root.FileSystem != filesystem || !root.ProcessWorkingDirectory {
+		t.Fatalf("allowed working-directory root = (%#v, %v)", root, err)
+	}
+	if _, err := registry.WorkingDirectoryRoot("documents"); !errors.Is(err, ErrWorkingDirectoryDenied) {
+		t.Fatalf("denied working-directory root error = %v", err)
+	}
+	if _, err := registry.WorkingDirectoryRoot("missing"); !errors.Is(err, ErrUnknownRoot) {
+		t.Fatalf("unknown working-directory root error = %v", err)
+	}
+}
+
+func TestSingleRootDeniesProcessWorkingDirectoryByDefault(t *testing.T) {
+	registry, err := Single(&fakeFileSystem{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := registry.WorkingDirectoryRoot(DefaultID); !errors.Is(err, ErrWorkingDirectoryDenied) {
+		t.Fatalf("default working-directory root error = %v", err)
+	}
+}
+
 func TestRegistryCopiesFileTypePolicy(t *testing.T) {
 	extensions := []string{".md", ".txt"}
 	registry, err := New([]Entry{{
