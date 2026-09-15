@@ -124,6 +124,11 @@ Version 1.0 architecture does not bind durable authorization or operation owners
 
 The final supported protocol matrix decides whether and how the MCP Tasks Extension is exposed. FlashGate must not combine the experimental 2025 task lifecycle with a later final extension contract. Internal Operations/Job Manager semantics remain protocol-independent and are adapted only after negotiation.
 
+The [Tasks compatibility decision packet](mcp-tasks-compatibility-decision.md)
+records the bounded Version 1.0 options, required client evidence, and the
+owner decision that remains open. It is decision preparation only and does not
+change the implemented or advertised protocol surface.
+
 Deprecated MCP Roots, Sampling, and Logging are not architectural dependencies. FlashGate named roots are server configuration and authorization objects, not client-provided trust roots.
 
 ## Host lifecycle and connection ownership
@@ -166,4 +171,5 @@ The supported protocol/extension matrix is a released artifact. A specification 
 - [Runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [ADR-013](adr/013-mcp-version-and-extension-compatibility.md)
+- [MCP Tasks compatibility decision packet](mcp-tasks-compatibility-decision.md)
 - [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)
