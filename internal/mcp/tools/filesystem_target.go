@@ -7,24 +7,35 @@ import (
 
 type filesystemResolver interface {
 	FileSystem(string, roots.Access) (fs.FileSystem, error)
-	Root(string, roots.Access) (roots.Root, error)
+	RootWithCapability(string, roots.Access, roots.Capability) (roots.Root, error)
 }
 
 type singleFilesystemResolver struct{ filesystem fs.FileSystem }
 
 func (r singleFilesystemResolver) FileSystem(id string, required roots.Access) (fs.FileSystem, error) {
-	root, err := r.Root(id, required)
+	root, err := r.RootWithCapability(id, required, capabilityForAccess(required))
 	return root.FileSystem, err
 }
 
-func (r singleFilesystemResolver) Root(id string, required roots.Access) (roots.Root, error) {
+func (r singleFilesystemResolver) RootWithCapability(id string, required roots.Access, requiredCapability roots.Capability) (roots.Root, error) {
 	if id != roots.DefaultID {
 		return roots.Root{}, roots.ErrUnknownRoot
 	}
-	if required == 0 || required&^roots.ReadWrite != 0 {
+	if required == 0 || required&^roots.ReadWrite != 0 || requiredCapability != capabilityForAccess(required) {
 		return roots.Root{}, roots.ErrAccessDenied
 	}
-	return roots.Root{FileSystem: r.filesystem, Limits: roots.DefaultLimits(1<<62, 1<<62), FileTypes: roots.AllFileTypes()}, nil
+	return roots.Root{FileSystem: r.filesystem, Limits: roots.DefaultLimits(1<<62, 1<<62), FileTypes: roots.AllFileTypes(), Capabilities: roots.FilesystemReadWrite}, nil
+}
+
+func capabilityForAccess(access roots.Access) roots.Capability {
+	var capability roots.Capability
+	if access&roots.Read != 0 {
+		capability |= roots.FilesystemRead
+	}
+	if access&roots.Write != 0 {
+		capability |= roots.FilesystemWrite
+	}
+	return capability
 }
 
 func resolveRoot(resolver filesystemResolver, id string, required roots.Access) (roots.Root, string, bool) {
@@ -32,7 +43,7 @@ func resolveRoot(resolver filesystemResolver, id string, required roots.Access) 
 	if !isNonBlank(id) {
 		return roots.Root{}, "", false
 	}
-	root, err := resolver.Root(id, required)
+	root, err := resolver.RootWithCapability(id, required, capabilityForAccess(required))
 	if err != nil {
 		return roots.Root{}, "", false
 	}

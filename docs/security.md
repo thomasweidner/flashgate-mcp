@@ -319,8 +319,11 @@ MCP annotations are accurate hints only and never grant permission.
 ### Per-root policies and execution backend
 
 Named roots use authoritative FlashGate configuration and root IDs plus
-relative paths. Explicit per-entry read/write enforcement is implemented in the
-registry and tool execution boundary. Positive per-entry file, result, scan,
+relative paths. Explicit per-entry read/write and `filesystem.read` /
+`filesystem.write` capability enforcement is implemented in the registry and
+tool execution boundary. Both gates must authorize an operation, capability
+denials occur before filesystem I/O, and capability mappings cannot exceed the
+entry's coarse access. Positive per-entry file, result, scan,
 and temporary-data limits are also mandatory. Each entry also has an explicit
 file-type policy: either compatibility-wide access or a sorted allowlist of
 canonical lower-case ASCII extensions. `read_file` and `write_file` apply that
@@ -337,7 +340,6 @@ only while effective-path confinement remains satisfied. Windows non-symlink
 reparse points remain denied because the current resolver cannot safely
 evaluate them. Each root may additionally define:
 
-- capability mapping;
 - process working-directory permission;
 - service execution backend.
 

@@ -37,6 +37,10 @@ Each root also declares symlink and Windows reparse-point rules that must match
 the immutable policy enforced by its filesystem. Classic symlinks are either
 denied or followed only within the effective root; unsupported non-symlink
 reparse points remain denied.
+Each filesystem request is additionally checked against the selected root's
+explicit `filesystem.read` or `filesystem.write` capability mapping. Capability
+denials use the same generic invalid-parameters contract as other root-policy
+denials and occur before filesystem I/O.
 Absolute paths, traversal, denied hidden/UNC paths, and
 denied symlink, junction, or reparse access remain server-side errors. Inputs
 are strict JSON objects: unknown properties, malformed JSON, trailing JSON

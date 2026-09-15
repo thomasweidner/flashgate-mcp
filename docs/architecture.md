@@ -299,13 +299,15 @@ higher-risk profile              -> explicit validated activation
 ```
 
 The named-root registry already assigns each entry explicit read, write, or
-combined access, positive file/result/scan/temporary-data byte limits, an
-explicit file-extension policy, and explicit symlink/reparse rules. Registry
+combined access, explicit `filesystem.read`/`filesystem.write` capability
+mapping, positive file/result/scan/temporary-data byte limits, an explicit
+file-extension policy, and explicit symlink/reparse rules. Registry
 construction verifies that each root's declared link rules match the immutable
 policy enforced by its filesystem. Classic symlinks may be denied or followed
 only within the effective root; Windows non-symlink reparse points remain
-fail-closed. Filesystem tools resolve the selected root
-with their required access before performing I/O; a denial fails closed.
+fail-closed. Filesystem tools resolve the selected root with both their required coarse
+access and functional capability before performing I/O; either denial fails
+closed. A capability cannot grant an operation excluded by coarse access.
 `read_file` and `write_file` reject file types outside the selected root's
 allowlist before content I/O. Extension values are canonical lower-case ASCII
 values with a leading dot; matching lower-cases the candidate extension and
@@ -315,8 +317,6 @@ stricter of its server, selected-root file, selected-root result, and optional
 request limits. External multi-root configuration remains planned. The target
 additionally allows each root to define:
 
-- read/write access;
-- capability mapping;
 - process working-directory permission;
 - service execution backend.
 
