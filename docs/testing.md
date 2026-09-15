@@ -2,6 +2,12 @@
 
 ## Slim project validation
 
+The Operations/Job package has a permanent domain-ownership regression test.
+It parses every production Go file in `internal/operation` and rejects imports
+of filesystem, search, process, execution, or system-information domain
+implementations. This keeps generic lifecycle infrastructure from absorbing
+domain validation or result semantics as the package grows.
+
 FlashGate inherits the central Slim Governance security and authorization
 boundaries through its thin project adapter. Normal development uses
 `DIRECTLY_AFFECTED_FIRST`, reuses valid unchanged evidence, and runs affected
