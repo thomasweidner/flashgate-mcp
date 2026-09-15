@@ -109,6 +109,10 @@ JSON-RPC messages, tool arguments, filesystem payloads, and response sizes are b
 
 ## Security Model
 
+Potential vulnerabilities should be reported privately according to the
+[security policy](SECURITY.md), not disclosed in a public issue before a fix is
+available.
+
 All filesystem operations are constrained to a configured root directory.
 
 The root directory is configured through the `MCP_ROOT` environment variable:
