@@ -116,7 +116,7 @@ Destructive operations are intentionally conservative.
 
 ### Write
 
-`Write()` does not overwrite existing files unless `overwrite=true`.
+`Write()` does not overwrite existing files unless `overwrite=true`. Conditional writes may additionally require the target SHA-256, RFC 3339 modification time, and current path type (`missing` or regular `file`). Every supplied precondition is checked before truncation; a failed condition leaves content unchanged. Existing-file hash and metadata checks use the same open handle that is subsequently truncated, while missing-target creation uses exclusive create.
 
 ### Delete
 

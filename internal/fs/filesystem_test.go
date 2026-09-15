@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
@@ -502,6 +503,81 @@ func TestLocalFileSystemWriteOverwritesExistingFile(t *testing.T) {
 		t.Fatalf("expected %q, got %q", "new-content", content)
 	}
 }
+
+func TestLocalFileSystemWriteConditionalMatchesExistingFile(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	path := filepath.Join(root, "file.txt")
+	writeTestFile(t, path, "old-content")
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := "8fa970c46907bd541e3db63e41551a7c75eaa4933ed8e25e24fbfca8bd21d83f"
+	pathType := "file"
+
+	filesystem := mustNewLocalFileSystem(t, root)
+	err = filesystem.WriteConditional("file.txt", []byte("new-content"), true, WritePreconditions{
+		SHA256:       &hash,
+		ModifiedTime: timePointer(info.ModTime()),
+		PathType:     &pathType,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if got := readTestFile(t, path); got != "new-content" {
+		t.Fatalf("expected new content, got %q", got)
+	}
+}
+
+func TestLocalFileSystemWriteConditionalRejectsStaleExistingFileWithoutMutation(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	path := filepath.Join(root, "file.txt")
+	writeTestFile(t, path, "current")
+	wrongHash := "0000000000000000000000000000000000000000000000000000000000000000"
+	fileType := "file"
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	err := filesystem.WriteConditional("file.txt", []byte("replacement"), true, WritePreconditions{
+		SHA256:   &wrongHash,
+		PathType: &fileType,
+	})
+
+	if !errors.Is(err, ErrWritePreconditionFailed) {
+		t.Fatalf("expected ErrWritePreconditionFailed, got %v", err)
+	}
+	if got := readTestFile(t, path); got != "current" {
+		t.Fatalf("expected content to remain unchanged, got %q", got)
+	}
+}
+
+func TestLocalFileSystemWriteConditionalRequiresMissingTarget(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	filesystem := mustNewLocalFileSystem(t, root)
+	missingType := "missing"
+
+	if err := filesystem.WriteConditional("new.txt", []byte("new"), false, WritePreconditions{PathType: &missingType}); err != nil {
+		t.Fatalf("expected missing precondition to match, got %v", err)
+	}
+	if got := readTestFile(t, filepath.Join(root, "new.txt")); got != "new" {
+		t.Fatalf("expected new content, got %q", got)
+	}
+
+	err := filesystem.WriteConditional("new.txt", []byte("changed"), true, WritePreconditions{PathType: &missingType})
+	if !errors.Is(err, ErrWritePreconditionFailed) {
+		t.Fatalf("expected ErrWritePreconditionFailed, got %v", err)
+	}
+	if got := readTestFile(t, filepath.Join(root, "new.txt")); got != "new" {
+		t.Fatalf("expected content to remain unchanged, got %q", got)
+	}
+}
+
+func timePointer(value time.Time) *time.Time { return &value }
 
 func TestLocalFileSystemWriteRejectsDirectory(t *testing.T) {
 	t.Parallel()
