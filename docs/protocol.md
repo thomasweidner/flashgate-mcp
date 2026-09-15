@@ -75,6 +75,10 @@ relevant configuration
 
 The catalog fingerprint changes whenever that tuple changes. Tool annotations aid clients but do not authorize operations.
 
+The adapter's catalog-fingerprint primitive uses a domain-separated SHA-256 digest over the ordered complete tool definitions and explicit, non-secret versions for every tuple member. Extension and capability inputs are sets and are sorted before hashing; duplicate or empty members and incomplete context fail closed. The digest is an equality and invalidation token, not an authorization credential or a disclosure channel for raw configuration values.
+
+The implemented `2025-11-25` wire contract does not publish a catalog fingerprint or cache TTL. A negotiated revision that supports catalog caching may expose the digest only together with an explicit server-owned expiry. Cache reuse requires an unexpired entry and exact fingerprint equality; profile, capability, policy, schema, configuration-generation, protocol-revision, or extension changes invalidate it immediately. Clients must re-run `tools/list` after expiry or mismatch, must not use stale entries on refresh failure, and must never infer tool authorization from a cached catalog.
+
 ## Tool result classes
 
 Version 1.0 defines representation by payload class instead of applying one envelope pattern to all data:

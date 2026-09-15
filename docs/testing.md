@@ -898,6 +898,8 @@ Focused contract tests compare runtime tool definitions with `docs/mcp-tool-cata
 
 The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. The current nine-tool catalog records 5951 bytes for read-only and 9474 bytes for default; the earlier 1239/2134-byte, 3850/5657-byte, 3046/6569-byte, 4271/7794-byte, 4894/8417-byte, and 5594/9117-byte measurements remain historical, and no regression budget is enforced.
 
+Focused catalog-fingerprint tests require a stable domain-separated SHA-256 digest, set-order independence for extensions and capabilities, sensitivity to ordered tool definitions and every explicit catalog-context generation, and fail-closed rejection of incomplete, empty, duplicate, or non-serializable inputs. The current MCP `2025-11-25` wire response remains unchanged because fingerprint and list-cache publication require a negotiated supporting revision.
+
 Focused search tests cover portable type, inclusive file-size, and RFC 3339 modification-time filters; composition with filename matching; match-only result-cap accounting; bounded UTF-8 line context for literal and regular-expression matches; per-match and aggregate context-byte enforcement; and rejection of malformed, negative, reversed, or context-only inputs before filesystem traversal. Native Windows finalization must additionally exercise real modification timestamps and reparse behavior through the central path policy.
 
 ### MCP Compatibility Testing
