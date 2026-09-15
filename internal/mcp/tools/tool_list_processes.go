@@ -37,6 +37,11 @@ func (t *ListProcessesTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"fields": map[string]any{
+				"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true,
+				"items":       map[string]any{"type": "string", "enum": []string{"pid", "name"}},
+				"description": "Fields to return for each process. Defaults to pid and name.",
+			},
 			"pageSize": map[string]any{
 				"type": "integer", "minimum": 1, "maximum": maximumProcessPageSize,
 				"description": "Maximum entries to return. Defaults to 100.",
@@ -70,6 +75,10 @@ func (t *ListProcessesTool) Execute(ctx context.Context, rawArguments json.RawMe
 	if err != nil {
 		return nil, invalidParamsError()
 	}
+	selection, err := parseProcessFields(arguments.Fields)
+	if err != nil {
+		return nil, invalidParamsError()
+	}
 
 	entries, err := t.lister.List(ctx)
 	if err != nil {
@@ -83,23 +92,74 @@ func (t *ListProcessesTool) Execute(ctx context.Context, rawArguments json.RawMe
 	if end > len(entries) {
 		end = len(entries)
 	}
-	page := append([]processdomain.Entry(nil), entries[start:end]...)
+	page := make([]processListEntry, 0, end-start)
+	for _, entry := range entries[start:end] {
+		item := processListEntry{}
+		if selection.pid {
+			pid := entry.PID
+			item.PID = &pid
+		}
+		if selection.name {
+			name := entry.Name
+			item.Name = &name
+		}
+		page = append(page, item)
+	}
 	result := listProcessesResult{Processes: page, More: end < len(entries)}
 	if result.More {
-		result.NextCursor = encodeProcessCursor(page[len(page)-1].PID)
+		result.NextCursor = encodeProcessCursor(entries[end-1].PID)
 	}
 	return result, nil
 }
 
 type listProcessesArguments struct {
-	PageSize *int    `json:"pageSize,omitempty"`
-	Cursor   *string `json:"cursor,omitempty"`
+	PageSize *int      `json:"pageSize,omitempty"`
+	Cursor   *string   `json:"cursor,omitempty"`
+	Fields   *[]string `json:"fields,omitempty"`
 }
 
 type listProcessesResult struct {
-	Processes  []processdomain.Entry `json:"processes"`
-	More       bool                  `json:"more"`
-	NextCursor string                `json:"nextCursor,omitempty"`
+	Processes  []processListEntry `json:"processes"`
+	More       bool               `json:"more"`
+	NextCursor string             `json:"nextCursor,omitempty"`
+}
+
+type processListEntry struct {
+	PID  *uint32 `json:"pid,omitempty"`
+	Name *string `json:"name,omitempty"`
+}
+
+type processFieldSelection struct {
+	pid  bool
+	name bool
+}
+
+func parseProcessFields(fields *[]string) (processFieldSelection, error) {
+	selection := processFieldSelection{pid: true, name: true}
+	if fields == nil {
+		return selection, nil
+	}
+	selection = processFieldSelection{}
+	if len(*fields) == 0 || len(*fields) > 2 {
+		return selection, errors.New("invalid process fields")
+	}
+	for _, field := range *fields {
+		switch field {
+		case "pid":
+			if selection.pid {
+				return selection, errors.New("duplicate process field")
+			}
+			selection.pid = true
+		case "name":
+			if selection.name {
+				return selection, errors.New("duplicate process field")
+			}
+			selection.name = true
+		default:
+			return selection, errors.New("unknown process field")
+		}
+	}
+	return selection, nil
 }
 
 type processCursor struct {

@@ -67,16 +67,19 @@ BL-114 provides a `list_processes` MCP tool implementation, but it is not yet
 registered in the runtime catalog. BL-118 owns effective `process.observe`
 registration and execution authorization; withholding exposure until that gate
 exists avoids treating catalog visibility as authorization. Once registered,
-the tool returns a point-in-time, PID-ordered page containing only the portable `pid` and
-`name` fields. `pageSize` defaults to 100 and is bounded to 1–200. When `more`
+the tool returns a point-in-time, PID-ordered page. The optional non-empty
+`fields` array selects `pid`, `name`, or both; omission returns both fields.
+Unknown and duplicate field names are rejected before native observation, and
+unselected fields are absent rather than emitted with empty values. No other
+process metadata is available through this tool. `pageSize` defaults to 100 and is bounded to 1–200. When `more`
 is true, pass the opaque `nextCursor` back unchanged to continue after the last
 PID in the preceding page. Because each request observes the live process
 table, processes that start or exit between pages can change later results.
-Field selection and detailed process metadata remain assigned to BL-115 and
-BL-116; capability enforcement remains assigned to BL-118.
+Detailed process metadata remains assigned to BL-116; capability enforcement
+remains assigned to BL-118.
 
 ```json
-{ "pageSize": 50 }
+{ "pageSize": 50, "fields": ["pid"] }
 ```
 
 ```json
