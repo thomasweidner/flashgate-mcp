@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "flashgate-mcp-protocol-matrix/v1",
+  "productTarget": "1.0",
+  "revisions": [
+    {
+      "protocolVersion": "2025-11-25",
+      "status": "supported",
+      "extensions": [],
+      "transports": [
+        "stdio"
+      ]
+    }
+  ],
+  "unsupportedRevisionPolicy": "respond-with-supported-version",
+  "extensionPolicy": "none-advertised"
+}

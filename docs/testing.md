@@ -894,6 +894,15 @@ The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and
 
 The implemented protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, legacy unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the unchanged error contract. The decoder intentionally validates the exact FlashGate-emitted subset (one text block, required object `structuredContent`, optional boolean `isError`, no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
 
+The Version 1.0 supported protocol inventory is pinned in
+`docs/mcp-protocol-matrix.json`. `TestProtocolVersionMatchesReleasedMatrix`
+strictly decodes that artifact and fails if its sole advertised revision,
+extension set, or transport differs from the runtime constant. Initialize tests
+cover the supported revision, missing and malformed versions, and negotiation
+from an unsupported future revision back to the implemented revision. A future
+matrix expansion must add positive coverage for every advertised revision and
+explicit negative/breaking-upgrade fixtures before publication.
+
 Future protocol or extension support still requires version-negotiation, extension-negotiation, client fallback, and compatibility tests before it is advertised. Complete JSON Schema 2020-12 validation and official MCP conformance tooling remain planned.
 
 ### Benchmarks
