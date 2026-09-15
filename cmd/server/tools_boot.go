@@ -8,6 +8,25 @@ import (
 
 type toolCapabilities = capability.Set
 
+type toolAuthorizer struct {
+	capabilities toolCapabilities
+}
+
+func newToolAuthorizer(capabilities toolCapabilities) toolAuthorizer {
+	return toolAuthorizer{capabilities: capabilities}
+}
+
+func (a toolAuthorizer) AuthorizeTool(name string) bool {
+	switch name {
+	case "list_directory", "read_file", "get_path_info":
+		return a.capabilities.Has(capability.FilesystemRead)
+	case "write_file", "create_directory", "delete_path", "copy_path", "move_path":
+		return a.capabilities.Has(capability.FilesystemWrite)
+	default:
+		return false
+	}
+}
+
 func capabilitiesFromReadOnly(readOnly bool) toolCapabilities {
 	names := []capability.Name{capability.FilesystemRead}
 	if !readOnly {

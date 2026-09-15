@@ -17,7 +17,7 @@ import (
 
 func TestCreateRouterRegistersInitialize(t *testing.T) {
 	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
-	mcpRouter := createRouter("test-server", "test-version", registry)
+	mcpRouter := createRouter("test-server", "test-version", registry, capabilitiesFromReadOnly(false))
 
 	params := json.RawMessage(`{
         "protocolVersion": "2025-11-25",
@@ -45,7 +45,7 @@ func TestCreateRouterRegistersInitialize(t *testing.T) {
 
 func TestCreateRouterRegistersToolsList(t *testing.T) {
 	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
-	mcpRouter := createRouter("test-server", "test-version", registry)
+	mcpRouter := createRouter("test-server", "test-version", registry, capabilitiesFromReadOnly(false))
 
 	result, protocolErr := mcpRouter.Dispatch(
 		"tools/list",
@@ -64,7 +64,7 @@ func TestCreateRouterRegistersToolsList(t *testing.T) {
 
 func TestCreateRouterRegistersToolsCall(t *testing.T) {
 	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
-	mcpRouter := createRouter("test-server", "test-version", registry)
+	mcpRouter := createRouter("test-server", "test-version", registry, capabilitiesFromReadOnly(false))
 
 	_, protocolErr := mcpRouter.Dispatch(
 		"tools/call",
@@ -87,7 +87,7 @@ func TestCreateRouterRegistersToolsCall(t *testing.T) {
 
 func TestCreateRouterRejectsWriteToolCallWhenReadOnly(t *testing.T) {
 	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(true))
-	mcpRouter := createRouter("test-server", "test-version", registry)
+	mcpRouter := createRouter("test-server", "test-version", registry, capabilitiesFromReadOnly(true))
 
 	_, protocolErr := mcpRouter.Dispatch(
 		"tools/call",
@@ -104,9 +104,24 @@ func TestCreateRouterRejectsWriteToolCallWhenReadOnly(t *testing.T) {
 	}
 }
 
+func TestCreateRouterAuthorizesExecutionIndependentlyFromRegistration(t *testing.T) {
+	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
+	mcpRouter := createRouter("test-server", "test-version", registry, capabilitiesFromReadOnly(true))
+
+	_, protocolErr := mcpRouter.Dispatch(
+		"tools/call",
+		handlers.Context{Context: context.Background()},
+		json.RawMessage(`{"name":"write_file","arguments":{"path":"out.txt","content":"blocked"}}`),
+	)
+
+	if protocolErr == nil || protocolErr.Code != protocol.ErrInvalidParams || protocolErr.Message != "invalid params" {
+		t.Fatalf("expected generic authorization denial for registered write tool, got: %+v", protocolErr)
+	}
+}
+
 func TestCreateRouterRejectsUnknownMethod(t *testing.T) {
 	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
-	mcpRouter := createRouter("test-server", "test-version", registry)
+	mcpRouter := createRouter("test-server", "test-version", registry, capabilitiesFromReadOnly(false))
 
 	_, protocolErr := mcpRouter.Dispatch(
 		"unknown/method",
@@ -128,7 +143,7 @@ func TestCreateRouterCallsGetPathInfoForMissingPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(false)))
+	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(false)), capabilitiesFromReadOnly(false))
 
 	result, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`))
 	if protocolErr != nil {
@@ -157,7 +172,7 @@ func TestCreateRouterUsesMovePathForRename(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(false)))
+	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(false)), capabilitiesFromReadOnly(false))
 
 	_, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`))
 	if protocolErr != nil {
@@ -195,6 +210,7 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		"test-server",
 		"test-version",
 		createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true)),
+		capabilitiesFromReadOnly(true),
 	)
 
 	positiveCalls := []string{

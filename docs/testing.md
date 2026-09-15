@@ -13,8 +13,10 @@ Product-CI requirements.
 Functional capability tests validate the closed Version 1.0 identifier set,
 unknown-name rejection, deterministic set ordering, compatibility mapping from
 `MCP_READ_ONLY`, and omission of tools when their functional capability is not
-granted. These tests cover catalog calculation only; direct-call authorization
-bypass coverage remains owned by BL-160.
+granted. BL-159 coverage independently binds the effective set to the call
+router and proves that a resolved but unauthorized tool is rejected before its
+implementation runs. Broader crafted-call and policy-bypass matrices remain
+owned by BL-160.
 
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:

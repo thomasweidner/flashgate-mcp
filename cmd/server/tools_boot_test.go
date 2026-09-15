@@ -134,6 +134,27 @@ func TestCreateToolRegistryOmitsToolsWithoutCapabilities(t *testing.T) {
 	}
 }
 
+func TestToolAuthorizerMapsCapabilitiesAndFailsClosed(t *testing.T) {
+	readOnly := newToolAuthorizer(mustCapabilities(t, capability.FilesystemRead))
+	if !readOnly.AuthorizeTool("read_file") {
+		t.Fatal("expected filesystem.read to authorize read_file")
+	}
+	if readOnly.AuthorizeTool("write_file") {
+		t.Fatal("filesystem.read must not authorize write_file")
+	}
+	if readOnly.AuthorizeTool("unclassified_tool") {
+		t.Fatal("unclassified tools must fail closed")
+	}
+
+	writeOnly := newToolAuthorizer(mustCapabilities(t, capability.FilesystemWrite))
+	if !writeOnly.AuthorizeTool("move_path") {
+		t.Fatal("expected filesystem.write to authorize move_path")
+	}
+	if writeOnly.AuthorizeTool("get_path_info") {
+		t.Fatal("filesystem.write must not imply filesystem.read")
+	}
+}
+
 func mustCapabilities(t *testing.T, names ...capability.Name) capability.Set {
 	t.Helper()
 	set, ok := capability.NewSet(names...)

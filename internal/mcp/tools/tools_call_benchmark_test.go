@@ -108,7 +108,7 @@ func BenchmarkCallToolHandlerProcessing(b *testing.B) {
 func BenchmarkCallToolHandlerProcessingParallel(b *testing.B) {
 	registry := NewRegistry()
 	registry.Register(NewGetPathInfoTool(benchmarkParallelFileSystem{}))
-	handler := NewCallHandler(registry)
+	handler := NewCallHandler(registry, AuthorizeFunc(func(string) bool { return true }))
 	params := json.RawMessage(`{"name":"get_path_info","arguments":{"path":"existing.txt"}}`)
 	sample, rpcErr := handler.Handle(handlers.Context{Context: context.Background()}, params)
 	if rpcErr != nil {
@@ -194,7 +194,7 @@ func callToolHandlerBenchmarkFixtures() []callToolHandlerBenchmarkFixture {
 
 		result = append(result, callToolHandlerBenchmarkFixture{
 			name:    fixture.name,
-			handler: NewCallHandler(registry),
+			handler: NewCallHandler(registry, AuthorizeFunc(func(string) bool { return true })),
 			params:  params,
 		})
 	}
