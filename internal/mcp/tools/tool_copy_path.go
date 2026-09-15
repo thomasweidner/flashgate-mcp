@@ -69,7 +69,7 @@ func (t *CopyPathTool) Definition() protocol.Tool {
 		Title:        t.Title(),
 		Description:  t.Description(),
 		InputSchema:  t.InputSchema(),
-		OutputSchema: filesystemOutputSchema(t.Name()),
+		OutputSchema: toolOutputSchema(t.Name()),
 	}
 }
 

@@ -61,6 +61,32 @@ Lists one directory. `path` is optional; omission means `.`, while an explicitly
 
 No pagination, filtering, recursion, or batch behavior is provided.
 
+## Process-list implementation (not yet registered)
+
+BL-114 provides a `list_processes` MCP tool implementation, but it is not yet
+registered in the runtime catalog. BL-118 owns effective `process.observe`
+registration and execution authorization; withholding exposure until that gate
+exists avoids treating catalog visibility as authorization. Once registered,
+the tool returns a point-in-time, PID-ordered page containing only the portable `pid` and
+`name` fields. `pageSize` defaults to 100 and is bounded to 1–200. When `more`
+is true, pass the opaque `nextCursor` back unchanged to continue after the last
+PID in the preceding page. Because each request observes the live process
+table, processes that start or exit between pages can change later results.
+Field selection and detailed process metadata remain assigned to BL-115 and
+BL-116; capability enforcement remains assigned to BL-118.
+
+```json
+{ "pageSize": 50 }
+```
+
+```json
+{
+  "processes": [{ "pid": 1234, "name": "example" }],
+  "more": true,
+  "nextCursor": "eyJ2IjoxLCJsYXN0UGlkIjoxMjM0fQ"
+}
+```
+
 ## `read_file`
 
 Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the configured server limit is used; a larger client value is capped at that limit.

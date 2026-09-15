@@ -56,7 +56,7 @@ func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 				toolName = getPathInfoToolName
 			}
 			value := normalizeResultValue(t, tc.result)
-			if err := validateProjectSchema(normalizeSchema(t, filesystemOutputSchema(toolName)), value); err != nil {
+			if err := validateProjectSchema(normalizeSchema(t, toolOutputSchema(toolName)), value); err != nil {
 				t.Fatalf("structuredContent does not match outputSchema: %v", err)
 			}
 		})
@@ -79,7 +79,7 @@ func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 		{movePathToolName, "moved", "boolean"},
 	}
 	for _, tc := range tests {
-		schema := normalizeSchema(t, filesystemOutputSchema(tc.tool))
+		schema := normalizeSchema(t, toolOutputSchema(tc.tool))
 		properties := schema["properties"].(map[string]any)
 		property := properties[tc.property].(map[string]any)
 		if property["type"] != tc.expected {
@@ -87,7 +87,7 @@ func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 		}
 	}
 
-	infoSchema := normalizeSchema(t, filesystemOutputSchema(getPathInfoToolName))
+	infoSchema := normalizeSchema(t, toolOutputSchema(getPathInfoToolName))
 	variants := infoSchema["oneOf"].([]any)
 	for index, rawVariant := range variants {
 		variant := rawVariant.(map[string]any)
@@ -121,7 +121,7 @@ func TestReadFileOutputSchemaSeparatesMCPContentFromDomainContent(t *testing.T) 
 	if _, ok := structured["content"].(string); !ok {
 		t.Fatalf("inner read_file content must be a string, got %#v", structured["content"])
 	}
-	schema := normalizeSchema(t, filesystemOutputSchema(readFileToolName))
+	schema := normalizeSchema(t, toolOutputSchema(readFileToolName))
 	properties := schema["properties"].(map[string]any)
 	if properties["content"].(map[string]any)["type"] != "string" {
 		t.Fatalf("read_file outputSchema must describe domain content as string: %#v", schema)

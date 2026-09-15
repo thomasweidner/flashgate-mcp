@@ -1,7 +1,20 @@
 package tools
 
-func filesystemOutputSchema(toolName string) map[string]any {
+func toolOutputSchema(toolName string) map[string]any {
 	switch toolName {
+	case listProcessesToolName:
+		return objectOutputSchema(map[string]any{
+			"processes": map[string]any{
+				"type": "array",
+				"items": objectOutputSchema(map[string]any{
+					"pid":  map[string]any{"type": "integer", "minimum": 1},
+					"name": map[string]any{"type": "string", "minLength": 1},
+				}, "pid", "name"),
+				"maxItems": maximumProcessPageSize,
+			},
+			"more":       map[string]any{"type": "boolean"},
+			"nextCursor": map[string]any{"type": "string", "minLength": 1},
+		}, "processes", "more")
 	case listDirectoryToolName:
 		return objectOutputSchema(map[string]any{
 			"entries": map[string]any{
