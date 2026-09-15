@@ -46,3 +46,18 @@ Centralize effective-capability calculation and registration. Apply the same dec
 ## Implementation Amendment - 2026-07-11
 
 Sprint 3.44 prepares the existing restricted-profile case for later client activation without introducing final profile names or a general profile framework. A Codex read-only example must set `MCP_READ_ONLY=true` explicitly and then exposes exactly `list_directory`, `read_file`, and `get_path_info`. All five write names and all five removed legacy names return the same generic Invalid params contract in STDIO smokes. No client configuration is activated by this amendment.
+
+## Functional Capability Model Amendment - 2026-09-12
+
+BL-100 establishes the closed Version 1.0 functional vocabulary in
+`internal/capability`: `filesystem.read`, `filesystem.write`, `search.execute`,
+`process.observe`, `process.manage`, `process.control.external`,
+`command.execute`, and `system.read`. Capability sets reject unknown names,
+deduplicate grants, and expose deterministic ordering.
+
+Profile names and risk labels are deliberately not accepted as functional
+rights. The compatibility `MCP_READ_ONLY` input now resolves to a capability
+set before tool registration: read-only grants `filesystem.read`, while the
+existing default also grants `filesystem.write`. This does not introduce the
+future profile configuration, named-root mapping, or the separate
+server-side execution authorization gate.
