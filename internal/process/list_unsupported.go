@@ -11,3 +11,7 @@ func listProcesses(context.Context) ([]Entry, error) {
 func processDetails(context.Context, uint32) (Details, error) {
 	return Details{}, ErrObservationUnsupported
 }
+
+func processTree(context.Context) (TreeSnapshot, error) {
+	return TreeSnapshot{}, ErrObservationUnsupported
+}

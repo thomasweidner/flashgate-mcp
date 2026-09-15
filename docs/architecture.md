@@ -84,7 +84,8 @@ Not yet implemented:
 - safe read-only as the profile-system default;
 - search;
 - Operations/Job Manager;
-- process details, process capability enforcement, and managed-process control;
+- process capability enforcement and managed-process control (process listing,
+  details, and bounded descendant-tree adapters exist but remain unregistered);
 - typed command execution;
 - system-information tools;
 - payload-class and large-result resources;

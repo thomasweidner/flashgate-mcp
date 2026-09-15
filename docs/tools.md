@@ -82,12 +82,23 @@ OS access denial produce distinct safe errors without disclosing native error
 text. Capability enforcement and runtime registration remain assigned to
 BL-118.
 
+BL-117 adds an unregistered `get_process_tree` implementation. Given a root
+`pid`, it returns that process and its descendants in deterministic
+breadth-first/PID order. `maxDepth` defaults to 3 and is bounded to 0–8; output
+is also capped at 200 processes. `truncated` reports a depth or node-limit cut,
+while `partial` reports metadata missing from the point-in-time native
+snapshot. Each node contains only `pid`, `parentPid`, `name`, and `depth`.
+
 ```json
 { "pageSize": 50 }
 ```
 
 ```json
 { "pid": 4242, "fields": ["name", "parentPid", "threadCount"] }
+```
+
+```json
+{ "pid": 4242, "maxDepth": 3 }
 ```
 
 ```json

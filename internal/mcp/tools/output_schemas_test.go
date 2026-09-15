@@ -45,6 +45,10 @@ func TestProcessStructuredResultsMatchOutputSchemas(t *testing.T) {
 	if err := validateProjectSchema(normalizeSchema(t, toolOutputSchema(listProcessesToolName)), normalizeResultValue(t, list)); err != nil {
 		t.Fatalf("list_processes result does not match outputSchema: %v", err)
 	}
+	tree := getProcessTreeResult{RootPID: 42, Processes: []processTreeNode{{PID: 42, Name: name, Depth: 0}}}
+	if err := validateProjectSchema(normalizeSchema(t, toolOutputSchema(getProcessTreeToolName)), normalizeResultValue(t, tree)); err != nil {
+		t.Fatalf("get_process_tree result does not match outputSchema: %v", err)
+	}
 }
 
 func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {

@@ -104,3 +104,37 @@ func processDetails(ctx context.Context, pid uint32) (Details, error) {
 		}
 	}
 }
+
+func processTree(ctx context.Context) (TreeSnapshot, error) {
+	handle, _, callErr := procCreateToolhelpSnapshot.Call(th32csSnapProcess, 0)
+	if handle == uintptr(syscall.InvalidHandle) {
+		if errors.Is(callErr, syscall.ERROR_ACCESS_DENIED) {
+			return TreeSnapshot{}, ErrAccessDenied
+		}
+		return TreeSnapshot{}, callErr
+	}
+	defer syscall.CloseHandle(syscall.Handle(handle))
+	current := processEntry32{Size: uint32(unsafe.Sizeof(processEntry32{}))}
+	ok, _, callErr := procProcess32FirstW.Call(handle, uintptr(unsafe.Pointer(&current)))
+	if ok == 0 {
+		return TreeSnapshot{}, callErr
+	}
+	var entries []Details
+	for {
+		if err := ctx.Err(); err != nil {
+			return TreeSnapshot{}, err
+		}
+		name := syscall.UTF16ToString(current.ExeFile[:])
+		if current.ProcessID != 0 && name != "" && current.Threads != 0 {
+			entries = append(entries, Details{PID: current.ProcessID, Name: name, ParentPID: current.ParentProcessID, ThreadCount: current.Threads})
+		}
+		current.Size = uint32(unsafe.Sizeof(processEntry32{}))
+		ok, _, callErr = procProcess32NextW.Call(handle, uintptr(unsafe.Pointer(&current)))
+		if ok == 0 {
+			if errors.Is(callErr, syscall.ERROR_NO_MORE_FILES) {
+				return TreeSnapshot{Processes: entries}, nil
+			}
+			return TreeSnapshot{}, callErr
+		}
+	}
+}
