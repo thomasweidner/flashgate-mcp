@@ -1036,6 +1036,15 @@ per active client transport; further processes must be explicitly classified
 as workers or managed children. Ambiguous live-owner/live-transport cases are
 `SUSPECTED_STALE` and the test must prove no heuristic age, idle, CPU,
 request-count, singleton, PID-only, or registry-only termination.
+
+The process and command implementation matrix must also satisfy the negative
+validation catalog in
+[Process and Execution Security](process-and-execution-security.md). That
+catalog covers handle ownership and expiry, PID reuse, typed-command bypasses,
+root and environment injection, output/redaction boundaries, resource limits,
+isolation failure, and lifecycle races. Cross-builds and synthetic adapters do
+not count as native Windows or Linux isolation evidence.
+
 ### Protocol compatibility tests
 
 Before Version 1.0, publish and test the supported MCP revision matrix:
