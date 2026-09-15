@@ -8,7 +8,8 @@ import (
 
 func createRouter(serverName string, serverVersion string, toolRegistry *tools.Registry) *router.Router {
 	mcpRouter := router.New()
-	mcpRouter.Register(initialize.NewHandler(serverName, serverVersion))
+	_, writeEnabled := toolRegistry.Get("write_file")
+	mcpRouter.Register(initialize.NewHandler(serverName, serverVersion, initialize.ProfileInstructions(!writeEnabled)))
 	mcpRouter.Register(tools.NewListHandler(toolRegistry))
 	mcpRouter.Register(tools.NewCallHandler(toolRegistry))
 

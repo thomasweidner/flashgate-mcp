@@ -57,7 +57,7 @@ Version 1.0 initialization includes:
 - compact profile-specific server instructions;
 - catalog fingerprint and cache invalidation inputs where supported by the selected protocol contract.
 
-The server instructions prioritize efficient usage: batch rather than repeated scalar calls, ranges/pages rather than unbounded content, exact field selection, dry-run before risky multi-step work, and cursor continuation for process/search results. Instructions are bounded and benchmarked.
+The server returns deterministic instructions for the active tool profile. Both profiles recommend bounded, filtered search, cursor continuation, bounded reads, discovery before reading, and avoiding redundant metadata calls. The default profile additionally recommends target inspection and, when the active catalog exposes them, dry-run or conditional-write options. Guidance for batch, range, field-selection, and resource tools is explicitly conditional on those tools being present in the active catalog, so initialization never advertises an unavailable operation. Each instruction string has a permanent 512-byte UTF-8 budget enforced by unit tests.
 
 ## Tool discovery
 

@@ -43,6 +43,44 @@ func TestCreateRouterRegistersInitialize(t *testing.T) {
 	}
 }
 
+func TestCreateRouterReturnsProfileSpecificInstructions(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name       string
+		readOnly   bool
+		wantPhrase string
+	}{
+		{name: "read-only", readOnly: true, wantPhrase: "avoid redundant get_path_info calls"},
+		{name: "default", readOnly: false, wantPhrase: "Inspect targets before mutation"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(test.readOnly))
+			mcpRouter := createRouter("test-server", "test-version", registry)
+			result, protocolErr := mcpRouter.Dispatch("initialize", handlers.Context{Context: context.Background()}, json.RawMessage(`{"protocolVersion":"2025-11-25"}`))
+			if protocolErr != nil {
+				t.Fatalf("initialize failed: %+v", protocolErr)
+			}
+			encoded, err := json.Marshal(result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var response struct {
+				Instructions string `json:"instructions"`
+			}
+			if err := json.Unmarshal(encoded, &response); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(response.Instructions, test.wantPhrase) {
+				t.Fatalf("instructions=%q, want phrase %q", response.Instructions, test.wantPhrase)
+			}
+			if test.readOnly && strings.Contains(response.Instructions, "mutation") {
+				t.Fatalf("read-only instructions contain mutation guidance: %q", response.Instructions)
+			}
+		})
+	}
+}
+
 func TestCreateRouterRegistersToolsList(t *testing.T) {
 	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
 	mcpRouter := createRouter("test-server", "test-version", registry)
