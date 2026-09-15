@@ -92,7 +92,7 @@ func runWithIO(
 	toolRegistry := dependencies.newToolRegistry(
 		filesystem,
 		cfg.Filesystem().MaxFileSize(),
-		capabilitiesFromReadOnly(cfg.Filesystem().ReadOnly()),
+		capabilitiesFromRoots(rootRegistry),
 	)
 	if toolRegistry != nil {
 		for _, tool := range toolRegistry.List() {

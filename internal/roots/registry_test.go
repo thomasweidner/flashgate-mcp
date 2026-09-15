@@ -148,6 +148,26 @@ func TestRegistryEnforcesProcessWorkingDirectoryPermissionPerRoot(t *testing.T) 
 	}
 }
 
+func TestRegistryHasCapabilityAggregatesConfiguredRoots(t *testing.T) {
+	filesystem := &fakeFileSystem{}
+	registry, err := New([]Entry{
+		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemRead},
+		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes(), LinkRules: testLinkRules, Capabilities: FilesystemWrite},
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	if !registry.HasCapability(FilesystemRead) || !registry.HasCapability(FilesystemWrite) {
+		t.Fatal("expected aggregate read and write capabilities")
+	}
+	if registry.HasCapability(FilesystemReadWrite) {
+		t.Fatal("no single root grants the combined capability")
+	}
+	if registry.HasCapability(0) || registry.HasCapability(4) {
+		t.Fatal("invalid capability query must fail closed")
+	}
+}
+
 func TestSingleRootDeniesProcessWorkingDirectoryByDefault(t *testing.T) {
 	registry, err := Single(&fakeFileSystem{})
 	if err != nil {

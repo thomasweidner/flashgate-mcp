@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemRead: true, filesystemWrite: true})
 
 	registeredTools := registry.List()
 	gotNames := make([]string, 0, len(registeredTools))
@@ -40,7 +41,7 @@ func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemRead: true, filesystemWrite: true})
 
 	expectedNames := []string{
 		"list_directory",
@@ -61,7 +62,7 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 }
 
 func TestCreateToolRegistryDoesNotResolveRemovedTools(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemRead: true, filesystemWrite: true})
 	for _, name := range []string{"list_files", "stat_path", "exists_path", "mkdir", "rename_path"} {
 		if _, ok := registry.Get(name); ok {
 			t.Fatalf("expected removed tool %q to be unavailable", name)
@@ -121,6 +122,43 @@ func TestCapabilitiesFromReadOnly(t *testing.T) {
 
 	if !capabilitiesFromReadOnly(false).filesystemWrite {
 		t.Fatal("expected filesystem writes to be enabled outside read-only mode")
+	}
+}
+
+func TestCapabilitiesFromRootsUsesEffectiveAggregateCapabilities(t *testing.T) {
+	t.Parallel()
+
+	filesystem := noopFileSystem{}
+	limits := roots.DefaultLimits(1024, 2048)
+	linkRules := roots.LinkRules{Symlinks: roots.DenySymlinks, ReparsePoints: roots.DenyReparsePoints}
+	registry, err := roots.New([]roots.Entry{
+		{ID: "read", FileSystem: filesystem, Access: roots.Read, Limits: limits, FileTypes: roots.AllFileTypes(), LinkRules: linkRules, Capabilities: roots.FilesystemRead},
+		{ID: "write", FileSystem: filesystem, Access: roots.Write, Limits: limits, FileTypes: roots.AllFileTypes(), LinkRules: linkRules, Capabilities: roots.FilesystemWrite},
+	})
+	if err != nil {
+		t.Fatalf("create roots registry: %v", err)
+	}
+
+	capabilities := capabilitiesFromRoots(registry)
+	if !capabilities.filesystemRead || !capabilities.filesystemWrite {
+		t.Fatalf("aggregate capabilities = %#v", capabilities)
+	}
+	if capabilities := capabilitiesFromRoots(nil); capabilities.filesystemRead || capabilities.filesystemWrite {
+		t.Fatalf("nil registry capabilities = %#v", capabilities)
+	}
+}
+
+func TestCreateToolRegistrySupportsWriteOnlyEffectiveCatalog(t *testing.T) {
+	t.Parallel()
+
+	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	gotNames := make([]string, 0, len(registry.List()))
+	for _, tool := range registry.List() {
+		gotNames = append(gotNames, tool.Name())
+	}
+	wantNames := []string{"write_file", "create_directory", "delete_path", "copy_path", "move_path"}
+	if !reflect.DeepEqual(gotNames, wantNames) {
+		t.Fatalf("unexpected write-only catalog\nwant: %v\n got: %v", wantNames, gotNames)
 	}
 }
 

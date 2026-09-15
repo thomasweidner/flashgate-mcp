@@ -42,6 +42,14 @@ and neither configured nor resolved absolute
 host paths are exposed. External multi-root configuration remains separate and
 is not inferred from client paths.
 
+The runtime tool catalog is built from the effective functional capabilities
+of all configured roots. Read tools are registered only when at least one root
+grants filesystem-read capability, and write tools only when at least one root
+grants filesystem-write capability. Catalog visibility never authorizes a
+different root: every call still checks the selected root before filesystem
+I/O. Consequently, `tools/list` reflects effective profile/root capability
+policy without weakening per-root enforcement.
+
 ### No Direct Filesystem Access Outside `internal/fs`
 
 Production code outside `internal/fs` must not directly call filesystem APIs such as:
