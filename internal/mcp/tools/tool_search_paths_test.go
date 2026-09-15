@@ -164,6 +164,25 @@ func TestSearchPathsAppliesAndValidatesClientMatchLimits(t *testing.T) {
 	}
 }
 
+func TestSearchPathsAppliesAndValidatesContextLines(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "wanted.txt", Size: 22}}
+	fake.readContent = []byte("before\nhello\nafter\n")
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"text":"hello","contextLines":1}`))
+	contextText := "before\nhello\nafter\n"
+	want := search.ContentSearchResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 7, Context: &contextText}}}
+	if rpcErr != nil || !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected context result=%#v err=%#v", result, rpcErr)
+	}
+
+	for _, raw := range []string{`{"contextLines":1}`, `{"text":"x","contextLines":0}`, `{"regex":"x","contextLines":11}`} {
+		fake := newFakeFileSystem()
+		if _, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(raw)); rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.listPath != "" {
+			t.Fatalf("expected pre-traversal rejection for %s, err=%#v", raw, rpcErr)
+		}
+	}
+}
+
 func TestSearchPathsLiteralTextRejectsDirectoryFilter(t *testing.T) {
 	_, rpcErr := NewSearchPathsTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(`{"text":"x","type":"directory"}`))
 	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {

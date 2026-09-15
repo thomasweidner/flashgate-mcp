@@ -13,16 +13,19 @@ import (
 )
 
 const (
-	searchPathsToolName     = "search_paths"
-	maxSearchPathResults    = 1000
-	maxSearchDepth          = 64
-	maxSearchVisitedEntries = 10000
-	maxSearchContentFiles   = 1000
-	maxSearchBytesPerFile   = 1024 * 1024
-	maxSearchScannedBytes   = 10 * 1024 * 1024
-	maxSearchMatchesPerFile = 256
-	maxSearchContentMatches = 1000
-	maxSearchResponseBytes  = 1024 * 1024
+	searchPathsToolName           = "search_paths"
+	maxSearchPathResults          = 1000
+	maxSearchDepth                = 64
+	maxSearchVisitedEntries       = 10000
+	maxSearchContentFiles         = 1000
+	maxSearchBytesPerFile         = 1024 * 1024
+	maxSearchScannedBytes         = 10 * 1024 * 1024
+	maxSearchMatchesPerFile       = 256
+	maxSearchContentMatches       = 1000
+	maxSearchResponseBytes        = 1024 * 1024
+	maxSearchContextLines         = 10
+	maxSearchContextBytesPerMatch = 16 * 1024
+	maxSearchContextBytes         = 256 * 1024
 )
 
 // SearchPathsTool exposes bounded recursive path search as an MCP tool.
@@ -76,6 +79,7 @@ func (t *SearchPathsTool) InputSchema() any {
 			},
 			"maxMatchesPerFile": map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchMatchesPerFile, "description": "Optional per-file match limit, capped by the server maximum."},
 			"maxMatches":        map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchContentMatches, "description": "Optional total match limit, capped by the server maximum."},
+			"contextLines":      map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchContextLines, "description": "Optional number of complete UTF-8 lines before and after each content match."},
 			"type": map[string]any{
 				"type":        "string",
 				"enum":        []string{"file", "directory"},
@@ -143,7 +147,7 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 	if (arguments.Text != nil || arguments.Regex != nil) && arguments.Type != nil && *arguments.Type == "directory" {
 		return nil, invalidParamsError()
 	}
-	if (arguments.Text == nil && arguments.Regex == nil) && (arguments.MaxMatchesPerFile != nil || arguments.MaxMatches != nil) {
+	if (arguments.Text == nil && arguments.Regex == nil) && (arguments.MaxMatchesPerFile != nil || arguments.MaxMatches != nil || arguments.ContextLines != nil) {
 		return nil, invalidParamsError()
 	}
 	limits, rpcErr := arguments.contentSearchLimits()
@@ -185,6 +189,7 @@ type searchPathsArguments struct {
 	ModifiedNotAfter  *string `json:"modifiedNotAfter,omitempty"`
 	MaxMatchesPerFile *int    `json:"maxMatchesPerFile,omitempty"`
 	MaxMatches        *int    `json:"maxMatches,omitempty"`
+	ContextLines      *int    `json:"contextLines,omitempty"`
 }
 
 func (a searchPathsArguments) contentSearchLimits() (search.LiteralLimits, *protocol.Error) {
@@ -192,6 +197,7 @@ func (a searchPathsArguments) contentSearchLimits() (search.LiteralLimits, *prot
 		MaxFiles: maxSearchContentFiles, MaxBytesPerFile: maxSearchBytesPerFile,
 		MaxScannedBytes: maxSearchScannedBytes, MaxMatchesPerFile: maxSearchMatchesPerFile,
 		MaxMatches: maxSearchContentMatches, MaxResponseBytes: maxSearchResponseBytes,
+		MaxContextBytesPerMatch: maxSearchContextBytesPerMatch, MaxContextBytes: maxSearchContextBytes,
 	}
 	if a.MaxMatchesPerFile != nil {
 		if *a.MaxMatchesPerFile <= 0 || *a.MaxMatchesPerFile > maxSearchMatchesPerFile {
@@ -204,6 +210,12 @@ func (a searchPathsArguments) contentSearchLimits() (search.LiteralLimits, *prot
 			return search.LiteralLimits{}, invalidParamsError()
 		}
 		limits.MaxMatches = *a.MaxMatches
+	}
+	if a.ContextLines != nil {
+		if *a.ContextLines <= 0 || *a.ContextLines > maxSearchContextLines {
+			return search.LiteralLimits{}, invalidParamsError()
+		}
+		limits.ContextLines = *a.ContextLines
 	}
 	return limits, nil
 }
@@ -253,12 +265,14 @@ func mapSearchError(err error) *protocol.Error {
 	switch {
 	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch):
 		return invalidParamsError()
-	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrTraversalLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded):
+	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrTraversalLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded), errors.Is(err, search.ErrContextLimitExceeded):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
 	case errors.Is(err, fs.ErrFileTooLarge):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
 	case errors.Is(err, search.ErrContentSearchUnavailable):
 		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: unavailable"}
+	case errors.Is(err, search.ErrContextUnavailable):
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: context unavailable"}
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: canceled"}
 	default:

@@ -419,3 +419,52 @@ func TestContentSearchReportsTotalMatchLimit(t *testing.T) {
 		t.Fatalf("expected total-match diagnostic, got=%#v err=%v", got, err)
 	}
 }
+
+func TestContentSearchReturnsBoundedLineContext(t *testing.T) {
+	filesystem := &listingFS{
+		entries: map[string][]fs.Entry{".": {{Name: "a.txt", Size: 35}}},
+		content: map[string][]byte{"a.txt": []byte("zero\none\ntwo needle here\nthree\nfour")},
+	}
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
+	limits := LiteralLimits{
+		MaxFiles: 1, MaxBytesPerFile: 100, MaxScannedBytes: 100,
+		MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000,
+		ContextLines: 1, MaxContextBytesPerMatch: 100, MaxContextBytes: 100,
+	}
+
+	got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "needle", limits)
+	contextText := "one\ntwo needle here\nthree\n"
+	want := []LiteralMatch{{Path: "a.txt", ByteOffset: 13, Context: &contextText}}
+	if err != nil || !reflect.DeepEqual(got.Matches, want) {
+		t.Fatalf("unexpected context result=%#v err=%v", got, err)
+	}
+}
+
+func TestContentSearchEnforcesContextBudgetsAndUTF8(t *testing.T) {
+	baseLimits := LiteralLimits{
+		MaxFiles: 1, MaxBytesPerFile: 100, MaxScannedBytes: 100,
+		MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000,
+		ContextLines: 1, MaxContextBytesPerMatch: 100, MaxContextBytes: 100,
+	}
+	for _, tc := range []struct {
+		name    string
+		content []byte
+		mutate  func(*LiteralLimits)
+		wantErr error
+	}{
+		{name: "per-match", content: []byte("long x matching line"), mutate: func(l *LiteralLimits) { l.MaxContextBytesPerMatch = 5 }, wantErr: ErrContextLimitExceeded},
+		{name: "aggregate", content: []byte("x\nx"), mutate: func(l *LiteralLimits) { l.MaxContextBytes = 5 }, wantErr: ErrContextLimitExceeded},
+		{name: "invalid UTF-8", content: []byte{'x', 0xff}, mutate: func(*LiteralLimits) {}, wantErr: ErrContextUnavailable},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			limits := baseLimits
+			tc.mutate(&limits)
+			filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: "a", Size: int64(len(tc.content))}}}, content: map[string][]byte{"a": tc.content}}
+			service, _ := NewPathService(filesystem, 10, 64, 10000)
+			got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "x", limits)
+			if !errors.Is(err, tc.wantErr) || len(got.Matches) != 0 {
+				t.Fatalf("expected %v, got result=%#v err=%v", tc.wantErr, got, err)
+			}
+		})
+	}
+}
