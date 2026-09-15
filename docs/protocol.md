@@ -161,6 +161,7 @@ The supported protocol/extension matrix is a released artifact. A specification 
 ## Related documents
 
 - [Architecture](architecture.md)
+- [Tool catalog fingerprint and cache contract](catalog-fingerprint-and-cache-contract.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
 - [Efficiency plan](efficiency-improvement-plan.md)
 - [Runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
