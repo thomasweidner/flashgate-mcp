@@ -1,11 +1,12 @@
-# Filesystem MCP tools
+# MCP tools
 
-FlashGate MCP exposes eight filesystem tools in the default profile, in this exact order:
+FlashGate MCP exposes eight filesystem tools and one system-information tool in the default profile, in this exact order:
 
 ```text
 list_directory
 read_file
 get_path_info
+system_info
 write_file
 create_directory
 delete_path
@@ -13,7 +14,7 @@ copy_path
 move_path
 ```
 
-The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
+The read-only profile exposes `list_directory`, `read_file`, `get_path_info`, and `system_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
 
 For later Codex activation, `MCP_READ_ONLY=true` must be explicit and `MCP_ROOT` must be an absolute preflighted directory. See [Codex read-only activation preparation](codex-read-only-activation.md). `SPR-044` does not activate a client.
 
@@ -35,11 +36,11 @@ The result examples below are domain objects. Every successful `tools/call` plac
 }
 ```
 
-The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
+The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All nine tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2564 bytes for read-only and 6087 bytes for default after adding `system_info`. These are regression snapshots, not persistent payload budgets.
 
 ## `list_directory`
 
@@ -192,6 +193,16 @@ Files and directories may be renamed or moved on the same volume. Cross-volume m
 
 The source and target identities are revalidated immediately before the operating-system rename, and existing files are replaced through `os.Rename` without a separate target deletion. The remaining race is limited to a concurrent change at the already authorized target path after final revalidation; the path-based cross-platform API cannot condition replacement on the previously observed file identity. Such a race cannot trigger a directory-removal fallback, and this behavior is narrower than the previous explicit remove-then-rename sequence.
 
+## `system_info`
+
+Accepts an empty object and returns only the explicitly released host facts:
+
+```json
+{ "os": "linux", "architecture": "amd64", "version": "6.1.0" }
+```
+
+The version is the Linux kernel release or the Windows major/minor/build version. Host names, user names, environment data, network data, and other machine identifiers are not collected or returned. Platform lookup failures return the generic internal-error contract without leaking operating-system details.
+
 ## Errors
 
 Parse, invalid-request, and method errors use the standard JSON-RPC codes. Expected argument, path, policy, not-found, already-exists, path-type, unsupported-operation, and limit failures use `-32602`. Unexpected I/O failures use `-32603`. Error messages are normalized and do not expose absolute host paths or raw operating-system details.
@@ -202,7 +213,7 @@ The previous pre-1.0 contract and required client changes are documented in [fil
 
 ## Version 1.0 target contract direction
 
-The sections above describe the current eight-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
+The sections above describe the current nine-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
 
 Planned contract changes include:
 

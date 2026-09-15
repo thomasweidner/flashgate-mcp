@@ -49,7 +49,7 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 
 - environment-based configuration;
 - JSON-RPC validation, routing, initialization, `tools/list`, and `tools/call`;
-- eight filesystem tools;
+- eight filesystem tools and the privacy-safe `system_info` tool;
 - one required root through `MCP_ROOT`;
 - optional read-only tool registration through `MCP_READ_ONLY`;
 - central path validation and filesystem abstraction;

@@ -168,7 +168,8 @@ try {
     $expectedTools = @(
         "list_directory",
         "read_file",
-        "get_path_info"
+        "get_path_info",
+        "system_info"
     )
 
     if ($env:MCP_READ_ONLY -ne "true") {
