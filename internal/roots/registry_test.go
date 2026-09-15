@@ -16,8 +16,8 @@ func TestRegistrySupportsMultipleIndependentRoots(t *testing.T) {
 	first := &fakeFileSystem{}
 	second := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "source", FileSystem: first, Access: Read, Limits: testLimits},
-		{ID: "target", FileSystem: second, Access: ReadWrite, Limits: testLimits},
+		{ID: "source", FileSystem: first, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()},
+		{ID: "target", FileSystem: second, Access: ReadWrite, Limits: testLimits, FileTypes: AllFileTypes()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +44,10 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 		{name: "missing access", entries: []Entry{{ID: "root", FileSystem: filesystem}}, want: ErrInvalidEntry},
 		{name: "unknown access", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: 4}}, want: ErrInvalidEntry},
 		{name: "invalid limits", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read}}, want: ErrInvalidLimits},
-		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits}, {ID: "root", FileSystem: filesystem, Access: Write, Limits: testLimits}}, want: ErrDuplicateID},
+		{name: "missing file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits}}, want: ErrInvalidFileTypes},
+		{name: "unsorted file types", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{".txt", ".md"}}}}, want: ErrInvalidFileTypes},
+		{name: "nonportable file type", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: FileTypes{Extensions: []string{"*.txt"}}}}, want: ErrInvalidFileTypes},
+		{name: "duplicate", entries: []Entry{{ID: "root", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()}, {ID: "root", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes()}}, want: ErrDuplicateID},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -70,8 +73,8 @@ func TestRegistryFailsClosedForInvalidConfigurationAndLookup(t *testing.T) {
 func TestRegistryEnforcesIndependentRootAccess(t *testing.T) {
 	filesystem := &fakeFileSystem{}
 	registry, err := New([]Entry{
-		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits},
-		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits},
+		{ID: "read", FileSystem: filesystem, Access: Read, Limits: testLimits, FileTypes: AllFileTypes()},
+		{ID: "write", FileSystem: filesystem, Access: Write, Limits: testLimits, FileTypes: AllFileTypes()},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -87,5 +90,29 @@ func TestRegistryEnforcesIndependentRootAccess(t *testing.T) {
 	}
 	if _, err := registry.FileSystem("write", Read); !errors.Is(err, ErrAccessDenied) {
 		t.Fatalf("read against write-only root error = %v", err)
+	}
+}
+
+func TestRegistryCopiesFileTypePolicy(t *testing.T) {
+	extensions := []string{".md", ".txt"}
+	registry, err := New([]Entry{{
+		ID: "docs", FileSystem: &fakeFileSystem{}, Access: Read, Limits: testLimits,
+		FileTypes: FileTypes{Extensions: extensions},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	extensions[0] = ".exe"
+	root, err := registry.Root("docs", Read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root.FileTypes.Extensions[0] = ".bin"
+	again, err := registry.Root("docs", Read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !again.FileTypes.Allows("README.MD") || again.FileTypes.Allows("payload.exe") {
+		t.Fatalf("registry file-type policy was mutated: %#v", again.FileTypes)
 	}
 }

@@ -8,7 +8,10 @@ Filesystem target tests additionally prove that an explicit opaque root ID
 selects only its independently confined filesystem and that unknown or
 access-denied selections are rejected before filesystem access. They also
 verify that `read_file` applies the selected root's independent file and result
-byte ceilings rather than a limit belonging to another root.
+byte ceilings rather than a limit belonging to another root. Root registry and
+filesystem target tests validate fail-closed malformed file-type policies,
+portable case-insensitive extension matching with either slash form, and denial
+of disallowed reads and writes before content I/O.
 
 ## Slim project validation
 

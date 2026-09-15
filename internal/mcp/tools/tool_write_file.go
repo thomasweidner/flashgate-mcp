@@ -85,12 +85,12 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 
 	content := []byte(arguments.Content)
 
-	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID, roots.Write)
-	if !ok {
+	root, _, ok := resolveRoot(t.resolver, arguments.RootID, roots.Write)
+	if !ok || !root.FileTypes.Allows(arguments.Path) {
 		return nil, invalidParamsError()
 	}
 
-	if err := filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
+	if err := root.FileSystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
 		return nil, mapFilesystemError(err)
 	}
 

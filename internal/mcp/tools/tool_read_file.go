@@ -85,7 +85,7 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 	}
 
 	root, _, ok := resolveRoot(t.resolver, arguments.RootID, roots.Read)
-	if !ok {
+	if !ok || !root.FileTypes.Allows(arguments.Path) {
 		return nil, invalidParamsError()
 	}
 
