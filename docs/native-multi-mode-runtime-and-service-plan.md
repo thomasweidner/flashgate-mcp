@@ -478,7 +478,10 @@ stop
 status
 ```
 
-Exact syntax remains a CLI contract task. State-changing commands are explicit, never auto-elevate, never print secrets, and return stable exit categories.
+The exact public grammar, state-transition behavior, and stable exit categories
+are defined by the [CLI mode and host lifecycle contract](cli-mode-lifecycle-contract.md).
+State-changing commands are explicit, never auto-elevate, and never print
+secrets.
 
 User-scope management and internal worker syntax are post-Version-1.0.
 
