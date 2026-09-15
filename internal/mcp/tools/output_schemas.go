@@ -15,7 +15,13 @@ func filesystemOutputSchema(toolName string) map[string]any {
 			"matches": map[string]any{"type": "array", "items": objectOutputSchema(map[string]any{
 				"path": map[string]any{"type": "string"}, "byteOffset": map[string]any{"type": "integer", "minimum": 0},
 			}, "path", "byteOffset")},
-		}, "matches")}}
+			"truncated": map[string]any{"type": "boolean"},
+			"limit": objectOutputSchema(map[string]any{
+				"kind":       map[string]any{"type": "string", "enum": []string{"perFileMatches", "totalMatches"}},
+				"maxMatches": map[string]any{"type": "integer", "minimum": 1}, "returnedMatches": map[string]any{"type": "integer", "minimum": 0},
+				"path": map[string]any{"type": "string"},
+			}, "kind", "maxMatches", "returnedMatches"),
+		}, "matches", "truncated")}}
 	case listDirectoryToolName:
 		return objectOutputSchema(map[string]any{
 			"entries": map[string]any{

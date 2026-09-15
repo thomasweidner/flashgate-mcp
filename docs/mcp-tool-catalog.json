@@ -87,6 +87,18 @@
             "type": "string",
             "minLength": 1,
             "description": "Go RE2-style regular expression to find in files."
+          },
+          "maxMatchesPerFile": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 256,
+            "description": "Optional per-file match limit, capped by the server maximum."
+          },
+          "maxMatches": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "Optional total match limit, capped by the server maximum."
           }
         },
         "allOf": [
@@ -161,10 +173,43 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "truncated": {
+                "type": "boolean"
+              },
+              "limit": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "perFileMatches",
+                      "totalMatches"
+                    ]
+                  },
+                  "maxMatches": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "returnedMatches": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "maxMatches",
+                  "returnedMatches"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
-              "matches"
+              "matches",
+              "truncated"
             ],
             "additionalProperties": false
           }

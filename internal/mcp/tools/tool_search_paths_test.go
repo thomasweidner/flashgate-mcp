@@ -113,7 +113,7 @@ func TestSearchPathsMatchesLiteralText(t *testing.T) {
 	if rpcErr != nil {
 		t.Fatal(rpcErr)
 	}
-	want := searchContentResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 0}, {Path: "wanted.txt", ByteOffset: 6}}}
+	want := search.ContentSearchResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 0}, {Path: "wanted.txt", ByteOffset: 6}}}
 	if !reflect.DeepEqual(result, want) {
 		t.Fatalf("unexpected result: %#v", result)
 	}
@@ -130,7 +130,7 @@ func TestSearchPathsMatchesRegularExpression(t *testing.T) {
 	if rpcErr != nil {
 		t.Fatal(rpcErr)
 	}
-	want := searchContentResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 0}, {Path: "wanted.txt", ByteOffset: 8}}}
+	want := search.ContentSearchResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 0}, {Path: "wanted.txt", ByteOffset: 8}}}
 	if !reflect.DeepEqual(result, want) {
 		t.Fatalf("unexpected result: %#v", result)
 	}
@@ -142,6 +142,24 @@ func TestSearchPathsRejectsInvalidOrConflictingRegularExpression(t *testing.T) {
 		_, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.listPath != "" || fake.readPath != "" {
 			t.Fatalf("expected pre-traversal invalid params for %s, list=%q read=%q err=%#v", raw, fake.listPath, fake.readPath, rpcErr)
+		}
+	}
+}
+
+func TestSearchPathsAppliesAndValidatesClientMatchLimits(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "wanted.txt", Size: 3}}
+	fake.readContent = []byte("xxx")
+	result, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(`{"text":"x","maxMatchesPerFile":2,"maxMatches":10}`))
+	want := search.ContentSearchResult{Matches: []search.LiteralMatch{{Path: "wanted.txt", ByteOffset: 0}, {Path: "wanted.txt", ByteOffset: 1}}, Truncated: true, Limit: &search.MatchLimitDiagnostic{Kind: "perFileMatches", MaxMatches: 2, ReturnedMatches: 2, Path: "wanted.txt"}}
+	if rpcErr != nil || !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected bounded result=%#v err=%#v", result, rpcErr)
+	}
+
+	for _, raw := range []string{`{"maxMatches":1}`, `{"text":"x","maxMatches":0}`, `{"text":"x","maxMatches":1001}`, `{"regex":"x","maxMatchesPerFile":257}`} {
+		fake := newFakeFileSystem()
+		if _, rpcErr := NewSearchPathsTool(fake).Execute(context.Background(), json.RawMessage(raw)); rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || fake.listPath != "" {
+			t.Fatalf("expected pre-traversal rejection for %s, err=%#v", raw, rpcErr)
 		}
 	}
 }
