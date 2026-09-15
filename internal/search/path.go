@@ -91,10 +91,11 @@ type LiteralMatch struct {
 // ContentSearchResult contains the bounded matches and reports when matching
 // stopped at a client- or server-owned match budget.
 type ContentSearchResult struct {
-	Matches   []LiteralMatch        `json:"matches"`
-	Truncated bool                  `json:"truncated"`
-	Limit     *MatchLimitDiagnostic `json:"limit,omitempty"`
-	Skipped   []ContentSkip         `json:"skipped,omitempty"`
+	Matches    []LiteralMatch        `json:"matches"`
+	Truncated  bool                  `json:"truncated"`
+	Limit      *MatchLimitDiagnostic `json:"limit,omitempty"`
+	Skipped    []ContentSkip         `json:"skipped,omitempty"`
+	NextCursor string                `json:"nextCursor,omitempty"`
 }
 
 // ContentSkip reports a policy-visible file omitted by the selected binary mode.

@@ -11,6 +11,7 @@ func filesystemOutputSchema(toolName string) map[string]any {
 					"isDir": map[string]any{"type": "boolean"},
 				}, "path", "isDir"),
 			},
+			"nextCursor": map[string]any{"type": "string"},
 		}, "paths"), objectOutputSchema(map[string]any{
 			"matches": map[string]any{"type": "array", "items": objectOutputSchema(map[string]any{
 				"path": map[string]any{"type": "string"}, "byteOffset": map[string]any{"type": "integer", "minimum": 0},
@@ -25,6 +26,7 @@ func filesystemOutputSchema(toolName string) map[string]any {
 			"skipped": map[string]any{"type": "array", "items": objectOutputSchema(map[string]any{
 				"path": map[string]any{"type": "string"}, "reason": map[string]any{"type": "string", "enum": []string{"binary", "unsupportedEncoding"}},
 			}, "path", "reason")},
+			"nextCursor": map[string]any{"type": "string"},
 		}, "matches", "truncated")}}
 	case listDirectoryToolName:
 		return objectOutputSchema(map[string]any{

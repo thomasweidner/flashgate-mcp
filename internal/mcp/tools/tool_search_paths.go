@@ -31,6 +31,7 @@ const (
 // SearchPathsTool exposes bounded recursive path search as an MCP tool.
 type SearchPathsTool struct {
 	service *search.PathService
+	cursors *searchCursorStore
 }
 
 // NewSearchPathsTool creates a search_paths tool over the central filesystem
@@ -40,7 +41,7 @@ func NewSearchPathsTool(filesystem fs.DirectoryLister) *SearchPathsTool {
 	if err != nil {
 		panic(err)
 	}
-	return &SearchPathsTool{service: service}
+	return &SearchPathsTool{service: service, cursors: newSearchCursorStore()}
 }
 
 func (t *SearchPathsTool) Name() string  { return searchPathsToolName }
@@ -82,6 +83,8 @@ func (t *SearchPathsTool) InputSchema() any {
 			"contextLines":      map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchContextLines, "description": "Optional number of complete UTF-8 lines before and after each content match."},
 			"binaryMode":        map[string]any{"type": "string", "enum": []string{"skip", "error", "explicit"}, "description": "Binary/non-UTF-8 handling: skip with diagnostics (default), fail, or explicitly byte-search without context."},
 			"encoding":          map[string]any{"type": "string", "enum": []string{"utf-8"}, "description": "Explicit text encoding; only UTF-8 is supported."},
+			"pageSize":          map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchPageSize, "description": "Optional maximum paths or matches in this page. Enables cursor pagination."},
+			"cursor":            map[string]any{"type": "string", "minLength": 1, "description": "Opaque single-use cursor returned by the preceding page; no query fields may accompany it."},
 			"type": map[string]any{
 				"type":        "string",
 				"enum":        []string{"file", "directory"},
@@ -110,6 +113,15 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 	var arguments searchPathsArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
 		return nil, rpcErr
+	}
+	if arguments.Cursor != nil {
+		if !arguments.cursorOnly() {
+			return nil, invalidParamsError()
+		}
+		return t.continuePage(*arguments.Cursor)
+	}
+	if arguments.PageSize != nil && (*arguments.PageSize <= 0 || *arguments.PageSize > maxSearchPageSize) {
+		return nil, invalidParamsError()
 	}
 
 	startPath := "."
@@ -164,21 +176,21 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 		if err != nil {
 			return nil, mapSearchError(err)
 		}
-		return result, nil
+		return t.firstContentPage(result, arguments.PageSize)
 	}
 	if arguments.Regex != nil {
 		result, err := t.service.SearchRegex(ctx, startPath, selector, kind, filter, *arguments.Regex, limits)
 		if err != nil {
 			return nil, mapSearchError(err)
 		}
-		return result, nil
+		return t.firstContentPage(result, arguments.PageSize)
 	}
 	paths, err := t.service.SearchFiltered(ctx, startPath, selector, kind, filter)
 	if err != nil {
 		return nil, mapSearchError(err)
 	}
 
-	return searchPathsResult{Paths: paths}, nil
+	return t.firstPathPage(paths, arguments.PageSize)
 }
 
 type searchPathsArguments struct {
@@ -197,6 +209,12 @@ type searchPathsArguments struct {
 	ContextLines      *int    `json:"contextLines,omitempty"`
 	BinaryMode        *string `json:"binaryMode,omitempty"`
 	Encoding          *string `json:"encoding,omitempty"`
+	PageSize          *int    `json:"pageSize,omitempty"`
+	Cursor            *string `json:"cursor,omitempty"`
+}
+
+func (a searchPathsArguments) cursorOnly() bool {
+	return a.Cursor != nil && isNonBlank(*a.Cursor) && a.Path == nil && a.Name == nil && a.NamePattern == nil && a.Text == nil && a.Regex == nil && a.Type == nil && a.MinSizeBytes == nil && a.MaxSizeBytes == nil && a.ModifiedNotBefore == nil && a.ModifiedNotAfter == nil && a.MaxMatchesPerFile == nil && a.MaxMatches == nil && a.ContextLines == nil && a.BinaryMode == nil && a.Encoding == nil && a.PageSize == nil
 }
 
 func (a searchPathsArguments) contentSearchLimits() (search.LiteralLimits, *protocol.Error) {
@@ -280,13 +298,73 @@ func (a searchPathsArguments) metadataFilter() (search.MetadataFilter, *protocol
 }
 
 type searchPathsResult struct {
-	Paths []search.Path `json:"paths"`
+	Paths      []search.Path `json:"paths"`
+	NextCursor string        `json:"nextCursor,omitempty"`
+}
+
+func (t *SearchPathsTool) firstPathPage(paths []search.Path, requested *int) (any, *protocol.Error) {
+	if requested == nil || len(paths) <= *requested {
+		return searchPathsResult{Paths: paths}, nil
+	}
+	page := searchCursorPage{paths: paths[*requested:], pageSize: *requested}
+	token, err := t.cursors.put(page)
+	if err != nil {
+		return nil, mapSearchError(err)
+	}
+	return searchPathsResult{Paths: paths[:*requested], NextCursor: token}, nil
+}
+
+func (t *SearchPathsTool) firstContentPage(result search.ContentSearchResult, requested *int) (any, *protocol.Error) {
+	if requested == nil || len(result.Matches) <= *requested {
+		return result, nil
+	}
+	page := searchCursorPage{matches: result.Matches[*requested:], truncated: result.Truncated, limit: result.Limit, skipped: result.Skipped, pageSize: *requested}
+	token, err := t.cursors.put(page)
+	if err != nil {
+		return nil, mapSearchError(err)
+	}
+	result.Matches = result.Matches[:*requested]
+	result.NextCursor = token
+	return result, nil
+}
+
+func (t *SearchPathsTool) continuePage(token string) (any, *protocol.Error) {
+	page, err := t.cursors.take(token)
+	if err != nil {
+		return nil, mapSearchError(err)
+	}
+	if page.paths != nil {
+		count := min(page.pageSize, len(page.paths))
+		result := searchPathsResult{Paths: page.paths[:count]}
+		if count < len(page.paths) {
+			page.paths = page.paths[count:]
+			result.NextCursor, err = t.cursors.put(page)
+		}
+		if err != nil {
+			return nil, mapSearchError(err)
+		}
+		return result, nil
+	}
+	count := min(page.pageSize, len(page.matches))
+	result := search.ContentSearchResult{Matches: page.matches[:count], Truncated: page.truncated, Limit: page.limit, Skipped: page.skipped}
+	if count < len(page.matches) {
+		page.matches = page.matches[count:]
+		result.NextCursor, err = t.cursors.put(page)
+	}
+	if err != nil {
+		return nil, mapSearchError(err)
+	}
+	return result, nil
 }
 
 func mapSearchError(err error) *protocol.Error {
 	switch {
 	case errors.Is(err, search.ErrInvalidNameSelector), errors.Is(err, search.ErrInvalidMetadataFilter), errors.Is(err, search.ErrInvalidLiteralSearch), errors.Is(err, search.ErrInvalidRegexSearch):
 		return invalidParamsError()
+	case errors.Is(err, errSearchCursorInvalid):
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: stale cursor"}
+	case errors.Is(err, errSearchCursorLimit):
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
 	case errors.Is(err, search.ErrLimitExceeded), errors.Is(err, search.ErrTraversalLimitExceeded), errors.Is(err, search.ErrScanLimitExceeded), errors.Is(err, search.ErrResponseLimitExceeded), errors.Is(err, search.ErrContextLimitExceeded):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: limit exceeded"}
 	case errors.Is(err, fs.ErrFileTooLarge):

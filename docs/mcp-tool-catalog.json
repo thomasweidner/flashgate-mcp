@@ -121,6 +121,17 @@
               "utf-8"
             ],
             "description": "Explicit text encoding; only UTF-8 is supported."
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Optional maximum paths or matches in this page. Enables cursor pagination."
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque single-use cursor returned by the preceding page; no query fields may accompany it."
           }
         },
         "allOf": [
@@ -166,6 +177,9 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "nextCursor": {
+                "type": "string"
               }
             },
             "required": [
@@ -253,6 +267,9 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "nextCursor": {
+                "type": "string"
               }
             },
             "required": [
