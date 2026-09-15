@@ -23,7 +23,11 @@ unknown-root rejection, independence from filesystem read/write grants, and the
 compatible single-root bootstrap's fail-closed default.
 Dynamic tool-registration tests derive the catalog from aggregate effective
 root capabilities, including mixed-root configurations, while preserving
-deterministic tool order and per-root authorization at execution time.
+deterministic tool order and per-root authorization at execution time. The
+negative catalog matrix covers no-capability, safe-read, write-only, and
+read/write effective profiles; repeated `tools/list` results must remain
+byte-for-byte stable, and every tool omitted from a profile must also be
+rejected generically by `tools/call`.
 
 ## Slim project validation
 
