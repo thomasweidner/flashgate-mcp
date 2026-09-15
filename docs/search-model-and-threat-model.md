@@ -19,6 +19,8 @@ The request may narrow the search with a relative start path, deterministic incl
 
 Every request is normalized and validated completely before traversal. Unknown fields, empty search expressions where a term is required, invalid UTF-8 text selectors, invalid patterns, unsupported metadata, and limits outside server maxima fail before scanning.
 
+Ignore-file interpretation is opt-in per request through an explicit root-relative `ignoreFile`; no conventional filename is discovered or read automatically. The pure-Go parser accepts gitignore-compatible blank/comment lines, `!` negation, `/` anchoring, directory-only trailing `/`, `*`, `**`, `?`, and character classes. Patterns are relative to the ignore file's directory, use normalized `/` separators and case-sensitive matching, and apply in file order with the last matching rule winning. An ignored directory is not traversed. The ignore file is read through the central root policy and is limited to 64 KiB, 256 active patterns, and 1,024 bytes per line; invalid UTF-8, malformed patterns, and paths outside the root fail closed before search traversal.
+
 ## Traversal and ordering
 
 Traversal starts only after the requested root and start path pass the same central path policy used by filesystem tools. Each discovered entry is rechecked before metadata access or content opening. Symlink, junction, reparse-point, hidden-path, and UNC behavior follows the configured filesystem policy; a denied entry is neither traversed nor disclosed.
@@ -57,7 +59,7 @@ Errors use stable safe categories rather than raw operating-system strings. The 
 | Regular-expression denial of service | Pure-Go RE2-style syntax, expression-size limits, cancellation, deadlines, and scan budgets |
 | Result or context data leakage | Root-relative minimal fields, explicit field/context selection, bounded snippets, redacted diagnostics, and no denied-entry disclosure |
 | Binary or malformed-encoding confusion | Explicit detection and mode contract; no implicit lossy decode or binary context |
-| Ignore/include pattern bypass | Deterministic normalized matching, exclusion precedence, bounded pattern count/length, and tests for separator/case behavior |
+| Ignore/include pattern bypass | Explicit opt-in only, root-confined ignore-file reads, deterministic normalized matching, last-rule precedence, bounded file/pattern/line sizes, and tests for separator/case behavior |
 | Cursor guessing, replay, or cross-principal use | Opaque random cursor bound to principal, root, profile, capability set, query, ordering, policy generation, and TTL |
 | TOCTOU and unstable results | Revalidation before access, safe changed-path outcome, no stable-snapshot claim, and cursor invalidation |
 | Unauthorized direct invocation | Server-side `search.read` capability and root-policy checks after tool resolution; catalog visibility is not authorization |
@@ -77,7 +79,7 @@ Focused unit, integration, security, and fuzz/property tests must cover:
 - deterministic ordering across concurrency and platform separators;
 - depth, entry, file, byte, match, context, response, time, cancellation, and concurrency limits at and beyond boundaries;
 - literal and regular-expression positives plus rejected syntax and oversized expressions;
-- include/exclude precedence and case rules;
+- ignore/include/exclude precedence, anchoring, directory pruning, opt-in behavior, and case rules;
 - binary, encoding, malformed-content, disappearing-file, and changed-file outcomes;
 - cursor tampering, expiry, request/policy/root drift, and cross-principal replay;
 - server-side capability bypass attempts and host-path/secret redaction; and

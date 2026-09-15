@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -80,6 +81,56 @@ func TestPathSearchKeepsStartPathRootRelative(t *testing.T) {
 	want := []Path{{Path: "docs/nested", IsDir: true}, {Path: "docs/nested/file.md"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected paths: %#v", got)
+	}
+}
+
+func TestPathSearchAppliesExplicitGitignoreRules(t *testing.T) {
+	filesystem := &listingFS{
+		entries: map[string][]fs.Entry{
+			".":     {{Name: ".flashgateignore", Size: 42}, {Name: "build", IsDir: true}, {Name: "keep.log"}, {Name: "notes.log"}, {Name: "src", IsDir: true}},
+			"build": {{Name: "hidden.txt"}},
+			"src":   {{Name: "generated.tmp"}, {Name: "main.go"}, {Name: "root-only.txt"}},
+		},
+		content: map[string][]byte{".flashgateignore": []byte("build/\n*.log\n!keep.log\n**/*.tmp\n/root-only.txt\n")},
+	}
+	service, _ := NewPathService(filesystem, 20, 64, 10000)
+
+	got, err := service.SearchFilteredWithIgnore(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, IgnoreFile{Path: ".flashgateignore"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Path{{Path: ".flashgateignore"}, {Path: "keep.log"}, {Path: "src", IsDir: true}, {Path: "src/main.go"}, {Path: "src/root-only.txt"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected ignored paths\nwant: %#v\n got: %#v", want, got)
+	}
+	if !reflect.DeepEqual(filesystem.calls, []string{".", "src"}) {
+		t.Fatalf("ignored directory must be pruned: calls=%#v", filesystem.calls)
+	}
+}
+
+func TestIgnoreFileIsOptInAndRootRelative(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {{Name: ".gitignore", Size: 6}, {Name: "a.log"}}}, content: map[string][]byte{".gitignore": []byte("*.log\n")}}
+	service, _ := NewPathService(filesystem, 10, 64, 10000)
+	got, err := service.Search(context.Background(), ".")
+	if err != nil || len(got) != 2 || len(filesystem.reads) != 0 {
+		t.Fatalf("default search must not read ignores: result=%#v reads=%#v err=%v", got, filesystem.reads, err)
+	}
+
+	filesystem.calls, filesystem.reads = nil, nil
+	got, err = service.SearchFilteredWithIgnore(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, IgnoreFile{Path: "../.gitignore"})
+	if !errors.Is(err, ErrInvalidIgnoreFile) || got != nil || len(filesystem.calls) != 0 {
+		t.Fatalf("invalid ignore path must fail before traversal: result=%#v calls=%#v err=%v", got, filesystem.calls, err)
+	}
+}
+
+func TestIgnoreFileRejectsMalformedOrUnboundedRules(t *testing.T) {
+	for _, content := range [][]byte{[]byte("[\n"), []byte(strings.Repeat("x", MaxIgnoreLineBytes+1) + "\n"), {0xff}} {
+		filesystem := &listingFS{content: map[string][]byte{"ignore": content}}
+		service, _ := NewPathService(filesystem, 10, 64, 10000)
+		got, err := service.SearchFilteredWithIgnore(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, IgnoreFile{Path: "ignore"})
+		if !errors.Is(err, ErrInvalidIgnoreFile) || got != nil || len(filesystem.calls) != 0 {
+			t.Fatalf("expected bounded pre-traversal failure: result=%#v calls=%#v err=%v", got, filesystem.calls, err)
+		}
 	}
 }
 
