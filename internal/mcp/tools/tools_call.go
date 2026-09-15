@@ -12,14 +12,26 @@ const toolsCallMethod = "tools/call"
 
 // CallHandler handles MCP tools/call requests.
 type CallHandler struct {
-	registry *Registry
+	registry   *Registry
+	authorizer Authorizer
 }
 
-// NewCallHandler creates a new tools/call handler.
-func NewCallHandler(registry *Registry) *CallHandler {
-	return &CallHandler{
-		registry: registry,
-	}
+// Authorizer makes the execution-time authorization decision for a resolved
+// tool. Implementations must fail closed for tool names they do not classify.
+type Authorizer interface {
+	AuthorizeTool(name string) bool
+}
+
+// AuthorizeFunc adapts a function to Authorizer.
+type AuthorizeFunc func(name string) bool
+
+// AuthorizeTool implements Authorizer.
+func (f AuthorizeFunc) AuthorizeTool(name string) bool { return f != nil && f(name) }
+
+// NewCallHandler creates a tools/call handler with mandatory execution-time
+// authorization. A nil authorizer denies every resolved tool.
+func NewCallHandler(registry *Registry, authorizer Authorizer) *CallHandler {
+	return &CallHandler{registry: registry, authorizer: authorizer}
 }
 
 // Method returns the JSON-RPC method handled by this handler.
@@ -36,6 +48,9 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 
 	tool, ok := h.registry.Get(params.Name)
 	if !ok {
+		return nil, invalidParamsError()
+	}
+	if h.authorizer == nil || !h.authorizer.AuthorizeTool(params.Name) {
 		return nil, invalidParamsError()
 	}
 

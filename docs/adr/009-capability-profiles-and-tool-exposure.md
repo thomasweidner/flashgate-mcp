@@ -61,3 +61,17 @@ set before tool registration: read-only grants `filesystem.read`, while the
 existing default also grants `filesystem.write`. This does not introduce the
 future profile configuration, named-root mapping, or the separate
 server-side execution authorization gate.
+
+## Server-side Enforcement Amendment - 2026-09-15
+
+BL-159 makes catalog registration explicitly non-authoritative. The effective
+functional capability set is bound separately to `tools/call`; after resolving
+a tool and before invoking it, the call handler asks a fail-closed authorizer
+whether the tool's required capability is granted. Missing authorizers,
+unclassified tool names, and absent grants all produce the same generic
+Invalid params response used for unavailable tools.
+
+This enforcement covers the currently implemented filesystem tools and reuses
+the immutable capability set established by BL-100. Broader crafted-call,
+stale-catalog, root/domain-policy, and high-risk-operation bypass matrices stay
+within BL-160 rather than expanding BL-159.

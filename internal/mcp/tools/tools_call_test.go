@@ -24,7 +24,7 @@ func TestCallHandlerCallsRegisteredTool(t *testing.T) {
 
 	registry.Register(tool)
 
-	handler := NewCallHandler(registry)
+	handler := NewCallHandler(registry, AuthorizeFunc(func(string) bool { return true }))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -50,10 +50,37 @@ func TestCallHandlerCallsRegisteredTool(t *testing.T) {
 	assertWrappedToolResult(t, callResult, map[string]any{"ok": true})
 }
 
+func TestCallHandlerDeniesResolvedToolBeforeExecution(t *testing.T) {
+	t.Parallel()
+
+	registry := NewRegistry()
+	tool := &testTool{name: "test_tool", result: map[string]any{"ok": true}}
+	registry.Register(tool)
+
+	for name, authorizer := range map[string]Authorizer{
+		"explicit denial":    AuthorizeFunc(func(string) bool { return false }),
+		"missing authorizer": nil,
+	} {
+		t.Run(name, func(t *testing.T) {
+			result, rpcErr := NewCallHandler(registry, authorizer).Handle(
+				handlers.Context{},
+				json.RawMessage(`{"name":"test_tool","arguments":{"path":"."}}`),
+			)
+			if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams || rpcErr.Message != "invalid params" {
+				t.Fatalf("expected generic authorization denial, result=%#v error=%#v", result, rpcErr)
+			}
+		})
+	}
+
+	if tool.called != 0 {
+		t.Fatalf("denied tool executed %d times", tool.called)
+	}
+}
+
 func TestCallHandlerReturnsInvalidParamsForUnknownTool(t *testing.T) {
 	t.Parallel()
 
-	handler := NewCallHandler(NewRegistry())
+	handler := NewCallHandler(NewRegistry(), AuthorizeFunc(func(string) bool { return true }))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -75,7 +102,7 @@ func TestCallHandlerReturnsInvalidParamsForUnknownTool(t *testing.T) {
 
 func TestCallHandlerRejectsRemovedToolNames(t *testing.T) {
 	for _, name := range []string{"list_files", "stat_path", "exists_path", "mkdir", "rename_path"} {
-		result, rpcErr := NewCallHandler(NewRegistry()).Handle(
+		result, rpcErr := NewCallHandler(NewRegistry(), AuthorizeFunc(func(string) bool { return true })).Handle(
 			handlers.Context{}, json.RawMessage(`{"name":"`+name+`","arguments":{}}`),
 		)
 		if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
@@ -87,7 +114,7 @@ func TestCallHandlerRejectsRemovedToolNames(t *testing.T) {
 func TestCallHandlerReturnsInvalidParamsForMalformedParams(t *testing.T) {
 	t.Parallel()
 
-	handler := NewCallHandler(NewRegistry())
+	handler := NewCallHandler(NewRegistry(), AuthorizeFunc(func(string) bool { return true }))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -110,7 +137,7 @@ func TestCallHandlerReturnsInvalidParamsForMalformedParams(t *testing.T) {
 func TestCallHandlerReturnsInvalidParamsForMissingName(t *testing.T) {
 	t.Parallel()
 
-	handler := NewCallHandler(NewRegistry())
+	handler := NewCallHandler(NewRegistry(), AuthorizeFunc(func(string) bool { return true }))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -154,7 +181,7 @@ func TestCallHandlerReturnsInvalidParamsForInvalidParamsShape(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			handler := NewCallHandler(NewRegistry())
+			handler := NewCallHandler(NewRegistry(), AuthorizeFunc(func(string) bool { return true }))
 
 			result, rpcErr := handler.Handle(handlers.Context{}, rawParams)
 			if result != nil {
@@ -200,7 +227,7 @@ func TestCallHandlerTreatsMissingAndNullArgumentsAsEmptyObject(t *testing.T) {
 			}
 			registry.Register(tool)
 
-			handler := NewCallHandler(registry)
+			handler := NewCallHandler(registry, AuthorizeFunc(func(string) bool { return true }))
 
 			result, rpcErr := handler.Handle(handlers.Context{}, rawParams)
 			if rpcErr != nil {
@@ -232,7 +259,7 @@ func TestCallHandlerReturnsToolError(t *testing.T) {
 		err:  expectedErr,
 	})
 
-	handler := NewCallHandler(registry)
+	handler := NewCallHandler(registry, AuthorizeFunc(func(string) bool { return true }))
 
 	result, rpcErr := handler.Handle(
 		handlers.Context{},
@@ -251,7 +278,7 @@ func TestCallHandlerReturnsToolError(t *testing.T) {
 func TestCallHandlerMethod(t *testing.T) {
 	t.Parallel()
 
-	handler := NewCallHandler(NewRegistry())
+	handler := NewCallHandler(NewRegistry(), AuthorizeFunc(func(string) bool { return true }))
 
 	if handler.Method() != "tools/call" {
 		t.Fatalf("expected tools/call, got %q", handler.Method())
@@ -308,7 +335,7 @@ func TestCallHandlerReturnsSafeInternalErrorForSerializationFailure(t *testing.T
 	registry := NewRegistry()
 	registry.Register(&testTool{name: "test_tool", result: map[string]any{"invalid": func() {}}})
 
-	result, rpcErr := NewCallHandler(registry).Handle(
+	result, rpcErr := NewCallHandler(registry, AuthorizeFunc(func(string) bool { return true })).Handle(
 		handlers.Context{}, json.RawMessage(`{"name":"test_tool","arguments":{}}`),
 	)
 	if result != nil {

@@ -219,8 +219,11 @@ The implemented functional capability vocabulary is centralized in
 `internal/capability` and kept distinct from profiles and risk classifications.
 The current single-root `MCP_READ_ONLY` compatibility input is translated into
 `filesystem.read` and, when write access is enabled, `filesystem.write` before
-the filesystem catalog is registered. Future profile and named-root policy may
-calculate the same capability set without changing the functional identifiers.
+the filesystem catalog is registered. The same immutable effective set is
+bound to the MCP router and checked after tool resolution and immediately
+before execution; unknown tool-to-capability mappings fail closed. Future
+profile and named-root policy may calculate the same capability set without
+changing the functional identifiers.
 
 ## Operations and Job Manager
 
