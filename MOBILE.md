@@ -29,6 +29,7 @@ This file intentionally lists only **new Mobile work that remains actionable wit
 
 - an open GitHub PR already reserves that BL identity;
 - a Classic/owner product, architecture, security, platform, dependency, release, scope, governance or policy decision is still open;
+- the task directly or transitively depends on an unresolved Classic/owner decision;
 - the work is Mode `C`, `D` or `X` for the current Mobile period;
 - it is `Later` work outside the current Version-1.0 Mobile execution queue.
 
@@ -71,7 +72,7 @@ When the user says only “next task”:
 
 1. read `AGENTS.md`, Mobile governance, current `BACKLOG.md`, this file and relevant technical contracts;
 2. build the current Vacation Reservation Ledger and exclude all reserved BLs;
-3. exclude every task requiring a new Classic/owner decision, including all current Mode-C candidates;
+3. exclude every task requiring a new Classic/owner decision and every task that depends on one, including all current Mode-C candidates and their decision-blocked descendants;
 4. inspect `Planned` sprints in ascending order defined by root `AGENTS.md`;
 5. classify serious A/B candidates from the **current checkout** as:
    - `INDEPENDENT_FROM_CURRENT_CHECKOUT`;
@@ -168,6 +169,10 @@ The following Planned tasks are intentionally absent from the active queue until
 | `BL-328` | Strict-JSON resource ceilings require justified limit decisions |
 | `BL-330` | Canonical `In Progress` status contract requires owner decision |
 
+The following Mode-A/B implementation descendants are also excluded because their current path depends on those unresolved multi-mode/service decisions:
+
+`BL-224`, `BL-226–BL-231`, `BL-234`, `BL-236–BL-237`, `BL-239`, `BL-241–BL-242`, `BL-244`.
+
 Decision-gated post-1.0 work is also excluded from the current queue, including `BL-083`, `BL-112`, `BL-127–BL-128`, `BL-150`, `BL-158`, `BL-169`, `BL-176`, `BL-181–BL-188`, `BL-217`, `BL-232`, `BL-240` and `BL-313`.
 
 ## 9. Active Planned candidates
@@ -183,19 +188,18 @@ These IDs were unreserved at the snapshot, are `Planned`, are Mode A/B, and are 
 | Command execution | `BL-137–BL-145`, `BL-148–BL-149`, `BL-151` | `BL-146–BL-147`, `BL-152` |
 | System information | `BL-154–BL-157` | — |
 | Security | `BL-159–BL-161`, `BL-163–BL-164`, `BL-167` | `BL-168` |
-| Native multi-mode / service | `BL-224`, `BL-228`, `BL-236`, `BL-239` | `BL-226–BL-227`, `BL-229–BL-231`, `BL-234`, `BL-237`, `BL-241–BL-242`, `BL-244` |
 | CI / release quality | `BL-252`, `BL-256`, `BL-258` | `BL-253–BL-254`, `BL-261–BL-262` |
 | Cross-mode host lifecycle | — | `BL-341` |
 
 Snapshot totals:
 
 ```text
-Mode A active : 60
-Mode B active : 25
-Total active  : 85
+Mode A active : 56
+Mode B active : 15
+Total active  : 71
 ```
 
-`Later`, completed, reserved, decision-bound, Mode-C, Mode-D and Mode-X rows are intentionally omitted.
+`Later`, completed, reserved, decision-bound, decision-dependent, Mode-C, Mode-D and Mode-X rows are intentionally omitted.
 
 ## 10. Immediate launch topology
 
@@ -223,7 +227,8 @@ Earlier-sprint work does not become executable merely because its BL/sprint numb
 - **Command:** BL-136 / PR #107 is the threat-model foundation; `BL-137` is the preferred first child. `BL-143` must reuse the Managed Process Engine.
 - **System:** `BL-154` consumes BL-062; `BL-155/156` should be rebound from BL-153. `BL-157` crosses system-info and capability enforcement.
 - **Security:** `BL-171` is now reserved by PR #178. `BL-159` consumes BL-100; `BL-160` normally follows it. Other active security rows frequently cross multiple domain foundations.
-- **Multi-mode / CI / release:** Mode-C decision contracts are excluded. Reclassify A/B work from the actual checkout and do not infer one parent from this catalog. `BL-261` authoritative benchmark evidence and `BL-262` signing/atomic-release evidence remain deferred. `BL-341` requires native finalization.
+- **Multi-mode / service:** current A/B implementation descendants are excluded while the BL-223/225/233/235/238 decisions remain unresolved. `BL-341` is kept separate because its own planning/architecture contract is already complete; rebind it against current runtime truth before mutation.
+- **CI / release:** `BL-261` authoritative benchmark evidence and `BL-262` signing/atomic-release evidence remain deferred; repository-contained preparation stays active when dependency-executable.
 
 ## 11. Implementation and validation contract
 
@@ -323,7 +328,7 @@ A Cloud PR is evidence of a candidate, never evidence that its BL is `Done`.
 
 > Wähle den nächsten geeigneten noch offenen Task aus dem Filesystem-Epic gemäß `MOBILE.md` V3 und führe genau diesen Mobile-Task aus.
 
-Replace `Filesystem` with `Operations/Job`, `Named roots`, `Process`, `Command Execution`, `System Information`, `Security`, `Multi-Mode` or `CI/Release`.
+Replace `Filesystem` with `Operations/Job`, `Named roots`, `Process`, `Command Execution`, `System Information`, `Security` or `CI/Release`.
 
 ### Named task
 
