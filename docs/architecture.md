@@ -215,6 +215,12 @@ Operations/jobs do not own filesystem, search, process, execution, or system sem
 - Windows/Linux adapters;
 - MCP and IPC adapters.
 
+Stateful implementations share the authorization, execution-context binding,
+lifecycle, cleanup, and evidence invariants in the
+[stateful domain threat-model index](stateful-domain-threat-models.md). Domain
+owners retain their business semantics; the Operations/Job Manager and host
+lifecycle coordinator do not become alternate authorization authorities.
+
 ## Operations and Job Manager
 
 Long work may use an opaque handle such as `op_<opaque-id>`. The handle is server-generated and bound to:
