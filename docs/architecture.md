@@ -215,6 +215,12 @@ Operations/jobs do not own filesystem, search, process, execution, or system sem
 - Windows/Linux adapters;
 - MCP and IPC adapters.
 
+The cross-cutting audit component follows the
+[Audit Lifecycle and Trace Correlation Contract](audit-lifecycle-and-trace-contract.md).
+That target contract keeps server-generated correlation authoritative and makes
+audit failure, backpressure, rotation, retention, and redaction explicit without
+turning audit records into authorization inputs.
+
 ## Operations and Job Manager
 
 Long work may use an opaque handle such as `op_<opaque-id>`. The handle is server-generated and bound to:
