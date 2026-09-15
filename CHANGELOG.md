@@ -9,8 +9,9 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 ### Added
 
 - Added explicit, reviewed MCP behavior annotations for all eight filesystem
-  tools, including runtime/catalog parity tests; annotations remain
-  client-facing hints and never participate in authorization.
+  tools, including runtime/catalog parity and negative authorization tests;
+  annotations remain client-facing hints, and permissive-looking client fields
+  cannot enable read-only-profile writes.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,

@@ -888,6 +888,13 @@ Limit and redaction behavior is primarily covered by Go unit tests. Additional l
 
 Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, all four behavior annotations, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
+The read-only router security test submits every write-tool name with
+permissive-looking client annotation fields. Each call must still fail with the
+same generic Invalid params result, and the test verifies that source files are
+unchanged and no target file or directory was created. This binds
+authorization to server-selected registry membership rather than discovery
+metadata or request-supplied annotation-shaped data.
+
 The `tools/list` JSON-RPC wire test checks schema and annotation exposure for both profiles and records deterministic UTF-8 JSONL sizes. The current annotated catalog is 2446 bytes for read-only and 6490 bytes for default, including the trailing newline; these values are also the current hard catalog-size ceilings.
 
 ### MCP Compatibility Testing

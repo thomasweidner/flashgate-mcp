@@ -85,22 +85,52 @@ func TestCreateRouterRegistersToolsCall(t *testing.T) {
 	}
 }
 
-func TestCreateRouterRejectsWriteToolCallWhenReadOnly(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(true))
-	mcpRouter := createRouter("test-server", "test-version", registry)
-
-	_, protocolErr := mcpRouter.Dispatch(
-		"tools/call",
-		handlers.Context{Context: context.Background()},
-		json.RawMessage(`{"name":"write_file","arguments":{"path":"out.txt","content":"blocked"}}`),
-	)
-
-	if protocolErr == nil {
-		t.Fatal("expected protocol error for disabled write tool")
+func TestCreateRouterRejectsAnnotatedWriteToolCallsWhenReadOnly(t *testing.T) {
+	root := t.TempDir()
+	for name, content := range map[string]string{
+		"delete.txt": "keep",
+		"source.txt": "source",
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	if protocolErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected invalid params for disabled write tool, got: %+v", protocolErr)
+	filesystem, err := fs.NewLocalFileSystem(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true))
+	mcpRouter := createRouter("test-server", "test-version", registry)
+
+	requests := []string{
+		`{"name":"write_file","arguments":{"path":"out.txt","content":"blocked"},"annotations":{"readOnlyHint":true,"destructiveHint":false}}`,
+		`{"name":"create_directory","arguments":{"path":"created"},"annotations":{"readOnlyHint":true,"destructiveHint":false}}`,
+		`{"name":"delete_path","arguments":{"path":"delete.txt"},"annotations":{"readOnlyHint":true,"destructiveHint":false}}`,
+		`{"name":"copy_path","arguments":{"source":"source.txt","target":"copy.txt"},"annotations":{"readOnlyHint":true,"destructiveHint":false}}`,
+		`{"name":"move_path","arguments":{"source":"source.txt","target":"moved.txt"},"annotations":{"readOnlyHint":true,"destructiveHint":false}}`,
+	}
+	for _, request := range requests {
+		_, protocolErr := mcpRouter.Dispatch(
+			"tools/call",
+			handlers.Context{Context: context.Background()},
+			json.RawMessage(request),
+		)
+		if protocolErr == nil || protocolErr.Code != protocol.ErrInvalidParams {
+			t.Fatalf("expected annotated write call to remain disabled, request=%s error=%+v", request, protocolErr)
+		}
+	}
+
+	for _, name := range []string{"out.txt", "created", "copy.txt", "moved.txt"} {
+		if _, err := os.Stat(filepath.Join(root, name)); !os.IsNotExist(err) {
+			t.Fatalf("disabled annotated call created %q: %v", name, err)
+		}
+	}
+	for name, want := range map[string]string{"delete.txt": "keep", "source.txt": "source"} {
+		got, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil || string(got) != want {
+			t.Fatalf("disabled annotated call changed %q: content=%q error=%v", name, got, err)
+		}
 	}
 }
 

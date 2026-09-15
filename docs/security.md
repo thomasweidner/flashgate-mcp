@@ -247,6 +247,9 @@ Security tests currently cover:
 - filesystem read/write/list/copy/delete limits
 - response-size safety net
 - strict successful `CallToolResult` envelope and text/structured parity without host-path additions
+- write-tool calls remain denied by the server-selected read-only registry even
+  when an untrusted request supplies permissive-looking annotation fields;
+  negative tests verify that no filesystem mutation occurs
 - diagnostics redaction
 
 Startup preflight completes before any tool Registry, Router or MCP server is created. Normal starts remain silent; diagnostics never share JSON-RPC stdout.
@@ -302,6 +305,15 @@ higher-risk profile              -> explicit validated activation
 Tool registration reflects effective capability but execution checks remain authoritative. Direct calls cannot bypass hidden/unregistered tools.
 
 MCP annotations are accurate hints only and never grant permission.
+
+For the current filesystem adapter, the server derives the effective profile
+from its own configuration before constructing the tool registry. `tools/call`
+then resolves only names present in that registry, and every registered
+filesystem tool continues through its normal argument and `PathGuard` checks.
+Annotation objects returned by `tools/list`, or annotation-shaped fields sent
+by a client, are not consulted by profile selection, registry lookup, or path
+authorization. In particular, labeling a write request `readOnlyHint: true` or
+`destructiveHint: false` cannot expose or execute a write-gated tool.
 
 ### Per-root policies and execution backend
 
