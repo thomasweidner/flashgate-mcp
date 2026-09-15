@@ -8,6 +8,11 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added BL-114 bounded native process observation with deterministic PID-order
+  pagination, opaque continuation cursors, strict pre-observation validation,
+  Linux procfs and Windows Toolhelp adapters, and a bounded MCP schema. Runtime
+  registration remains fail-closed until BL-118 supplies `process.observe`
+  authorization.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,
