@@ -374,6 +374,13 @@ Default control is limited to server-managed processes. External PID control is 
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
 
+The normative [process observation and managed-process threat model](process-threat-model.md)
+defines execution-time authorization, observation disclosure limits,
+process-instance revalidation, lifecycle races, orphan handling, output
+backpressure, stable errors, audit minimization, and required native-platform
+validation. If ownership or process-instance identity cannot be proved, control
+fails closed.
+
 ### Typed command execution boundary
 
 Version 1.0 command execution uses server-defined command IDs. A definition fixes or constrains:

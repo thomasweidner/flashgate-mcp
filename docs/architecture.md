@@ -187,6 +187,10 @@ Owns root-scoped path/name/metadata/content search, include/exclude rules, bound
 
 Owns observation, details, trees, managed process instances, opaque handles, status, stdout/stderr cursors, stop/wait, and lifecycle.
 
+The [process threat model](process-threat-model.md) defines the normative
+Version 1.0 boundaries for observation disclosure, process-instance identity,
+managed control, output, lifecycle races, cleanup, and resource exhaustion.
+
 ### Execution
 
 Owns typed allowlisted commands, executable identity/path resolution, structured argument validation, working-directory/environment policy, resource limits, and platform isolation.

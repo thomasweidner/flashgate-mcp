@@ -35,7 +35,12 @@ Executable allowlisting, argument separation, root-confined working directories,
 
 ## Implementation Guidance
 
-Threat-model observation and execution separately. Implement registry identity and cleanup before control tools. Test PID reuse assumptions, races, timeouts, redaction, and platform isolation.
+The normative [process threat model](../process-threat-model.md) separates
+observation from managed-process lifecycle and defines their disclosure,
+identity, race, cleanup, and resource-control gates. Threat-model command
+execution separately. Implement registry identity and cleanup before control
+tools. Test PID reuse assumptions, races, timeouts, redaction, and platform
+isolation.
 
 ## Decision Gates
 
