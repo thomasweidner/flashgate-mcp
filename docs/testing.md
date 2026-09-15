@@ -959,6 +959,12 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - profile-specific `tools/list`, schema, description, and initialization-instruction budgets;
 - safe read-only catalog when roots exist and no explicit profile is selected.
 
+### Search tests
+
+- the production `internal/search` package remains a portable pure-Go fallback;
+- a source-level dependency gate rejects cgo, `os/exec`, and third-party module imports from production search files;
+- optional accelerators remain separate adapters and cannot replace or disable the baseline when unavailable.
+
 ### Operations and multi-principal tests
 
 - opaque handles bound to principal, profile, root, execution backend, and service generation;

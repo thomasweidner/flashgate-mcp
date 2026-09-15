@@ -44,7 +44,9 @@ Accounting uses bytes actually read for content scanning and counts entries befo
 
 ## Content, encoding, and errors
 
-The pure-Go baseline is mandatory. Content search supports UTF-8 only and never guesses, replaces, or transcodes bytes. A file is classified as binary when it contains a NUL byte; otherwise malformed UTF-8 is classified as an unsupported encoding. The default `binaryMode=skip` omits either class and reports each root-relative path and reason. `binaryMode=error` fails the request without partial results, while `binaryMode=explicit` permits byte matching only when the caller opts in and does not request text context. Literal matching remains UTF-8 input; regular expressions use Go's bounded RE2-style engine and never a backtracking engine.
+The pure-Go baseline is mandatory and is the Version 1.0 fallback on every supported platform. The production `internal/search` package may use the Go standard library and FlashGate internal policy/filesystem abstractions, but it may not require cgo, a third-party Go module, an external executable, or a shell. A permanent source-level test enforces that dependency boundary. Any later accelerator must be an optional adapter and failure or absence of that adapter must leave this baseline available.
+
+Content search supports UTF-8 only and never guesses, replaces, or transcodes bytes. A file is classified as binary when it contains a NUL byte; otherwise malformed UTF-8 is classified as an unsupported encoding. The default `binaryMode=skip` omits either class and reports each root-relative path and reason. `binaryMode=error` fails the request without partial results, while `binaryMode=explicit` permits byte matching only when the caller opts in and does not request text context. Literal matching remains UTF-8 input; regular expressions use Go's bounded RE2-style engine and never a backtracking engine.
 
 Errors use stable safe categories rather than raw operating-system strings. The contract distinguishes invalid input, authorization/policy denial, unavailable capability, unsupported content or encoding, resource limit, cancellation/deadline, stale cursor, path changed during scan, and internal I/O failure. Host absolute paths, file contents outside requested result fields, credentials, and raw OS errors are never included in results or diagnostics.
 
@@ -80,7 +82,8 @@ Focused unit, integration, security, and fuzz/property tests must cover:
 - include/exclude precedence and case rules;
 - binary, encoding, malformed-content, disappearing-file, and changed-file outcomes;
 - cursor tampering, expiry, request/policy/root drift, and cross-principal replay;
-- server-side capability bypass attempts and host-path/secret redaction; and
-- native Windows and Linux behavior for path policy, metadata, cancellation, and platform-specific filesystems.
+- server-side capability bypass attempts and host-path/secret redaction;
+- native Windows and Linux behavior for path policy, metadata, cancellation, and platform-specific filesystems; and
+- the production search package's no-cgo, no-third-party-module, no-external-executable dependency gate.
 
 Later search tasks may refine their owned wire schemas and implementation details, but they must preserve these boundaries or record an explicit architecture/security decision.

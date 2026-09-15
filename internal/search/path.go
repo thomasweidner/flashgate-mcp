@@ -218,8 +218,8 @@ func (s *PathService) SearchFiltered(ctx context.Context, startPath, selector st
 
 // SearchLiteral returns non-overlapping, case-sensitive literal matches in
 // deterministic path/byte-offset order. Content is matched as bytes after the
-// selector is validated as UTF-8; binary classification and alternate
-// encodings remain outside this baseline operation.
+// selector is validated as UTF-8. Binary and malformed UTF-8 handling is
+// controlled by LiteralLimits; alternate encodings are never guessed.
 func (s *PathService) SearchLiteral(ctx context.Context, startPath, selector string, kind NameMatchKind, filter MetadataFilter, term string, limits LiteralLimits) (ContentSearchResult, error) {
 	if term == "" || !utf8.ValidString(term) || filter.Type == EntryTypeDirectory || !validLiteralLimits(limits) {
 		return ContentSearchResult{}, ErrInvalidLiteralSearch
