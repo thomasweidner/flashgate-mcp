@@ -281,6 +281,22 @@ func (r *Registry) WorkingDirectoryRoot(id string) (Root, error) {
 	return rootFromEntry(entry), nil
 }
 
+// HasCapability reports whether at least one configured root grants the
+// requested functional capability. It is intended for constructing the
+// effective server tool catalog; individual tool calls must still authorize
+// the selected root.
+func (r *Registry) HasCapability(required Capability) bool {
+	if required == 0 || required&^FilesystemReadWrite != 0 {
+		return false
+	}
+	for _, entry := range r.entries {
+		if entry.Capabilities&required == required {
+			return true
+		}
+	}
+	return false
+}
+
 func rootFromEntry(entry Entry) Root {
 	fileTypes := entry.FileTypes
 	fileTypes.Extensions = append([]string(nil), entry.FileTypes.Extensions...)
