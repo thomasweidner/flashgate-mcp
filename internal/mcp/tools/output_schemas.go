@@ -6,10 +6,16 @@ func toolOutputSchema(toolName string) map[string]any {
 		return objectOutputSchema(map[string]any{
 			"processes": map[string]any{
 				"type": "array",
-				"items": objectOutputSchema(map[string]any{
-					"pid":  map[string]any{"type": "integer", "minimum": 1},
-					"name": map[string]any{"type": "string", "minLength": 1},
-				}, "pid", "name"),
+				"items": map[string]any{
+					"oneOf": []any{
+						objectOutputSchema(map[string]any{"pid": map[string]any{"type": "integer", "minimum": 1}}, "pid"),
+						objectOutputSchema(map[string]any{"name": map[string]any{"type": "string", "minLength": 1}}, "name"),
+						objectOutputSchema(map[string]any{
+							"pid":  map[string]any{"type": "integer", "minimum": 1},
+							"name": map[string]any{"type": "string", "minLength": 1},
+						}, "pid", "name"),
+					},
+				},
 				"maxItems": maximumProcessPageSize,
 			},
 			"more":       map[string]any{"type": "boolean"},
