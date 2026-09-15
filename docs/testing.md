@@ -548,6 +548,15 @@ budget assertion is skipped because race instrumentation changes allocation
 behavior. Ordinary non-race tests continue to enforce the unchanged allocation
 budgets.
 
+Hosted CI runs the complete native Linux race command as a required gate and
+uploads its log as part of the `native-policy-linux-*` artifact. A missing race
+result is therefore a failed gate rather than a documented skip. The Windows and
+Linux CI matrix also executes the platform-specific benchmark record-policy and
+measurement-window suites. Their logs are retained in `native-policy-windows-*`
+and `native-policy-linux-*` artifacts. The jobs fail when a suite fails or when
+the expected artifact directory is missing, so platform-policy exceptions cannot
+silently satisfy the release gate.
+
 Run tests for a specific package:
 
 ```bash
