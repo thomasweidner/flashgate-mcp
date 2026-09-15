@@ -16,12 +16,12 @@ const listDirectoryToolName = "list_directory"
 
 // ListDirectoryTool exposes directory listing as an MCP tool.
 type ListDirectoryTool struct {
-	filesystem fs.FileSystem
+	resolver filesystemResolver
 }
 
 // NewListDirectoryTool creates a new list_directory tool.
 func NewListDirectoryTool(filesystem fs.FileSystem) *ListDirectoryTool {
-	return &ListDirectoryTool{filesystem: filesystem}
+	return &ListDirectoryTool{resolver: singleFilesystemResolver{filesystem}}
 }
 
 func (t *ListDirectoryTool) Name() string  { return listDirectoryToolName }
@@ -33,6 +33,7 @@ func (t *ListDirectoryTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"rootId": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
@@ -60,7 +61,12 @@ func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMess
 		path = *arguments.Path
 	}
 
-	entries, err := t.filesystem.List(path)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	entries, err := filesystem.List(path)
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}
@@ -69,7 +75,8 @@ func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMess
 }
 
 type listDirectoryArguments struct {
-	Path *string `json:"path,omitempty"`
+	RootID string  `json:"rootId,omitempty"`
+	Path   *string `json:"path,omitempty"`
 }
 
 type listDirectoryResult struct {

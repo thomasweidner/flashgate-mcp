@@ -12,14 +12,14 @@ const readFileToolName = "read_file"
 
 // ReadFileTool exposes file reading as an MCP tool.
 type ReadFileTool struct {
-	filesystem     fs.FileSystem
+	resolver       filesystemResolver
 	serverMaxBytes int64
 }
 
 // NewReadFileTool creates a new read_file tool.
 func NewReadFileTool(filesystem fs.FileSystem, serverMaxBytes int64) *ReadFileTool {
 	return &ReadFileTool{
-		filesystem:     filesystem,
+		resolver:       singleFilesystemResolver{filesystem},
 		serverMaxBytes: serverMaxBytes,
 	}
 }
@@ -44,6 +44,7 @@ func (t *ReadFileTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"rootId": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
@@ -93,7 +94,12 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		maxBytes = t.serverMaxBytes
 	}
 
-	content, err := t.filesystem.Read(arguments.Path, maxBytes)
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	content, err := filesystem.Read(arguments.Path, maxBytes)
 	if err != nil {
 		return nil, mapFilesystemError(err)
 	}
@@ -105,6 +111,7 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 }
 
 type readFileArguments struct {
+	RootID   string `json:"rootId,omitempty"`
 	Path     string `json:"path"`
 	MaxBytes *int64 `json:"maxBytes,omitempty"`
 }

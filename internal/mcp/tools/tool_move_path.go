@@ -12,14 +12,12 @@ const movePathToolName = "move_path"
 
 // MovePathTool exposes filesystem move operations as an MCP tool.
 type MovePathTool struct {
-	filesystem fs.FileSystem
+	resolver filesystemResolver
 }
 
 // NewMovePathTool creates a new move_path tool.
 func NewMovePathTool(filesystem fs.FileSystem) *MovePathTool {
-	return &MovePathTool{
-		filesystem: filesystem,
-	}
+	return &MovePathTool{resolver: singleFilesystemResolver{filesystem}}
 }
 
 // Name returns the tool name.
@@ -42,6 +40,7 @@ func (t *MovePathTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"rootId": rootIDSchema(),
 			"source": map[string]any{
 				"type":        "string",
 				"minLength":   1,
@@ -84,7 +83,12 @@ func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		return nil, invalidParamsError()
 	}
 
-	if err := t.filesystem.Move(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	if err := filesystem.Move(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
@@ -96,6 +100,7 @@ func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 }
 
 type movePathArguments struct {
+	RootID    string `json:"rootId,omitempty"`
 	Source    string `json:"source"`
 	Target    string `json:"target"`
 	Overwrite bool   `json:"overwrite,omitempty"`

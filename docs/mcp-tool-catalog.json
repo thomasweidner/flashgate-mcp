@@ -35,6 +35,11 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -86,6 +91,11 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -126,6 +136,11 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -139,22 +154,45 @@
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": false }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": false
+              }
             },
-            "required": ["path", "exists"],
+            "required": [
+              "path",
+              "exists"
+            ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": true },
-              "name": { "type": "string" },
-              "isDir": { "type": "boolean" },
-              "size": { "type": "integer" }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer"
+              }
             },
-            "required": ["path", "exists", "name", "isDir", "size"],
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
             "additionalProperties": false
           }
         ]
@@ -171,6 +209,11 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -218,6 +261,11 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -253,6 +301,11 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "path": {
             "type": "string",
             "minLength": 1,
@@ -293,6 +346,11 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "source": {
             "type": "string",
             "minLength": 1,
@@ -342,6 +400,11 @@
         ],
         "additionalProperties": false,
         "properties": {
+          "rootId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Opaque configured root ID. Defaults to 'default' during single-root migration."
+          },
           "source": {
             "type": "string",
             "minLength": 1,

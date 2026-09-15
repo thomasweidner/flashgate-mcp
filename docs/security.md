@@ -33,8 +33,12 @@ Each configured root is represented by an independently root-confined
 `FileSystem` in an immutable application-level named-root registry. Blank or
 duplicate IDs, missing filesystems, empty registries, and unknown lookups fail
 closed. The current single `MCP_ROOT` is registered under the compatible
-internal ID `default`; external multi-root configuration and MCP selection
-fields remain separate contracts and are not inferred from client paths.
+ID `default`. Every filesystem tool accepts an opaque `rootId` and resolves it
+before filesystem access; omission selects `default` during migration, while
+blank and unknown explicit IDs fail with the generic invalid-parameters
+contract. Paths remain relative and neither configured nor resolved absolute
+host paths are exposed. External multi-root configuration remains separate and
+is not inferred from client paths.
 
 ### No Direct Filesystem Access Outside `internal/fs`
 

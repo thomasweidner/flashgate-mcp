@@ -8,6 +8,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added the BL-102 filesystem target contract: every tool schema accepts an
+  opaque `rootId` with root-relative paths, the current single-root deployment
+  migrates compatibly through `default`, and unknown roots fail before any
+  filesystem operation without exposing absolute host paths.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,

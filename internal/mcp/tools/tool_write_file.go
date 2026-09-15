@@ -12,14 +12,12 @@ const writeFileToolName = "write_file"
 
 // WriteFileTool exposes file writing as an MCP tool.
 type WriteFileTool struct {
-	filesystem fs.FileSystem
+	resolver filesystemResolver
 }
 
 // NewWriteFileTool creates a new write_file tool.
 func NewWriteFileTool(filesystem fs.FileSystem) *WriteFileTool {
-	return &WriteFileTool{
-		filesystem: filesystem,
-	}
+	return &WriteFileTool{resolver: singleFilesystemResolver{filesystem}}
 }
 
 // Name returns the tool name.
@@ -42,6 +40,7 @@ func (t *WriteFileTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"rootId": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
@@ -85,7 +84,12 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 
 	content := []byte(arguments.Content)
 
-	if err := t.filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
+	filesystem, _, ok := resolveFilesystem(t.resolver, arguments.RootID)
+	if !ok {
+		return nil, invalidParamsError()
+	}
+
+	if err := filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
@@ -97,6 +101,7 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 }
 
 type writeFileArguments struct {
+	RootID    string `json:"rootId,omitempty"`
 	Path      string `json:"path"`
 	Content   string `json:"content,omitempty"`
 	Overwrite bool   `json:"overwrite,omitempty"`
