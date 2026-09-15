@@ -80,6 +80,8 @@ func (t *SearchPathsTool) InputSchema() any {
 			"maxMatchesPerFile": map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchMatchesPerFile, "description": "Optional per-file match limit, capped by the server maximum."},
 			"maxMatches":        map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchContentMatches, "description": "Optional total match limit, capped by the server maximum."},
 			"contextLines":      map[string]any{"type": "integer", "minimum": 1, "maximum": maxSearchContextLines, "description": "Optional number of complete UTF-8 lines before and after each content match."},
+			"binaryMode":        map[string]any{"type": "string", "enum": []string{"skip", "error", "explicit"}, "description": "Binary/non-UTF-8 handling: skip with diagnostics (default), fail, or explicitly byte-search without context."},
+			"encoding":          map[string]any{"type": "string", "enum": []string{"utf-8"}, "description": "Explicit text encoding; only UTF-8 is supported."},
 			"type": map[string]any{
 				"type":        "string",
 				"enum":        []string{"file", "directory"},
@@ -147,7 +149,10 @@ func (t *SearchPathsTool) Execute(ctx context.Context, rawArguments json.RawMess
 	if (arguments.Text != nil || arguments.Regex != nil) && arguments.Type != nil && *arguments.Type == "directory" {
 		return nil, invalidParamsError()
 	}
-	if (arguments.Text == nil && arguments.Regex == nil) && (arguments.MaxMatchesPerFile != nil || arguments.MaxMatches != nil || arguments.ContextLines != nil) {
+	if (arguments.Text == nil && arguments.Regex == nil) && (arguments.MaxMatchesPerFile != nil || arguments.MaxMatches != nil || arguments.ContextLines != nil || arguments.BinaryMode != nil || arguments.Encoding != nil) {
+		return nil, invalidParamsError()
+	}
+	if arguments.BinaryMode != nil && *arguments.BinaryMode == "explicit" && arguments.ContextLines != nil {
 		return nil, invalidParamsError()
 	}
 	limits, rpcErr := arguments.contentSearchLimits()
@@ -190,6 +195,8 @@ type searchPathsArguments struct {
 	MaxMatchesPerFile *int    `json:"maxMatchesPerFile,omitempty"`
 	MaxMatches        *int    `json:"maxMatches,omitempty"`
 	ContextLines      *int    `json:"contextLines,omitempty"`
+	BinaryMode        *string `json:"binaryMode,omitempty"`
+	Encoding          *string `json:"encoding,omitempty"`
 }
 
 func (a searchPathsArguments) contentSearchLimits() (search.LiteralLimits, *protocol.Error) {
@@ -216,6 +223,21 @@ func (a searchPathsArguments) contentSearchLimits() (search.LiteralLimits, *prot
 			return search.LiteralLimits{}, invalidParamsError()
 		}
 		limits.ContextLines = *a.ContextLines
+	}
+	if a.Encoding != nil && *a.Encoding != "utf-8" {
+		return search.LiteralLimits{}, invalidParamsError()
+	}
+	if a.BinaryMode != nil {
+		switch *a.BinaryMode {
+		case "skip":
+			limits.BinaryMode = search.BinarySkip
+		case "error":
+			limits.BinaryMode = search.BinaryError
+		case "explicit":
+			limits.BinaryMode = search.BinaryExplicit
+		default:
+			return search.LiteralLimits{}, invalidParamsError()
+		}
 	}
 	return limits, nil
 }
@@ -273,6 +295,8 @@ func mapSearchError(err error) *protocol.Error {
 		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: unavailable"}
 	case errors.Is(err, search.ErrContextUnavailable):
 		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: context unavailable"}
+	case errors.Is(err, search.ErrUnsupportedContent):
+		return &protocol.Error{Code: protocol.ErrInvalidParams, Message: "search error: unsupported content or encoding"}
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return &protocol.Error{Code: protocol.ErrInternalError, Message: "search error: canceled"}
 	default:

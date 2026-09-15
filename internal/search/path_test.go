@@ -292,6 +292,35 @@ func TestLiteralSearchReturnsDeterministicByteOffsetsAndComposesFilters(t *testi
 	}
 }
 
+func TestContentSearchBinaryModesAndEncodingReporting(t *testing.T) {
+	filesystem := &listingFS{entries: map[string][]fs.Entry{".": {
+		{Name: "binary.dat", Size: 8}, {Name: "invalid.txt", Size: 3}, {Name: "text.txt", Size: 6},
+	}}, content: map[string][]byte{
+		"binary.dat": []byte("hit\x00more"), "invalid.txt": {'h', 'i', 0xff}, "text.txt": []byte("a hit!"),
+	}}
+	service, _ := NewPathService(filesystem, 10, 64, 100)
+	limits := LiteralLimits{MaxFiles: 10, MaxBytesPerFile: 100, MaxScannedBytes: 1000, MaxMatchesPerFile: 10, MaxMatches: 10, MaxResponseBytes: 1000}
+
+	got, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "hit", limits)
+	if err != nil || !reflect.DeepEqual(got, ContentSearchResult{
+		Matches: []LiteralMatch{{Path: "text.txt", ByteOffset: 2}},
+		Skipped: []ContentSkip{{Path: "binary.dat", Reason: "binary"}, {Path: "invalid.txt", Reason: "unsupportedEncoding"}},
+	}) {
+		t.Fatalf("unexpected default skip result=%#v err=%v", got, err)
+	}
+
+	limits.BinaryMode = BinaryError
+	if _, err := service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "hit", limits); !errors.Is(err, ErrUnsupportedContent) {
+		t.Fatalf("expected unsupported-content error, got %v", err)
+	}
+
+	limits.BinaryMode = BinaryExplicit
+	got, err = service.SearchLiteral(context.Background(), ".", "", NameMatchLiteral, MetadataFilter{}, "hit", limits)
+	if err != nil || len(got.Matches) != 2 || len(got.Skipped) != 0 || got.Matches[0].Path != "binary.dat" {
+		t.Fatalf("unexpected explicit result=%#v err=%v", got, err)
+	}
+}
+
 func TestLiteralSearchRejectsInvalidRequestBeforeTraversal(t *testing.T) {
 	invalidUTF8 := string([]byte{0xff})
 	for _, tc := range []struct {
