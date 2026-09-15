@@ -98,6 +98,10 @@ For a new Version 1.0 configuration:
 - every profile has an explicit tool-count, catalog-byte, approximate-token, and instruction budget;
 - a catalog fingerprint changes when protocol revision, extension set, profile, capability set, schema, annotations, or relevant configuration changes.
 
+The adapter computes that fingerprint from the complete ordered productive tool definitions plus explicit non-secret protocol, extension, profile, capability, risk-policy, schema, and configuration-generation inputs. Extension and capability order is canonicalized because they are sets; tool order is retained because it is part of the catalog contract. Missing inputs, empty set members, duplicate set members, and non-serializable definitions fail closed. Raw policy or configuration values are never hash inputs.
+
+Fingerprint publication and list-result TTL remain revision-negotiated adapter behavior. MCP `2025-11-25` responses therefore remain unchanged. When a supported revision enables caching, reuse requires both exact fingerprint equality and an unexpired server-owned TTL; any context or definition change invalidates the entry, refresh failure does not authorize stale use, and discovery cache state never replaces server-side authorization at `tools/call`.
+
 The current `MCP_READ_ONLY` environment switch remains a pre-Version-1.0 compatibility mechanism until the profile configuration migration is implemented.
 
 ### Result payload classes
