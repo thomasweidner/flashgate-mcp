@@ -8,6 +8,11 @@ The authoritative service tasks are `BL-221` through `BL-244` plus BL-341 in [BA
 
 Version 1.0 delivers direct STDIO and system-service operation with Variant A service-account roots. It includes the interfaces and threat model for Variant B but does not implement user workers or persistent user-scoped hosts.
 
+The [installation and operation guide](installation-and-operation.md) is the
+operator-facing current-versus-planned boundary. Only its direct-STDIO
+procedure is currently executable; service-management examples in this plan
+remain target contracts until their implementation and native validation land.
+
 ## Objective
 
 FlashGate MCP is delivered as one native compiled Go executable per platform:
