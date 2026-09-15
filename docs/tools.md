@@ -1,9 +1,10 @@
 # Filesystem MCP tools
 
-FlashGate MCP exposes eight filesystem tools in the default profile, in this exact order:
+FlashGate MCP exposes nine filesystem tools in the default profile, in this exact order:
 
 ```text
 list_directory
+get_directory_tree
 read_file
 get_path_info
 write_file
@@ -13,7 +14,7 @@ copy_path
 move_path
 ```
 
-The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
+The read-only profile exposes only `list_directory`, `get_directory_tree`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
 
 For later Codex activation, `MCP_READ_ONLY=true` must be explicit and `MCP_ROOT` must be an absolute preflighted directory. See [Codex read-only activation preparation](codex-read-only-activation.md). `SPR-044` does not activate a client.
 
@@ -35,11 +36,11 @@ The result examples below are domain objects. Every successful `tools/call` plac
 }
 ```
 
-The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
+The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All nine tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The `SPR-046` deterministic UTF-8 JSONL response snapshot, including its trailing newline, was 2134 bytes for read-only and 5657 bytes for default. The paginated `list_directory` schema changes the current snapshots to 2489 and 6012 bytes respectively. These are contract snapshots, not persistent payload budgets; authoritative benchmark baselines remain subject to native finalization.
+The `SPR-046` deterministic UTF-8 JSONL response snapshot, including its trailing newline, was 2134 bytes for read-only and 5657 bytes for default. Paginated `list_directory` and bounded `get_directory_tree` change the current snapshots to 4126 and 7649 bytes respectively. These are contract snapshots, not persistent payload budgets; authoritative benchmark baselines remain subject to native finalization.
 
 ## `list_directory`
 
@@ -69,6 +70,32 @@ size, but cannot increase it. Directory entries use platform-neutral ordinal nam
 ordering. Changes to visible names, types, or sizes between pages invalidate the
 cursor rather than returning an approximate continuation. Cursors expire five
 minutes after creation and do not survive server restart.
+
+## `get_directory_tree`
+
+Returns a deterministic breadth-first tree page. `path` defaults to `.`, `maxDepth`
+defaults to 3 (maximum 32), `maxEntries` defaults to 1000 (maximum 10000),
+`pageSize` defaults to 100 (maximum 1000), and `maxBytes` defaults to 65536
+(range 512–1048576). `fields` may select any non-empty unique subset of `name`,
+`isDir`, and `size`; relative `path` and one-based `depth` are always present.
+
+```json
+{
+  "path": "docs",
+  "maxDepth": 2,
+  "maxEntries": 500,
+  "maxBytes": 32768,
+  "pageSize": 50,
+  "fields": ["name", "isDir"]
+}
+```
+
+The result contains `entries`, an optional `nextCursor`, and `truncated`, which is
+true when `maxEntries` cut off the logical sequence. A continuation supplies only
+`cursor` and may reduce `pageSize` or `maxBytes`; it cannot restate query inputs or
+increase either page bound. The server reduces a page's entry count as needed so
+the compact domain object does not exceed `maxBytes`. Changes to the bounded tree
+invalidate its cursor, and cursors expire after five minutes or a server restart.
 
 ## `read_file`
 
@@ -211,7 +238,7 @@ The previous pre-1.0 contract and required client changes are documented in [fil
 
 ## Version 1.0 target contract direction
 
-The sections above describe the current eight-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
+The sections above describe the current nine-tool implementation. Version 1.0 expands the catalog only through capability profiles and retains a compact safe read-only default.
 
 Planned contract changes include:
 
