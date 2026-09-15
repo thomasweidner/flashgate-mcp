@@ -846,6 +846,13 @@ Security tests must cover:
 
 ### Integration Tests
 
+The transport-neutral Operations/Job status tests exhaustively cover all pairs
+of accepted lifecycle states. They verify valid and terminal classification,
+queued and running transitions, immutable terminal states, rejection of
+repeated states, and fail-closed handling of unknown values. MCP Tasks mapping,
+cancellation mechanics, deadlines, persistence, and registry integration are
+separate task owners.
+
 JSON-RPC smoke tests exercise the built server binary over STDIO.
 
 On Windows:
