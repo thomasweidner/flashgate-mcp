@@ -560,3 +560,15 @@ Remote transport, product splitting, interpreter-based core operation, or unrest
 - [ADR directory](adr/)
 - [ADR-016: Governance fixture harness execution architecture](adr/016-governance-fixture-harness-execution-architecture.md)
 - [ADR-017: Host process ownership and lifecycle](adr/017-host-process-ownership-and-lifecycle.md)
+
+### Bounded filesystem plans
+
+The filesystem domain provides a `PlanExecutor` for a caller-selected positive
+operation cap and a closed operation set: create directory, write file, copy,
+move, and delete. It validates the entire plan before the first mutation, uses
+only the existing `FileSystem` boundary, checks cancellation between operations,
+and stops at the first failure. Plans are intentionally sequential and are not
+transactions: successful earlier operations are reported and are not rolled
+back. The executor accepts neither commands nor a free-form workflow language.
+Public MCP exposure and the additional entry/byte accounting remain separate
+contract work.
