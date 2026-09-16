@@ -40,7 +40,7 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2564 bytes for read-only and 6087 bytes for default after adding `system_info`. These are regression snapshots, not persistent payload budgets.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2824 bytes for read-only and 6347 bytes for default after adding the filtered `system_info` environment object. These are regression snapshots, not persistent payload budgets.
 
 ## `list_directory`
 
@@ -198,10 +198,15 @@ The source and target identities are revalidated immediately before the operatin
 Accepts an empty object and returns only the explicitly released host facts:
 
 ```json
-{ "os": "linux", "architecture": "amd64", "version": "6.1.0" }
+{
+  "os": "linux",
+  "architecture": "amd64",
+  "version": "6.1.0",
+  "environment": { "LANG": "en_US.UTF-8", "TERM": "xterm-256color" }
+}
 ```
 
-The version is the Linux kernel release or the Windows major/minor/build version. Host names, user names, environment data, network data, and other machine identifiers are not collected or returned. Platform lookup failures return the generic internal-error contract without leaking operating-system details.
+The version is the Linux kernel release or the Windows major/minor/build version. `environment` is always a closed object and can contain only present, non-empty values for `COLORTERM`, `LANG`, `LC_ALL`, `LC_CTYPE`, and `TERM`. Paths, host and user names, unrestricted environment variables, credentials, network data, and other machine identifiers are not collected or returned. Platform lookup failures and provider values outside the fixed allowlist return the generic internal-error contract without leaking operating-system details.
 
 ## Errors
 

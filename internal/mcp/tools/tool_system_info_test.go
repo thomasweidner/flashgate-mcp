@@ -21,9 +21,9 @@ func (provider fakeSystemInfoProvider) Info() (systeminfo.Info, error) {
 }
 
 func TestSystemInfoReturnsOnlyReleasedFacts(t *testing.T) {
-	provider := fakeSystemInfoProvider{info: systeminfo.Info{OS: "linux", Architecture: "amd64", Version: "6.1.0"}}
+	provider := fakeSystemInfoProvider{info: systeminfo.Info{OS: "linux", Architecture: "amd64", Version: "6.1.0", Environment: map[string]string{"LANG": "en_US.UTF-8"}}}
 	result, rpcErr := NewSystemInfoTool(provider).Execute(context.Background(), json.RawMessage(`{}`))
-	want := systemInfoResult{OS: "linux", Architecture: "amd64", Version: "6.1.0"}
+	want := systemInfoResult{OS: "linux", Architecture: "amd64", Version: "6.1.0", Environment: map[string]string{"LANG": "en_US.UTF-8"}}
 	if rpcErr != nil || !reflect.DeepEqual(result, want) {
 		t.Fatalf("unexpected result=%#v error=%#v", result, rpcErr)
 	}
@@ -47,6 +47,8 @@ func TestSystemInfoFailsClosed(t *testing.T) {
 	cases := []fakeSystemInfoProvider{
 		{err: errors.New("unavailable")},
 		{info: systeminfo.Info{OS: "linux", Architecture: "amd64"}},
+		{info: systeminfo.Info{OS: "linux", Architecture: "amd64", Version: "6.1.0", Environment: map[string]string{"API_TOKEN": "secret"}}},
+		{info: systeminfo.Info{OS: "linux", Architecture: "amd64", Version: "6.1.0", Environment: map[string]string{"LANG": ""}}},
 	}
 	for _, provider := range cases {
 		result, rpcErr := NewSystemInfoTool(provider).Execute(context.Background(), json.RawMessage(`{}`))

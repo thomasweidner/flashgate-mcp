@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/systeminfo"
 )
 
 func TestRuntimeOutputSchemas(t *testing.T) {
@@ -93,6 +94,20 @@ func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 	for _, name := range []string{"os", "architecture", "version"} {
 		if systemProperties[name].(map[string]any)["type"] != "string" {
 			t.Fatalf("system_info.%s must be a string", name)
+		}
+	}
+	environment := systemProperties["environment"].(map[string]any)
+	if environment["type"] != "object" || environment["additionalProperties"] != false {
+		t.Fatalf("system_info.environment must be a closed object: %#v", environment)
+	}
+	environmentProperties := environment["properties"].(map[string]any)
+	allowedEnvironment := systeminfo.ReleasedEnvironmentVariables()
+	if len(environmentProperties) != len(allowedEnvironment) {
+		t.Fatalf("system_info.environment properties=%#v", environmentProperties)
+	}
+	for _, name := range allowedEnvironment {
+		if environmentProperties[name].(map[string]any)["type"] != "string" {
+			t.Fatalf("system_info.environment.%s must be a string", name)
 		}
 	}
 

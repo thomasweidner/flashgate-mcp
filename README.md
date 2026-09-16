@@ -14,7 +14,7 @@ It exposes secure filesystem operations to MCP-compatible clients through JSON-R
 
 The project currently implements the core MCP server loop, JSON-RPC routing and request validation, tool discovery, tool execution, MCP-conformant `CallToolResult` wrapping, filesystem abstraction, root-confined path handling, read-only tool gating, canonical build identity, native Windows/Linux metadata, deterministic release archives, reproducible resource/latency/payload benchmarks, tests, and documentation.
 
-The current implemented scope is filesystem operations plus privacy-safe operating-system, architecture, and version facts. Version 1.0 plans bounded search, process observation/management, typed allowlisted command execution, expanded controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, and optional local system-service deployment. These remain planned work.
+The current implemented scope is filesystem operations plus privacy-safe operating-system, architecture, version, and allowlisted locale/terminal environment facts. Version 1.0 plans bounded search, process observation/management, typed allowlisted command execution, expanded controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, and optional local system-service deployment. These remain planned work.
 
 Implemented tools:
 
@@ -752,7 +752,7 @@ Each feature should include:
 | `list_directory` | Lists files and directories below the configured filesystem root. |
 | `read_file` | Reads a text file below the configured filesystem root. |
 | `get_path_info` | Returns existence and metadata; missing paths return `exists:false`. |
-| `system_info` | Returns OS, architecture, and OS version without machine identifiers. |
+| `system_info` | Returns OS facts and allowlisted locale/terminal environment values without machine identifiers or secrets. |
 | `write_file` | Writes a text file. |
 | `create_directory` | Creates a directory and reports whether it was newly created. |
 | `delete_path` | Deletes a file or directory. |
