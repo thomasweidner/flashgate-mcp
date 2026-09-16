@@ -55,6 +55,10 @@ type Launch struct {
 	// Profile is a trusted policy-selected budget scope. An empty value uses
 	// the default profile and never a caller-provided identity.
 	Profile string
+	// Runtime is the policy-authorized maximum lifetime for this process. Zero
+	// selects the engine default; negative values and values above the engine
+	// maximum fail closed before operating-system launch.
+	Runtime time.Duration
 }
 
 // Policy owns capability, profile, executable, argument, directory,
@@ -112,6 +116,7 @@ type Engine struct {
 	policy   Policy
 	registry *Registry[*Process]
 	limiter  *limiter
+	runtime  RuntimeLimits
 	start    func(Launch, io.Writer, io.Writer) (startedProcess, error)
 }
 
@@ -133,11 +138,20 @@ func NewEngine(policy Policy) *Engine {
 // NewEngineWithLimits creates an engine with explicit global and per-profile
 // active-process budgets. Invalid or disabling budgets fail closed.
 func NewEngineWithLimits(policy Policy, limits Limits) (*Engine, error) {
+	return NewEngineWithConfiguration(policy, limits, DefaultRuntimeLimits())
+}
+
+// NewEngineWithConfiguration creates an engine with explicit concurrency and
+// runtime boundaries. Invalid or disabling limits fail closed.
+func NewEngineWithConfiguration(policy Policy, limits Limits, runtimeLimits RuntimeLimits) (*Engine, error) {
 	processLimiter, err := newLimiter(limits)
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{policy: policy, registry: NewRegistry[*Process](), limiter: processLimiter, start: startOSProcess}, nil
+	if err := runtimeLimits.validate(); err != nil {
+		return nil, err
+	}
+	return &Engine{policy: policy, registry: NewRegistry[*Process](), limiter: processLimiter, runtime: runtimeLimits, start: startOSProcess}, nil
 }
 
 // Start authorizes, starts, and registers one process. When OS startup fails
@@ -156,6 +170,10 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 		return "", ErrStartDenied
 	}
 	if err := validateLaunch(launch); err != nil {
+		return "", err
+	}
+	runtimeLimit, err := engine.runtime.effective(launch.Runtime)
+	if err != nil {
 		return "", err
 	}
 	if err := ctx.Err(); err != nil {
@@ -199,6 +217,7 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 
 	releaseLimit = false
 	go reapProcess(process, started)
+	go enforceRuntime(process, started, runtimeLimit)
 	return handle, nil
 }
 
@@ -329,4 +348,30 @@ func reapProcess(process *Process, started startedProcess) {
 	// A future stop/timeout path may win. State preserves the first terminal
 	// outcome, so reaping cannot overwrite it.
 	_ = process.state.Transition(next)
+}
+
+func enforceRuntime(process *Process, started startedProcess, limit time.Duration) {
+	timer := time.NewTimer(limit)
+	defer timer.Stop()
+
+	select {
+	case <-process.state.doneSignal():
+		return
+	case <-timer.C:
+	}
+
+	process.control.Lock()
+	defer process.control.Unlock()
+	if process.Status().Terminal() {
+		return
+	}
+	if err := started.Kill(); err != nil {
+		// A concurrently completed process is already represented by its reaper.
+		// Otherwise leave the process nonterminal: a failed termination attempt
+		// must never be reported as successful timeout enforcement.
+		return
+	}
+	if err := process.state.Transition(StatusTimedOut); err == nil {
+		process.releaseBudget()
+	}
 }

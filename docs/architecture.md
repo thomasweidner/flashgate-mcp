@@ -288,6 +288,16 @@ or per-profile-greater-than-global configurations fail closed. The standalone
 engine defaults to 64 global and 8 active processes per profile; an effective
 deployment configuration may only provide valid positive limits.
 
+Every managed launch also receives a policy-authorized runtime bound. Zero uses
+the standalone default of 15 minutes, while the engine rejects negative values
+and values above its configured maximum before operating-system launch; that
+maximum is 24 hours in the standalone defaults. Deployments may configure a
+positive default and maximum. At expiry the engine serializes termination with
+explicit stop requests, terminates the
+engine-owned process, records `timed_out`, and releases its concurrency budget
+exactly once. Normal exit or an earlier stop cancels the pending runtime timer;
+the separate `wait_process` observation timeout still never stops a process.
+
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:
 
 - shell command strings;
