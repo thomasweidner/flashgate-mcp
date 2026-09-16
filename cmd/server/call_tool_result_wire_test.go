@@ -80,6 +80,18 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
+			name:   "get_disk_usage root scoped",
+			params: `{"name":"get_disk_usage","arguments":{"path":"read file.txt"}}`,
+			assertions: func(t *testing.T, value map[string]any) {
+				total, totalOK := value["totalBytes"].(json.Number)
+				_, usedOK := value["usedBytes"].(json.Number)
+				_, availableOK := value["availableBytes"].(json.Number)
+				if value["path"] != "read file.txt" || !totalOK || !usedOK || !availableOK || total == "0" || len(value) != 4 {
+					t.Fatalf("unexpected disk usage result: %#v", value)
+				}
+			},
+		},
+		{
 			name:   "move_path default profile",
 			params: `{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {
@@ -135,6 +147,7 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "invalid params"},
 		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "invalid params"},
 		{"invalid arguments", defaultRegistry, `{"name":"get_path_info","arguments":{}}`, "invalid params"},
+		{"disk usage traversal", defaultRegistry, `{"name":"get_disk_usage","arguments":{"path":"../outside"}}`, "filesystem error: invalid path"},
 		{"PathGuard traversal", defaultRegistry, `{"name":"read_file","arguments":{"path":"..\\outside.txt"}}`, "filesystem error: invalid path"},
 	}
 

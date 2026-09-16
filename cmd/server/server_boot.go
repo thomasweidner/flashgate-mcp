@@ -27,8 +27,8 @@ type runnableServer interface {
 
 type bootstrapDependencies struct {
 	loadConfig      func() (config.Config, error)
-	newFilesystem   func(config.Config) (fs.FileSystem, error)
-	newToolRegistry func(fs.FileSystem, int64, toolCapabilities) *tools.Registry
+	newFilesystem   func(config.Config) (filesystemServices, error)
+	newToolRegistry func(filesystemServices, int64, toolCapabilities) *tools.Registry
 	newRouter       func(string, string, *tools.Registry) *router.Router
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
 }
@@ -40,7 +40,7 @@ func run(ctx context.Context) error {
 func defaultBootstrapDependencies() bootstrapDependencies {
 	return bootstrapDependencies{
 		loadConfig: config.LoadFromEnvironment,
-		newFilesystem: func(cfg config.Config) (fs.FileSystem, error) {
+		newFilesystem: func(cfg config.Config) (filesystemServices, error) {
 			return fs.NewLocalFileSystemWithPolicyAndLimits(
 				cfg.Filesystem().RootPath(),
 				securityPolicyFromConfig(cfg),

@@ -169,6 +169,7 @@ try {
         "list_directory",
         "read_file",
         "get_path_info"
+        "get_disk_usage"
     )
 
     if ($env:MCP_READ_ONLY -ne "true") {

@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
-	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
@@ -256,11 +255,11 @@ func TestRunWithIODevelopmentWarningExactlyOnce(t *testing.T) {
 func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 	t.Setenv("MCP_ROOT", t.TempDir())
 	dependencies := defaultBootstrapDependencies()
-	dependencies.newFilesystem = func(config.Config) (fs.FileSystem, error) {
+	dependencies.newFilesystem = func(config.Config) (filesystemServices, error) {
 		return nil, security.ErrUNCPathDenied
 	}
 	registryCalls := 0
-	dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) *tools.Registry {
+	dependencies.newToolRegistry = func(filesystemServices, int64, toolCapabilities) *tools.Registry {
 		registryCalls++
 		return tools.NewRegistry()
 	}
@@ -311,11 +310,11 @@ func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) 
 			return dependencies
 		},
 		"nil filesystem": func(dependencies bootstrapDependencies) bootstrapDependencies {
-			dependencies.newFilesystem = func(config.Config) (fs.FileSystem, error) { return nil, nil }
+			dependencies.newFilesystem = func(config.Config) (filesystemServices, error) { return nil, nil }
 			return dependencies
 		},
 		"nil registry": func(dependencies bootstrapDependencies) bootstrapDependencies {
-			dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) *tools.Registry { return nil }
+			dependencies.newToolRegistry = func(filesystemServices, int64, toolCapabilities) *tools.Registry { return nil }
 			return dependencies
 		},
 		"nil router": func(dependencies bootstrapDependencies) bootstrapDependencies {
