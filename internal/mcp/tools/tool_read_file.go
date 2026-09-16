@@ -41,7 +41,7 @@ func (t *ReadFileTool) Description() string {
 
 // InputSchema returns the JSON schema for this tool.
 func (t *ReadFileTool) InputSchema() any {
-	return map[string]any{
+	return inputSchema(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"path": map[string]any{
@@ -57,7 +57,7 @@ func (t *ReadFileTool) InputSchema() any {
 		},
 		"required":             []string{"path"},
 		"additionalProperties": false,
-	}
+	})
 }
 
 // Definition returns the MCP tool definition.

@@ -23,13 +23,13 @@ func (t *GetPathInfoTool) Description() string {
 	return "Returns existence and metadata for a file or directory below the configured filesystem root."
 }
 func (t *GetPathInfoTool) InputSchema() any {
-	return map[string]any{
+	return inputSchema(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative file or directory path below the configured filesystem root."},
 		},
 		"required": []string{"path"}, "additionalProperties": false,
-	}
+	})
 }
 func (t *GetPathInfoTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name())}

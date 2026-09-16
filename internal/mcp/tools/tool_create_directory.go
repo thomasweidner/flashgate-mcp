@@ -22,13 +22,13 @@ func (t *CreateDirectoryTool) Description() string {
 	return "Creates a directory and any missing parents below the configured filesystem root."
 }
 func (t *CreateDirectoryTool) InputSchema() any {
-	return map[string]any{
+	return inputSchema(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path below the configured filesystem root."},
 		},
 		"required": []string{"path"}, "additionalProperties": false,
-	}
+	})
 }
 func (t *CreateDirectoryTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name())}

@@ -30,7 +30,7 @@ func (t *ListDirectoryTool) Description() string {
 	return "Lists files and directories below the configured filesystem root."
 }
 func (t *ListDirectoryTool) InputSchema() any {
-	return map[string]any{
+	return inputSchema(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"path": map[string]any{
@@ -40,7 +40,7 @@ func (t *ListDirectoryTool) InputSchema() any {
 			},
 		},
 		"additionalProperties": false,
-	}
+	})
 }
 func (t *ListDirectoryTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name())}

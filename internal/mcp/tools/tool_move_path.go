@@ -39,7 +39,7 @@ func (t *MovePathTool) Description() string {
 
 // InputSchema returns the JSON schema for this tool.
 func (t *MovePathTool) InputSchema() any {
-	return map[string]any{
+	return inputSchema(map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"source": map[string]any{
@@ -59,7 +59,7 @@ func (t *MovePathTool) InputSchema() any {
 		},
 		"required":             []string{"source", "target"},
 		"additionalProperties": false,
-	}
+	})
 }
 
 // Definition returns the MCP tool definition.
