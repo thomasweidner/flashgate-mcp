@@ -19,6 +19,9 @@ var (
 	// ErrFileExists is returned when writing a file that already exists without overwrite permission.
 	ErrFileExists = errors.New("file already exists")
 
+	// ErrUnsupportedWriteMode is returned for an unknown file-write mode.
+	ErrUnsupportedWriteMode = errors.New("unsupported write mode")
+
 	// ErrDirectoryNotEmpty is returned when deleting a non-empty directory without recursive deletion.
 	ErrDirectoryNotEmpty = errors.New("directory is not empty")
 
@@ -79,12 +82,22 @@ type Metadata struct {
 	Size  int64  `json:"size"`
 }
 
+// WriteMode defines the existence precondition applied to a file write.
+type WriteMode string
+
+const (
+	WriteCreateOnly  WriteMode = "create_only"
+	WriteReplaceOnly WriteMode = "replace_only"
+	WriteUpsert      WriteMode = "upsert"
+)
+
 // FileSystem defines filesystem operations used by MCP tools.
 type FileSystem interface {
 	List(path string) ([]Entry, error)
 	Read(path string, maxBytes int64) ([]byte, error)
 	Stat(path string) (Metadata, error)
 	Write(path string, content []byte, overwrite bool) error
+	WriteWithMode(path string, content []byte, mode WriteMode) error
 	Mkdir(path string) (bool, error)
 	Delete(path string, recursive bool) error
 	Move(source string, target string, overwrite bool) error

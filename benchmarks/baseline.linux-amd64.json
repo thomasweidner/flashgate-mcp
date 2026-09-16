@@ -198,9 +198,9 @@
       "tool_count": 8,
       "schema_count": 8,
       "request_bytes": 59,
-      "response_bytes": 5657,
-      "result_bytes": 5622,
-      "approx_tokens_bytes4": 1415
+      "response_bytes": 5904,
+      "result_bytes": 5869,
+      "approx_tokens_bytes4": 1476
     }
   ],
   "workflow_measurements": [

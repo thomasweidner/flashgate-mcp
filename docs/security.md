@@ -116,7 +116,7 @@ Destructive operations are intentionally conservative.
 
 ### Write
 
-`Write()` does not overwrite existing files unless `overwrite=true`.
+`Write()` does not overwrite existing files unless `overwrite=true`. The explicit `write_file` modes enforce create-only, replace-only, or upsert existence behavior; replace-only never recreates a target that is absent when it is opened. Existence modes do not imply atomic replacement or conditional content/metadata checks.
 
 ### Delete
 
