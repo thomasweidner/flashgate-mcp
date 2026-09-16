@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -21,12 +22,27 @@ type fakeStartedProcess struct {
 	pid     int
 	wait    chan struct{}
 	waitErr error
+	killErr error
+	kills   int
+	mu      sync.Mutex
 }
 
 func (process *fakeStartedProcess) PID() int { return process.pid }
 func (process *fakeStartedProcess) Wait() error {
 	<-process.wait
 	return process.waitErr
+}
+func (process *fakeStartedProcess) Kill() error {
+	process.mu.Lock()
+	defer process.mu.Unlock()
+	process.kills++
+	return process.killErr
+}
+
+func (process *fakeStartedProcess) killCount() int {
+	process.mu.Lock()
+	defer process.mu.Unlock()
+	return process.kills
 }
 
 func TestEngineStartsAuthorizedProcessAndTracksLifecycle(t *testing.T) {
@@ -230,6 +246,92 @@ func TestEngineWaitValidatesIdentityAndInput(t *testing.T) {
 				t.Fatalf("Wait() error = %v, want %v", waitErr, ErrProcessUnavailable)
 			}
 		})
+	}
+}
+
+func TestEngineStopsOwnedProcessAndIsIdempotent(t *testing.T) {
+	engine := NewEngine(policyFunc(allowTestLaunch))
+	started := &fakeStartedProcess{pid: 101, wait: make(chan struct{})}
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
+	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	result, err := engine.Stop(context.Background(), "owner", handle)
+	if err != nil || result != (StopResult{Status: StatusStopped, PID: 101}) {
+		t.Fatalf("Stop() = (%#v, %v), want stopped result", result, err)
+	}
+	result, err = engine.Stop(context.Background(), "owner", handle)
+	if err != nil || result.Status != StatusStopped || started.killCount() != 1 {
+		t.Fatalf("second Stop() = (%#v, %v), kills=%d", result, err, started.killCount())
+	}
+	close(started.wait)
+}
+
+func TestEngineStopPreservesExistingTerminalOutcome(t *testing.T) {
+	engine := NewEngine(policyFunc(allowTestLaunch))
+	started := &fakeStartedProcess{pid: 102, wait: make(chan struct{})}
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
+	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	process, _ := engine.Get("owner", handle)
+	close(started.wait)
+	waitForStatus(t, process, StatusExited)
+
+	result, err := engine.Stop(context.Background(), "owner", handle)
+	if err != nil || result.Status != StatusExited || started.killCount() != 0 {
+		t.Fatalf("Stop() = (%#v, %v), kills=%d; want unchanged exit", result, err, started.killCount())
+	}
+}
+
+func TestEngineStopFailsClosed(t *testing.T) {
+	engine := NewEngine(policyFunc(allowTestLaunch))
+	started := &fakeStartedProcess{pid: 103, wait: make(chan struct{}), killErr: errors.New("denied")}
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
+	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	defer close(started.wait)
+
+	invalid := []struct {
+		name      string
+		ctx       context.Context
+		principal PrincipalID
+		handle    Handle
+		want      error
+	}{
+		{"nil context", nil, "owner", handle, ErrInvalidStopRequest},
+		{"missing principal", context.Background(), "", handle, ErrInvalidStopRequest},
+		{"missing handle", context.Background(), "owner", "", ErrInvalidStopRequest},
+		{"wrong owner", context.Background(), "other", handle, ErrProcessUnavailable},
+		{"unknown handle", context.Background(), "owner", "unknown", ErrProcessUnavailable},
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	invalid = append(invalid, struct {
+		name      string
+		ctx       context.Context
+		principal PrincipalID
+		handle    Handle
+		want      error
+	}{"cancelled context", cancelled, "owner", handle, ErrInvalidStopRequest})
+	for _, test := range invalid {
+		t.Run(test.name, func(t *testing.T) {
+			if result, stopErr := engine.Stop(test.ctx, test.principal, test.handle); result != (StopResult{}) || !errors.Is(stopErr, test.want) {
+				t.Fatalf("Stop() = (%#v, %v), want empty result and %v", result, stopErr, test.want)
+			}
+		})
+	}
+	if result, stopErr := engine.Stop(context.Background(), "owner", handle); result != (StopResult{}) || !errors.Is(stopErr, ErrStopFailed) {
+		t.Fatalf("failed Stop() = (%#v, %v), want ErrStopFailed", result, stopErr)
+	}
+	process, _ := engine.Get("owner", handle)
+	if process.Status() != StatusRunning {
+		t.Fatalf("failed stop changed status to %q", process.Status())
 	}
 }
 

@@ -18,12 +18,21 @@ var (
 	ErrInvalidLaunch       = errors.New("invalid managed process launch")
 	ErrInvalidWaitRequest  = errors.New("invalid managed process wait request")
 	ErrInvalidReadRequest  = errors.New("invalid managed process output read request")
+	ErrInvalidStopRequest  = errors.New("invalid managed process stop request")
 	ErrProcessUnavailable  = errors.New("managed process unavailable")
+	ErrStopFailed          = errors.New("managed process stop failed")
 )
 
 // WaitResult is the immutable final result of waiting for a managed process.
 // PID remains diagnostic and must not be used as authority for later actions.
 type WaitResult struct {
+	Status Status
+	PID    int
+}
+
+// StopResult describes the stable state after a managed stop request. PID is
+// diagnostic only; the principal-bound handle remains the control authority.
+type StopResult struct {
 	Status Status
 	PID    int
 }
@@ -54,10 +63,12 @@ type Policy interface {
 // Process is one engine-owned process. PID is diagnostic; its opaque handle is
 // the authority for later managed-process operations.
 type Process struct {
-	state  *State
-	output *outputBuffer
-	mu     sync.RWMutex
-	pid    int
+	state   *State
+	output  *outputBuffer
+	mu      sync.RWMutex
+	control sync.Mutex
+	started startedProcess
+	pid     int
 }
 
 func (process *Process) Status() Status { return process.state.Status() }
@@ -74,6 +85,18 @@ func (process *Process) setPID(pid int) {
 	process.pid = pid
 }
 
+func (process *Process) setStarted(started startedProcess) {
+	process.mu.Lock()
+	defer process.mu.Unlock()
+	process.started = started
+}
+
+func (process *Process) startedProcess() startedProcess {
+	process.mu.RLock()
+	defer process.mu.RUnlock()
+	return process.started
+}
+
 // Engine starts only policy-authorized processes and records them in the
 // principal-bound managed registry.
 type Engine struct {
@@ -85,6 +108,7 @@ type Engine struct {
 type startedProcess interface {
 	PID() int
 	Wait() error
+	Kill() error
 }
 
 // NewEngine creates an engine. A nil policy is fail-closed.
@@ -131,12 +155,53 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 		return handle, fmt.Errorf("start process: %w: missing process identifier", ErrInvalidLaunch)
 	}
 	process.setPID(started.PID())
+	process.setStarted(started)
 	if err := process.state.Transition(StatusRunning); err != nil {
 		return handle, fmt.Errorf("record running process: %w", err)
 	}
 
 	go reapProcess(process, started)
 	return handle, nil
+}
+
+// Stop terminates a principal-owned process by opaque handle. Already-terminal
+// processes are returned unchanged, making repeated requests safe. Unknown and
+// wrong-principal handles are indistinguishable. A successful kill attempts to
+// record stopped; a terminal outcome concurrently recorded by the reaper wins.
+func (engine *Engine) Stop(ctx context.Context, principal PrincipalID, handle Handle) (StopResult, error) {
+	if ctx == nil || principal == "" || handle == "" {
+		return StopResult{}, ErrInvalidStopRequest
+	}
+	if err := ctx.Err(); err != nil {
+		return StopResult{}, fmt.Errorf("%w: %v", ErrInvalidStopRequest, err)
+	}
+	process, ok := engine.registry.Get(principal, handle)
+	if !ok {
+		return StopResult{}, ErrProcessUnavailable
+	}
+
+	process.control.Lock()
+	defer process.control.Unlock()
+	if status := process.Status(); status.Terminal() {
+		return StopResult{Status: status, PID: process.PID()}, nil
+	}
+	started := process.startedProcess()
+	if started == nil {
+		return StopResult{}, ErrStopFailed
+	}
+	if err := started.Kill(); err != nil {
+		if status := process.Status(); status.Terminal() {
+			return StopResult{Status: status, PID: process.PID()}, nil
+		}
+		return StopResult{}, fmt.Errorf("%w: %v", ErrStopFailed, err)
+	}
+	if err := process.state.Transition(StatusStopped); err != nil {
+		if status := process.Status(); status.Terminal() {
+			return StopResult{Status: status, PID: process.PID()}, nil
+		}
+		return StopResult{}, fmt.Errorf("%w: %v", ErrStopFailed, err)
+	}
+	return StopResult{Status: StatusStopped, PID: process.PID()}, nil
 }
 
 // Get returns a process only to the principal that started it.
@@ -214,6 +279,7 @@ type osProcess struct{ command *exec.Cmd }
 
 func (process osProcess) PID() int    { return process.command.Process.Pid }
 func (process osProcess) Wait() error { return process.command.Wait() }
+func (process osProcess) Kill() error { return process.command.Process.Kill() }
 
 func reapProcess(process *Process, started startedProcess) {
 	next := StatusExited

@@ -398,7 +398,14 @@ state, and total capture is capped even when the child continues writing. The
 current combined capture reports truncation; separate per-stream ring limits
 remain planned under BL-125.
 
-Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.
+Managed stopping resolves the same trusted principal-bound opaque handle and
+never accepts a PID as authority. Unknown and cross-principal handles are
+indistinguishable. A successful termination records `stopped`; repeated stops
+return the stable terminal result without signaling the operating-system
+process again, while an exit that wins the race remains unchanged. Termination
+failure leaves a running lifecycle unchanged and fails closed.
+
+Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model. Process-tree and platform-specific termination guarantees remain planned adapter work.
 
 The final stdout/stderr contract is separately bounded. Command lines, environments, and output are minimized and redacted.
 
