@@ -189,9 +189,11 @@ Owns observation, details, trees, managed process instances, opaque handles, sta
 
 The implemented managed-process foundation is a transport-neutral, thread-safe
 registry for server-started process state. It assigns a never-reused internal
-instance ID and provides atomic lookup and removal. That ID is not an MCP
-handle and is never a PID; opaque principal-bound handles, process startup,
-status, output, waiting, stopping, and cleanup remain separate planned work.
+instance ID and provides atomic principal-bound lookup and removal through
+opaque handles. The lifecycle model starts in `starting`, may advance to
+`running`, and ends exactly once as `exited`, `failed`, `stopped`, or
+`timed_out`. Process startup, output, waiting, stopping, and cleanup remain
+separate planned work.
 
 ### Execution
 
