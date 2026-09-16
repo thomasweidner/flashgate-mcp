@@ -125,6 +125,113 @@ func TestEngineRecordsFailedExit(t *testing.T) {
 	waitForStatus(t, process, StatusFailed)
 }
 
+func TestEngineWaitReturnsTerminalResult(t *testing.T) {
+	engine := NewEngine(policyFunc(allowTestLaunch))
+	started := &fakeStartedProcess{pid: 73, wait: make(chan struct{})}
+	engine.start = func(Launch) (startedProcess, error) { return started, nil }
+	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	resultChannel := make(chan WaitResult, 1)
+	errorChannel := make(chan error, 1)
+	go func() {
+		result, waitErr := engine.Wait(context.Background(), "owner", handle, time.Second)
+		resultChannel <- result
+		errorChannel <- waitErr
+	}()
+	select {
+	case <-resultChannel:
+		t.Fatal("Wait() returned before process became terminal")
+	case <-time.After(10 * time.Millisecond):
+	}
+	close(started.wait)
+
+	result := <-resultChannel
+	if waitErr := <-errorChannel; waitErr != nil || result.Status != StatusExited || result.PID != 73 {
+		t.Fatalf("Wait() = (%#v, %v), want exited result", result, waitErr)
+	}
+	// Waiting for an already-terminal process is immediate and stable.
+	result, err = engine.Wait(context.Background(), "owner", handle, time.Second)
+	if err != nil || result.Status != StatusExited || result.PID != 73 {
+		t.Fatalf("second Wait() = (%#v, %v), want same exited result", result, err)
+	}
+}
+
+func TestEngineWaitTimeoutAndCancellationDoNotChangeProcess(t *testing.T) {
+	engine := NewEngine(policyFunc(allowTestLaunch))
+	started := &fakeStartedProcess{pid: 81, wait: make(chan struct{})}
+	engine.start = func(Launch) (startedProcess, error) { return started, nil }
+	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	process, _ := engine.Get("owner", handle)
+
+	if result, waitErr := engine.Wait(context.Background(), "owner", handle, time.Millisecond); !errors.Is(waitErr, context.DeadlineExceeded) || result != (WaitResult{}) {
+		t.Fatalf("timed Wait() = (%#v, %v), want empty result and deadline", result, waitErr)
+	}
+	if process.Status() != StatusRunning {
+		t.Fatalf("status after wait timeout = %q, want running", process.Status())
+	}
+
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if result, waitErr := engine.Wait(cancelled, "owner", handle, 0); !errors.Is(waitErr, context.Canceled) || result != (WaitResult{}) {
+		t.Fatalf("cancelled Wait() = (%#v, %v), want empty result and cancellation", result, waitErr)
+	}
+	if process.Status() != StatusRunning {
+		t.Fatalf("status after cancelled wait = %q, want running", process.Status())
+	}
+	close(started.wait)
+}
+
+func TestEngineWaitValidatesIdentityAndInput(t *testing.T) {
+	engine := NewEngine(policyFunc(allowTestLaunch))
+	started := &fakeStartedProcess{pid: 91, wait: make(chan struct{})}
+	engine.start = func(Launch) (startedProcess, error) { return started, nil }
+	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	defer close(started.wait)
+
+	invalid := []struct {
+		name      string
+		ctx       context.Context
+		principal PrincipalID
+		handle    Handle
+		timeout   time.Duration
+	}{
+		{"nil context", nil, "owner", handle, 0},
+		{"missing principal", context.Background(), "", handle, 0},
+		{"missing handle", context.Background(), "owner", "", 0},
+		{"negative timeout", context.Background(), "owner", handle, -time.Second},
+	}
+	for _, test := range invalid {
+		t.Run(test.name, func(t *testing.T) {
+			if _, waitErr := engine.Wait(test.ctx, test.principal, test.handle, test.timeout); !errors.Is(waitErr, ErrInvalidWaitRequest) {
+				t.Fatalf("Wait() error = %v, want %v", waitErr, ErrInvalidWaitRequest)
+			}
+		})
+	}
+	for _, test := range []struct {
+		name      string
+		principal PrincipalID
+		handle    Handle
+	}{
+		{"wrong owner", "other", handle},
+		{"unknown handle", "owner", "unknown"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, waitErr := engine.Wait(context.Background(), test.principal, test.handle, 0); !errors.Is(waitErr, ErrProcessUnavailable) {
+				t.Fatalf("Wait() error = %v, want %v", waitErr, ErrProcessUnavailable)
+			}
+		})
+	}
+}
+
 func TestEngineStartsAndReapsOSProcess(t *testing.T) {
 	executable, err := os.Executable()
 	if err != nil {

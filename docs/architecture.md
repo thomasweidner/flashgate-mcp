@@ -196,8 +196,12 @@ opaque handles. The lifecycle model starts in `starting`, may advance to
 passes arguments through an explicit policy boundary, and launches only the
 resulting absolute executable, working directory, and complete child
 environment. It registers every launch under the trusted principal and reaps
-the child into a terminal state. Output, public waiting/stopping, limits,
-platform isolation, and cleanup remain separate planned work.
+the child into a terminal state. The wait operation accepts only the owning
+principal and opaque handle, returns the immutable terminal status plus a
+diagnostic PID, and lets either the caller context or an optional wait timeout
+bound observation without stopping the child or changing its lifecycle.
+Output, stopping, limits, platform isolation, and cleanup remain separate
+planned work.
 
 ### Execution
 
@@ -268,7 +272,7 @@ The normal execution unit is a cancellable Go goroutine. A subprocess is justifi
 
 Managed process handles are the primary identity; PIDs are diagnostic only because of reuse risk.
 
-Process output uses separate bounded stdout/stderr buffers, truncation markers, and cursors. Status, wait, output, and stop operations require the owning execution context.
+Process output uses separate bounded stdout/stderr buffers, truncation markers, and cursors. Status, wait, output, and stop operations require the owning execution context. A wait deadline limits only the caller's observation; process-runtime enforcement and transition to `timed_out` are separate lifecycle controls.
 
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:
 
