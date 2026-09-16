@@ -3,7 +3,7 @@
 **Status:** Version 1.0 domain contract
 
 **Owners:** BL-137 (registry), BL-138 (typed invocation construction), BL-140
-(timeout policy)
+(timeout policy), BL-141 (bounded output)
 
 FlashGate resolves a public `command_id` exclusively through an immutable,
 server-owned registry. A command definition references an `executable_id`; a
@@ -53,6 +53,13 @@ must be positive and no greater than the command maximum; invalid values are
 rejected rather than silently clamped. The later Managed Process Engine must
 turn this effective value into a server-controlled deadline and retain control
 of cancellation and process-tree cleanup.
+
+Process capture uses independent stdout and stderr buffers with the respective
+definition-owned byte maxima. Each stream retains its prefix up to its own
+limit, continues consuming later bytes so a full pipe cannot block the child,
+counts all bytes presented, and exposes an explicit truncation marker. Output
+snapshots copy retained bytes so callers cannot mutate capture state. The
+stable public command-result representation remains owned by BL-142.
 
 This contract does not hash or open binaries, implement those platform path
 checks, enforce platform isolation, or launch processes. Those operations
