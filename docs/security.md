@@ -421,7 +421,13 @@ Version 1.0 implements Variant A service-account roots:
 - OS operation under the service account;
 - audit records include caller and effective backend identity.
 
-Version 1.0 defines interfaces and the threat model for Variant B user workers, but the worker is post-Version 1.0.
+Version 1.0 defines interfaces and the
+[Variant B user-worker contract and threat model](variant-b-user-worker-threat-model.md),
+but the worker is post-Version 1.0. The contract requires native identity
+verification, a private authenticated broker-worker channel, minimized
+environment and handle inheritance, one-principal worker ownership, bounded
+native containment, and fail-closed lifecycle behavior; it does not enable a
+worker backend.
 
 Variant C shared-process impersonation is prohibited. FlashGate does not switch caller credentials inside the shared Go service process.
 

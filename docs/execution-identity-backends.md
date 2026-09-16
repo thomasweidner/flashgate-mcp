@@ -189,6 +189,12 @@ These limitations are accepted for Version 1.0 and must be documented for admini
 
 Variant B is architected in Version 1.0 but implemented later.
 
+The normative Version 1.0 design and security boundary is the
+[Variant B user-worker contract and threat model](variant-b-user-worker-threat-model.md).
+It defines identity acquisition constraints, the private broker-worker
+handshake, environment minimization, lifecycle, quotas, failure semantics, and
+the native validation gates without enabling the backend.
+
 ### Planned topology
 
 ```text
@@ -330,6 +336,7 @@ Post-Version-1.0 Variant B tests additionally cover worker identity, session/tok
 ## Related documents
 
 - [ADR-015](adr/015-hybrid-service-execution-identity.md)
+- [Variant B user-worker contract and threat model](variant-b-user-worker-threat-model.md)
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Security model](security.md)
 - [Architecture](architecture.md)
