@@ -27,7 +27,7 @@ func TestRegistryResolvesTypedDefinitionByServerOwnedIDs(t *testing.T) {
 			{Name: "label", Flag: "--label", Kind: ValueString, MaxLength: 64},
 			{Name: "target", Kind: ValuePath, Required: true, AllowedRoots: []string{"workspace"}, MaxLength: 1024},
 		},
-		Limits:  Limits{Timeout: 5 * time.Second, StdoutBytes: 4096, StderrBytes: 2048},
+		Limits:  Limits{DefaultTimeout: 5 * time.Second, MaximumTimeout: 30 * time.Second, StdoutBytes: 4096, StderrBytes: 2048},
 		Network: NetworkDenied,
 	}
 
@@ -92,13 +92,18 @@ func TestRegistryRejectsInvalidCommandPolicy(t *testing.T) {
 	valid := validDefinition(executable.ID)
 	minimum, maximum := int64(10), int64(1)
 	tests := map[string]Definition{
-		"invalid id":         withDefinition(valid, func(d *Definition) { d.ID = "Status Command" }),
-		"unknown executable": withDefinition(valid, func(d *Definition) { d.ExecutableID = "missing" }),
-		"empty fixed arg":    withDefinition(valid, func(d *Definition) { d.FixedArguments = []string{""} }),
-		"missing timeout":    withDefinition(valid, func(d *Definition) { d.Limits.Timeout = 0 }),
-		"missing stdout":     withDefinition(valid, func(d *Definition) { d.Limits.StdoutBytes = 0 }),
-		"missing stderr":     withDefinition(valid, func(d *Definition) { d.Limits.StderrBytes = 0 }),
-		"implicit network":   withDefinition(valid, func(d *Definition) { d.Network = "" }),
+		"invalid id":              withDefinition(valid, func(d *Definition) { d.ID = "Status Command" }),
+		"unknown executable":      withDefinition(valid, func(d *Definition) { d.ExecutableID = "missing" }),
+		"empty fixed arg":         withDefinition(valid, func(d *Definition) { d.FixedArguments = []string{""} }),
+		"missing default timeout": withDefinition(valid, func(d *Definition) { d.Limits.DefaultTimeout = 0 }),
+		"missing maximum timeout": withDefinition(valid, func(d *Definition) { d.Limits.MaximumTimeout = 0 }),
+		"default above maximum": withDefinition(valid, func(d *Definition) {
+			d.Limits.DefaultTimeout = 2 * time.Second
+			d.Limits.MaximumTimeout = time.Second
+		}),
+		"missing stdout":   withDefinition(valid, func(d *Definition) { d.Limits.StdoutBytes = 0 }),
+		"missing stderr":   withDefinition(valid, func(d *Definition) { d.Limits.StderrBytes = 0 }),
+		"implicit network": withDefinition(valid, func(d *Definition) { d.Network = "" }),
 		"duplicate name": withDefinition(valid, func(d *Definition) {
 			d.ArgumentRules = []ArgumentRule{{Name: "value", Kind: ValueBool}, {Name: "value", Kind: ValueBool}}
 		}),
@@ -168,7 +173,7 @@ func validDefinition(executableID string) Definition {
 		ID:             "repository.status",
 		ExecutableID:   executableID,
 		FixedArguments: []string{"status"},
-		Limits:         Limits{Timeout: time.Second, StdoutBytes: 1024, StderrBytes: 1024},
+		Limits:         Limits{DefaultTimeout: time.Second, MaximumTimeout: 10 * time.Second, StdoutBytes: 1024, StderrBytes: 1024},
 		Network:        NetworkDenied,
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -26,18 +27,23 @@ type PathResolver interface {
 type Invocation struct {
 	ExecutablePath string
 	Arguments      []string
+	Timeout        time.Duration
 }
 
 // BuildInvocation resolves commandID and deterministically converts a closed
 // structured argument object into argv. Values are limited to bool, integer,
 // string, and PathArgument according to the selected definition.
-func (r *Registry) BuildInvocation(commandID string, values map[string]any, paths PathResolver) (Invocation, error) {
+func (r *Registry) BuildInvocation(commandID string, values map[string]any, requestedTimeout *time.Duration, paths PathResolver) (Invocation, error) {
 	definition, executable, ok := r.Resolve(commandID)
 	if !ok {
 		return Invocation{}, fmt.Errorf("unknown command id %q", commandID)
 	}
 	if values == nil {
 		values = map[string]any{}
+	}
+	timeout, err := effectiveTimeout(definition.Limits, requestedTimeout)
+	if err != nil {
+		return Invocation{}, err
 	}
 
 	rules := make(map[string]ArgumentRule, len(definition.ArgumentRules))
@@ -72,7 +78,20 @@ func (r *Registry) BuildInvocation(commandID string, values map[string]any, path
 		argv = append(argv, encoded...)
 	}
 
-	return Invocation{ExecutablePath: executable.Path, Arguments: argv}, nil
+	return Invocation{ExecutablePath: executable.Path, Arguments: argv, Timeout: timeout}, nil
+}
+
+// effectiveTimeout applies the command-owned default and rejects rather than
+// clamps invalid client requests. The resulting duration is always suitable
+// for a server-enforced deadline.
+func effectiveTimeout(limits Limits, requested *time.Duration) (time.Duration, error) {
+	if requested == nil {
+		return limits.DefaultTimeout, nil
+	}
+	if *requested <= 0 || *requested > limits.MaximumTimeout {
+		return 0, fmt.Errorf("requested timeout is outside command policy")
+	}
+	return *requested, nil
 }
 
 func encodeArgument(rule ArgumentRule, value any, paths PathResolver) ([]string, bool, error) {
