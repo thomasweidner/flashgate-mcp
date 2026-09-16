@@ -2,7 +2,7 @@
 
 **Status:** Version 1.0 domain contract
 
-**Owner:** BL-137
+**Owners:** BL-137 (registry), BL-138 (typed invocation construction)
 
 FlashGate resolves a public `command_id` exclusively through an immutable,
 server-owned registry. A command definition references an `executable_id`; a
@@ -30,10 +30,23 @@ Registry construction defensively copies all definitions, constraints, and
 optional identity pins. Resolution also returns copies. Configuration owners
 and callers therefore cannot mutate validated policy after startup.
 
-This contract does not parse requests, construct `argv`, resolve filesystem
-paths below named roots, hash or open binaries, enforce platform isolation, or
-launch processes. Those operations remain with the subsequent command,
-filesystem-security, and Managed Process Engine backlog owners. In particular,
-the argument-to-`argv` implementation must still reject response files and
-configuration, hook, plugin, loader, and interpreter injection as required by
-the [Command Execution Threat Model](command-execution-threat-model.md).
+Invocation construction accepts only a closed object keyed by the definition's
+argument names. Values must have the exact configured boolean, integer, string,
+enumeration, or root-relative path type; missing required fields, unknown
+fields, nulls, numeric coercion, excess bounds, absolute paths, and traversal
+fail closed. Definition order, not request-map order, determines `argv` order.
+The executable path and argument array remain separate, so no shell command
+string is representable and shell metacharacters stay literal argument data.
+
+Response-file syntax and value-led option injection are rejected. Registry
+construction also rejects fixed arguments or rule flags that select generic
+configuration, hook, plugin, loader, interpreter, or alternate-executable
+surfaces. Path values carry an approved root ID and clean relative path; a
+platform-aware resolver must bind them to a clean absolute path and perform
+effective containment and link/reparse checks at the process-creation boundary.
+
+This contract does not hash or open binaries, implement those platform path
+checks, enforce platform isolation, or launch processes. Those operations
+remain with the subsequent filesystem-security and Managed Process Engine
+backlog owners described by the
+[Command Execution Threat Model](command-execution-threat-model.md).

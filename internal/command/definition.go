@@ -160,7 +160,7 @@ func validateDefinition(definition Definition, executables map[string]Executable
 		return fmt.Errorf("command %q network policy must be explicit", definition.ID)
 	}
 	for _, value := range definition.FixedArguments {
-		if value == "" || strings.ContainsRune(value, '\x00') {
+		if value == "" || strings.ContainsRune(value, '\x00') || isResponseFile(value) || isInjectionSelector(value) {
 			return fmt.Errorf("command %q has an invalid fixed argument", definition.ID)
 		}
 	}
@@ -198,9 +198,12 @@ func validateRule(rule ArgumentRule) error {
 	if rule.Flag != "" && (!strings.HasPrefix(rule.Flag, "-") || rule.Flag == "-" || strings.ContainsAny(rule.Flag, "= \t\r\n\x00")) {
 		return fmt.Errorf("argument %q has invalid flag", rule.Name)
 	}
+	if isInjectionSelector(rule.Flag) {
+		return fmt.Errorf("argument %q selects a prohibited injection surface", rule.Name)
+	}
 	switch rule.Kind {
 	case ValueBool:
-		if rule.Minimum != nil || rule.Maximum != nil || rule.MaxLength != 0 || len(rule.AllowedValues) != 0 || len(rule.AllowedRoots) != 0 {
+		if rule.Flag == "" || rule.Minimum != nil || rule.Maximum != nil || rule.MaxLength != 0 || len(rule.AllowedValues) != 0 || len(rule.AllowedRoots) != 0 {
 			return fmt.Errorf("boolean argument %q has incompatible constraints", rule.Name)
 		}
 	case ValueInteger:
@@ -218,6 +221,11 @@ func validateRule(rule ArgumentRule) error {
 		if hasEmptyOrDuplicate(rule.AllowedValues) {
 			return fmt.Errorf("enum argument %q has invalid allowed values", rule.Name)
 		}
+		for _, value := range rule.AllowedValues {
+			if beginsOptionOrResponse(value) || isInjectionSelector(value) {
+				return fmt.Errorf("enum argument %q contains an unsafe value", rule.Name)
+			}
+		}
 	case ValuePath:
 		if len(rule.AllowedRoots) == 0 || rule.Minimum != nil || rule.Maximum != nil || rule.MaxLength <= 0 || len(rule.AllowedValues) != 0 {
 			return fmt.Errorf("path argument %q requires roots and a positive maximum length", rule.Name)
@@ -229,6 +237,20 @@ func validateRule(rule ArgumentRule) error {
 		return fmt.Errorf("argument %q has invalid value kind %q", rule.Name, rule.Kind)
 	}
 	return nil
+}
+
+func isResponseFile(value string) bool {
+	return strings.HasPrefix(value, "@")
+}
+
+func isInjectionSelector(value string) bool {
+	name := strings.ToLower(strings.TrimLeft(value, "-"))
+	for _, fragment := range []string{"config", "hook", "plugin", "loader", "interpreter", "executable", "exec-path"} {
+		if name == fragment || strings.HasPrefix(name, fragment+"-") || strings.HasPrefix(name, fragment+"_") {
+			return true
+		}
+	}
+	return false
 }
 
 func validIdentifier(value string) bool { return identifierPattern.MatchString(value) }
