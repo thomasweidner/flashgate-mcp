@@ -282,6 +282,21 @@ jobs:
           done
           go "${arguments[@]}"
 
+      - name: Generate release supply-chain evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          base="flashgate-mcp_${RELEASE_VERSION}_${{ matrix.platform }}_${{ matrix.public_arch }}"
+          go -C . run -mod=vendor ./cmd/releaseevidence \
+            --artifact "build/release-1/${base}.${{ matrix.archive_extension }}" \
+            --checksum "build/release-1/${base}.${{ matrix.archive_extension }}.sha256" \
+            --output-directory build/evidence \
+            --version "$RELEASE_VERSION" \
+            --commit '${{ github.sha }}' \
+            --source-time "$RELEASE_SOURCE_TIME" \
+            --platform '${{ matrix.platform }}' \
+            --architecture '${{ matrix.public_arch }}'
+
       - name: Upload validated release artifact
         uses: actions/upload-artifact@v7
         with:
@@ -291,6 +306,9 @@ jobs:
             build/release-1/flashgate-mcp_${{ needs.prepare.outputs.version }}_${{ matrix.platform }}_${{ matrix.public_arch }}.${{ matrix.archive_extension }}.sha256
             build/audit/repro-${{ matrix.platform }}-${{ matrix.public_arch }}.json
             build/audit/leak-${{ matrix.platform }}-${{ matrix.public_arch }}.json
+            build/evidence/flashgate-mcp_${{ needs.prepare.outputs.version }}_${{ matrix.platform }}_${{ matrix.public_arch }}.dependencies.json
+            build/evidence/flashgate-mcp_${{ needs.prepare.outputs.version }}_${{ matrix.platform }}_${{ matrix.public_arch }}.sbom.spdx.json
+            build/evidence/flashgate-mcp_${{ needs.prepare.outputs.version }}_${{ matrix.platform }}_${{ matrix.public_arch }}.provenance.intoto.json
           if-no-files-found: error
           retention-days: 30
 
@@ -306,3 +324,4 @@ jobs:
           echo "- Source time: \`$RELEASE_SOURCE_TIME\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Reproducibility gate: \`PASS\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Leak scan: \`PASS\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SBOM, dependency inventory, and provenance: \`GENERATED\`" >> "$GITHUB_STEP_SUMMARY"

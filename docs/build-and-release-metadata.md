@@ -183,6 +183,37 @@ scripts/test-release-artifact.sh
 
 Release archives are published only after filename, content, checksum, version, architecture, Windows resource, Linux build-information, and ELF checks pass.
 
+The release workflow also emits three machine-readable evidence files beside
+each validated archive: a deterministic Go module dependency inventory, an
+SPDX 2.3 JSON SBOM, and an in-toto statement using the SLSA provenance v1
+predicate. `cmd/releaseevidence` verifies the archive checksum before creating
+evidence and binds the statement to the archive digest, source commit,
+canonical source time, version, platform, and public architecture. These
+unsigned statements provide traceability; they are not signatures or remote
+attestations.
+
+### Signing and rollback boundary
+
+Release artifacts are currently authenticated by published SHA-256 checksums,
+reproducible-build comparison, embedded build identity, and the generated
+supply-chain evidence. No Windows Authenticode certificate, Linux package
+signing key, or keyless-attestation identity is configured. Selecting a
+certificate authority, signing service, package repository, or OIDC trust
+policy is a separate credential/provider and release decision. Until that
+decision is recorded, the release workflow must not silently request signing
+credentials or describe unsigned evidence as a signature.
+
+FlashGate performs no silent or automatic update. Rollback is atomic at the
+deployment boundary: retain the previously verified archive and checksum,
+stop the active FlashGate process or service using the documented platform
+procedure, replace the executable/configuration as one controlled deployment,
+restart it, and rerun version, checksum, startup, and read-only smoke checks.
+If any check fails, stop the candidate, restore the retained artifact and
+configuration, restart, and repeat the same checks. Service-specific install,
+remove, and rollback commands remain gated on their platform implementations
+and native finalization; portable STDIO rollback is file replacement without
+an in-process updater.
+
 ZIP and TAR.GZ validators reject absolute, traversal, backslash, duplicate and
 normalization-colliding names before extraction. Only the exact required
 directories and regular files are accepted; symlinks, hardlinks, devices,
