@@ -4,76 +4,147 @@
 package managedprocess
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"fmt"
+	"io"
 	"math"
 	"sync"
 )
 
-// ErrIdentifierExhausted is returned rather than reusing a process instance
-// identifier. Reuse could associate a stale reference with a different
-// process.
-var ErrIdentifierExhausted = errors.New("managed process identifier space exhausted")
+const (
+	handleEntropyBytes = 32
+	handleAttempts     = 8
+)
+
+var (
+	// ErrIdentifierExhausted is returned rather than reusing a process instance
+	// identifier. Reuse could associate a stale reference with a different
+	// process.
+	ErrIdentifierExhausted = errors.New("managed process identifier space exhausted")
+	// ErrInvalidPrincipal is returned when a process has no owner identity.
+	ErrInvalidPrincipal = errors.New("managed process principal must not be empty")
+	// ErrHandleUnavailable is returned when a unique opaque handle cannot be
+	// generated. The registry is not mutated in this case.
+	ErrHandleUnavailable = errors.New("managed process handle unavailable")
+)
+
+// Handle is the opaque public identity of one managed process. Its value does
+// not contain a PID, internal instance identifier, owner, or other metadata.
+type Handle string
+
+// PrincipalID identifies the authenticated connection or principal that owns
+// a managed process. Callers must derive this value from trusted local state,
+// never from an unverified process-tool request field.
+type PrincipalID string
 
 // InstanceID identifies one registry membership for a server-started process.
-//
-// InstanceID is an internal lifecycle key, not a public process handle. The
-// opaque, principal-bound handle contract is owned by BL-120.
+// It is deliberately kept inside registry entries: callers use Handle as the
+// primary identity, while the never-reused ID prevents lifecycle aliasing.
 type InstanceID uint64
+
+type entry[T any] struct {
+	instanceID InstanceID
+	principal  PrincipalID
+	process    T
+}
 
 // Registry tracks processes started and owned by this FlashGate instance.
 // Registry is safe for concurrent use. T is normally a pointer to the managed
 // process state owned by the future process engine.
 type Registry[T any] struct {
-	mu      sync.RWMutex
-	entries map[InstanceID]T
-	lastID  InstanceID
+	mu           sync.RWMutex
+	entries      map[Handle]entry[T]
+	lastID       InstanceID
+	randomSource io.Reader
 }
 
 // NewRegistry creates an empty managed-process registry.
 func NewRegistry[T any]() *Registry[T] {
-	return &Registry[T]{entries: make(map[InstanceID]T)}
+	return &Registry[T]{
+		entries:      make(map[Handle]entry[T]),
+		randomSource: rand.Reader,
+	}
 }
 
-// Register records a newly server-started process and assigns a never-reused
-// internal lifecycle identifier.
-func (r *Registry[T]) Register(process T) (InstanceID, error) {
+// Register records a newly server-started process and returns its opaque,
+// principal-bound handle. Neither handles nor internal instance identifiers
+// are reused during the lifetime of a Registry.
+func (r *Registry[T]) Register(principal PrincipalID, process T) (Handle, error) {
+	if principal == "" {
+		return "", ErrInvalidPrincipal
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if r.lastID == InstanceID(math.MaxUint64) {
-		return 0, ErrIdentifierExhausted
+		return "", ErrIdentifierExhausted
+	}
+	if r.entries == nil {
+		r.entries = make(map[Handle]entry[T])
+	}
+	if r.randomSource == nil {
+		r.randomSource = rand.Reader
+	}
+
+	handle, err := r.newUniqueHandle()
+	if err != nil {
+		return "", err
 	}
 
 	r.lastID++
-	if r.entries == nil {
-		r.entries = make(map[InstanceID]T)
+	r.entries[handle] = entry[T]{
+		instanceID: r.lastID,
+		principal:  principal,
+		process:    process,
 	}
-	r.entries[r.lastID] = process
-
-	return r.lastID, nil
+	return handle, nil
 }
 
-// Get returns the process registered for id. Unknown and removed identifiers
-// have the same result.
-func (r *Registry[T]) Get(id InstanceID) (T, bool) {
+func (r *Registry[T]) newUniqueHandle() (Handle, error) {
+	var entropy [handleEntropyBytes]byte
+	for range handleAttempts {
+		if _, err := io.ReadFull(r.randomSource, entropy[:]); err != nil {
+			return "", fmt.Errorf("%w: %v", ErrHandleUnavailable, err)
+		}
+		handle := Handle(base64.RawURLEncoding.EncodeToString(entropy[:]))
+		if _, exists := r.entries[handle]; !exists {
+			return handle, nil
+		}
+	}
+	return "", ErrHandleUnavailable
+}
+
+// Get returns the process only when handle exists and belongs to principal.
+// Unknown, removed, and wrong-principal handles intentionally have the same
+// result so the registry does not disclose another principal's handles.
+func (r *Registry[T]) Get(principal PrincipalID, handle Handle) (T, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	process, ok := r.entries[id]
-	return process, ok
+	registered, ok := r.entries[handle]
+	if !ok || registered.principal != principal {
+		var zero T
+		return zero, false
+	}
+	return registered.process, true
 }
 
-// Remove atomically releases registry ownership of id and returns its process.
-// An identifier is never reused after removal.
-func (r *Registry[T]) Remove(id InstanceID) (T, bool) {
+// Remove atomically releases registry ownership of handle and returns its
+// process only to the owning principal. A handle is never reused after removal.
+func (r *Registry[T]) Remove(principal PrincipalID, handle Handle) (T, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	process, ok := r.entries[id]
-	if ok {
-		delete(r.entries, id)
+	registered, ok := r.entries[handle]
+	if !ok || registered.principal != principal {
+		var zero T
+		return zero, false
 	}
-	return process, ok
+	delete(r.entries, handle)
+	return registered.process, true
 }
 
 // Len returns the number of currently registered processes.
