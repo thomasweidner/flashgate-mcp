@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,7 @@ var (
 	ErrInvalidStartRequest = errors.New("invalid managed process start request")
 	ErrInvalidLaunch       = errors.New("invalid managed process launch")
 	ErrInvalidWaitRequest  = errors.New("invalid managed process wait request")
+	ErrInvalidReadRequest  = errors.New("invalid managed process output read request")
 	ErrProcessUnavailable  = errors.New("managed process unavailable")
 )
 
@@ -52,9 +54,10 @@ type Policy interface {
 // Process is one engine-owned process. PID is diagnostic; its opaque handle is
 // the authority for later managed-process operations.
 type Process struct {
-	state *State
-	mu    sync.RWMutex
-	pid   int
+	state  *State
+	output *outputBuffer
+	mu     sync.RWMutex
+	pid    int
 }
 
 func (process *Process) Status() Status { return process.state.Status() }
@@ -76,7 +79,7 @@ func (process *Process) setPID(pid int) {
 type Engine struct {
 	policy   Policy
 	registry *Registry[*Process]
-	start    func(Launch) (startedProcess, error)
+	start    func(Launch, io.Writer, io.Writer) (startedProcess, error)
 }
 
 type startedProcess interface {
@@ -111,13 +114,13 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 		return "", fmt.Errorf("%w: %v", ErrStartDenied, err)
 	}
 
-	process := &Process{state: NewState()}
+	process := &Process{state: NewState(), output: newOutputBuffer()}
 	handle, err := engine.registry.Register(request.Principal, process)
 	if err != nil {
 		return "", err
 	}
 
-	started, err := engine.start(cloneLaunch(launch))
+	started, err := engine.start(cloneLaunch(launch), process.output, process.output)
 	if err != nil {
 		_ = process.state.Transition(StatusFailed)
 		return handle, fmt.Errorf("start process: %w", err)
@@ -195,10 +198,12 @@ func validateLaunch(launch Launch) error {
 	return nil
 }
 
-func startOSProcess(launch Launch) (startedProcess, error) {
+func startOSProcess(launch Launch, stdout, stderr io.Writer) (startedProcess, error) {
 	command := exec.Command(launch.Executable, launch.Arguments...)
 	command.Dir = launch.WorkingDirectory
 	command.Env = append([]string(nil), launch.Environment...)
+	command.Stdout = stdout
+	command.Stderr = stderr
 	if err := command.Start(); err != nil {
 		return nil, err
 	}

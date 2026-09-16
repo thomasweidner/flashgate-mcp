@@ -24,9 +24,12 @@ outcome. Start-engine coverage proves fail-closed policy enforcement, absolute
 launch validation, principal-bound registration, startup-failure retention,
 and asynchronous exit reaping. Wait coverage proves terminal and
 already-terminal results, input and principal isolation, and that caller
-cancellation or a wait timeout leaves the process lifecycle unchanged. Output,
-stop, limits, and platform lifecycle tests remain owned by their respective
-planned tasks.
+cancellation or a wait timeout leaves the process lifecycle unchanged. Output
+reader coverage proves incremental non-overlapping pages, terminal EOF,
+principal/handle isolation, cursor and page-bound validation, copy isolation,
+and the finite capture/truncation boundary. Separate stdout/stderr ring, stop,
+configurable-limit, and platform lifecycle tests remain owned by their
+respective planned tasks.
 
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
