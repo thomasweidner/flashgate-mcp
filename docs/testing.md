@@ -16,11 +16,12 @@ The managed-process registry has a focused permanent Go race gate:
 go test -race ./internal/managedprocess -count=1
 ```
 
-It covers concurrent registration/removal, unique non-zero lifecycle IDs,
-non-reuse after removal, zero-value safety, and fail-closed identifier-space
-exhaustion. Public opaque handles, PID/start identity, process startup, output,
-stop/wait, and platform lifecycle tests remain owned by their respective
-planned tasks.
+It covers concurrent registration/removal, opaque principal-bound handle
+identity and non-reuse, zero-value safety, fail-closed identifier-space
+exhaustion, and managed-process lifecycle transitions. Lifecycle race coverage
+proves that competing terminal outcomes cannot replace the first accepted
+outcome. PID/start identity, process startup, output, stop/wait, and platform
+lifecycle tests remain owned by their respective planned tasks.
 
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
