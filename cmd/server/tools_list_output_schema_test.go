@@ -20,8 +20,8 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 		expectedResponseBytes int
 		expectedResultBytes   int
 	}{
-		{"read-only", capabilitiesFromReadOnly(true), 4, 2564, 2529},
-		{"default", toolCapabilities{filesystemWrite: true}, 9, 6087, 6052},
+		{"read-only", capabilitiesFromReadOnly(true), 4, 3020, 2985},
+		{"default", toolCapabilities{filesystemWrite: true}, 9, 7113, 7078},
 	}
 
 	for _, tc := range tests {
@@ -66,6 +66,9 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 				}
 				if tool.OutputSchema["type"] != "object" {
 					t.Fatalf("%s outputSchema root type=%#v", tool.Name, tool.OutputSchema["type"])
+				}
+				if tool.OutputSchema["$schema"] != "https://json-schema.org/draft/2020-12/schema" {
+					t.Fatalf("%s outputSchema omits the JSON Schema 2020-12 dialect", tool.Name)
 				}
 				schemaCount++
 			}

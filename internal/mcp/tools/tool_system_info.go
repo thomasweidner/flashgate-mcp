@@ -24,7 +24,7 @@ func (t *SystemInfoTool) Description() string {
 	return "Returns the operating system, architecture, and OS version without machine identifiers."
 }
 func (t *SystemInfoTool) InputSchema() any {
-	return map[string]any{"type": "object", "properties": map[string]any{}, "additionalProperties": false}
+	return inputSchema(map[string]any{"type": "object", "properties": map[string]any{}, "additionalProperties": false})
 }
 func (t *SystemInfoTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: systemInfoOutputSchema()}

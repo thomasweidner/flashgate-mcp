@@ -36,9 +36,9 @@ Each tool owns a compact definition containing:
 - closed input schema with explicit required fields;
 - closed success-only output schema for its `structuredContent` object.
 
-`docs/mcp-tool-catalog.json` is the static contract view. A focused contract test compares runtime and catalog name, title, description, complete input schema, and complete runtime `outputSchema`/catalog `resultSchema` parity without introducing a general schema engine.
+`docs/mcp-tool-catalog.json` is the static contract view. Every input and result schema declares the JSON Schema 2020-12 dialect. Focused contract tests compare runtime and catalog name, title, description, complete input schema, and complete runtime `outputSchema`/catalog `resultSchema` parity, validate every emitted keyword and keyword value against the 2020-12 contract, and pin deterministic serialization without adding a runtime schema engine.
 
-The catalog `resultSchema` values and runtime `outputSchema` values describe typed successful domain results only. They do not model the outer `CallToolResult.content[]` or the current JSON-RPC error contract. A tests-only structural checker covers the schema keywords emitted by this project; it is not a general JSON Schema 2020-12 validator.
+The catalog `resultSchema` values and runtime `outputSchema` values describe typed successful domain results only. They do not model the outer `CallToolResult.content[]` or the current JSON-RPC error contract. The permanent validation gate covers the complete schema vocabulary emitted by FlashGate; runtime instance authorization and policy enforcement remain explicit Go behavior rather than being delegated to JSON Schema.
 
 Every successful `tools/call` uses the central MCP adapter wrapper. The outer result is `CallToolResult` with exactly one `TextContent` block whose text is compact deterministic JSON and `structuredContent` containing the same object. No domain field is placed directly on the outer result. Productive results remain structs; Go's standard `encoding/json` provides deterministic struct-field output and sorted map keys if a map is ever used.
 

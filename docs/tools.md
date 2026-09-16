@@ -38,7 +38,7 @@ The result examples below are domain objects. Every successful `tools/call` plac
 
 The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All nine tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Every input and output schema explicitly declares the JSON Schema 2020-12 dialect. Each output schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` and validated by a deterministic schema-contract gate. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
 The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2564 bytes for read-only and 6087 bytes for default after adding `system_info`. These are regression snapshots, not persistent payload budgets.
 
