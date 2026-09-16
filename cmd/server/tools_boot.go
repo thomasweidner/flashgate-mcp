@@ -9,17 +9,23 @@ type toolCapabilities struct {
 	filesystemWrite bool
 }
 
+type filesystemServices interface {
+	fs.FileSystem
+	fs.DiskUsageProvider
+}
+
 func capabilitiesFromReadOnly(readOnly bool) toolCapabilities {
 	return toolCapabilities{
 		filesystemWrite: !readOnly,
 	}
 }
 
-func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilities toolCapabilities) *tools.Registry {
+func createToolRegistry(filesystem filesystemServices, maxFileSize int64, capabilities toolCapabilities) *tools.Registry {
 	toolRegistry := tools.NewRegistry()
 	toolRegistry.Register(tools.NewListDirectoryTool(filesystem))
 	toolRegistry.Register(tools.NewReadFileTool(filesystem, maxFileSize))
 	toolRegistry.Register(tools.NewGetPathInfoTool(filesystem))
+	toolRegistry.Register(tools.NewGetDiskUsageTool(filesystem))
 
 	if !capabilities.filesystemWrite {
 		return toolRegistry

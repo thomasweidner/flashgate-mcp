@@ -24,6 +24,7 @@ func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 		"list_directory",
 		"read_file",
 		"get_path_info",
+		"get_disk_usage",
 		"write_file",
 		"create_directory",
 		"delete_path",
@@ -45,6 +46,7 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 		"list_directory",
 		"read_file",
 		"get_path_info",
+		"get_disk_usage",
 		"write_file",
 		"create_directory",
 		"delete_path",
@@ -84,6 +86,7 @@ func TestCreateToolRegistryOmitsWriteToolsWhenReadOnly(t *testing.T) {
 		"list_directory",
 		"read_file",
 		"get_path_info",
+		"get_disk_usage",
 	}
 
 	if !reflect.DeepEqual(gotNames, wantNames) {
@@ -155,4 +158,8 @@ func (noopFileSystem) Move(string, string, bool) error {
 
 func (noopFileSystem) Copy(string, string, bool) error {
 	return errors.New("not implemented")
+}
+
+func (noopFileSystem) DiskUsage(string) (fs.DiskUsage, error) {
+	return fs.DiskUsage{}, errors.New("not implemented")
 }

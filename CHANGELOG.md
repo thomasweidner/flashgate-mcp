@@ -8,6 +8,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added the BL-154 `get_disk_usage` MCP tool, exposing the BL-062
+  root-confined capacity operation in both default and read-only profiles with
+  strict input/output schemas and privacy-safe total, used, and caller-available
+  byte counts.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,

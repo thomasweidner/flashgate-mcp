@@ -13,6 +13,9 @@ type fakeFileSystem struct {
 	statPath        string
 	statMetadata    fs.Metadata
 	statErr         error
+	diskUsagePath   string
+	diskUsage       fs.DiskUsage
+	diskUsageErr    error
 	writePath       string
 	writeContent    []byte
 	writeOverwrite  bool
@@ -31,6 +34,11 @@ type fakeFileSystem struct {
 	copyTarget      string
 	copyOverwrite   bool
 	copyErr         error
+}
+
+func (f *fakeFileSystem) DiskUsage(path string) (fs.DiskUsage, error) {
+	f.diskUsagePath = path
+	return f.diskUsage, f.diskUsageErr
 }
 
 func newFakeFileSystem() *fakeFileSystem { return &fakeFileSystem{} }

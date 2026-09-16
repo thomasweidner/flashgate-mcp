@@ -161,6 +161,52 @@
       }
     },
     {
+      "name": "get_disk_usage",
+      "title": "Get Disk Usage",
+      "description": "Returns privacy-safe capacity information for an existing path below the configured filesystem root.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Relative existing path below the configured filesystem root."
+          }
+        }
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "totalBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "usedBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "availableBytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "path",
+          "totalBytes",
+          "usedBytes",
+          "availableBytes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "write_file",
       "title": "Write File",
       "description": "Writes a text file below the configured filesystem root.",

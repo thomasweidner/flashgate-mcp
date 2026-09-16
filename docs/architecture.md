@@ -49,7 +49,7 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 
 - environment-based configuration;
 - JSON-RPC validation, routing, initialization, `tools/list`, and `tools/call`;
-- eight filesystem tools;
+- nine filesystem tools;
 - one required root through `MCP_ROOT`;
 - optional read-only tool registration through `MCP_READ_ONLY`;
 - central path validation and filesystem abstraction;
@@ -200,8 +200,9 @@ Owns only explicitly released OS/architecture/resource facts, scoped disk use, f
 The filesystem core implements root-confined, privacy-safe disk-capacity lookup
 for an existing relative path. The result contains only total, used, and
 caller-available byte counts; it exposes no mount point, volume name, device
-identifier, or host path. Public system-information exposure remains owned by
-the planned system-information adapter.
+identifier, or host path. The `get_disk_usage` MCP adapter now exposes this
+deliberately narrow result; broader public system-information exposure remains
+owned by the planned system-information adapter.
 
 ### Operations and jobs
 

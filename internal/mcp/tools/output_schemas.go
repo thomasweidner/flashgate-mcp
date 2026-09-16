@@ -35,6 +35,13 @@ func filesystemOutputSchema(toolName string) map[string]any {
 				}, "path", "exists", "name", "isDir", "size"),
 			},
 		}
+	case getDiskUsageToolName:
+		return objectOutputSchema(map[string]any{
+			"path":           map[string]any{"type": "string"},
+			"totalBytes":     map[string]any{"type": "integer", "minimum": 0},
+			"usedBytes":      map[string]any{"type": "integer", "minimum": 0},
+			"availableBytes": map[string]any{"type": "integer", "minimum": 0},
+		}, "path", "totalBytes", "usedBytes", "availableBytes")
 	case writeFileToolName:
 		return objectOutputSchema(map[string]any{
 			"path":    map[string]any{"type": "string"},

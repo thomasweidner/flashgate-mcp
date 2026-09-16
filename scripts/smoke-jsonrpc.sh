@@ -118,6 +118,7 @@ expected_tools = [
     "list_directory",
     "read_file",
     "get_path_info",
+    "get_disk_usage",
 ]
 
 if os.environ.get("MCP_READ_ONLY") != "true":
