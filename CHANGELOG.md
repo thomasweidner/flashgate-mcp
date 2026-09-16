@@ -8,6 +8,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added BL-156 field selection to `system_info`: callers may request a unique
+  non-empty subset of `os`, `architecture`, and `version`; the closed allowlist
+  excludes machine identifiers, and omitted selection preserves the all-fields
+  response.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,

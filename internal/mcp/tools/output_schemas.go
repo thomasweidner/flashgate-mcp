@@ -69,11 +69,15 @@ func filesystemOutputSchema(toolName string) map[string]any {
 }
 
 func systemInfoOutputSchema() map[string]any {
-	return objectOutputSchema(map[string]any{
-		"os":           map[string]any{"type": "string"},
-		"architecture": map[string]any{"type": "string"},
-		"version":      map[string]any{"type": "string"},
-	}, "os", "architecture", "version")
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"os":           map[string]any{"type": "string"},
+			"architecture": map[string]any{"type": "string"},
+			"version":      map[string]any{"type": "string"},
+		},
+		"additionalProperties": false,
+	}
 }
 
 func objectOutputSchema(properties map[string]any, required ...string) map[string]any {

@@ -43,6 +43,7 @@ func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 		{readFileToolName, readFileResult{Content: "text", Size: 4}},
 		{getPathInfoToolName + " existing", getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Size: 4}},
 		{getPathInfoToolName + " missing", getPathInfoMissingResult{Path: "missing.txt", Exists: false}},
+		{systemInfoToolName, map[string]string{"os": "linux"}},
 		{writeFileToolName, writeFileResult{Path: "file.txt", Size: 4, Written: true}},
 		{createDirectoryToolName, createDirectoryResult{Path: "dir", Created: true}},
 		{deletePathToolName, deletePathResult{Path: "file.txt", Deleted: true}},
