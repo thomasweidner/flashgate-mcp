@@ -12,7 +12,7 @@ Process observation and program execution are useful host operations but expose 
 
 Use a Managed Process Registry. Every server-started process receives an opaque process handle used for status, output, waiting, and stopping. PIDs may be diagnostic fields but are not the sole security identity; PID reuse must not cause false association.
 
-Stopping defaults to server-managed processes. External PID control requires a distinct functional capability such as `process.control.external` plus a high-risk policy classification and is excluded from standard profiles. Process data, command lines, and environments are filtered and redacted.
+Stopping defaults to server-managed processes. External PID control requires a distinct functional capability such as `process.control.external` plus a high-risk policy classification and is excluded from standard profiles. Managed-process lifecycle evidence is limited to status and a diagnostic PID; command IDs, arguments, executable and working-directory paths, environments, captured output, and raw adapter errors are omitted. Start and stop failures cross the domain boundary only as stable categories.
 
 Command execution uses configured executable IDs resolved server-side to allowed absolute program paths. Arguments are separate arrays. Working directories must be within allowed roots. Environment propagation is allowlisted or explicitly defined. stdout and stderr are separate and bounded. Runtime, output, and concurrency are limited.
 

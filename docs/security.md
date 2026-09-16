@@ -435,7 +435,15 @@ fail closed.
 
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model. Process-tree and platform-specific termination guarantees remain planned adapter work.
 
-The final stdout/stderr contract is separately bounded. Command lines, environments, and output are minimized and redacted.
+Managed-process lifecycle evidence is a closed status-and-diagnostic-PID
+projection. Command IDs, arguments, executable and working-directory paths,
+complete child environments, and captured output are omitted rather than
+pattern-redacted. Policy, process-creation, and termination adapter errors are
+replaced with stable domain categories so an OS error cannot disclose launch
+data. Captured stdout/stderr stays behind the bounded, principal-bound output
+API and is never duplicated into diagnostics or audit events. Future audit
+fields require an explicit contract review; allowlisting a new field must not
+turn arbitrary strings or environment values into evidence.
 
 ### Typed command execution boundary
 

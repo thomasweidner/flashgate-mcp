@@ -20,6 +20,7 @@ var (
 	ErrInvalidReadRequest  = errors.New("invalid managed process output read request")
 	ErrInvalidStopRequest  = errors.New("invalid managed process stop request")
 	ErrProcessUnavailable  = errors.New("managed process unavailable")
+	ErrProcessStartFailed  = errors.New("managed process start failed")
 	ErrStopFailed          = errors.New("managed process stop failed")
 )
 
@@ -33,6 +34,15 @@ type WaitResult struct {
 // StopResult describes the stable state after a managed stop request. PID is
 // diagnostic only; the principal-bound handle remains the control authority.
 type StopResult struct {
+	Status Status
+	PID    int
+}
+
+// LifecycleEvidence is the complete process-specific projection permitted in
+// diagnostics and audit events. Command identifiers, arguments, executable
+// and working-directory paths, environments, process output, and raw adapter
+// errors must never be added to this projection.
+type LifecycleEvidence struct {
 	Status Status
 	PID    int
 }
@@ -86,6 +96,12 @@ func (process *Process) PID() int {
 	process.mu.RLock()
 	defer process.mu.RUnlock()
 	return process.pid
+}
+
+// Evidence returns a bounded snapshot suitable for diagnostic and audit
+// plumbing. PID is diagnostic only and must never be used as authority.
+func (process *Process) Evidence() LifecycleEvidence {
+	return LifecycleEvidence{Status: process.Status(), PID: process.PID()}
 }
 
 func (process *Process) setPID(pid int) {
@@ -202,7 +218,7 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 	started, err := engine.start(cloneLaunch(launch), process.output, process.output)
 	if err != nil {
 		_ = process.state.Transition(StatusFailed)
-		return handle, fmt.Errorf("start process: %w", err)
+		return handle, ErrProcessStartFailed
 	}
 	if started.PID() <= 0 {
 		_ = process.state.Transition(StatusFailed)
@@ -250,7 +266,7 @@ func (engine *Engine) Stop(ctx context.Context, principal PrincipalID, handle Ha
 		if status := process.Status(); status.Terminal() {
 			return StopResult{Status: status, PID: process.PID()}, nil
 		}
-		return StopResult{}, fmt.Errorf("%w: %v", ErrStopFailed, err)
+		return StopResult{}, ErrStopFailed
 	}
 	if err := process.state.Transition(StatusStopped); err != nil {
 		if status := process.Status(); status.Terminal() {

@@ -310,6 +310,15 @@ output bounds still apply. The selected mechanisms, accounting portability,
 fallbacks, and future adapter gates are defined in the
 [managed process CPU and memory limit strategy](process-resource-limit-strategy.md).
 
+Managed-process diagnostics and audit plumbing use a closed lifecycle evidence
+projection containing only status and a diagnostic PID. They never retain or
+emit the requested command ID, argument vector, resolved executable or working
+directory, child environment, captured process output, or raw platform-adapter
+errors. Policy denial, process-creation failure, and stop failure cross the
+domain boundary only as stable categories. Process output remains available
+solely through the principal-bound, bounded output API and is not copied into
+diagnostic or audit events.
+
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:
 
 - shell command strings;
