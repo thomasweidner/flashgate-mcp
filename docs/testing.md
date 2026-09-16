@@ -27,9 +27,11 @@ already-terminal results, input and principal isolation, and that caller
 cancellation or a wait timeout leaves the process lifecycle unchanged. Output
 reader coverage proves incremental non-overlapping pages, terminal EOF,
 principal/handle isolation, cursor and page-bound validation, copy isolation,
-and the finite capture/truncation boundary. Separate stdout/stderr ring, stop,
-configurable-limit, and platform lifecycle tests remain owned by their
-respective planned tasks.
+and the finite capture/truncation boundary. Stop coverage proves
+principal/handle isolation, idempotence, first-terminal-outcome preservation,
+and fail-closed termination errors. Separate stdout/stderr ring,
+configurable-limit, process-tree, and platform lifecycle tests remain owned by
+their respective planned tasks.
 
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:

@@ -203,7 +203,10 @@ bound observation without stopping the child or changing its lifecycle.
 The output reader captures a finite combined stdout/stderr prefix, pages it by
 byte cursor with a per-read ceiling, and reports terminal EOF and capture
 truncation without retransmitting earlier bytes. Separate stdout/stderr ring
-buffers, configurable size limits, stopping, platform isolation, and cleanup
+buffers and configurable size limits remain planned. The stop operation uses
+only the trusted principal and opaque managed handle, serializes competing stop
+requests, terminates the engine-owned child, and preserves whichever terminal
+outcome wins first. Process-tree termination, platform isolation, and cleanup
 remain separate planned work.
 
 ### Execution
