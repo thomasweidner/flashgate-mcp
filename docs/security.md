@@ -432,6 +432,9 @@ The service derives caller identity from Named Pipe or Unix socket peer informat
 Windows uses a local Named Pipe with restrictive ACLs. Linux uses a local Unix Domain Socket with restrictive ownership/mode and OS peer credentials.
 
 The IPC contract includes framing, size limits, compatibility handshake, correlation, cancellation, overload, resource handles, disconnect behavior, and service generation.
+The normative [local IPC protocol contract](local-ipc-protocol.md) requires
+strict bounded frames, OS-derived peer identity, explicit version/feature
+negotiation, session/generation binding, and fail-closed mismatch behavior.
 
 `auto` may fall back to direct STDIO only when no managed endpoint is present or configured. It fails closed after:
 
@@ -603,6 +606,7 @@ Remote access or a product/binary split requires a separate ADR and threat model
 - [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
+- [Local IPC protocol contract](local-ipc-protocol.md)
 - [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)
 - [ADR-015](adr/015-hybrid-service-execution-identity.md)
 - [ADR-017](adr/017-host-process-ownership-and-lifecycle.md)
