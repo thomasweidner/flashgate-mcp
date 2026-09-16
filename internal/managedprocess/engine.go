@@ -52,6 +52,9 @@ type Launch struct {
 	Arguments        []string
 	WorkingDirectory string
 	Environment      []string
+	// Profile is a trusted policy-selected budget scope. An empty value uses
+	// the default profile and never a caller-provided identity.
+	Profile string
 }
 
 // Policy owns capability, profile, executable, argument, directory,
@@ -63,12 +66,14 @@ type Policy interface {
 // Process is one engine-owned process. PID is diagnostic; its opaque handle is
 // the authority for later managed-process operations.
 type Process struct {
-	state   *State
-	output  *outputBuffer
-	mu      sync.RWMutex
-	control sync.Mutex
-	started startedProcess
-	pid     int
+	state        *State
+	output       *outputBuffer
+	mu           sync.RWMutex
+	control      sync.Mutex
+	release      sync.Once
+	releaseLimit func()
+	started      startedProcess
+	pid          int
 }
 
 func (process *Process) Status() Status { return process.state.Status() }
@@ -97,11 +102,16 @@ func (process *Process) startedProcess() startedProcess {
 	return process.started
 }
 
+func (process *Process) releaseBudget() {
+	process.release.Do(process.releaseLimit)
+}
+
 // Engine starts only policy-authorized processes and records them in the
 // principal-bound managed registry.
 type Engine struct {
 	policy   Policy
 	registry *Registry[*Process]
+	limiter  *limiter
 	start    func(Launch, io.Writer, io.Writer) (startedProcess, error)
 }
 
@@ -113,7 +123,21 @@ type startedProcess interface {
 
 // NewEngine creates an engine. A nil policy is fail-closed.
 func NewEngine(policy Policy) *Engine {
-	return &Engine{policy: policy, registry: NewRegistry[*Process](), start: startOSProcess}
+	engine, err := NewEngineWithLimits(policy, DefaultLimits())
+	if err != nil {
+		panic(err)
+	}
+	return engine
+}
+
+// NewEngineWithLimits creates an engine with explicit global and per-profile
+// active-process budgets. Invalid or disabling budgets fail closed.
+func NewEngineWithLimits(policy Policy, limits Limits) (*Engine, error) {
+	processLimiter, err := newLimiter(limits)
+	if err != nil {
+		return nil, err
+	}
+	return &Engine{policy: policy, registry: NewRegistry[*Process](), limiter: processLimiter, start: startOSProcess}, nil
 }
 
 // Start authorizes, starts, and registers one process. When OS startup fails
@@ -137,8 +161,21 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 	if err := ctx.Err(); err != nil {
 		return "", fmt.Errorf("%w: %v", ErrStartDenied, err)
 	}
+	if !engine.limiter.acquire(launch.Profile) {
+		return "", ErrProcessLimitReached
+	}
+	releaseLimit := true
+	defer func() {
+		if releaseLimit {
+			engine.limiter.release(launch.Profile)
+		}
+	}()
 
-	process := &Process{state: NewState(), output: newOutputBuffer()}
+	process := &Process{
+		state:        NewState(),
+		output:       newOutputBuffer(),
+		releaseLimit: func() { engine.limiter.release(launch.Profile) },
+	}
 	handle, err := engine.registry.Register(request.Principal, process)
 	if err != nil {
 		return "", err
@@ -160,6 +197,7 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 		return handle, fmt.Errorf("record running process: %w", err)
 	}
 
+	releaseLimit = false
 	go reapProcess(process, started)
 	return handle, nil
 }
@@ -201,6 +239,7 @@ func (engine *Engine) Stop(ctx context.Context, principal PrincipalID, handle Ha
 		}
 		return StopResult{}, fmt.Errorf("%w: %v", ErrStopFailed, err)
 	}
+	process.releaseBudget()
 	return StopResult{Status: StatusStopped, PID: process.PID()}, nil
 }
 
@@ -286,6 +325,7 @@ func reapProcess(process *Process, started startedProcess) {
 	if err := started.Wait(); err != nil {
 		next = StatusFailed
 	}
+	process.releaseBudget()
 	// A future stop/timeout path may win. State preserves the first terminal
 	// outcome, so reaping cannot overwrite it.
 	_ = process.state.Transition(next)

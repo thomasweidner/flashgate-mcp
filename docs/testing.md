@@ -30,8 +30,13 @@ principal/handle isolation, cursor and page-bound validation, copy isolation,
 and the finite capture/truncation boundary. Stop coverage proves
 principal/handle isolation, idempotence, first-terminal-outcome preservation,
 and fail-closed termination errors. Separate stdout/stderr ring,
-configurable-limit, process-tree, and platform lifecycle tests remain owned by
+process-tree, and platform lifecycle tests remain owned by
 their respective planned tasks.
+
+Managed-process limit coverage verifies atomic global and trusted-profile
+admission, rejection before launch, invalid/disabled configuration rejection,
+and slot reuse after terminal completion. The race gate covers the same limiter
+under the package's concurrent lifecycle execution.
 
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
