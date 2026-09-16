@@ -43,10 +43,14 @@ type workflowBudget struct {
 	MaxEntries       uint64 `json:"max_entries"`
 }
 
-// SerializationBudget is the deterministic payload and allocation gate for one fixture.
+// SerializationBudget is the deterministic efficiency and allocation gate for one fixture.
 type SerializationBudget struct {
-	MaxPayloadBytes uint64 `json:"max_payload_bytes"`
-	MaxAllocsPerOp  uint64 `json:"max_allocs_per_op"`
+	MaxPayloadBytes                   uint64 `json:"max_payload_bytes"`
+	MaxResponseBytes                  uint64 `json:"max_response_bytes"`
+	MaxWireAmplificationMilli         uint64 `json:"max_wire_amplification_milli"`
+	MaxApproxTokensPerUsefulByteMilli uint64 `json:"max_approx_tokens_per_useful_byte_milli"`
+	MaxSerializationCopies            uint64 `json:"max_serialization_copies"`
+	MaxAllocsPerOp                    uint64 `json:"max_allocs_per_op"`
 }
 
 type serializationBudgetSet map[string]SerializationBudget
@@ -187,6 +191,13 @@ func LoadSerializationBudgets(path string) (map[string]SerializationBudget, erro
 	}
 	if len(budgets.Hard.Serialization) == 0 {
 		return nil, fmt.Errorf("benchmark serialization budgets are empty")
+	}
+	for name, budget := range budgets.Hard.Serialization {
+		if budget.MaxPayloadBytes == 0 || budget.MaxResponseBytes == 0 ||
+			budget.MaxWireAmplificationMilli == 0 || budget.MaxApproxTokensPerUsefulByteMilli == 0 ||
+			budget.MaxSerializationCopies == 0 || budget.MaxAllocsPerOp == 0 {
+			return nil, fmt.Errorf("serialization budget %q is structurally incomplete", name)
+		}
 	}
 	return map[string]SerializationBudget(budgets.Hard.Serialization), nil
 }

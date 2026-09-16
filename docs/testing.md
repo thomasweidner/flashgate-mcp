@@ -939,6 +939,7 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Payload and catalog tests
 
+- selected `tools/call` serialization fixtures enforce complete response bytes, useful bytes, ceiling-rounded wire amplification, byte-based approximate tokens per useful byte, and logical serialization-copy budgets;
 - payload-class selection for metadata, structured pages, heavy text, media/binary, and large results;
 - heavy payload appears only once across MCP result fields;
 - wire-amplification and useful-byte budgets;

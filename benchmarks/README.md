@@ -4,7 +4,7 @@
 
 ## Layers
 
-1. In-process Go benchmarks measure direct `tools/call` handler work, result construction, JSON serialization, allocations, result bytes, response bytes, and `tools/list` wire output for read-only and default profiles.
+1. In-process Go benchmarks measure direct `tools/call` handler work, result construction, JSON serialization, allocations, result bytes, complete response bytes, useful bytes, wire amplification, byte-based approximate token cost, logical serialization copies, and `tools/list` wire output for read-only and default profiles.
 2. `cmd/benchmark` starts the real previously built FlashGate binary and exchanges JSON-RPC over STDIO.
 3. Ten reference workflows use a deterministic temporary corpus and report calls, wire sizes, result sizes, duration, filesystem counters, entry counts, resources, and the optional byte-based token approximation.
 
@@ -147,7 +147,7 @@ identity fields.
 
 `budgets.json` separates deterministic hard contracts from noisy soft review limits:
 
-- Hard: complete and exact tool-profile/workflow measurement sets, tool/schema counts, wire/result byte maxima, reference workflow calls/counters, and all six selected-result allocation/payload records loaded from `budgets.json`.
+- Hard: complete and exact tool-profile/workflow measurement sets, tool/schema counts, wire/result byte maxima, reference workflow calls/counters, and all six selected-result allocation, payload, complete-response, useful-byte amplification, approximate-token-cost, and logical-copy records loaded from `budgets.json`.
 - Soft: startup p95, workflow p95, idle/peak working set, and CPU time.
 
 The versioned-artifact gate does not trust embedded `budget_evaluation`. It strictly
@@ -163,6 +163,13 @@ the complete platform gate and are excluded from deterministic cross-platform
 projection. Runner result construction records budget messages only in
 `budget_evaluation`; general result `warnings` contain only non-budget runtime
 warnings and remain forbidden in clean versioned baselines.
+
+For serialization fixtures, metadata useful bytes are the compact domain JSON;
+file-content useful bytes are the requested raw UTF-8 content. Ratios are stored as
+ceiling-rounded thousandths in `budgets.json`, so every hard comparison uses integer
+arithmetic. `approx_tokens_bytes4` retains the byte-based definition above, and
+logical serialization copies count one domain representation in text-only/direct
+forms and two in the selected text-plus-structured form.
 
 Payload and allocation contracts are both validated in ordinary tests. Under race
 instrumentation the functional serialization, payload, fixture, and budget-contract
