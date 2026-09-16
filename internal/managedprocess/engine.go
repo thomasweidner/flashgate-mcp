@@ -8,13 +8,23 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
 	ErrStartDenied         = errors.New("managed process start denied")
 	ErrInvalidStartRequest = errors.New("invalid managed process start request")
 	ErrInvalidLaunch       = errors.New("invalid managed process launch")
+	ErrInvalidWaitRequest  = errors.New("invalid managed process wait request")
+	ErrProcessUnavailable  = errors.New("managed process unavailable")
 )
+
+// WaitResult is the immutable final result of waiting for a managed process.
+// PID remains diagnostic and must not be used as authority for later actions.
+type WaitResult struct {
+	Status Status
+	PID    int
+}
 
 // StartRequest contains untrusted, transport-neutral input for start_process.
 // Command identifies a server-side policy entry, not a path or shell command.
@@ -129,6 +139,33 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 // Get returns a process only to the principal that started it.
 func (engine *Engine) Get(principal PrincipalID, handle Handle) (*Process, bool) {
 	return engine.registry.Get(principal, handle)
+}
+
+// Wait returns only after the principal-owned process reaches a terminal
+// state. timeout bounds this wait when positive; zero relies on ctx alone.
+// A wait timeout or cancellation does not stop the process or change its
+// lifecycle status. Unknown and wrong-principal handles are indistinguishable.
+func (engine *Engine) Wait(ctx context.Context, principal PrincipalID, handle Handle, timeout time.Duration) (WaitResult, error) {
+	if ctx == nil || principal == "" || handle == "" || timeout < 0 {
+		return WaitResult{}, ErrInvalidWaitRequest
+	}
+	process, ok := engine.registry.Get(principal, handle)
+	if !ok {
+		return WaitResult{}, ErrProcessUnavailable
+	}
+
+	waitContext := ctx
+	cancel := func() {}
+	if timeout > 0 {
+		waitContext, cancel = context.WithTimeout(ctx, timeout)
+	}
+	defer cancel()
+
+	status, err := process.state.Wait(waitContext)
+	if err != nil {
+		return WaitResult{}, fmt.Errorf("wait process: %w", err)
+	}
+	return WaitResult{Status: status, PID: process.PID()}, nil
 }
 
 func cloneRequest(request StartRequest) StartRequest {

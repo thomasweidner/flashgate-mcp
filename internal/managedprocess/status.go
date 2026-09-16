@@ -1,6 +1,7 @@
 package managedprocess
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
@@ -52,13 +53,15 @@ func (status Status) Terminal() bool {
 // State stores the current managed-process status and serializes competing
 // lifecycle updates. Its zero value represents StatusStarting and is usable.
 type State struct {
-	mu     sync.RWMutex
-	status Status
+	mu       sync.RWMutex
+	status   Status
+	done     chan struct{}
+	doneOnce sync.Once
 }
 
 // NewState creates a lifecycle in the only valid initial state.
 func NewState() *State {
-	return &State{status: StatusStarting}
+	return &State{status: StatusStarting, done: make(chan struct{})}
 }
 
 // Status returns a consistent snapshot of the current lifecycle state.
@@ -85,7 +88,38 @@ func (state *State) Transition(next Status) error {
 		return fmt.Errorf("%w: %q to %q", ErrInvalidStatusTransition, current, next)
 	}
 	state.status = next
+	if next.Terminal() {
+		state.doneOnce.Do(func() { close(state.doneChannel()) })
+	}
 	return nil
+}
+
+// Wait blocks until the lifecycle reaches its first terminal outcome or ctx
+// ends. Cancellation only stops this observer; it never changes process state.
+func (state *State) Wait(ctx context.Context) (Status, error) {
+	state.mu.Lock()
+	done := state.doneChannel()
+	status := state.currentStatus()
+	state.mu.Unlock()
+
+	if status.Terminal() {
+		return status, nil
+	}
+	select {
+	case <-done:
+		return state.Status(), nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
+// doneChannel must be called while state.mu is held. It keeps the zero value
+// usable without racing concurrent waiters and transitions.
+func (state *State) doneChannel() chan struct{} {
+	if state.done == nil {
+		state.done = make(chan struct{})
+	}
+	return state.done
 }
 
 func (state *State) currentStatus() Status {

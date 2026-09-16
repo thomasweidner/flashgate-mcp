@@ -22,8 +22,11 @@ exhaustion, and managed-process lifecycle transitions. Lifecycle race coverage
 proves that competing terminal outcomes cannot replace the first accepted
 outcome. Start-engine coverage proves fail-closed policy enforcement, absolute
 launch validation, principal-bound registration, startup-failure retention,
-and asynchronous exit reaping. Output, stop/wait, limits, and platform
-lifecycle tests remain owned by their respective planned tasks.
+and asynchronous exit reaping. Wait coverage proves terminal and
+already-terminal results, input and principal isolation, and that caller
+cancellation or a wait timeout leaves the process lifecycle unchanged. Output,
+stop, limits, and platform lifecycle tests remain owned by their respective
+planned tasks.
 
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:

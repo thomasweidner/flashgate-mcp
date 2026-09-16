@@ -385,6 +385,12 @@ the server environment is not inherited implicitly. Denied or invalid launches
 cannot reach operating-system process creation. Profile/root/backend/service-
 generation policy implementations and platform isolation remain planned work.
 
+Managed waiting resolves the opaque handle through the trusted principal-bound
+registry. Unknown handles and handles owned by another principal produce the
+same unavailable result. Cancellation and wait deadlines reveal no partial
+result, do not terminate the child, and do not mutate its managed status; a
+successful wait exposes only the terminal status and diagnostic PID.
+
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
