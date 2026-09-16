@@ -544,6 +544,13 @@ The vendored Windows resource generator and committed icon source are covered by
 
 Stateful components require race-detector coverage, restart/shutdown analysis, negative capability tests, quota/fairness tests, and cleanup verification.
 
+The planned service and proxy modes apply the fail-closed source, endpoint,
+fallback, and diagnostic rules in the
+[runtime configuration and endpoint-discovery contract](runtime-configuration-and-endpoint-discovery.md).
+In particular, invalid explicit configuration never becomes absence, and only
+the conclusive absence of the canonical non-explicit endpoint can permit an
+`auto` direct-STDIO fallback.
+
 ### MCP host lifecycle
 
 This planned Version 1.0 workstream treats top-level host lifecycle separately

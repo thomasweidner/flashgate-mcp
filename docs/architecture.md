@@ -215,6 +215,12 @@ Operations/jobs do not own filesystem, search, process, execution, or system sem
 - Windows/Linux adapters;
 - MCP and IPC adapters.
 
+The planned native multi-mode adapters share one
+[runtime configuration and endpoint-discovery contract](runtime-configuration-and-endpoint-discovery.md).
+It fixes source precedence, local endpoint identity, fail-closed `auto`
+discovery, timeout categories, and protocol-safe diagnostic destinations
+without changing the current STDIO-only implementation status.
+
 ## Operations and Job Manager
 
 Long work may use an opaque handle such as `op_<opaque-id>`. The handle is server-generated and bound to:
