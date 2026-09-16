@@ -25,7 +25,9 @@ Windows-Finalization: REQUIRED
 
 ## 2. Active-catalog rule
 
-This file intentionally lists only **new Mobile work that remains actionable without first resolving a known open Classic/owner decision**. A BL task is excluded from the active catalog when any of these is true:
+This file intentionally lists only **new Mobile work that remains Cloud-preparable without first resolving a known open Classic/owner decision**. "Cloud-preparable" means the task-pure delta can be implemented and meaningfully validated in Cloud; it does **not** mean all later integration/native evidence already exists or that the BL can be marked `Done`.
+
+A BL task is excluded from the active catalog when any of these is true:
 
 - an open GitHub PR already reserves that BL identity;
 - a Classic/owner product, architecture, security, platform, dependency, release, scope, governance or policy decision is known to be still open;
@@ -76,15 +78,18 @@ When the user says only “next task”:
 2. build the current Vacation Reservation Ledger and exclude all reserved BLs;
 3. exclude every task with a known unresolved Classic/owner decision and every task directly blocked by one;
 4. inspect `Planned` sprints in ascending order defined by root `AGENTS.md`;
-5. classify serious candidates from the **current checkout** as:
+5. for each serious candidate, run the **concrete-delta feasibility test** from `Governance/MOBILE-CLOUD-HANDOFF.md` before assigning a dependency state;
+6. classify candidates from the **current checkout** as:
    - `INDEPENDENT_FROM_CURRENT_CHECKOUT`;
    - `STACK_BASE_READY`;
    - `STACK_REQUIRED`;
    - `BLOCKED_DEPENDENCY_DECISION`; or
    - `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`;
-6. select from the earliest sprint with an executable unreserved candidate;
-7. inside that sprint prefer mode A before B before C, independent before stack-base-ready, then lower effort, lower Windows residual and lower collision risk;
-8. do not auto-select `Later` while executable unreserved `Planned` work exists.
+7. select from the earliest sprint with an executable unreserved candidate;
+8. inside that sprint prefer mode A before B before C, independent before stack-base-ready, then lower effort, lower Windows residual and lower collision risk;
+9. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the scan; continue with other candidates and later Planned sprints;
+10. return a global no-executable Planned result only after the complete allowed Planned scan, subject to the single-predecessor `STACK_RESTART_REQUIRED` rule;
+11. do not auto-select `Later` while executable unreserved `Planned` work exists.
 
 The user may explicitly name a task, but naming a reserved or decision-blocked task does not make it executable.
 
@@ -92,15 +97,25 @@ The user may explicitly name a task, but naming a reserved or decision-blocked t
 
 Dependency hints are planning hints only. Real code/contracts determine ancestry.
 
+### Concrete-delta feasibility test
+
+Before treating an open PR as a hard predecessor, identify the exact task-pure delta owned by the candidate. A predecessor is hard only when that delta actually consumes missing code, types, schemas, contracts or runtime behavior.
+
+Do **not** create a Stack/Block dependency merely because the candidate mentions future consumers, future packages, later CI/end-to-end coverage, later integration validation, Windows/native finalization or release evidence. A generic repository-wide gate may be prepared independently when its own implementation and focused validation are correct now and it will automatically cover future packages after integration.
+
+If the candidate's own delta is complete now but some acceptance evidence is necessarily deferred, record that evidence as deferred. Deferred evidence does not make the candidate blocked and does not permit claiming the BL `Done`.
+
 ### Independent
 
-If the task does not consume an unintegrated predecessor:
+If the candidate's concrete task-pure delta does not consume an unintegrated predecessor:
 
 ```text
 DependencyExecution=INDEPENDENT_FROM_CURRENT_CHECKOUT
 ExpectedPRBase=main
 Mobile-Depends-On: NONE
 ```
+
+This includes generic tests/CI gates whose future coverage grows automatically when later packages integrate.
 
 ### Stack base ready
 
@@ -122,7 +137,7 @@ Mobile-Depends-On: <ParentBL>
 
 ### Stack required
 
-If exactly one required predecessor is open but absent from the checkout, do not import it with fetch/pull/merge/cherry-pick/patch replay/downloaded Git objects/credential setup. Return:
+If exactly one genuinely required predecessor is open but absent from the checkout, do not import it with fetch/pull/merge/cherry-pick/patch replay/downloaded Git objects/credential setup. Return:
 
 ```text
 Status=STACK_RESTART_REQUIRED
@@ -134,28 +149,33 @@ ParentHeadSha=<sha>
 MutationCount=0
 ```
 
-If multiple independent uncombined predecessors are genuinely required, return `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`. Never synthesize a Cloud merge branch.
+If the concrete delta genuinely requires multiple independent uncombined predecessors, classify that candidate as `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, exclude it, and continue scanning. Never synthesize a Cloud merge branch.
 
 ## 7. Snapshot binding — 2026-09-16
 
 ```text
 Repository : thomasweidner/flashgate-mcp
-Main       : c8a08c57042fd4e5604eb46a6ebe19e8cdd918ba
-AGENTS     : 73b06e26da08847ebd3c5ee0512c581147eb4548
+Main       : 082f255c41785d050171ce350cc6eaecc1df5b08
+AGENTS     : 73b06e26da08847ebd3c5ee0512c581147eb4548 (pre-this-update)
 BACKLOG    : a02db7c09b10dba8c827f62618c7c6eb9f096591
-MOBILE     : b9f3f55d3061196c391b43e662308eff33bab40a (pre-this-update)
-Ledger     : open GitHub PRs through #222 at snapshot time
+MOBILE     : f2ca870aff48efe908b290da1311dd618ceabfdf (pre-this-update)
+Ledger     : open GitHub PRs through #227 at snapshot time
 ```
 
 Since the preceding Mobile refresh, these formerly active topics are now prepared/reserved and are removed from new Mobile selection:
 
-`BL-120–BL-126`, `BL-130–BL-131`, `BL-138`, `BL-140–BL-141`, `BL-154–BL-156`, `BL-161`, `BL-224–BL-225`, `BL-233`, `BL-235–BL-236`, `BL-238–BL-239`, `BL-262`.
+`BL-132`, `BL-133`, `BL-252`, `BL-258`.
 
-New duplicate reservations also appeared for `BL-212` (PR #71 and PR #216) and `BL-214` (PR #63 and PR #200). Those BLs were already excluded from active selection, so the collisions do not change the active count; they remain fail-closed ledger items.
+The new reservations also provide useful dependency-classification evidence:
+
+- PR #224 prepares `BL-132` as a stack child of the cumulative managed-process chain through `BL-131`.
+- PR #226 prepares `BL-133` as a stack child of `BL-132`, so its head now contains the cumulative managed-process chain through `BL-133`.
+- PR #225 prepares `BL-258` directly from `main`; the CI payload-efficiency gate is valid even though later integrations can add more exercised code.
+- PR #227 prepares `BL-252` directly from `main`; the reusable repository-wide race gate is valid even though later stateful packages will automatically expand its coverage.
 
 The complete current Search implementation queue represented by `BL-068–BL-080` and `BL-082` remains reserved by open PRs. No new Version-1.0 Search BL remains in the active Mobile list at this snapshot.
 
-The named-root implementation chain still leaves only `BL-103` unreserved. The process-observation chain still leaves `BL-118` unreserved, while the managed-process implementation chain now has reservations through `BL-131` except for `BL-132–BL-135`.
+The named-root implementation chain still leaves only `BL-103` unreserved. The process-observation chain still leaves `BL-118` unreserved. The managed-process implementation chain now has reservations through `BL-133`, leaving `BL-134–BL-135` as the remaining active rows in that chain.
 
 ## 8. Classic/owner decision exclusions
 
@@ -172,32 +192,32 @@ The following Planned tasks are intentionally absent from the active queue until
 
 Decision-gated post-1.0 work is also excluded from the current queue, including `BL-083`, `BL-112`, `BL-127–BL-128`, `BL-150`, `BL-158`, `BL-169`, `BL-176`, `BL-181–BL-188`, `BL-217`, `BL-232`, `BL-240` and `BL-313`.
 
-There are no active Mode-C rows at this snapshot because the four previously active bounded-contract tasks (`BL-225`, `BL-233`, `BL-235`, `BL-238`) are now reserved by open PRs. This does **not** change the A→B→C selection contract or make Mode C categorically ineligible.
+There are no active Mode-C rows at this snapshot because the four previously active bounded-contract tasks (`BL-225`, `BL-233`, `BL-235`, `BL-238`) are reserved by open PRs. This does **not** change the A→B→C selection contract or make Mode C categorically ineligible.
 
 ## 9. Active Planned candidates
 
-These IDs were unreserved at the snapshot, are `Planned`, and are not blocked by a known unresolved Classic/owner decision. Reclassify real dependencies before every mutation.
+These IDs were unreserved at the snapshot, are `Planned`, and are not blocked by a known unresolved Classic/owner decision. Re-run concrete-delta feasibility and real dependency classification before every mutation.
 
 | Epic | Mode A | Mode B | Mode C |
 |---|---|---|---|
 | Filesystem | `BL-056–BL-057`, `BL-063–BL-064` | `BL-060–BL-061` | — |
 | Operations / Job | `BL-095` | `BL-098–BL-099` | — |
 | Named roots / capabilities | `BL-103` | — | — |
-| Process | `BL-118`, `BL-132–BL-133` | `BL-134–BL-135` | — |
+| Process | `BL-118` | `BL-134–BL-135` | — |
 | Command execution | `BL-139`, `BL-142–BL-145`, `BL-148–BL-149`, `BL-151` | `BL-146–BL-147`, `BL-152` | — |
 | System information | `BL-157` | — | — |
 | Security | `BL-160`, `BL-163–BL-164`, `BL-167` | `BL-168` | — |
 | Native multi-mode / service | `BL-228` | `BL-226–BL-227`, `BL-229–BL-231`, `BL-234`, `BL-237`, `BL-241–BL-242`, `BL-244` | — |
-| CI / release quality | `BL-252`, `BL-256`, `BL-258` | `BL-253–BL-254`, `BL-261` | — |
+| CI / release quality | `BL-256` | `BL-253–BL-254`, `BL-261` | — |
 | Cross-mode host lifecycle | — | `BL-341` | — |
 
 Snapshot totals:
 
 ```text
-Mode A active : 26
+Mode A active : 22
 Mode B active : 24
 Mode C active : 0
-Total active  : 50
+Total active  : 46
 ```
 
 `Later`, completed, reserved, known decision-blocked, Mode-D and Mode-X rows are intentionally omitted.
@@ -206,32 +226,37 @@ Total active  : 50
 
 These are current **preclassifications** only. Fresh inspection always wins.
 
-At this snapshot no remaining candidate is asserted as a safe single-parent `STACK_RESTART_READY` path. The previously fixed restart rows are all reserved, and the earliest remaining work crosses multiple open foundations or requires a fresh ancestry check.
+The feasibility rule distinguishes a hard code/contract dependency from merely deferred coverage. Current known useful paths include both true stack restarts and independent-gate examples.
 
-| Task | Mode | Snapshot state | Why fresh classification is required |
+| Task | Mode | Snapshot state | Start ref / reason |
 |---|:---:|---|---|
-| `BL-118` | A | `WAIT_MULTI` | Process observation through `BL-117` must be combined with the capability/authorization foundations; do not assume one PR head is sufficient. |
-| `BL-132–BL-133` | A | `RECHECK_MULTI` | Managed-process implementation is reserved through `BL-131`, but resource-limit strategy/redaction must be checked against the actual cumulative ancestry and platform contracts. |
-| `BL-139` | A | `WAIT_MULTI` | Working-directory enforcement consumes both the command stack through `BL-138` and named-root working-directory policy `BL-109`. |
-| `BL-142` | A | `WAIT_MULTI` | Stable command results consume timeout/output contracts (`BL-140`, `BL-141`) plus the typed-command foundation. |
-| `BL-157` | A | `WAIT_MULTI` | `system.read` consumes the system-information chain and server-side capability/authorization work. |
-| `BL-228` | A | `WAIT_MULTI` | Proxy mode depends on lifecycle/IPC contracts and the still-unprepared platform transport implementations. |
-| `BL-256` | A | `WAIT_MULTI` | Catalog-budget enforcement consumes several independently prepared catalog/instruction/fingerprint foundations. |
+| `BL-118` | A | `WAIT_MULTI` | Its concrete runtime registration/authorization delta consumes the process-observation stack and capability/authorization foundations; future evidence is not the reason for the block. |
+| `BL-134` | B | `STACK_RESTART_READY` | Start from PR #226 `codex/fuhre-bl-133-als-mobilen-task-aus` @ `aa3db568d757dd299a9650d3892ca0fd5acd7834`; verify the cumulative managed-process ancestry through `BL-133` before implementing native adapters. |
+| `BL-139` | A | `WAIT_MULTI` | Its concrete working-directory enforcement consumes both the command stack through `BL-138` and named-root working-directory policy `BL-109`. |
+| `BL-142` | A | `STACK_RESTART_READY` | Start from PR #212 `codex/fuhre-bl-141-gema-mobile.md-v3-aus` @ `9c51239f02ebf356a7c45d84e21d619cf90dff8e`; that cumulative command branch contains the typed-argument, timeout and bounded-output predecessors used by the stable result schema. |
+| `BL-157` | A | `WAIT_MULTI` | Its concrete `system.read` registration/execution delta consumes both the system-information chain and server-side capability/authorization work. |
+| `BL-228` | A | `WAIT_MULTI` | Proxy-mode runtime implementation consumes lifecycle/IPC plus platform transport behavior that is not represented by one current ancestry. |
+| `BL-256` | A | `RECHECK_FEASIBILITY` | Do not block merely because future catalog/instruction/fingerprint work is mentioned. First determine whether its generic budget gate can be implemented correctly now and automatically cover later catalog changes. |
 
-The automatic selector must therefore inspect real ancestry and current contracts instead of treating this table as an executable queue. If the earliest relevant sprint has no executable independent/base-ready task, follow the `STACK_RESTART_REQUIRED`/blocked rules from `AGENTS.md` and Mobile governance rather than synthesizing predecessors.
+Two now-reserved examples are normative classification reminders:
+
+- `BL-252` / PR #227 is `INDEPENDENT_FROM_CURRENT_CHECKOUT`: a repository-wide race command/gate is a complete task-pure delta now and later packages automatically enlarge its coverage.
+- `BL-258` / PR #225 is `INDEPENDENT_FROM_CURRENT_CHECKOUT`: a focused payload-efficiency CI gate is valid now even though future integrations may exercise additional code paths.
+
+The automatic selector must inspect the concrete owned delta before treating missing future components as ancestry. A task is not blocked merely because complete integration/native evidence is deferred.
 
 ### Workstream notes
 
-- **Filesystem:** `BL-049` remains reserved by PR #169. `BL-056`, `BL-060–061`, `BL-063–064` intersect multiple open write/list/job foundations and default to `WAIT_MULTI`; `BL-057` normally follows `BL-056`.
+- **Filesystem:** `BL-049` remains reserved by PR #169. For `BL-056`, `BL-060–061` and `BL-063–064`, run the concrete-delta feasibility test before assuming their mentions of jobs or other future consumers are hard dependencies; `BL-057` normally follows `BL-056` when it actually consumes the plan implementation.
 - **Search:** all current Version-1.0 Search candidates remain reserved. Do not start another Search BL from this catalog.
-- **Named roots:** `BL-103` is the only unreserved Planned row; it crosses profile/risk-policy plus named-root/capability foundations and must be rebound from the actual checkout before mutation.
-- **Operations/Job:** required primitives remain distributed across independent open PRs; `BL-095`, `BL-098–099` default to `WAIT_MULTI` until current topology proves otherwise.
-- **Process:** `BL-120–126` and `BL-130–131` are now reserved in addition to `BL-114–117`. Remaining `BL-118`, `BL-132–135` require fresh cumulative-ancestry/platform checks; do not infer that one recent process PR contains all required siblings.
-- **Command:** `BL-138`, `BL-140` and `BL-141` are now reserved. `BL-139` crosses command and named-root policy; `BL-142` consumes multiple command-result foundations; `BL-143` must reuse the Managed Process Engine. Reclassify `BL-144–149`, `BL-151–152` from the selected checkout.
-- **System:** `BL-154–156` are now reserved. `BL-157` is the sole unreserved system-information row and crosses system-info plus capability enforcement.
-- **Security:** `BL-161` is now reserved in addition to `BL-159`/`BL-171`. `BL-160` still crosses server authorization and root/domain bypass coverage; `BL-163–164`, `BL-167–168` cross multiple implementation domains.
-- **Multi-mode / service:** `BL-224–225`, `BL-233`, `BL-235–236`, `BL-238–239` are now reserved. No Mode-C row remains active. `BL-228` and the remaining Mode-B transport/service/test work must be classified from the actual combination of lifecycle, IPC, identity and platform foundations; do not synthesize a Cloud merge.
-- **CI / release:** `BL-262` is now reserved. `BL-252–254`, `BL-256`, `BL-258` and `BL-261` remain active when dependency-executable; authoritative/native evidence boundaries remain deferred where their BL text requires them.
+- **Named roots:** `BL-103` is the only unreserved Planned row; determine whether its profile/risk-policy configuration delta can be prepared against current contracts before treating all named-root/capability PRs as hard ancestry.
+- **Operations/Job:** the runtime leak/integration/security candidates may genuinely consume the Operations/Job implementation chain, but classify from their concrete deltas rather than from acceptance-note references alone.
+- **Process:** `BL-132` and `BL-133` are now reserved by PRs #224 and #226. `BL-134` has a known cumulative single-parent restart path from PR #226; `BL-135` follows the native adapter implementation when it genuinely consumes it. `BL-118` remains a separate cross-foundation authorization case.
+- **Command:** `BL-138`, `BL-140` and `BL-141` are reserved. `BL-142` has a known cumulative single-parent restart path from PR #212. `BL-139` crosses command and named-root policy; `BL-143` must reuse the Managed Process Engine. Reclassify `BL-144–149`, `BL-151–152` from the selected checkout and their actual owned deltas.
+- **System:** `BL-154–156` are reserved. `BL-157` is the sole unreserved system-information row and concretely crosses system-info plus capability enforcement.
+- **Security:** `BL-161` is reserved in addition to `BL-159`/`BL-171`. `BL-160` still crosses server authorization and root/domain bypass coverage; for `BL-163–164` and `BL-167–168`, distinguish concrete code/test consumption from later coverage evidence.
+- **Multi-mode / service:** `BL-224–225`, `BL-233`, `BL-235–236`, `BL-238–239` are reserved. No Mode-C row remains active. Classify the remaining transport/service/test work from the concrete runtime delta; do not synthesize a Cloud merge when multiple implementations are actually required.
+- **CI / release:** `BL-252`, `BL-258` and `BL-262` are now reserved. Their history proves that generic CI/evidence gates must not be blocked solely by future consumers. `BL-253–254`, `BL-256` and `BL-261` remain active when their own delta is executable; authoritative/native evidence remains deferred where the BL requires it.
 
 ## 11. Implementation and validation contract
 
@@ -247,7 +272,7 @@ For exactly one selected task:
 
 Validation follows `DIRECTLY_AFFECTED_FIRST`: focused tests/static checks first, then the smallest sufficient consolidated gate. Use relevant `gofmt`, `go test`, race tests, `go vet`, build, schema/docs checks and `git diff --check`. PowerShell target is 7.6.5. Never claim unavailable Windows/WSL/SCM/systemd/ACL/native-host evidence.
 
-Cloud work must not mark `BACKLOG.md` `Done` or claim local integration.
+Cloud work must not mark `BACKLOG.md` `Done` or claim local integration. A task may report deferred integration/native validation without becoming blocked when its own Cloud delta is complete.
 
 ## 12. Manual Create-PR handoff
 
@@ -335,4 +360,4 @@ Replace `Filesystem` with `Operations/Job`, `Named roots`, `Process`, `Command E
 
 ### Named task
 
-> Führe `BL-xxx` gemäß `MOBILE.md` V3 aus. Prüfe die DependencyExecution aus dem aktuellen Checkout; bei `STACK_REQUIRED` stoppe mit dem exakten Vorgänger-Ref für einen neuen Cloud-Task. Kein Fetch/Pull/Merge/Cherry-Pick des Vorgängers und kein Merge des späteren PRs.
+> Führe `BL-xxx` gemäß `MOBILE.md` V3 aus. Prüfe zuerst den konkreten task-puren Delta und erst dann die DependencyExecution aus dem aktuellen Checkout; bei echtem `STACK_REQUIRED` stoppe mit dem exakten Vorgänger-Ref für einen neuen Cloud-Task. Kein Fetch/Pull/Merge/Cherry-Pick des Vorgängers und kein Merge des späteren PRs.
