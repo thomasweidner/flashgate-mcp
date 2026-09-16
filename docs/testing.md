@@ -36,6 +36,14 @@ and fail-closed termination errors. Separate stdout/stderr ring,
 process-tree, and platform lifecycle tests remain owned by
 their respective planned tasks.
 
+The CPU and memory resource-limit strategy has no simulated claim of native
+enforcement. `BL-134/BL-135` must add real Windows Job Object and native Linux
+cgroup v2 tests for pre-execution containment, descendant accounting, CPU
+throttling, aggregate memory failure, unsupported/delegation denial, races, and
+container cleanup. Cross-builds and test doubles are useful focused gates but
+cannot replace those platform results. The complete design and fallback matrix
+is in [Managed Process CPU and Memory Limit Strategy](process-resource-limit-strategy.md).
+
 Managed-process limit coverage verifies atomic global and trusted-profile
 admission, rejection before launch, invalid/disabled configuration rejection,
 and slot reuse after terminal completion. The race gate covers the same limiter
