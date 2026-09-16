@@ -1,0 +1,31 @@
+{
+  "schema_version": "flashgate-catalog-budgets/v1",
+  "profiles": [
+    {
+      "name": "read_only",
+      "tool_count": 3,
+      "max_schema_bytes": 1591,
+      "max_schema_approx_tokens": 398,
+      "max_tools_list_bytes": 2133,
+      "max_tools_list_approx_tokens": 534,
+      "catalog_fingerprint_sha256": "58c0a8745567557f9cfe9a13f58b34a5ce853f25a8940b21c8614545c151457c",
+      "max_instructions_bytes": 0,
+      "max_instructions_approx_tokens": 0,
+      "max_initialize_bytes": 152,
+      "max_initialize_approx_tokens": 38
+    },
+    {
+      "name": "default",
+      "tool_count": 8,
+      "max_schema_bytes": 4270,
+      "max_schema_approx_tokens": 1068,
+      "max_tools_list_bytes": 5656,
+      "max_tools_list_approx_tokens": 1414,
+      "catalog_fingerprint_sha256": "350886fd9aec9eb7077c893039600c74a332ffb78178dcd6b9bffb537edfe208",
+      "max_instructions_bytes": 0,
+      "max_instructions_approx_tokens": 0,
+      "max_initialize_bytes": 152,
+      "max_initialize_approx_tokens": 38
+    }
+  ]
+}
