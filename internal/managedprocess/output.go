@@ -6,57 +6,86 @@ import (
 )
 
 const (
-	// The engine-level capture is deliberately finite even before the separate
-	// stream/ring-buffer policy is added. BL-125 will replace this shared
-	// capture with independently configured stdout and stderr rings.
-	maxCapturedOutput = 1024 * 1024
-	maxOutputRead     = 64 * 1024
+	defaultOutputLimit = 1024 * 1024
+	maxOutputRead      = 64 * 1024
 )
 
-var ErrOutputCursorUnavailable = errors.New("managed process output cursor unavailable")
+var (
+	ErrOutputCursorUnavailable = errors.New("managed process output cursor unavailable")
+	ErrOutputReleased          = errors.New("managed process output released")
+	ErrInvalidOutputLimits     = errors.New("invalid managed process output limits")
+)
 
-// OutputCursor is a byte position in one process's combined output. It has no
+// OutputStream identifies one independently captured child-process stream.
+type OutputStream string
+
+const (
+	OutputStdout OutputStream = "stdout"
+	OutputStderr OutputStream = "stderr"
+)
+
+// OutputLimits bounds retained bytes independently for stdout and stderr.
+type OutputLimits struct {
+	Stdout int
+	Stderr int
+}
+
+func (limits OutputLimits) valid() bool { return limits.Stdout > 0 && limits.Stderr > 0 }
+
+// OutputCursor is an absolute byte position in one process stream. It has no
 // authority by itself: every read is resolved through the principal-bound
-// process handle.
+// process handle and its selected stream.
 type OutputCursor uint64
 
-// OutputResult is one bounded, incremental output page.
+// OutputResult is one bounded, incremental output page. When a requested
+// cursor has fallen behind the ring, Truncated is true and DroppedBytes says
+// how many bytes were skipped before Data begins.
 type OutputResult struct {
-	Data      []byte
-	Next      OutputCursor
-	EOF       bool
-	Truncated bool
+	Data         []byte
+	Next         OutputCursor
+	EOF          bool
+	Truncated    bool
+	DroppedBytes uint64
 }
 
-// outputBuffer is the initial shared capture used by read_process_output.
-// It retains the first bounded prefix. Separate per-stream ring semantics,
-// configurable limits, and cleanup belong to BL-125.
+// outputBuffer retains the newest bounded suffix of one output stream.
 type outputBuffer struct {
-	mu        sync.RWMutex
-	data      []byte
-	truncated bool
+	mu       sync.RWMutex
+	data     []byte
+	start    OutputCursor
+	end      OutputCursor
+	limit    int
+	released bool
 }
 
-func newOutputBuffer() *outputBuffer {
-	return &outputBuffer{data: make([]byte, 0, 4096)}
+func newOutputBuffer(limit int) *outputBuffer {
+	capacity := min(limit, 4096)
+	return &outputBuffer{data: make([]byte, 0, capacity), limit: limit}
 }
 
 func (buffer *outputBuffer) Write(data []byte) (int, error) {
 	buffer.mu.Lock()
 	defer buffer.mu.Unlock()
 
-	remaining := maxCapturedOutput - len(buffer.data)
-	if remaining < len(data) {
-		buffer.truncated = true
+	if buffer.released {
+		return len(data), nil
 	}
-	if remaining > 0 {
-		if remaining > len(data) {
-			remaining = len(data)
-		}
-		buffer.data = append(buffer.data, data[:remaining]...)
+	buffer.end += OutputCursor(len(data))
+	if len(data) >= buffer.limit {
+		clear(buffer.data)
+		buffer.data = append(buffer.data[:0], data[len(data)-buffer.limit:]...)
+		buffer.start = buffer.end - OutputCursor(buffer.limit)
+		return len(data), nil
 	}
-	// Writers must observe successful consumption after the safe prefix fills;
-	// otherwise an os/exec pipe can turn the output limit into process failure.
+
+	overflow := len(buffer.data) + len(data) - buffer.limit
+	if overflow > 0 {
+		clear(buffer.data[:overflow])
+		copy(buffer.data, buffer.data[overflow:])
+		buffer.data = buffer.data[:len(buffer.data)-overflow]
+		buffer.start += OutputCursor(overflow)
+	}
+	buffer.data = append(buffer.data, data...)
 	return len(data), nil
 }
 
@@ -67,29 +96,42 @@ func (buffer *outputBuffer) read(cursor OutputCursor, maximum int, terminal bool
 
 	buffer.mu.RLock()
 	defer buffer.mu.RUnlock()
-
-	if cursor > OutputCursor(len(buffer.data)) {
+	if buffer.released {
+		return OutputResult{}, ErrOutputReleased
+	}
+	if cursor > buffer.end {
 		return OutputResult{}, ErrOutputCursorUnavailable
 	}
-	end := int(cursor) + maximum
-	if end > len(buffer.data) {
-		end = len(buffer.data)
+
+	result := OutputResult{}
+	if cursor < buffer.start {
+		result.Truncated = true
+		result.DroppedBytes = uint64(buffer.start - cursor)
+		cursor = buffer.start
 	}
-	data := append([]byte(nil), buffer.data[int(cursor):end]...)
-	next := OutputCursor(end)
-	return OutputResult{
-		Data:      data,
-		Next:      next,
-		EOF:       terminal && next == OutputCursor(len(buffer.data)),
-		Truncated: buffer.truncated,
-	}, nil
+	available := int(buffer.end - cursor)
+	if available > maximum {
+		available = maximum
+	}
+	offset := int(cursor - buffer.start)
+	result.Data = append([]byte(nil), buffer.data[offset:offset+available]...)
+	result.Next = cursor + OutputCursor(available)
+	result.EOF = terminal && result.Next == buffer.end
+	return result, nil
 }
 
-// ReadOutput returns the next bounded page of output for a principal-owned
-// managed process. Unknown and wrong-principal handles are indistinguishable.
-// A zero cursor starts at the beginning; the returned cursor continues the
-// same process output without retransmitting prior bytes.
-func (engine *Engine) ReadOutput(principal PrincipalID, handle Handle, cursor OutputCursor, maximum int) (OutputResult, error) {
+func (buffer *outputBuffer) release() {
+	buffer.mu.Lock()
+	defer buffer.mu.Unlock()
+	clear(buffer.data)
+	buffer.data = nil
+	buffer.released = true
+}
+
+// ReadOutput returns the next bounded page from one output stream. Unknown and
+// wrong-principal handles are indistinguishable. A zero cursor starts at the
+// oldest retained byte and reports any bytes already evicted from the ring.
+func (engine *Engine) ReadOutput(principal PrincipalID, handle Handle, stream OutputStream, cursor OutputCursor, maximum int) (OutputResult, error) {
 	if principal == "" || handle == "" {
 		return OutputResult{}, ErrInvalidReadRequest
 	}
@@ -97,5 +139,24 @@ func (engine *Engine) ReadOutput(principal PrincipalID, handle Handle, cursor Ou
 	if !ok {
 		return OutputResult{}, ErrProcessUnavailable
 	}
-	return process.output.read(cursor, maximum, process.Status().Terminal())
+	buffer, ok := process.output.stream(stream)
+	if !ok {
+		return OutputResult{}, ErrInvalidReadRequest
+	}
+	return buffer.read(cursor, maximum, process.Status().Terminal())
+}
+
+// ReleaseOutput securely discards both captured streams while leaving the
+// process lifecycle record intact. Writers continue to drain successfully so
+// releasing output cannot block or fail a running child.
+func (engine *Engine) ReleaseOutput(principal PrincipalID, handle Handle) error {
+	if principal == "" || handle == "" {
+		return ErrInvalidReadRequest
+	}
+	process, ok := engine.registry.Get(principal, handle)
+	if !ok {
+		return ErrProcessUnavailable
+	}
+	process.output.release()
+	return nil
 }

@@ -55,7 +55,7 @@ type Policy interface {
 // the authority for later managed-process operations.
 type Process struct {
 	state  *State
-	output *outputBuffer
+	output *processOutput
 	mu     sync.RWMutex
 	pid    int
 }
@@ -80,6 +80,32 @@ type Engine struct {
 	policy   Policy
 	registry *Registry[*Process]
 	start    func(Launch, io.Writer, io.Writer) (startedProcess, error)
+	limits   OutputLimits
+}
+
+type processOutput struct {
+	stdout *outputBuffer
+	stderr *outputBuffer
+}
+
+func newProcessOutput(limits OutputLimits) *processOutput {
+	return &processOutput{stdout: newOutputBuffer(limits.Stdout), stderr: newOutputBuffer(limits.Stderr)}
+}
+
+func (output *processOutput) stream(stream OutputStream) (*outputBuffer, bool) {
+	switch stream {
+	case OutputStdout:
+		return output.stdout, true
+	case OutputStderr:
+		return output.stderr, true
+	default:
+		return nil, false
+	}
+}
+
+func (output *processOutput) release() {
+	output.stdout.release()
+	output.stderr.release()
 }
 
 type startedProcess interface {
@@ -89,7 +115,17 @@ type startedProcess interface {
 
 // NewEngine creates an engine. A nil policy is fail-closed.
 func NewEngine(policy Policy) *Engine {
-	return &Engine{policy: policy, registry: NewRegistry[*Process](), start: startOSProcess}
+	engine, _ := NewEngineWithOutputLimits(policy, OutputLimits{Stdout: defaultOutputLimit, Stderr: defaultOutputLimit})
+	return engine
+}
+
+// NewEngineWithOutputLimits creates an engine with independent positive
+// retention limits. Invalid limits fail closed before an engine is created.
+func NewEngineWithOutputLimits(policy Policy, limits OutputLimits) (*Engine, error) {
+	if !limits.valid() {
+		return nil, ErrInvalidOutputLimits
+	}
+	return &Engine{policy: policy, registry: NewRegistry[*Process](), start: startOSProcess, limits: limits}, nil
 }
 
 // Start authorizes, starts, and registers one process. When OS startup fails
@@ -114,13 +150,13 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 		return "", fmt.Errorf("%w: %v", ErrStartDenied, err)
 	}
 
-	process := &Process{state: NewState(), output: newOutputBuffer()}
+	process := &Process{state: NewState(), output: newProcessOutput(engine.limits)}
 	handle, err := engine.registry.Register(request.Principal, process)
 	if err != nil {
 		return "", err
 	}
 
-	started, err := engine.start(cloneLaunch(launch), process.output, process.output)
+	started, err := engine.start(cloneLaunch(launch), process.output.stdout, process.output.stderr)
 	if err != nil {
 		_ = process.state.Transition(StatusFailed)
 		return handle, fmt.Errorf("start process: %w", err)

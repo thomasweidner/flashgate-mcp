@@ -392,11 +392,13 @@ result, do not terminate the child, and do not mutate its managed status; a
 successful wait exposes only the terminal status and diagnostic PID.
 
 Managed output reads use that same principal-bound handle lookup, so an output
-cursor grants no authority independently. Reads have a fixed maximum page size,
-future cursors fail closed, returned byte slices do not alias mutable capture
-state, and total capture is capped even when the child continues writing. The
-current combined capture reports truncation; separate per-stream ring limits
-remain planned under BL-125.
+cursor grants no authority independently. Stdout and stderr have separate
+rings and independently configurable positive retention limits. Reads have a
+fixed maximum page size, future cursors fail closed, and returned byte slices
+do not alias mutable capture state. If eviction overtakes a cursor, the result
+marks truncation and reports the exact skipped-byte count. Principal-bound
+release zeroes and discards both rings; later child writes remain safely drained
+without retaining more output.
 
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.
 

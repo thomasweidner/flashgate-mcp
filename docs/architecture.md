@@ -200,11 +200,13 @@ the child into a terminal state. The wait operation accepts only the owning
 principal and opaque handle, returns the immutable terminal status plus a
 diagnostic PID, and lets either the caller context or an optional wait timeout
 bound observation without stopping the child or changing its lifecycle.
-The output reader captures a finite combined stdout/stderr prefix, pages it by
-byte cursor with a per-read ceiling, and reports terminal EOF and capture
-truncation without retransmitting earlier bytes. Separate stdout/stderr ring
-buffers, configurable size limits, stopping, platform isolation, and cleanup
-remain separate planned work.
+The output reader captures stdout and stderr in separate bounded rings with
+independently configurable positive limits. Each stream uses an absolute byte
+cursor and a per-read ceiling; when a slow reader falls behind, the result
+reports truncation and the exact skipped-byte count before continuing from the
+oldest retained byte. Captured bytes can be explicitly released through the
+same principal-bound handle while writers continue draining safely. Stopping,
+platform isolation, and broader lifecycle cleanup remain separate planned work.
 
 ### Execution
 
@@ -275,7 +277,7 @@ The normal execution unit is a cancellable Go goroutine. A subprocess is justifi
 
 Managed process handles are the primary identity; PIDs are diagnostic only because of reuse risk.
 
-The current process-output foundation uses a bounded combined capture and incremental byte cursors; the planned final contract separates bounded stdout/stderr rings. Status, wait, output, and stop operations require the owning execution context. A wait deadline limits only the caller's observation; process-runtime enforcement and transition to `timed_out` are separate lifecycle controls.
+The current process-output foundation uses independently limited stdout and stderr rings, absolute incremental byte cursors, explicit skipped-byte markers after eviction, and principal-bound output release. Status, wait, output, and stop operations require the owning execution context. A wait deadline limits only the caller's observation; process-runtime enforcement and transition to `timed_out` are separate lifecycle controls.
 
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:
 

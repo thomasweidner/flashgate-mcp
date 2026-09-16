@@ -254,7 +254,7 @@ func TestEngineStartsAndReapsOSProcess(t *testing.T) {
 		t.Fatalf("started process = (%v, %t), pid=%d", process, ok, process.PID())
 	}
 	waitForStatus(t, process, StatusExited)
-	output, err := engine.ReadOutput("owner", handle, 0, maxOutputRead)
+	output, err := engine.ReadOutput("owner", handle, OutputStdout, 0, maxOutputRead)
 	if err != nil || string(output.Data) != "helper output" || !output.EOF {
 		t.Fatalf("helper output = (%#v, %v)", output, err)
 	}
