@@ -217,6 +217,13 @@ Every successful filesystem `tools/call` now crosses one central adapter boundar
 
 Limit violations use generic client-visible messages. Filesystem limit denials are mapped to Invalid params with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
 
+Managed processes are never admitted with an unbounded runtime. The
+standalone engine applies a 15-minute default and a 24-hour maximum to the
+policy-authorized launch, rejects invalid or excessive values before process
+creation, and terminates an engine-owned process when its runtime expires.
+Runtime enforcement and explicit stop share one serialized control path, and
+terminal cleanup releases concurrency reservations exactly once.
+
 `MCP_DEBUG=true` enables minimal stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
 
 ## Security Testing

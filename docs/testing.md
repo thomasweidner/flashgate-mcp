@@ -24,7 +24,10 @@ outcome. Start-engine coverage proves fail-closed policy enforcement, absolute
 launch validation, principal-bound registration, startup-failure retention,
 and asynchronous exit reaping. Wait coverage proves terminal and
 already-terminal results, input and principal isolation, and that caller
-cancellation or a wait timeout leaves the process lifecycle unchanged. Output
+cancellation or a wait timeout leaves the process lifecycle unchanged. Runtime
+limit tests separately cover configured and default deadlines, pre-launch
+rejection above the maximum, timer cancellation after normal exit, serialized
+termination, `timed_out` observation, and exact concurrency-budget release. Output
 reader coverage proves incremental non-overlapping pages, terminal EOF,
 principal/handle isolation, cursor and page-bound validation, copy isolation,
 and the finite capture/truncation boundary. Stop coverage proves

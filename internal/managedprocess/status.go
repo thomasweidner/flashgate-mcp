@@ -113,6 +113,12 @@ func (state *State) Wait(ctx context.Context) (Status, error) {
 	}
 }
 
+func (state *State) doneSignal() <-chan struct{} {
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	return state.doneChannel()
+}
+
 // doneChannel must be called while state.mu is held. It keeps the zero value
 // usable without racing concurrent waiters and transitions.
 func (state *State) doneChannel() chan struct{} {
