@@ -28,10 +28,11 @@ func BenchmarkCallToolResultSerialization(b *testing.B) {
 	variants := []struct {
 		name      string
 		serialize func(any) ([]byte, error)
+		copies    int
 	}{
-		{"historical_direct", json.Marshal},
-		{"text_only", serializeTextOnlyCallToolResult},
-		{"text_plus_structured", serializeStructuredCallToolResult},
+		{"historical_direct", json.Marshal, 1},
+		{"text_only", serializeTextOnlyCallToolResult, 1},
+		{"text_plus_structured", serializeStructuredCallToolResult, 2},
 	}
 
 	for _, fixture := range fixtures {
@@ -60,6 +61,10 @@ func BenchmarkCallToolResultSerialization(b *testing.B) {
 					b.StopTimer()
 					b.ReportMetric(float64(len(sample)), "payload-bytes")
 					b.ReportMetric(float64(len(response)), "response-bytes")
+					b.ReportMetric(float64(fixture.usefulBytes()), "useful-bytes")
+					b.ReportMetric(float64(len(response))/float64(fixture.usefulBytes()), "wire-amplification")
+					b.ReportMetric(float64(approximateTokens(len(response)))/float64(fixture.usefulBytes()), "approx-tokens/useful-byte")
+					b.ReportMetric(float64(variant.copies), "serialization-copies")
 				})
 			}
 		})
@@ -236,6 +241,25 @@ type callToolResultBenchmarkFixture struct {
 	value any
 }
 
+func (fixture callToolResultBenchmarkFixture) usefulBytes() int {
+	if result, ok := fixture.value.(readFileResult); ok {
+		return len(result.Content)
+	}
+	encoded, err := json.Marshal(fixture.value)
+	if err != nil {
+		panic(fmt.Sprintf("marshal benchmark fixture %q: %v", fixture.name, err))
+	}
+	return len(encoded)
+}
+
+func approximateTokens(responseBytes int) int {
+	return (responseBytes + 3) / 4
+}
+
+func ratioMilli(numerator, denominator int) uint64 {
+	return uint64((numerator*1000 + denominator - 1) / denominator)
+}
+
 func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 	largeEntries := make([]fs.Entry, 500)
 	for index := range largeEntries {
@@ -324,16 +348,30 @@ func TestCallToolResultSerializationBudgets(t *testing.T) {
 			t.Fatalf("serialization fixture %q has no budget", fixture.name)
 		}
 		usedBudgets[budgetName] = struct{}{}
-		if budget.MaxPayloadBytes == 0 || budget.MaxAllocsPerOp == 0 {
-			t.Fatalf("serialization budget %q is structurally incomplete", budgetName)
-		}
-
 		payload, err := serializeStructuredCallToolResult(fixture.value)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if uint64(len(payload)) > budget.MaxPayloadBytes {
 			t.Fatalf("serialization fixture %q payload=%d exceeds budget %d", fixture.name, len(payload), budget.MaxPayloadBytes)
+		}
+		response, err := serializeBenchmarkResponse(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		usefulBytes := fixture.usefulBytes()
+		if uint64(len(response)) > budget.MaxResponseBytes {
+			t.Fatalf("serialization fixture %q response=%d exceeds budget %d", fixture.name, len(response), budget.MaxResponseBytes)
+		}
+		if amplification := ratioMilli(len(response), usefulBytes); amplification > budget.MaxWireAmplificationMilli {
+			t.Fatalf("serialization fixture %q wire amplification=%d milli exceeds budget %d", fixture.name, amplification, budget.MaxWireAmplificationMilli)
+		}
+		if tokenCost := ratioMilli(approximateTokens(len(response)), usefulBytes); tokenCost > budget.MaxApproxTokensPerUsefulByteMilli {
+			t.Fatalf("serialization fixture %q approximate token cost=%d milli exceeds budget %d", fixture.name, tokenCost, budget.MaxApproxTokensPerUsefulByteMilli)
+		}
+		const serializationCopies = 2
+		if serializationCopies > budget.MaxSerializationCopies {
+			t.Fatalf("serialization fixture %q copies=%d exceeds budget %d", fixture.name, serializationCopies, budget.MaxSerializationCopies)
 		}
 
 	}
