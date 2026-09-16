@@ -1146,6 +1146,7 @@ the two-phase attempt; no wrapper-side shortcut or time override is permitted.
 
 `internal/fs/plan_test.go` verifies the closed operation set, whole-plan
 prevalidation before mutation, caller-selected operation caps, cancellation,
-and deterministic stop-on-first-error/partial-completion behavior. Native
+entry and inline-write byte preflight, copy-byte runtime accounting, and
+deterministic stop-on-first-error/partial-completion behavior. Native
 Windows reparse and platform filesystem evidence remains part of Windows
 finalization.

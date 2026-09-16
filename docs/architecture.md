@@ -570,5 +570,9 @@ only the existing `FileSystem` boundary, checks cancellation between operations,
 and stops at the first failure. Plans are intentionally sequential and are not
 transactions: successful earlier operations are reported and are not rolled
 back. The executor accepts neither commands nor a free-form workflow language.
-Public MCP exposure and the additional entry/byte accounting remain separate
-contract work.
+The executor also accepts a full `PlanLimits` contract. It preflights operation
+count, path-entry operands, and inline write bytes before the first mutation,
+then accounts each completed operation. Copy bytes are measured from source
+metadata immediately before execution, so a cumulative runtime byte overrun is
+rejected before that copy begins. Moves account their source and target entries
+but no copied bytes. Public MCP exposure remains separate contract work.
