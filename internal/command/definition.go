@@ -60,11 +60,12 @@ type ArgumentRule struct {
 	MaxLength     int
 }
 
-// Limits are server-owned maxima for one command invocation.
+// Limits are server-owned defaults and maxima for one command invocation.
 type Limits struct {
-	Timeout     time.Duration
-	StdoutBytes int64
-	StderrBytes int64
+	DefaultTimeout time.Duration
+	MaximumTimeout time.Duration
+	StdoutBytes    int64
+	StderrBytes    int64
 }
 
 // Definition is the complete typed policy selected by a public command ID.
@@ -153,7 +154,9 @@ func validateDefinition(definition Definition, executables map[string]Executable
 	if _, ok := executables[definition.ExecutableID]; !ok {
 		return fmt.Errorf("command %q references unknown executable id %q", definition.ID, definition.ExecutableID)
 	}
-	if definition.Limits.Timeout <= 0 || definition.Limits.StdoutBytes <= 0 || definition.Limits.StderrBytes <= 0 {
+	if definition.Limits.DefaultTimeout <= 0 || definition.Limits.MaximumTimeout <= 0 ||
+		definition.Limits.DefaultTimeout > definition.Limits.MaximumTimeout ||
+		definition.Limits.StdoutBytes <= 0 || definition.Limits.StderrBytes <= 0 {
 		return fmt.Errorf("command %q limits must be positive", definition.ID)
 	}
 	if definition.Network != NetworkDenied && definition.Network != NetworkAllowed {

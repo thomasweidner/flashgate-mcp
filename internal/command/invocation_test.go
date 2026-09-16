@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type testPathResolver struct {
@@ -40,13 +41,44 @@ func TestBuildInvocationCreatesArgvWithoutShell(t *testing.T) {
 		"short": true, "count": int64(3), "format": "json",
 		"label":  "literal;$(not-a-shell)",
 		"target": PathArgument{RootID: "workspace", Path: "dir/file.txt"},
-	}, testPathResolver{base: root})
+	}, nil, testPathResolver{base: root})
 	if err != nil {
 		t.Fatalf("BuildInvocation() error = %v", err)
 	}
 	want := []string{"status", "--short", "--count", "3", "--format", "json", "--label", "literal;$(not-a-shell)", filepath.Join(root, "dir/file.txt")}
 	if invocation.ExecutablePath != executable.Path || !reflect.DeepEqual(invocation.Arguments, want) {
 		t.Fatalf("BuildInvocation() = %#v, want path %q argv %#v", invocation, executable.Path, want)
+	}
+	if invocation.Timeout != definition.Limits.DefaultTimeout {
+		t.Fatalf("BuildInvocation() timeout = %v, want default %v", invocation.Timeout, definition.Limits.DefaultTimeout)
+	}
+}
+
+func TestBuildInvocationEnforcesTimeoutPolicy(t *testing.T) {
+	executable := validExecutable(t)
+	definition := validDefinition(executable.ID)
+	registry, err := NewRegistry([]Executable{executable}, []Definition{definition})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for name, requested := range map[string]time.Duration{
+		"zero": 0, "negative": -time.Second, "above maximum": definition.Limits.MaximumTimeout + time.Nanosecond,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := registry.BuildInvocation(definition.ID, nil, &requested, nil); err == nil {
+				t.Fatal("BuildInvocation() accepted a timeout outside policy")
+			}
+		})
+	}
+
+	requested := definition.Limits.MaximumTimeout
+	invocation, err := registry.BuildInvocation(definition.ID, nil, &requested, nil)
+	if err != nil {
+		t.Fatalf("BuildInvocation() maximum timeout error = %v", err)
+	}
+	if invocation.Timeout != requested {
+		t.Fatalf("BuildInvocation() timeout = %v, want %v", invocation.Timeout, requested)
 	}
 }
 
@@ -80,12 +112,12 @@ func TestBuildInvocationRejectsMalformedArgumentObjects(t *testing.T) {
 	}
 	for name, values := range tests {
 		t.Run(name, func(t *testing.T) {
-			if _, err := registry.BuildInvocation(definition.ID, values, testPathResolver{base: t.TempDir()}); err == nil {
+			if _, err := registry.BuildInvocation(definition.ID, values, nil, testPathResolver{base: t.TempDir()}); err == nil {
 				t.Fatal("BuildInvocation() accepted malformed arguments")
 			}
 		})
 	}
-	if _, err := registry.BuildInvocation(definition.ID, map[string]any{"target": validPath}, testPathResolver{err: errors.New("denied")}); err == nil {
+	if _, err := registry.BuildInvocation(definition.ID, map[string]any{"target": validPath}, nil, testPathResolver{err: errors.New("denied")}); err == nil {
 		t.Fatal("BuildInvocation() accepted a failed path binding")
 	}
 }

@@ -2,7 +2,8 @@
 
 **Status:** Version 1.0 domain contract
 
-**Owners:** BL-137 (registry), BL-138 (typed invocation construction)
+**Owners:** BL-137 (registry), BL-138 (typed invocation construction), BL-140
+(timeout policy)
 
 FlashGate resolves a public `command_id` exclusively through an immutable,
 server-owned registry. A command definition references an `executable_id`; a
@@ -15,7 +16,8 @@ Each command definition contains, in deterministic order:
 
 - fixed arguments, including any fixed subcommand;
 - a closed list of named argument rules;
-- positive timeout, stdout-byte, and stderr-byte maxima; and
+- a positive default timeout not exceeding a positive timeout maximum;
+- positive stdout-byte and stderr-byte maxima; and
 - an explicit `allowed` or `denied` network policy.
 
 An argument rule has one of five closed value kinds: boolean, bounded integer,
@@ -44,6 +46,13 @@ configuration, hook, plugin, loader, interpreter, or alternate-executable
 surfaces. Path values carry an approved root ID and clean relative path; a
 platform-aware resolver must bind them to a clean absolute path and perform
 effective containment and link/reparse checks at the process-creation boundary.
+
+Every constructed invocation carries an effective timeout. When the request
+omits a timeout, the server-owned command default applies. An explicit timeout
+must be positive and no greater than the command maximum; invalid values are
+rejected rather than silently clamped. The later Managed Process Engine must
+turn this effective value into a server-controlled deadline and retain control
+of cancellation and process-tree cleanup.
 
 This contract does not hash or open binaries, implement those platform path
 checks, enforce platform isolation, or launch processes. Those operations
