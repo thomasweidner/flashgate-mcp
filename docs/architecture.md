@@ -77,6 +77,15 @@ PathGuard and current policies
 Operating-system filesystem
 ```
 
+The implemented MCP request runtime is independent of stream framing: it
+validates and dispatches one complete JSON-RPC message, while the STDIO adapter
+alone owns line framing and response writes. A single process-root lifecycle
+coordinator owns cancellation and invokes registered cleanup owners exactly
+once; it contains no filesystem, job, or managed-process business logic.
+Operations/Job and Managed Process remain planned, and will register their own
+cleanup implementations with this coordinator rather than moving cleanup into
+STDIO, IPC, SCM, or systemd adapters.
+
 Startup fails closed before runtime exposure. Production roots must be explicit absolute directories and pass existence/type/effective-path policy. `MCP_ROOT=.` remains development-only and requires `MCP_ALLOW_CWD_ROOT=true`.
 
 Not yet implemented:
