@@ -130,11 +130,33 @@ BLOCKED_DEPENDENCY_DECISION
 BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
 ```
 
+### 4.0 Concrete-delta feasibility test
+
+Before assigning any dependency state, identify the candidate's **concrete task-pure delta** and answer these questions from the current checkout:
+
+1. What code, documentation, tests, workflow or schema delta does this BL itself own?
+2. Which APIs, types, schemas, contracts or runtime behavior must that delta consume **now**?
+3. Can the owned delta be implemented coherently and meaningfully validated now without importing an open predecessor?
+4. Are missing predecessor changes required to implement the owned delta, or are they only future consumers, later integration coverage, later end-to-end evidence, Windows/native finalization, or later release evidence?
+5. Would the candidate remain correct when later packages/features integrate because its gate/contract is generic or automatically expands over the repository?
+
+A dependency is hard only when the concrete owned delta actually requires unintegrated predecessor code, types, schemas, contracts, or runtime behavior. Do **not** infer `STACK_REQUIRED` or a blocked state merely because acceptance notes mention:
+
+- future consumers;
+- future packages that a generic test or CI gate will automatically cover;
+- later CI or end-to-end coverage;
+- later integration validation;
+- Windows/native/platform finalization;
+- release evidence produced only after other work integrates;
+- documentation of an already-authorized target contract whose runtime implementation is separately owned.
+
+If the task-pure delta can be implemented and focused validation can pass now, classify it from the current checkout accordingly and record remaining integration/native evidence as deferred. Deferred evidence never permits claiming the BL `Done`; it also does not by itself create a Git dependency.
+
 ### 4.1 Independent from current checkout
 
-Use `INDEPENDENT_FROM_CURRENT_CHECKOUT` when the candidate can be implemented correctly and completely against the current checkout without consuming unintegrated predecessor changes.
+Use `INDEPENDENT_FROM_CURRENT_CHECKOUT` when the candidate's concrete task-pure delta can be implemented correctly against the current checkout without consuming unintegrated predecessor changes.
 
-This remains true even when `MOBILE.md` names an earlier conceptual or sequencing hint.
+This remains true even when `MOBILE.md` names an earlier conceptual or sequencing hint, when later components will consume the result, or when the candidate's generic tests/CI gates will gain additional coverage after future packages integrate.
 
 For a task started from `main`:
 
@@ -143,7 +165,7 @@ ExpectedPRBase=main
 Mobile-Depends-On: NONE
 ```
 
-Do not manufacture a stack solely to mirror a dependency hint.
+Do not manufacture a stack solely to mirror a dependency hint or future integration relationship.
 
 ### 4.2 Stack base ready
 
@@ -170,10 +192,12 @@ Mobile-Depends-On: <ParentBL>
 
 ### 4.3 Stack required
 
-Use `STACK_REQUIRED` when:
+Use `STACK_REQUIRED` only when:
 
-- the candidate genuinely needs unintegrated changes from exactly one open predecessor Mobile PR; and
+- the candidate's concrete task-pure delta genuinely consumes unintegrated changes from exactly one open predecessor Mobile PR; and
 - those predecessor changes are not already present in the current checkout.
+
+Do not use `STACK_REQUIRED` for a future consumer relationship, deferred integration/CI/native evidence, or a generic gate that can be implemented correctly against the current checkout.
 
 A `STACK_REQUIRED` task is **not executable in the current Cloud task**.
 
@@ -221,13 +245,15 @@ The failed attempt to import a predecessor is not a reason to request reauthoriz
 
 ### 4.5 Multiple predecessors
 
-If a task genuinely requires more than one independent uncombined open Mobile predecessor and they are not already represented by one ancestry chain:
+Use `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when the candidate's concrete task-pure delta genuinely consumes more than one independent uncombined open Mobile predecessor and those required changes are not already represented by one ancestry chain.
+
+Do not create this state from future consumers, deferred integration evidence, or multiple components that a generic repository-wide gate can cover later without changing the gate implementation.
 
 ```text
 Status=BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
 ```
 
-Do not synthesize a merge branch in Cloud. Choose another eligible task or defer combination to Windows unless the user explicitly authorizes another strategy.
+This state is **candidate-local**. Do not synthesize a merge branch in Cloud. Exclude the blocked candidate and continue evaluating other candidates and later Planned sprints. Defer combination to Windows unless the user explicitly authorizes another strategy.
 
 ## 5. Automatic task selection
 
@@ -237,12 +263,15 @@ Before selecting the next Mobile task:
 2. build `ReservedTaskIDs` through section 3;
 3. exclude `ReservedTaskIDs`;
 4. read current Planned sprints in the order defined by root `AGENTS.md`;
-5. classify dependency execution for each candidate through section 4;
-6. select only `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidates;
-7. within the earliest eligible sprint apply the mode/effort/Windows-residual/collision preferences from root `AGENTS.md`;
-8. do not attempt network Git operations to promote `STACK_REQUIRED` into an executable state;
-9. if no executable candidate remains in the earliest relevant sprint but a single-predecessor stack is the next actionable path, return `STACK_RESTART_REQUIRED`;
-10. do not jump to `Later` work while executable unreserved `Planned` work exists.
+5. for every serious candidate, run the concrete-delta feasibility test in section 4.0 before assigning an ancestry/dependency state;
+6. classify dependency execution for each candidate through sections 4.1–4.5;
+7. select only `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidates;
+8. within the earliest eligible sprint apply the mode/effort/Windows-residual/collision preferences from root `AGENTS.md`;
+9. do not attempt network Git operations to promote `STACK_REQUIRED` into an executable state;
+10. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the automatic scan; continue with other candidates and later Planned sprints;
+11. if no executable candidate remains in the earliest relevant sprint but a single-predecessor stack is the next actionable path, return `STACK_RESTART_REQUIRED`;
+12. return a global no-executable Planned result only after the complete allowed Planned scan, subject to the preceding single-predecessor stack-restart rule;
+13. do not jump to `Later` work while executable unreserved `Planned` work exists.
 
 An existing reservation does not mean the BL task is `Done`. It means only:
 
