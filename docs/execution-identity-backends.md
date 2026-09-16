@@ -263,6 +263,14 @@ No future implementation may add shared-process impersonation without replacing 
 
 ## State and cache binding
 
+The backend-neutral implementation provides an execution-context-bound store
+as the shared ownership gate for domain-specific handles, result resources,
+temporary state, cancellation rights, and authorization-sensitive caches. An
+entry can be created, read, or deleted only with a complete immutable binding;
+opaque identifiers cannot be replaced. Missing and mismatched ownership fail
+with the same safe access-denied category, while expired entries are removed
+and fail closed.
+
 The following objects must be bound to the full execution context:
 
 - operation/job handles;
@@ -278,7 +286,8 @@ The following objects must be bound to the full execution context:
 At minimum, ownership includes:
 
 ```text
-principal + profile + root + execution backend + service generation
+principal + groups + profile + root + execution backend
++ service instance/generation + protocol context + expiry
 ```
 
 A service restart changes the generation. Stale handles fail safely. A cache entry created for one principal or backend must not be reused for another unless the data is explicitly classified as identity-independent and the policy decision is revalidated.
