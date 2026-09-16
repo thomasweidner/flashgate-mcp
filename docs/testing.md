@@ -20,7 +20,9 @@ It covers concurrent registration/removal, opaque principal-bound handle
 identity and non-reuse, zero-value safety, fail-closed identifier-space
 exhaustion, and managed-process lifecycle transitions. Lifecycle race coverage
 proves that competing terminal outcomes cannot replace the first accepted
-outcome. PID/start identity, process startup, output, stop/wait, and platform
+outcome. Start-engine coverage proves fail-closed policy enforcement, absolute
+launch validation, principal-bound registration, startup-failure retention,
+and asynchronous exit reaping. Output, stop/wait, limits, and platform
 lifecycle tests remain owned by their respective planned tasks.
 
 Run the focused project documentation and shell gates with a caller-provided

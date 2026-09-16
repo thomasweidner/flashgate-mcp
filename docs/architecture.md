@@ -192,8 +192,12 @@ registry for server-started process state. It assigns a never-reused internal
 instance ID and provides atomic principal-bound lookup and removal through
 opaque handles. The lifecycle model starts in `starting`, may advance to
 `running`, and ends exactly once as `exited`, `failed`, `stopped`, or
-`timed_out`. Process startup, output, waiting, stopping, and cleanup remain
-separate planned work.
+`timed_out`. The managed start engine accepts a server-side command identifier,
+passes arguments through an explicit policy boundary, and launches only the
+resulting absolute executable, working directory, and complete child
+environment. It registers every launch under the trusted principal and reaps
+the child into a terminal state. Output, public waiting/stopping, limits,
+platform isolation, and cleanup remain separate planned work.
 
 ### Execution
 
