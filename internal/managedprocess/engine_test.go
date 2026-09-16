@@ -3,10 +3,13 @@ package managedprocess
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -126,6 +129,68 @@ func TestEngineRetainsFailedStartup(t *testing.T) {
 	process, ok := engine.Get("owner", handle)
 	if !ok || process.Status() != StatusFailed || process.PID() != 0 {
 		t.Fatalf("failed process = (%v, %t), status=%q pid=%d", process, ok, process.Status(), process.PID())
+	}
+}
+
+func TestEngineEvidenceAndErrorsExcludeLaunchSecrets(t *testing.T) {
+	const secret = "BL133_DO_NOT_EXPOSE"
+	launch := validTestLaunch()
+	launch.Executable = filepath.Join(launch.WorkingDirectory, secret, "program")
+	launch.Arguments = []string{"--token", secret}
+	launch.Environment = []string{"TOKEN=" + secret}
+
+	engine := NewEngine(policyFunc(func(context.Context, StartRequest) (Launch, error) {
+		return launch, nil
+	}))
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) {
+		return nil, fmt.Errorf("adapter rejected %s TOKEN=%s", launch.Executable, secret)
+	}
+	handle, err := engine.Start(context.Background(), StartRequest{
+		Principal: "owner",
+		Command:   secret,
+		Arguments: []string{secret},
+	})
+	if handle == "" || !errors.Is(err, ErrProcessStartFailed) {
+		t.Fatalf("Start() = (%q, %v), want retained handle and ErrProcessStartFailed", handle, err)
+	}
+	if strings.Contains(fmt.Sprint(err), secret) {
+		t.Fatalf("startup error exposed launch data: %v", err)
+	}
+
+	process, ok := engine.Get("owner", handle)
+	if !ok {
+		t.Fatal("failed process was not retained")
+	}
+	evidence := process.Evidence()
+	if evidence != (LifecycleEvidence{Status: StatusFailed}) {
+		t.Fatalf("Evidence() = %#v, want failed status without PID", evidence)
+	}
+	if strings.Contains(fmt.Sprintf("%#v", evidence), secret) {
+		t.Fatalf("lifecycle evidence exposed launch data: %#v", evidence)
+	}
+	evidenceType := reflect.TypeOf(evidence)
+	if evidenceType.NumField() != 2 || evidenceType.Field(0).Name != "Status" || evidenceType.Field(1).Name != "PID" {
+		t.Fatalf("LifecycleEvidence fields = %v, want only Status and PID", evidenceType)
+	}
+}
+
+func TestEngineStopErrorExcludesAdapterSecrets(t *testing.T) {
+	const secret = "BL133_STOP_SECRET"
+	engine := NewEngine(policyFunc(allowTestLaunch))
+	started := &fakeStartedProcess{pid: 104, wait: make(chan struct{}), killErr: fmt.Errorf("kill failed for --token=%s", secret)}
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
+	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	defer close(started.wait)
+
+	_, err = engine.Stop(context.Background(), "owner", handle)
+	if !errors.Is(err, ErrStopFailed) {
+		t.Fatalf("Stop() error = %v, want ErrStopFailed", err)
+	}
+	if strings.Contains(fmt.Sprint(err), secret) {
+		t.Fatalf("stop error exposed adapter data: %v", err)
 	}
 }
 

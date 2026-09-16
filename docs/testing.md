@@ -32,7 +32,10 @@ reader coverage proves incremental non-overlapping pages, terminal EOF,
 principal/handle isolation, cursor and page-bound validation, copy isolation,
 and the finite capture/truncation boundary. Stop coverage proves
 principal/handle isolation, idempotence, first-terminal-outcome preservation,
-and fail-closed termination errors. Separate stdout/stderr ring,
+and fail-closed termination errors. Redaction coverage injects canary secrets
+into command IDs, arguments, executable paths, environments, and raw adapter
+errors, then proves that startup/stop errors and the closed lifecycle-evidence
+projection expose none of them. Separate stdout/stderr ring,
 process-tree, and platform lifecycle tests remain owned by
 their respective planned tasks.
 
