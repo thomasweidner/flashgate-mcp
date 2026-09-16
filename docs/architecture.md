@@ -229,6 +229,24 @@ Owns generic queued/running/completed/failed/cancelled/timed-out lifecycle, dead
 
 Operations/jobs do not own filesystem, search, process, execution, or system semantics.
 
+### Large-result resources
+
+The transport-neutral result-resource registry retains immutable payload bytes behind
+opaque `flashgate://result/<token>` handles. Each entry is bound to the complete
+server-derived principal, profile, root, execution-backend, and service-generation
+context. Descriptors expose only a normalized media type, byte size, SHA-256 digest,
+and expiry; they never expose a host path or identity field. Individual payload,
+page, entry-count, global-byte, per-principal-byte, inline, and TTL limits are fixed
+when the registry is created.
+
+Protocol adapters decide how to project a descriptor. Payloads at or below the
+configured inline ceiling may use the bounded compatibility fallback. Larger
+payloads require negotiated resource-link support and otherwise fail explicitly;
+they are not duplicated into an unrestricted inline or base64 response. The core
+registry deliberately contains no MCP DTOs, transport negotiation, filesystem
+business rules, or job lifecycle. Streaming adapters and durable/temp-file storage
+may consume the same abstraction later without changing its authorization binding.
+
 ### Cross-cutting components
 
 - authentication and principal mapping;

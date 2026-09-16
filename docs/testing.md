@@ -939,6 +939,15 @@ The implemented protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO
 
 Future protocol or extension support still requires version-negotiation, extension-negotiation, client fallback, and compatibility tests before it is advertised. Complete JSON Schema 2020-12 validation and official MCP conformance tooling remain planned.
 
+The `internal/resultresource` suite covers the transport-neutral large-result
+abstraction: opaque path-free handles, normalized MIME/hash/size/expiry metadata,
+complete authorization-context binding, indistinguishable unknown/cross-owner/
+expired reads, immutable bounded pages, aggregate and per-principal retention limits,
+expiry capacity recovery, and inline-versus-negotiated-link selection. These tests
+do not claim MCP resource-link interoperability, persistent storage, or real
+Windows/service-generation lifecycle evidence; those remain integration and native
+finalization work.
+
 ### Benchmarks
 
 `SPR-047` benchmarks performance-sensitive operations including:

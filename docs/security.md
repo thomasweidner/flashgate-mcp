@@ -375,6 +375,14 @@ Payload-heavy content must not be duplicated between MCP result fields or IPC la
 
 Large text, binary, media, search, tree, and process output uses bounded pages, streams, or identity-bound resource handles. Resource URIs are opaque and never contain raw host paths.
 
+The implemented in-memory result-resource registry generates 256-bit random
+`flashgate://result/` handles and binds access to principal, profile, root,
+execution backend, and service generation. Unknown, malformed, expired, and
+cross-owner reads all return the same unavailable category. Stored input and page
+output are copied to prevent mutable-buffer aliasing, while SHA-256 metadata lets a
+consumer verify the retrieved bytes without making the digest an authority token.
+Expiry is enforced during every storage/read operation as well as by an explicit sweep.
+
 The server enforces:
 
 - MIME/content-class validation;
@@ -384,6 +392,12 @@ The server enforces:
 - no cross-principal resource access;
 - bounded inline compatibility fallback;
 - no unrestricted base64 output.
+
+Current retained content is memory-backed and bounded by per-resource, global,
+per-principal, entry-count, page, inline, and TTL ceilings. MCP resource publication,
+streaming, persistent temporary storage, and integration with Operations/Job result
+retention remain adapter/owner work; none may weaken the registry binding or treat a
+URI, digest, client claim, or negotiated extension as authorization.
 
 ### Managed process identity and control
 
