@@ -71,13 +71,17 @@ When the user asks for the **next suitable** Mobile task without naming a BL tas
 2. Exclude every task ID that the ledger marks reserved, including metadata-valid Mobile PRs and unambiguous provisional UI-generated PRs.
 3. Read the current `Sprint sequence and status` table in `BACKLOG.md`.
 4. Inspect `Planned` sprints in ascending `SPR-xxx` order.
-5. For each candidate, classify dependency execution from the **current checkout** as `INDEPENDENT_FROM_CURRENT_CHECKOUT`, `STACK_BASE_READY`, `STACK_REQUIRED`, or blocked according to `Governance/MOBILE-CLOUD-HANDOFF.md`. A dependency hint in `MOBILE.md` is advisory and does not by itself make a task stack-required.
+5. For each candidate, first run the concrete-delta feasibility test from `Governance/MOBILE-CLOUD-HANDOFF.md`, then classify dependency execution from the **current checkout** as `INDEPENDENT_FROM_CURRENT_CHECKOUT`, `STACK_BASE_READY`, `STACK_REQUIRED`, or blocked. A dependency hint in `MOBILE.md` is advisory and does not by itself make a task stack-required.
 6. Select from the earliest Planned sprint that contains at least one unreserved `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` Mobile task.
 7. Inside that sprint prefer Cloud mode `A` before `B` before `C`, then `INDEPENDENT_FROM_CURRENT_CHECKOUT` before `STACK_BASE_READY`, then lower effort, lower Windows residual, and lower expected branch/diff collision.
 8. Do not attempt `git fetch`, manual remote configuration, merge, cherry-pick, or synthetic predecessor import to make a `STACK_REQUIRED` candidate executable.
 9. If the earliest relevant Planned sprint has no executable independent/base-ready candidate but has exactly one valid `STACK_REQUIRED` candidate path, return `STACK_RESTART_REQUIRED` rather than skipping silently to later work. Provide the predecessor PR, head branch, head SHA, selected child BL, and an exact restart instruction.
 10. Do not auto-select `Later` work while any executable unreserved `Planned` Mobile task exists.
 11. A user-named task or epic explicitly overrides this automatic sprint preference, but a user-named task that is already reserved must be reported rather than duplicated unless the user explicitly authorizes a competing candidate.
+
+A Mobile dependency is hard only when the candidate's concrete task-pure delta actually consumes unintegrated predecessor code, types, schemas, contracts, or runtime behavior. Do **not** infer a hard dependency merely because the BL acceptance notes mention future consumers, later CI coverage, later end-to-end integration, Windows/native finalization, or evidence that will only become complete after other PRs integrate. A generic gate that automatically covers future packages may be prepared independently when its own implementation and focused validation are complete against the current checkout. Record the remaining integration/native evidence as deferred; do not use that deferral to claim the BL `Done`.
+
+`BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` is candidate-local. Exclude that candidate and continue evaluating other candidates and later Planned sprints. Return a global no-executable result only after the complete allowed Planned scan, except for the explicit single-predecessor `STACK_RESTART_REQUIRED` rule above.
 
 Multiple independent tasks from the selected sprint may still be prepared in parallel. Real dependency chains use a new Codex Cloud task started directly from the predecessor PR head branch or commit supplied by `STACK_RESTART_REQUIRED`; they are not assembled by fetching the predecessor into a `main`-based task.
 
