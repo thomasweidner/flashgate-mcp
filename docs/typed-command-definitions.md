@@ -3,7 +3,7 @@
 **Status:** Version 1.0 domain contract
 
 **Owners:** BL-137 (registry), BL-138 (typed invocation construction), BL-140
-(timeout policy), BL-141 (bounded output)
+(timeout policy), BL-141 (bounded output), BL-142 (stable result schema)
 
 FlashGate resolves a public `command_id` exclusively through an immutable,
 server-owned registry. A command definition references an `executable_id`; a
@@ -58,8 +58,25 @@ Process capture uses independent stdout and stderr buffers with the respective
 definition-owned byte maxima. Each stream retains its prefix up to its own
 limit, continues consuming later bytes so a full pipe cannot block the child,
 counts all bytes presented, and exposes an explicit truncation marker. Output
-snapshots copy retained bytes so callers cannot mutate capture state. The
-stable public command-result representation remains owned by BL-142.
+snapshots copy retained bytes so callers cannot mutate capture state.
+
+The stable command result is a closed domain object with `commandId`, one of
+the terminal statuses `succeeded`, `failed`, `timed_out`, `canceled`,
+`start_failed`, or `cleanup_failed`, an optional observed `exitCode`, explicit
+`timedOut`, separate `stdout` and `stderr` output references, and a bounded
+array of categorical diagnostics. Success requires exit code zero and ordinary
+failure requires a nonzero exit code; timeout, cancellation, and start failure
+never fabricate one. Cleanup failure may retain an observed exit code.
+
+Each output reference contains `encoding: "base64"`, `data`, `retainedBytes`,
+`totalBytes`, and `truncated`. Base64 preserves arbitrary process bytes without
+turning them into invalid JSON or terminal control text. Byte counts and the
+truncation marker must agree with the bounded snapshot. Diagnostics are limited
+to eight unique values from the fixed set `stdout_truncated`,
+`stderr_truncated`, `termination_incomplete`, and `cleanup_incomplete`; raw OS
+errors and arbitrary process text are not representable. The constructor
+defensively copies caller-owned exit and diagnostic data and rejects internally
+inconsistent results before an MCP adapter can serialize them.
 
 This contract does not hash or open binaries, implement those platform path
 checks, enforce platform isolation, or launch processes. Those operations
