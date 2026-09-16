@@ -434,7 +434,7 @@ The standalone defaults are 64 global and 8 per profile, and deployments may
 configure stricter positive values; invalid or effectively disabled budgets
 fail closed.
 
-Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model. The native adapters bind termination to the private Job Object or cgroup; race and restart guarantees remain planned lifecycle-test work.
+Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model. The native adapters bind termination to the private Job Object or cgroup. Focused lifecycle tests prove that PID reuse does not alias handles, stop/exit races preserve the first terminal outcome, and a new engine generation rejects handles from the prior generation. Native container enforcement and cleanup still require platform finalization.
 
 Managed-process lifecycle evidence is a closed status-and-diagnostic-PID
 projection. Command IDs, arguments, executable and working-directory paths,

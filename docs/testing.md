@@ -17,10 +17,14 @@ go test -race ./internal/managedprocess -count=1
 ```
 
 It covers concurrent registration/removal, opaque principal-bound handle
-identity and non-reuse, zero-value safety, fail-closed identifier-space
-exhaustion, and managed-process lifecycle transitions. Lifecycle race coverage
-proves that competing terminal outcomes cannot replace the first accepted
-outcome. Start-engine coverage proves fail-closed policy enforcement, absolute
+identity and non-reuse even when an operating-system PID is reused, zero-value
+safety, fail-closed identifier-space exhaustion, and managed-process lifecycle
+transitions. A newly constructed engine cannot resolve a handle from a prior
+engine generation. Lifecycle race coverage proves that competing stop and exit
+outcomes cannot replace the first accepted outcome or release a concurrency
+slot more than once. Repeated adapter-start failures prove their reservations
+are released while their failed lifecycle records remain addressable.
+Start-engine coverage proves fail-closed policy enforcement, absolute
 launch validation, principal-bound registration, startup-failure retention,
 and asynchronous exit reaping. Wait coverage proves terminal and
 already-terminal results, input and principal isolation, and that caller
@@ -39,11 +43,11 @@ projection expose none of them. Separate stdout/stderr ring,
 process-tree, and platform lifecycle tests remain owned by
 their respective planned tasks.
 
-The CPU and memory adapters have portable contract tests and Windows
-cross-build coverage, but no simulated claim of native enforcement.
-`BL-135` and Windows finalization must add real Windows Job Object and native
-Linux cgroup v2 tests for pre-execution containment, descendant accounting, CPU
-throttling, aggregate memory failure, unsupported/delegation denial, races, and
+The CPU and memory adapters have portable contract tests, Linux lifecycle/race
+coverage, and Windows cross-build coverage, but no simulated claim of native
+enforcement. Windows finalization must add real Windows Job Object and native
+Linux cgroup v2 evidence for pre-execution containment, descendant accounting,
+CPU throttling, aggregate memory failure, unsupported/delegation denial, and
 container cleanup. Cross-builds and test doubles are useful focused gates but
 cannot replace those platform results. The complete design and fallback matrix
 is in [Managed Process CPU and Memory Limit Strategy](process-resource-limit-strategy.md).
