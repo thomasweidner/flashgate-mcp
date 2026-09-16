@@ -16,6 +16,16 @@ Stopping defaults to server-managed processes. External PID control requires a d
 
 Command execution uses configured executable IDs resolved server-side to allowed absolute program paths. Arguments are separate arrays. Working directories must be within allowed roots. Environment propagation is allowlisted or explicitly defined. stdout and stderr are separate and bounded. Runtime, output, and concurrency are limited.
 
+CPU and memory controls apply to the complete managed process tree. Windows
+uses a private Job Object with hard CPU-rate and aggregate job-memory limits;
+Linux uses a delegated cgroup v2 leaf with CPU bandwidth and hard memory
+limits. A process requiring either control is admitted only when the adapter
+can configure and establish containment before untrusted execution. There is no
+best-effort fallback to polling, priority, runtime, or per-process resource
+limits. A policy may explicitly omit CPU or memory control while retaining all
+other mandatory bounds. The detailed platform and validation contract is the
+[managed process CPU and memory limit strategy](../process-resource-limit-strategy.md).
+
 A future `run_command` is a synchronous wrapper over the Managed Process Engine. No second execution engine is permitted. Free shell strings and interactive shells are disabled by default.
 
 ## Rationale
@@ -42,4 +52,6 @@ Threat-model observation and execution separately. Implement registry identity a
 - external PID control remains separately capable, high-risk classified, and opt-in
 - interactive input requires a later risk decision
 - interactive shell support requires separate interactive/high-risk policy decisions
-- CPU/RAM isolation mechanisms are selected per platform after research
+- CPU/RAM isolation uses Windows Job Objects and Linux cgroup v2 as specified
+  by the managed-process resource-limit strategy; native implementation and
+  platform proof remain `BL-134/BL-135`

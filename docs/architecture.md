@@ -298,6 +298,18 @@ engine-owned process, records `timed_out`, and releases its concurrency budget
 exactly once. Normal exit or an earlier stop cancels the pending runtime timer;
 the separate `wait_process` observation timeout still never stops a process.
 
+CPU and memory isolation uses one resource container for the complete managed
+process tree: a Job Object with hard CPU-rate and aggregate job-memory limits
+on Windows, and a delegated cgroup v2 leaf with `cpu.max`, `memory.max`, and
+group OOM handling on Linux. A limit-requiring launch must be contained before
+untrusted code executes. Unsupported, unrepresentable, or unverifiable controls
+deny that launch rather than degrading to monitoring, priority changes,
+wall-clock timeout, or per-process address-space limits. Policies may explicitly
+request neither control; all existing authorization, concurrency, runtime, and
+output bounds still apply. The selected mechanisms, accounting portability,
+fallbacks, and future adapter gates are defined in the
+[managed process CPU and memory limit strategy](process-resource-limit-strategy.md).
+
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:
 
 - shell command strings;
