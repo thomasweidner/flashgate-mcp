@@ -224,15 +224,16 @@ creation, and terminates an engine-owned process when its runtime expires.
 Runtime enforcement and explicit stop share one serialized control path, and
 terminal cleanup releases concurrency reservations exactly once.
 
-The accepted CPU and memory strategy is fail-closed when policy requires a
+The implemented CPU and memory adapters fail closed when policy requires a
 control. Windows uses a private Job Object for hard CPU-rate and aggregate
 committed-memory limits; Linux uses a delegated cgroup v2 leaf for CPU bandwidth
 and hard tree-memory limits. In both cases containment must precede untrusted
 execution and cover descendants. Missing delegation, incompatible host
 containment, unsupported controls, and unsafe numeric representation deny the
 launch. Timeouts, process counts, priority changes, polling, `RLIMIT_CPU`, and
-`RLIMIT_AS` are not treated as equivalent fallbacks. Native enforcement remains
-planned under `BL-134`; see the
+`RLIMIT_AS` are not treated as equivalent fallbacks. Real-kernel enforcement
+evidence and lifecycle/race coverage remain for native finalization and
+`BL-135`; see the
 [resource-limit strategy](process-resource-limit-strategy.md).
 
 `MCP_DEBUG=true` enables minimal stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
@@ -433,7 +434,7 @@ The standalone defaults are 64 global and 8 per profile, and deployments may
 configure stricter positive values; invalid or effectively disabled budgets
 fail closed.
 
-Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model. Process-tree and platform-specific termination guarantees remain planned adapter work.
+Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model. The native adapters bind termination to the private Job Object or cgroup; race and restart guarantees remain planned lifecycle-test work.
 
 Managed-process lifecycle evidence is a closed status-and-diagnostic-PID
 projection. Command IDs, arguments, executable and working-directory paths,

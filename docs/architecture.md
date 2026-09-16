@@ -206,8 +206,12 @@ truncation without retransmitting earlier bytes. Separate stdout/stderr ring
 buffers and configurable size limits remain planned. The stop operation uses
 only the trusted principal and opaque managed handle, serializes competing stop
 requests, terminates the engine-owned child, and preserves whichever terminal
-outcome wins first. Process-tree termination, platform isolation, and cleanup
-remain separate planned work.
+outcome wins first. Managed launches cross one trusted `ProcessAdapter`
+boundary. Policy-selected CPU and aggregate tree-memory limits map to a private
+Windows Job Object before a suspended child resumes, or to a private delegated
+Linux cgroup v2 leaf through clone-time membership. Missing controls and unsafe
+representations deny launch rather than selecting a weaker fallback. Complete
+lifecycle/race/restart validation remains separate work.
 
 ### Execution
 
