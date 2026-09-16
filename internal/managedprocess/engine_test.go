@@ -3,6 +3,7 @@ package managedprocess
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -36,7 +37,7 @@ func TestEngineStartsAuthorizedProcessAndTracksLifecycle(t *testing.T) {
 	}))
 	started := &fakeStartedProcess{pid: 4242, wait: make(chan struct{})}
 	var launched Launch
-	engine.start = func(launch Launch) (startedProcess, error) {
+	engine.start = func(launch Launch, _, _ io.Writer) (startedProcess, error) {
 		launched = launch
 		return started, nil
 	}
@@ -87,7 +88,7 @@ func TestEngineFailsClosedBeforeStarting(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			called := false
-			test.engine.start = func(Launch) (startedProcess, error) {
+			test.engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) {
 				called = true
 				return nil, errors.New("unexpected")
 			}
@@ -101,7 +102,7 @@ func TestEngineFailsClosedBeforeStarting(t *testing.T) {
 
 func TestEngineRetainsFailedStartup(t *testing.T) {
 	engine := NewEngine(policyFunc(allowTestLaunch))
-	engine.start = func(Launch) (startedProcess, error) { return nil, errors.New("rejected") }
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return nil, errors.New("rejected") }
 	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
 	if handle == "" || err == nil {
 		t.Fatalf("Start() = (%q, %v), want handle and error", handle, err)
@@ -115,7 +116,7 @@ func TestEngineRetainsFailedStartup(t *testing.T) {
 func TestEngineRecordsFailedExit(t *testing.T) {
 	engine := NewEngine(policyFunc(allowTestLaunch))
 	started := &fakeStartedProcess{pid: 7, wait: make(chan struct{}), waitErr: errors.New("exit status 1")}
-	engine.start = func(Launch) (startedProcess, error) { return started, nil }
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
 	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -128,7 +129,7 @@ func TestEngineRecordsFailedExit(t *testing.T) {
 func TestEngineWaitReturnsTerminalResult(t *testing.T) {
 	engine := NewEngine(policyFunc(allowTestLaunch))
 	started := &fakeStartedProcess{pid: 73, wait: make(chan struct{})}
-	engine.start = func(Launch) (startedProcess, error) { return started, nil }
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
 	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -162,7 +163,7 @@ func TestEngineWaitReturnsTerminalResult(t *testing.T) {
 func TestEngineWaitTimeoutAndCancellationDoNotChangeProcess(t *testing.T) {
 	engine := NewEngine(policyFunc(allowTestLaunch))
 	started := &fakeStartedProcess{pid: 81, wait: make(chan struct{})}
-	engine.start = func(Launch) (startedProcess, error) { return started, nil }
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
 	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -190,7 +191,7 @@ func TestEngineWaitTimeoutAndCancellationDoNotChangeProcess(t *testing.T) {
 func TestEngineWaitValidatesIdentityAndInput(t *testing.T) {
 	engine := NewEngine(policyFunc(allowTestLaunch))
 	started := &fakeStartedProcess{pid: 91, wait: make(chan struct{})}
-	engine.start = func(Launch) (startedProcess, error) { return started, nil }
+	engine.start = func(Launch, io.Writer, io.Writer) (startedProcess, error) { return started, nil }
 	handle, err := engine.Start(context.Background(), StartRequest{Principal: "owner", Command: "approved"})
 	if err != nil {
 		t.Fatalf("Start() error = %v", err)
@@ -253,12 +254,17 @@ func TestEngineStartsAndReapsOSProcess(t *testing.T) {
 		t.Fatalf("started process = (%v, %t), pid=%d", process, ok, process.PID())
 	}
 	waitForStatus(t, process, StatusExited)
+	output, err := engine.ReadOutput("owner", handle, 0, maxOutputRead)
+	if err != nil || string(output.Data) != "helper output" || !output.EOF {
+		t.Fatalf("helper output = (%#v, %v)", output, err)
+	}
 }
 
 func TestManagedProcessHelper(t *testing.T) {
 	if os.Getenv("FLASHGATE_MANAGED_PROCESS_HELPER") != "1" {
 		return
 	}
+	_, _ = os.Stdout.WriteString("helper output")
 	os.Exit(0)
 }
 

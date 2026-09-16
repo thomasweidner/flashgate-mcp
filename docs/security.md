@@ -391,9 +391,16 @@ same unavailable result. Cancellation and wait deadlines reveal no partial
 result, do not terminate the child, and do not mutate its managed status; a
 successful wait exposes only the terminal status and diagnostic PID.
 
+Managed output reads use that same principal-bound handle lookup, so an output
+cursor grants no authority independently. Reads have a fixed maximum page size,
+future cursors fail closed, returned byte slices do not alias mutable capture
+state, and total capture is capped even when the child continues writing. The
+current combined capture reports truncation; separate per-stream ring limits
+remain planned under BL-125.
+
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.
 
-stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
+The final stdout/stderr contract is separately bounded. Command lines, environments, and output are minimized and redacted.
 
 ### Typed command execution boundary
 
