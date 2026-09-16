@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+	"time"
 )
 
 type operation string
@@ -24,7 +25,7 @@ func (f adapterFunc) Execute(ctx context.Context, e ExecutionContext, o Operatio
 }
 
 func approvedDecision(backend BackendID) Decision {
-	return Decision{Allowed: true, Profile: "safe-read", RootID: "docs", Capability: "filesystem.read", Backend: backend, ServiceGeneration: "generation-7"}
+	return Decision{Allowed: true, Profile: "safe-read", RootID: "docs", Capability: "filesystem.read", Backend: backend, ServiceInstance: "service-2", ServiceGeneration: "generation-7", ProtocolContext: "mcp-session-4", ExpiresAt: time.Now().Add(time.Hour)}
 }
 
 func validRequest() Request {
@@ -76,7 +77,7 @@ func TestDispatchBindsCallerPolicyAndBackend(t *testing.T) {
 	if got.Caller().Principal() != "principal-1" || !reflect.DeepEqual(got.Caller().Groups(), []string{"readers", "writers"}) {
 		t.Fatalf("caller binding = %q %v", got.Caller().Principal(), got.Caller().Groups())
 	}
-	if got.Profile() != "safe-read" || got.RootID() != "docs" || got.Capability() != "filesystem.read" || got.Backend() != BackendServiceAccount || got.ServiceGeneration() != "generation-7" || got.Correlation() != "request-9" {
+	if got.Profile() != "safe-read" || got.RootID() != "docs" || got.Capability() != "filesystem.read" || got.Backend() != BackendServiceAccount || got.ServiceInstance() != "service-2" || got.ServiceGeneration() != "generation-7" || got.ProtocolContext() != "mcp-session-4" || got.ExpiresAt().IsZero() || got.Correlation() != "request-9" {
 		t.Fatalf("incomplete execution binding: %+v", got)
 	}
 	copy := got.Caller().Groups()

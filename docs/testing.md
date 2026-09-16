@@ -952,6 +952,9 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 ### Operations and multi-principal tests
 
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
+- the shared execution-state ownership gate also varies caller groups, service
+  instance, protocol context, and expiry, rejects opaque-ID takeover, removes
+  expired entries, and applies identical checks to deletion/cancellation;
 - cross-principal status/result/cancel/cache/resource denial;
 - global, per-domain, and per-principal concurrency limits;
 - global/per-principal queue caps and fair scheduling;

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 )
 
 // BackendID identifies an execution backend selected by trusted policy.
@@ -22,6 +23,8 @@ var (
 	ErrDenied             = errors.New("execution denied")
 	ErrInvalidContext     = errors.New("invalid execution context")
 	ErrBackendUnavailable = errors.New("execution backend unavailable")
+	ErrStateAccessDenied  = errors.New("execution state access denied")
+	ErrStateExpired       = errors.New("execution state expired")
 )
 
 // Caller is an authenticated principal derived by a trusted transport.
@@ -66,7 +69,10 @@ type Decision struct {
 	RootID            string
 	Capability        string
 	Backend           BackendID
+	ServiceInstance   string
 	ServiceGeneration string
+	ProtocolContext   string
+	ExpiresAt         time.Time
 }
 
 // ExecutionContext is the immutable identity and policy binding passed below
@@ -77,8 +83,11 @@ type ExecutionContext struct {
 	rootID            string
 	capability        string
 	backend           BackendID
+	serviceInstance   string
 	serviceGeneration string
 	correlation       string
+	protocolContext   string
+	expiresAt         time.Time
 }
 
 func (e ExecutionContext) Caller() Caller            { return e.caller }
@@ -86,8 +95,11 @@ func (e ExecutionContext) Profile() string           { return e.profile }
 func (e ExecutionContext) RootID() string            { return e.rootID }
 func (e ExecutionContext) Capability() string        { return e.capability }
 func (e ExecutionContext) Backend() BackendID        { return e.backend }
+func (e ExecutionContext) ServiceInstance() string   { return e.serviceInstance }
 func (e ExecutionContext) ServiceGeneration() string { return e.serviceGeneration }
 func (e ExecutionContext) Correlation() string       { return e.correlation }
+func (e ExecutionContext) ProtocolContext() string   { return e.protocolContext }
+func (e ExecutionContext) ExpiresAt() time.Time      { return e.expiresAt }
 
 // Policy authorizes an authenticated caller and selects a backend from trusted
 // root configuration. Implementations must not use payload-supplied identity.
@@ -173,7 +185,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, caller Caller, request Reques
 	if !decision.Allowed {
 		return nil, ErrDenied
 	}
-	if decision.Profile == "" || decision.RootID != request.RootID || decision.Capability != request.Capability || decision.Backend == "" || decision.ServiceGeneration == "" {
+	if decision.Profile == "" || decision.RootID != request.RootID || decision.Capability != request.Capability || decision.Backend == "" || decision.ServiceInstance == "" || decision.ServiceGeneration == "" || decision.ProtocolContext == "" || decision.ExpiresAt.IsZero() || !decision.ExpiresAt.After(time.Now()) {
 		return nil, ErrInvalidContext
 	}
 	backend, err := d.registry.selectBackend(decision.Backend)
@@ -183,7 +195,9 @@ func (d *Dispatcher) Dispatch(ctx context.Context, caller Caller, request Reques
 	binding := ExecutionContext{
 		caller: caller, profile: decision.Profile, rootID: decision.RootID,
 		capability: decision.Capability, backend: decision.Backend,
-		serviceGeneration: decision.ServiceGeneration, correlation: request.Correlation,
+		serviceInstance: decision.ServiceInstance, serviceGeneration: decision.ServiceGeneration,
+		correlation: request.Correlation, protocolContext: decision.ProtocolContext,
+		expiresAt: decision.ExpiresAt,
 	}
 	return backend.Dispatch(ctx, binding, operation, d.adapter)
 }
