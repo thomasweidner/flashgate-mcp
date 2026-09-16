@@ -405,6 +405,16 @@ return the stable terminal result without signaling the operating-system
 process again, while an exit that wins the race remains unchanged. Termination
 failure leaves a running lifecycle unchanged and fails closed.
 
+Managed starts reserve a concurrency slot only after policy authorization and
+launch validation. The engine enforces positive global and trusted
+policy-selected profile budgets atomically before process creation; exhaustion
+returns one stable limit error without registering or launching a process.
+Starting and running processes consume slots. Startup failure, exit, failed
+exit, and successful stop release exactly one slot, including stop/exit races.
+The standalone defaults are 64 global and 8 per profile, and deployments may
+configure stricter positive values; invalid or effectively disabled budgets
+fail closed.
+
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model. Process-tree and platform-specific termination guarantees remain planned adapter work.
 
 The final stdout/stderr contract is separately bounded. Command lines, environments, and output are minimized and redacted.

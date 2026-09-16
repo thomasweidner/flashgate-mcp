@@ -280,6 +280,14 @@ Managed process handles are the primary identity; PIDs are diagnostic only becau
 
 The current process-output foundation uses a bounded combined capture and incremental byte cursors; the planned final contract separates bounded stdout/stderr rings. Status, wait, output, and stop operations require the owning execution context. A wait deadline limits only the caller's observation; process-runtime enforcement and transition to `timed_out` are separate lifecycle controls.
 
+The managed process engine atomically enforces active-process budgets at both
+global and policy-selected profile scope before operating-system launch.
+Reservations cover starting and running processes and are released exactly once
+on startup failure, terminal exit, or successful stop. Invalid, zero, negative,
+or per-profile-greater-than-global configurations fail closed. The standalone
+engine defaults to 64 global and 8 active processes per profile; an effective
+deployment configuration may only provide valid positive limits.
+
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:
 
 - shell command strings;
