@@ -21,6 +21,12 @@ access permits an operation but its functional capability is absent.
 Per-root process working-directory tests prove explicit allow and deny outcomes,
 unknown-root rejection, independence from filesystem read/write grants, and the
 compatible single-root bootstrap's fail-closed default.
+The dedicated per-root policy security matrix exercises every filesystem tool
+against an incompatible selected-root access policy and requires a generic
+denial before any list, read, metadata, write, create, delete, copy, or move
+filesystem call. Together with the focused registry and tool tests, this covers
+read/write isolation, file-type and byte-limit enforcement, immutable
+symlink/reparse policy matching, and process working-directory authorization.
 Dynamic tool-registration tests derive the catalog from aggregate effective
 root capabilities, including mixed-root configurations, while preserving
 deterministic tool order and per-root authorization at execution time. The
