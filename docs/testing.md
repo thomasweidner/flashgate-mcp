@@ -33,6 +33,12 @@ detector coverage is required for its concurrent shutdown path. Windows/native
 integration must later verify the owner-provided process termination and
 resource-cleanup adapters; these unit tests do not claim that host evidence.
 
+The same package tests expired-job leak handling: deterministic TTL sweeps,
+owner enforcement, successful cleanup, retained-and-retried cleanup failures,
+panic containment, aggregate metrics, and single-claim behavior under
+concurrent sweeps. Cleanup callbacks remain domain-owned and receive the sweep
+context.
+
 ## Legacy governance enforcement reference
 
 The historical governance-orchestration material below, through `Test Commands`,
