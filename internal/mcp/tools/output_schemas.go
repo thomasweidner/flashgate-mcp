@@ -1,5 +1,7 @@
 package tools
 
+import "github.com/thomasweidner/flashgate-mcp/internal/systeminfo"
+
 func filesystemOutputSchema(toolName string) map[string]any {
 	switch toolName {
 	case listDirectoryToolName:
@@ -69,11 +71,21 @@ func filesystemOutputSchema(toolName string) map[string]any {
 }
 
 func systemInfoOutputSchema() map[string]any {
+	allowedEnvironment := systeminfo.ReleasedEnvironmentVariables()
+	environmentProperties := make(map[string]any, len(allowedEnvironment))
+	for _, name := range allowedEnvironment {
+		environmentProperties[name] = map[string]any{"type": "string"}
+	}
 	return objectOutputSchema(map[string]any{
 		"os":           map[string]any{"type": "string"},
 		"architecture": map[string]any{"type": "string"},
 		"version":      map[string]any{"type": "string"},
-	}, "os", "architecture", "version")
+		"environment": map[string]any{
+			"type":                 "object",
+			"properties":           environmentProperties,
+			"additionalProperties": false,
+		},
+	}, "os", "architecture", "version", "environment")
 }
 
 func objectOutputSchema(properties map[string]any, required ...string) map[string]any {

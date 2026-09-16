@@ -186,7 +186,7 @@
     {
       "name": "system_info",
       "title": "System Info",
-      "description": "Returns the operating system, architecture, and OS version without machine identifiers.",
+      "description": "Returns operating-system facts and allowlisted locale/terminal environment values without machine identifiers or secrets.",
       "inputSchema": {
         "type": "object",
         "properties": {},
@@ -203,12 +203,34 @@
           },
           "version": {
             "type": "string"
+          },
+          "environment": {
+            "type": "object",
+            "properties": {
+              "COLORTERM": {
+                "type": "string"
+              },
+              "LANG": {
+                "type": "string"
+              },
+              "LC_ALL": {
+                "type": "string"
+              },
+              "LC_CTYPE": {
+                "type": "string"
+              },
+              "TERM": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [
           "os",
           "architecture",
-          "version"
+          "version",
+          "environment"
         ],
         "additionalProperties": false
       }

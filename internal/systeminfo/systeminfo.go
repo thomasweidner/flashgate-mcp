@@ -2,15 +2,31 @@
 // FlashGate deliberately makes available to clients.
 package systeminfo
 
-import "runtime"
+import (
+	"os"
+	"runtime"
+)
+
+// releasedEnvironmentVariables is the complete environment-variable allowlist.
+// The values describe process locale and terminal behavior without exposing
+// paths, identities, credentials, or application configuration.
+var releasedEnvironmentVariables = [...]string{"COLORTERM", "LANG", "LC_ALL", "LC_CTYPE", "TERM"}
+
+// ReleasedEnvironmentVariables returns a copy of the fixed public allowlist.
+func ReleasedEnvironmentVariables() []string {
+	result := make([]string, len(releasedEnvironmentVariables))
+	copy(result, releasedEnvironmentVariables[:])
+	return result
+}
 
 // Info contains the host facts released by the system information domain.
-// It intentionally excludes host names, user names, environment variables,
-// network data, and other machine identifiers.
+// It intentionally excludes host names, user names, unrestricted environment
+// variables, network data, and other machine identifiers.
 type Info struct {
 	OS           string
 	Architecture string
 	Version      string
+	Environment  map[string]string
 }
 
 // Provider returns system information.
@@ -30,5 +46,20 @@ func (RuntimeProvider) Info() (Info, error) {
 	if err != nil {
 		return Info{}, err
 	}
-	return Info{OS: runtime.GOOS, Architecture: runtime.GOARCH, Version: version}, nil
+	return Info{
+		OS:           runtime.GOOS,
+		Architecture: runtime.GOARCH,
+		Version:      version,
+		Environment:  filteredEnvironment(os.LookupEnv),
+	}, nil
+}
+
+func filteredEnvironment(lookup func(string) (string, bool)) map[string]string {
+	result := make(map[string]string)
+	for _, name := range releasedEnvironmentVariables {
+		if value, ok := lookup(name); ok && value != "" {
+			result[name] = value
+		}
+	}
+	return result
 }

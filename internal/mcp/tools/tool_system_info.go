@@ -21,7 +21,7 @@ func NewSystemInfoTool(provider systeminfo.Provider) *SystemInfoTool {
 func (t *SystemInfoTool) Name() string  { return systemInfoToolName }
 func (t *SystemInfoTool) Title() string { return "System Info" }
 func (t *SystemInfoTool) Description() string {
-	return "Returns the operating system, architecture, and OS version without machine identifiers."
+	return "Returns operating-system facts and allowlisted locale/terminal environment values without machine identifiers or secrets."
 }
 func (t *SystemInfoTool) InputSchema() any {
 	return map[string]any{"type": "object", "properties": map[string]any{}, "additionalProperties": false}
@@ -39,11 +39,31 @@ func (t *SystemInfoTool) Execute(_ context.Context, rawArguments json.RawMessage
 	if err != nil || info.OS == "" || info.Architecture == "" || info.Version == "" {
 		return nil, internalToolResultError()
 	}
-	return systemInfoResult{OS: info.OS, Architecture: info.Architecture, Version: info.Version}, nil
+	environment, ok := releasedEnvironment(info.Environment)
+	if !ok {
+		return nil, internalToolResultError()
+	}
+	return systemInfoResult{OS: info.OS, Architecture: info.Architecture, Version: info.Version, Environment: environment}, nil
+}
+
+func releasedEnvironment(values map[string]string) (map[string]string, bool) {
+	allowed := make(map[string]struct{}, len(systeminfo.ReleasedEnvironmentVariables()))
+	for _, name := range systeminfo.ReleasedEnvironmentVariables() {
+		allowed[name] = struct{}{}
+	}
+	result := make(map[string]string, len(values))
+	for name, value := range values {
+		if _, ok := allowed[name]; !ok || value == "" {
+			return nil, false
+		}
+		result[name] = value
+	}
+	return result, true
 }
 
 type systemInfoResult struct {
-	OS           string `json:"os"`
-	Architecture string `json:"architecture"`
-	Version      string `json:"version"`
+	OS           string            `json:"os"`
+	Architecture string            `json:"architecture"`
+	Version      string            `json:"version"`
+	Environment  map[string]string `json:"environment"`
 }
