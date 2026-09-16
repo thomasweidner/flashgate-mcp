@@ -377,6 +377,14 @@ Managed-process lifecycle transitions are serialized, and the first terminal
 outcome cannot be replaced by a competing outcome. Binding to profile, root,
 execution backend, and service generation remains separate enforcement work.
 
+The managed start engine is fail-closed without a policy. Requests carry a
+server-side command identifier rather than an executable or shell string. The
+policy authorizes the trusted principal and resolves an absolute executable,
+an optional absolute working directory, and the complete child environment;
+the server environment is not inherited implicitly. Denied or invalid launches
+cannot reach operating-system process creation. Profile/root/backend/service-
+generation policy implementations and platform isolation remain planned work.
+
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
