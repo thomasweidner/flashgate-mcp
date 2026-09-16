@@ -64,7 +64,7 @@ Reservation is independent of commit SHA, branch name, mergeability, review resu
 
 Known duplicate reservation collisions at this snapshot include:
 
-`BL-036`, `BL-202`, `BL-203`, `BL-205`, `BL-206`, `BL-213`, `BL-216`, `BL-219`.
+`BL-036`, `BL-202`, `BL-203`, `BL-205`, `BL-206`, `BL-212`, `BL-213`, `BL-214`, `BL-216`, `BL-219`.
 
 Do not create another candidate for a collision. Reconcile competing candidates during Windows/Classic finalization.
 
@@ -136,24 +136,26 @@ MutationCount=0
 
 If multiple independent uncombined predecessors are genuinely required, return `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`. Never synthesize a Cloud merge branch.
 
-## 7. Snapshot binding — 2026-09-15
+## 7. Snapshot binding — 2026-09-16
 
 ```text
 Repository : thomasweidner/flashgate-mcp
-Main       : 8de5e5bb9f03a96b0202b1df421d3f6812a716f2
+Main       : c8a08c57042fd4e5604eb46a6ebe19e8cdd918ba
 AGENTS     : 73b06e26da08847ebd3c5ee0512c581147eb4548
 BACKLOG    : a02db7c09b10dba8c827f62618c7c6eb9f096591
-MOBILE     : c54653e34e076a24c458f29f6b9198e7d2942b5b (pre-this-update)
-Ledger     : open GitHub PRs through #195 at snapshot time
+MOBILE     : b9f3f55d3061196c391b43e662308eff33bab40a (pre-this-update)
+Ledger     : open GitHub PRs through #222 at snapshot time
 ```
 
-Since the preceding Mobile refresh, the following formerly active topics are now prepared/reserved and therefore removed from new Mobile selection:
+Since the preceding Mobile refresh, these formerly active topics are now prepared/reserved and are removed from new Mobile selection:
 
-`BL-102`, `BL-104–BL-111`, `BL-114–BL-117`, `BL-137`, `BL-159`, `BL-223`.
+`BL-120–BL-126`, `BL-130–BL-131`, `BL-138`, `BL-140–BL-141`, `BL-154–BL-156`, `BL-161`, `BL-224–BL-225`, `BL-233`, `BL-235–BL-236`, `BL-238–BL-239`, `BL-262`.
+
+New duplicate reservations also appeared for `BL-212` (PR #71 and PR #216) and `BL-214` (PR #63 and PR #200). Those BLs were already excluded from active selection, so the collisions do not change the active count; they remain fail-closed ledger items.
 
 The complete current Search implementation queue represented by `BL-068–BL-080` and `BL-082` remains reserved by open PRs. No new Version-1.0 Search BL remains in the active Mobile list at this snapshot.
 
-The named-root implementation chain now has open candidates for `BL-102` and `BL-104–BL-111`; `BL-103` is the only unreserved Planned row in that epic. The process-observation chain has open candidates through `BL-117`, leaving `BL-118` as the remaining unreserved observation row.
+The named-root implementation chain still leaves only `BL-103` unreserved. The process-observation chain still leaves `BL-118` unreserved, while the managed-process implementation chain now has reservations through `BL-131` except for `BL-132–BL-135`.
 
 ## 8. Classic/owner decision exclusions
 
@@ -170,7 +172,7 @@ The following Planned tasks are intentionally absent from the active queue until
 
 Decision-gated post-1.0 work is also excluded from the current queue, including `BL-083`, `BL-112`, `BL-127–BL-128`, `BL-150`, `BL-158`, `BL-169`, `BL-176`, `BL-181–BL-188`, `BL-217`, `BL-232`, `BL-240` and `BL-313`.
 
-`BL-235` is not decision-blocked: accepted ADR-015 already selects the Version-1.0 hybrid per-root execution-identity architecture and Variant A while reserving Variant B. It therefore remains eligible Mode-C work while its backlog row is `Planned`.
+There are no active Mode-C rows at this snapshot because the four previously active bounded-contract tasks (`BL-225`, `BL-233`, `BL-235`, `BL-238`) are now reserved by open PRs. This does **not** change the A→B→C selection contract or make Mode C categorically ineligible.
 
 ## 9. Active Planned candidates
 
@@ -181,21 +183,21 @@ These IDs were unreserved at the snapshot, are `Planned`, and are not blocked by
 | Filesystem | `BL-056–BL-057`, `BL-063–BL-064` | `BL-060–BL-061` | — |
 | Operations / Job | `BL-095` | `BL-098–BL-099` | — |
 | Named roots / capabilities | `BL-103` | — | — |
-| Process | `BL-118`, `BL-120–BL-126`, `BL-130–BL-133` | `BL-134–BL-135` | — |
-| Command execution | `BL-138–BL-145`, `BL-148–BL-149`, `BL-151` | `BL-146–BL-147`, `BL-152` | — |
-| System information | `BL-154–BL-157` | — | — |
-| Security | `BL-160–BL-161`, `BL-163–BL-164`, `BL-167` | `BL-168` | — |
-| Native multi-mode / service | `BL-224`, `BL-228`, `BL-236`, `BL-239` | `BL-226–BL-227`, `BL-229–BL-231`, `BL-234`, `BL-237`, `BL-241–BL-242`, `BL-244` | `BL-225`, `BL-233`, `BL-235`, `BL-238` |
-| CI / release quality | `BL-252`, `BL-256`, `BL-258` | `BL-253–BL-254`, `BL-261–BL-262` | — |
+| Process | `BL-118`, `BL-132–BL-133` | `BL-134–BL-135` | — |
+| Command execution | `BL-139`, `BL-142–BL-145`, `BL-148–BL-149`, `BL-151` | `BL-146–BL-147`, `BL-152` | — |
+| System information | `BL-157` | — | — |
+| Security | `BL-160`, `BL-163–BL-164`, `BL-167` | `BL-168` | — |
+| Native multi-mode / service | `BL-228` | `BL-226–BL-227`, `BL-229–BL-231`, `BL-234`, `BL-237`, `BL-241–BL-242`, `BL-244` | — |
+| CI / release quality | `BL-252`, `BL-256`, `BL-258` | `BL-253–BL-254`, `BL-261` | — |
 | Cross-mode host lifecycle | — | `BL-341` | — |
 
 Snapshot totals:
 
 ```text
-Mode A active : 45
-Mode B active : 25
-Mode C active : 4
-Total active  : 74
+Mode A active : 26
+Mode B active : 24
+Mode C active : 0
+Total active  : 50
 ```
 
 `Later`, completed, reserved, known decision-blocked, Mode-D and Mode-X rows are intentionally omitted.
@@ -204,28 +206,32 @@ Total active  : 74
 
 These are current **preclassifications** only. Fresh inspection always wins.
 
-| Task | Mode | Snapshot state | Start ref / expected base | Parent |
-|---|:---:|---|---|---|
-| `BL-120` | A | `RECHECK_ON_PARENT` | PR #123 `codex/fuhre-nachsten-cloud-task-aus-o35p7y` @ `0289117a8d818721d3559d244819c333441c6d0d` | likely `BL-119` |
-| `BL-138` | A | `STACK_RESTART_READY` | PR #186 `codex/fuhre-bl-137-gema-mobile.md-v3-aus-cual5t` @ `760b83d5e97da5cb8031c9051e3e7fab939fe361` | `BL-137` |
-| `BL-154` | A | `STACK_RESTART_READY` | PR #135 `codex/fuhre-nachsten-geeigneten-cloud-task-aus-58655l` @ `1ebd868f5f20d37be48cdf5df5e0de1b7e470797` | `BL-062` |
-| `BL-155` | A | `RECHECK_ON_PARENT` | PR #132 `codex/fuhre-nachsten-cloud-task-aus-myz7pk` @ `20e2d97a640879564a428b29726fa9c6646abf69` | likely `BL-153` |
-| `BL-156` | A | `RECHECK_ON_PARENT` | PR #132, same head | likely `BL-153` |
+At this snapshot no remaining candidate is asserted as a safe single-parent `STACK_RESTART_READY` path. The previously fixed restart rows are all reserved, and the earliest remaining work crosses multiple open foundations or requires a fresh ancestry check.
 
-Earlier-sprint work does not become executable merely because its BL/sprint number is lower. The remaining filesystem and Operations/Job work is still dominated by multiple independent predecessors or later native integration. Fresh inspection must also treat `BL-103`, `BL-118` and `BL-160` as cross-foundation rechecks rather than assuming one newly prepared parent is sufficient.
+| Task | Mode | Snapshot state | Why fresh classification is required |
+|---|:---:|---|---|
+| `BL-118` | A | `WAIT_MULTI` | Process observation through `BL-117` must be combined with the capability/authorization foundations; do not assume one PR head is sufficient. |
+| `BL-132–BL-133` | A | `RECHECK_MULTI` | Managed-process implementation is reserved through `BL-131`, but resource-limit strategy/redaction must be checked against the actual cumulative ancestry and platform contracts. |
+| `BL-139` | A | `WAIT_MULTI` | Working-directory enforcement consumes both the command stack through `BL-138` and named-root working-directory policy `BL-109`. |
+| `BL-142` | A | `WAIT_MULTI` | Stable command results consume timeout/output contracts (`BL-140`, `BL-141`) plus the typed-command foundation. |
+| `BL-157` | A | `WAIT_MULTI` | `system.read` consumes the system-information chain and server-side capability/authorization work. |
+| `BL-228` | A | `WAIT_MULTI` | Proxy mode depends on lifecycle/IPC contracts and the still-unprepared platform transport implementations. |
+| `BL-256` | A | `WAIT_MULTI` | Catalog-budget enforcement consumes several independently prepared catalog/instruction/fingerprint foundations. |
+
+The automatic selector must therefore inspect real ancestry and current contracts instead of treating this table as an executable queue. If the earliest relevant sprint has no executable independent/base-ready task, follow the `STACK_RESTART_REQUIRED`/blocked rules from `AGENTS.md` and Mobile governance rather than synthesizing predecessors.
 
 ### Workstream notes
 
-- **Filesystem:** `BL-049` remains reserved by PR #169. `BL-056`, `BL-060–061`, `BL-063–064` currently intersect multiple open write/list/job foundations and default to `WAIT_MULTI`; `BL-057` normally follows `BL-056`.
-- **Search:** all current Version-1.0 Search candidates are reserved. Do not start another Search BL from this catalog.
-- **Named roots:** `BL-102` and `BL-104–111` are now reserved by PR #180 and PRs #182, #183, #184, #185, #187, #189, #190 and #194 respectively. `BL-103` is the only unreserved Planned row and crosses profile/risk-policy plus named-root/capability foundations, so reclassify it from the actual checkout before mutation.
-- **Operations/Job:** required primitives are distributed across independent open PRs; `BL-095`, `BL-098–099` default to `WAIT_MULTI` until current topology proves otherwise.
-- **Process:** `BL-114–117` are now reserved by PR #188 and PRs #191–#193. `BL-118` is the remaining observation authorization gate and must be rebound against both the current process-observation stack and capability/authorization foundations. `BL-120/121` may follow BL-119 if it is the only real prerequisite; otherwise managed-process work defaults to `WAIT_MULTI`.
-- **Command:** `BL-137` is now reserved by PR #186. `BL-138` is the cleanest direct command child to inspect from that head. `BL-143` must reuse the Managed Process Engine.
-- **System:** `BL-154` consumes BL-062; `BL-155/156` should be rebound from BL-153. `BL-157` crosses system-info and capability enforcement.
-- **Security:** `BL-159` is now reserved by PR #181 and `BL-171` remains reserved by PR #178. `BL-160` normally follows BL-159 but also exercises root/domain policy bypasses, so reclassify its complete predecessor set before mutation.
-- **Multi-mode / service:** `BL-223` is now reserved by PR #195. Bounded Mode-C contract work remains selectable under the root A→B→C preference; do not invent a decision when current ADR/backlog authority is insufficient. `BL-235` has its architecture choice already fixed by ADR-015. Reclassify `BL-225`, `BL-233`, `BL-235`, `BL-238` and downstream A/B work from the selected checkout.
-- **CI / release:** `BL-261` authoritative benchmark evidence and `BL-262` signing/atomic-release evidence remain deferred; repository-contained preparation stays active when dependency-executable.
+- **Filesystem:** `BL-049` remains reserved by PR #169. `BL-056`, `BL-060–061`, `BL-063–064` intersect multiple open write/list/job foundations and default to `WAIT_MULTI`; `BL-057` normally follows `BL-056`.
+- **Search:** all current Version-1.0 Search candidates remain reserved. Do not start another Search BL from this catalog.
+- **Named roots:** `BL-103` is the only unreserved Planned row; it crosses profile/risk-policy plus named-root/capability foundations and must be rebound from the actual checkout before mutation.
+- **Operations/Job:** required primitives remain distributed across independent open PRs; `BL-095`, `BL-098–099` default to `WAIT_MULTI` until current topology proves otherwise.
+- **Process:** `BL-120–126` and `BL-130–131` are now reserved in addition to `BL-114–117`. Remaining `BL-118`, `BL-132–135` require fresh cumulative-ancestry/platform checks; do not infer that one recent process PR contains all required siblings.
+- **Command:** `BL-138`, `BL-140` and `BL-141` are now reserved. `BL-139` crosses command and named-root policy; `BL-142` consumes multiple command-result foundations; `BL-143` must reuse the Managed Process Engine. Reclassify `BL-144–149`, `BL-151–152` from the selected checkout.
+- **System:** `BL-154–156` are now reserved. `BL-157` is the sole unreserved system-information row and crosses system-info plus capability enforcement.
+- **Security:** `BL-161` is now reserved in addition to `BL-159`/`BL-171`. `BL-160` still crosses server authorization and root/domain bypass coverage; `BL-163–164`, `BL-167–168` cross multiple implementation domains.
+- **Multi-mode / service:** `BL-224–225`, `BL-233`, `BL-235–236`, `BL-238–239` are now reserved. No Mode-C row remains active. `BL-228` and the remaining Mode-B transport/service/test work must be classified from the actual combination of lifecycle, IPC, identity and platform foundations; do not synthesize a Cloud merge.
+- **CI / release:** `BL-262` is now reserved. `BL-252–254`, `BL-256`, `BL-258` and `BL-261` remain active when dependency-executable; authoritative/native evidence boundaries remain deferred where their BL text requires them.
 
 ## 11. Implementation and validation contract
 
