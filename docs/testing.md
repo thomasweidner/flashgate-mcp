@@ -39,9 +39,10 @@ projection expose none of them. Separate stdout/stderr ring,
 process-tree, and platform lifecycle tests remain owned by
 their respective planned tasks.
 
-The CPU and memory resource-limit strategy has no simulated claim of native
-enforcement. `BL-134/BL-135` must add real Windows Job Object and native Linux
-cgroup v2 tests for pre-execution containment, descendant accounting, CPU
+The CPU and memory adapters have portable contract tests and Windows
+cross-build coverage, but no simulated claim of native enforcement.
+`BL-135` and Windows finalization must add real Windows Job Object and native
+Linux cgroup v2 tests for pre-execution containment, descendant accounting, CPU
 throttling, aggregate memory failure, unsupported/delegation denial, races, and
 container cleanup. Cross-builds and test doubles are useful focused gates but
 cannot replace those platform results. The complete design and fallback matrix

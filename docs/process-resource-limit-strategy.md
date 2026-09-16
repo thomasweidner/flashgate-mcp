@@ -2,11 +2,11 @@
 
 ## Status and scope
 
-This document is the `BL-132` design contract for CPU and memory limits on
-FlashGate-managed process trees. It selects the platform mechanisms and
-fail-closed fallback behavior that `BL-134` will implement. It does not claim
-that either platform adapter, configuration surface, or native enforcement is
-already present.
+This document began as the `BL-132` design contract for CPU and memory limits
+on FlashGate-managed process trees. `BL-134` now provides platform adapters for
+the selected mechanisms. Native Windows and delegated-cgroup validation,
+lifecycle/race/restart coverage, and canonical completion remain required by
+`BL-135` and Windows finalization.
 
 The limits are policy output, never tool input. They complement, rather than
 replace, the existing process-count, runtime, and output bounds. External PID
@@ -19,6 +19,11 @@ A policy may require either or both of these limits for a managed launch:
 - a positive CPU bandwidth ceiling, expressed by the platform-neutral policy
   as a rate and enforced over a bounded scheduler period; and
 - a positive memory ceiling in bytes for the complete managed process tree.
+
+The platform-neutral `CPURate` is expressed in basis points of host CPU
+capacity (`1..10000`). Linux uses a one-second cgroup period and rejects rates
+below the kernel's representable one-millisecond quota rather than rounding to
+a weaker limit.
 
 Zero means that the particular CPU or memory control is not requested by that
 policy. Negative, overflowed, unrepresentable, or platform-invalid values are
@@ -81,7 +86,17 @@ There is no silent best-effort degradation:
    explicit validation/normalization rule, but it must never round to a weaker
    limit. If no safe representation exists, validation fails.
 
-## Adapter and validation obligations
+## Adapter implementation and validation obligations
+
+The engine accepts one trusted `ProcessAdapter`; resource limits are policy
+output carried in `Launch` and are never copied from `StartRequest`. The Linux
+adapter requires an explicitly configured absolute delegated cgroup v2 root,
+creates a private random leaf, configures `cpu.max`, `memory.max`, and
+`memory.oom.group`, and uses Go's `UseCgroupFD` clone path for pre-execution
+membership. The Windows adapter creates and configures a private Job Object,
+starts the process suspended, assigns and verifies Job membership, and only
+then resumes it. Both adapters deny a requested control on setup failure and
+bind tree termination to container cleanup.
 
 `BL-134` owns the platform-specific implementation behind one
 platform-neutral managed-process adapter. `BL-135` owns lifecycle, race, and

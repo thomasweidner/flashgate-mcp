@@ -69,6 +69,10 @@ type Launch struct {
 	// selects the engine default; negative values and values above the engine
 	// maximum fail closed before operating-system launch.
 	Runtime time.Duration
+	// Resources contains policy-selected, tree-scoped CPU and memory limits.
+	// Callers cannot supply these values directly. A zero value requests no
+	// platform resource container.
+	Resources ResourceLimits
 }
 
 // Policy owns capability, profile, executable, argument, directory,
@@ -160,6 +164,13 @@ func NewEngineWithLimits(policy Policy, limits Limits) (*Engine, error) {
 // NewEngineWithConfiguration creates an engine with explicit concurrency and
 // runtime boundaries. Invalid or disabling limits fail closed.
 func NewEngineWithConfiguration(policy Policy, limits Limits, runtimeLimits RuntimeLimits) (*Engine, error) {
+	return NewEngineWithAdapterConfiguration(policy, limits, runtimeLimits, defaultProcessAdapter())
+}
+
+// NewEngineWithAdapterConfiguration creates an engine using a trusted native
+// adapter. The adapter is configuration, not request input. A nil adapter
+// fails closed rather than silently bypassing platform containment.
+func NewEngineWithAdapterConfiguration(policy Policy, limits Limits, runtimeLimits RuntimeLimits, adapter ProcessAdapter) (*Engine, error) {
 	processLimiter, err := newLimiter(limits)
 	if err != nil {
 		return nil, err
@@ -167,7 +178,10 @@ func NewEngineWithConfiguration(policy Policy, limits Limits, runtimeLimits Runt
 	if err := runtimeLimits.validate(); err != nil {
 		return nil, err
 	}
-	return &Engine{policy: policy, registry: NewRegistry[*Process](), limiter: processLimiter, runtime: runtimeLimits, start: startOSProcess}, nil
+	if adapter == nil {
+		return nil, ErrInvalidProcessAdapter
+	}
+	return &Engine{policy: policy, registry: NewRegistry[*Process](), limiter: processLimiter, runtime: runtimeLimits, start: adapter.Start}, nil
 }
 
 // Start authorizes, starts, and registers one process. When OS startup fails
@@ -190,6 +204,9 @@ func (engine *Engine) Start(ctx context.Context, request StartRequest) (Handle, 
 	}
 	runtimeLimit, err := engine.runtime.effective(launch.Runtime)
 	if err != nil {
+		return "", err
+	}
+	if err := launch.Resources.validate(); err != nil {
 		return "", err
 	}
 	if err := ctx.Err(); err != nil {
@@ -335,18 +352,6 @@ func validateLaunch(launch Launch) error {
 		}
 	}
 	return nil
-}
-
-func startOSProcess(launch Launch, stdout, stderr io.Writer) (startedProcess, error) {
-	command := exec.Command(launch.Executable, launch.Arguments...)
-	command.Dir = launch.WorkingDirectory
-	command.Env = append([]string(nil), launch.Environment...)
-	command.Stdout = stdout
-	command.Stderr = stderr
-	if err := command.Start(); err != nil {
-		return nil, err
-	}
-	return osProcess{command}, nil
 }
 
 type osProcess struct{ command *exec.Cmd }
