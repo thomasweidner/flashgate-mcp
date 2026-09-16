@@ -260,6 +260,14 @@ remained incomplete. The manager never substitutes domain cleanup or result
 logic, and a waiting caller's cancellation does not cancel server-owned
 shutdown.
 
+Expired-job protection is transport-neutral and remains domain-owned. A
+concurrent registry binds each tracked job to an opaque owner identity, an
+explicit expiry, and an idempotent owner-supplied cleanup callback. TTL sweeps
+claim expired jobs once, run callbacks without holding the registry lock, and
+retain failed cleanups for retry. Stable-order outcomes and aggregate metrics
+expose expired detections, successful cleanup, failures, current leaks, and
+rejected cross-owner access without exposing job or principal identities.
+
 The normal execution unit is a cancellable Go goroutine. A subprocess is justified for an approved external program, hard resource/crash isolation, a different OS identity, or work that cannot be reliably cancelled in-process.
 
 ## Managed processes and typed command execution
