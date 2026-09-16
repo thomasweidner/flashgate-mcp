@@ -538,7 +538,7 @@ The vendored Windows resource generator and committed icon source are covered by
 | Filesystem | traversal, symlink/reparse escape, TOCTOU, overwrite/delete semantics, MIME/binary transfer, result handles, exhaustion, disclosure |
 | Search | recursion/regex cost, scanned bytes, encoding, ignores, context/result leakage, cursor ownership |
 | Operations/jobs | handle guessing, cross-principal access, fairness, queues, TTL, cleanup, restart, slow readers |
-| Processes | PID reuse, lifecycle races, command/environment disclosure, output cursors, orphan cleanup, child limits |
+| Processes | opaque principal-bound handles, PID reuse, lifecycle races, command/environment disclosure, output cursors, orphan cleanup, child limits |
 | Typed commands | executable substitution, argument/config/hook/plugin injection, env, roots, output, network, OS isolation |
 | System service | endpoint spoofing, peer identity, service-account ACLs, policy/OS permission mismatch, privilege escalation, auto fallback |
 | MCP host lifecycle | orphaned direct/proxy hosts, retained pipes, long-lived wrappers, PID reuse, false owner attribution, stale/manipulated instance records, unsafe idle/singleton heuristics, owned-child/job survival, connection-owned state after proxy loss, unrelated-process targeting |
@@ -549,6 +549,14 @@ The vendored Windows resource generator and committed icon source are covered by
 | Future providers | policy bypass, capability inflation, dependency/update risk, in-process versus IPC isolation |
 
 Stateful components require race-detector coverage, restart/shutdown analysis, negative capability tests, quota/fairness tests, and cleanup verification.
+
+Managed processes use cryptographically random opaque handles as their primary
+identity. Handles encode no PID, internal sequence, principal, or process
+metadata. Registry lookup and removal require the trusted owning principal and
+deliberately return the same result for unknown and wrong-principal handles.
+PIDs remain diagnostic only; never-reused internal lifecycle identities prevent
+a stale handle or a reused PID from being associated with a different managed
+process.
 
 ### MCP host lifecycle
 
