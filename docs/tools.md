@@ -40,7 +40,7 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: four schemas in the read-only profile and nine in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2564 bytes for read-only and 6087 bytes for default after adding `system_info`. These are regression snapshots, not persistent payload budgets.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2690 bytes for read-only and 6213 bytes for default with the field-selectable `system_info` contract. These are regression snapshots, not persistent payload budgets.
 
 ## `list_directory`
 
@@ -195,13 +195,19 @@ The source and target identities are revalidated immediately before the operatin
 
 ## `system_info`
 
-Accepts an empty object and returns only the explicitly released host facts:
+Accepts an optional `fields` array containing one or more unique values from `os`, `architecture`, and `version`. Omission returns all three allowed fields; selection returns exactly the requested subset, minimizing disclosed host data. For example:
 
 ```json
-{ "os": "linux", "architecture": "amd64", "version": "6.1.0" }
+{ "fields": ["os", "architecture"] }
 ```
 
-The version is the Linux kernel release or the Windows major/minor/build version. Host names, user names, environment data, network data, and other machine identifiers are not collected or returned. Platform lookup failures return the generic internal-error contract without leaking operating-system details.
+returns:
+
+```json
+{ "os": "linux", "architecture": "amd64" }
+```
+
+The version is the Linux kernel release or the Windows major/minor/build version. The closed field allowlist is the redaction boundary: host names, user names, environment data, network data, and other machine identifiers cannot be selected and are not collected or returned. Empty, duplicate, unknown, `null`, and incorrectly typed field selections are rejected. Platform lookup failures return the generic internal-error contract without leaking operating-system details.
 
 ## Errors
 

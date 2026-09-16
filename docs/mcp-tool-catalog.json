@@ -186,10 +186,25 @@
     {
       "name": "system_info",
       "title": "System Info",
-      "description": "Returns the operating system, architecture, and OS version without machine identifiers.",
+      "description": "Returns selected operating system facts without machine identifiers.",
       "inputSchema": {
         "type": "object",
-        "properties": {},
+        "properties": {
+          "fields": {
+            "type": "array",
+            "description": "Fields to return. Defaults to all allowed fields.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "os",
+                "architecture",
+                "version"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
         "additionalProperties": false
       },
       "resultSchema": {
@@ -205,11 +220,6 @@
             "type": "string"
           }
         },
-        "required": [
-          "os",
-          "architecture",
-          "version"
-        ],
         "additionalProperties": false
       }
     },

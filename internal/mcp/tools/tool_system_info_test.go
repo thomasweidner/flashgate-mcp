@@ -23,7 +23,25 @@ func (provider fakeSystemInfoProvider) Info() (systeminfo.Info, error) {
 func TestSystemInfoReturnsOnlyReleasedFacts(t *testing.T) {
 	provider := fakeSystemInfoProvider{info: systeminfo.Info{OS: "linux", Architecture: "amd64", Version: "6.1.0"}}
 	result, rpcErr := NewSystemInfoTool(provider).Execute(context.Background(), json.RawMessage(`{}`))
-	want := systemInfoResult{OS: "linux", Architecture: "amd64", Version: "6.1.0"}
+	want := map[string]string{"os": "linux", "architecture": "amd64", "version": "6.1.0"}
+	if rpcErr != nil || !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result=%#v error=%#v", result, rpcErr)
+	}
+}
+
+func TestSystemInfoReturnsOnlySelectedFields(t *testing.T) {
+	provider := fakeSystemInfoProvider{info: systeminfo.Info{OS: "linux", Architecture: "amd64", Version: "6.1.0"}}
+	result, rpcErr := NewSystemInfoTool(provider).Execute(context.Background(), json.RawMessage(`{"fields":["version","os"]}`))
+	want := map[string]string{"os": "linux", "version": "6.1.0"}
+	if rpcErr != nil || !reflect.DeepEqual(result, want) {
+		t.Fatalf("unexpected result=%#v error=%#v", result, rpcErr)
+	}
+}
+
+func TestSystemInfoDoesNotRequireUnselectedFields(t *testing.T) {
+	provider := fakeSystemInfoProvider{info: systeminfo.Info{OS: "linux"}}
+	result, rpcErr := NewSystemInfoTool(provider).Execute(context.Background(), json.RawMessage(`{"fields":["os"]}`))
+	want := map[string]string{"os": "linux"}
 	if rpcErr != nil || !reflect.DeepEqual(result, want) {
 		t.Fatalf("unexpected result=%#v error=%#v", result, rpcErr)
 	}
@@ -37,9 +55,17 @@ func TestSystemInfoDefinition(t *testing.T) {
 }
 
 func TestSystemInfoRejectsArguments(t *testing.T) {
-	_, rpcErr := NewSystemInfoTool(fakeSystemInfoProvider{}).Execute(context.Background(), json.RawMessage(`{"hostname":true}`))
-	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected invalid params, got %#v", rpcErr)
+	for _, raw := range []string{
+		`{"hostname":true}`,
+		`{"fields":[]}`,
+		`{"fields":["hostname"]}`,
+		`{"fields":["os","os"]}`,
+		`{"fields":null}`,
+	} {
+		_, rpcErr := NewSystemInfoTool(fakeSystemInfoProvider{}).Execute(context.Background(), json.RawMessage(raw))
+		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+			t.Fatalf("%s: expected invalid params, got %#v", raw, rpcErr)
+		}
 	}
 }
 

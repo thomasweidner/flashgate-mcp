@@ -248,6 +248,7 @@ Security tests currently cover:
 - response-size safety net
 - strict successful `CallToolResult` envelope and text/structured parity without host-path additions
 - diagnostics redaction
+- `system_info` closed field selection and machine-identifier exclusion
 
 Startup preflight completes before any tool Registry, Router or MCP server is created. Normal starts remain silent; diagnostics never share JSON-RPC stdout.
 

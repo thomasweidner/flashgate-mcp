@@ -752,7 +752,7 @@ Each feature should include:
 | `list_directory` | Lists files and directories below the configured filesystem root. |
 | `read_file` | Reads a text file below the configured filesystem root. |
 | `get_path_info` | Returns existence and metadata; missing paths return `exists:false`. |
-| `system_info` | Returns OS, architecture, and OS version without machine identifiers. |
+| `system_info` | Returns an optional selected subset of OS, architecture, and OS version without machine identifiers. |
 | `write_file` | Writes a text file. |
 | `create_directory` | Creates a directory and reports whether it was newly created. |
 | `delete_path` | Deletes a file or directory. |
