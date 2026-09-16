@@ -4,9 +4,9 @@
 
 This document began as the `BL-132` design contract for CPU and memory limits
 on FlashGate-managed process trees. `BL-134` now provides platform adapters for
-the selected mechanisms. Native Windows and delegated-cgroup validation,
-lifecycle/race/restart coverage, and canonical completion remain required by
-`BL-135` and Windows finalization.
+the selected mechanisms. `BL-135` adds portable lifecycle, PID-reuse, restart,
+cleanup-budget, and race coverage. Native Windows and delegated-cgroup
+validation and canonical completion remain required by Windows finalization.
 
 The limits are policy output, never tool input. They complement, rather than
 replace, the existing process-count, runtime, and output bounds. External PID
