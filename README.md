@@ -231,6 +231,7 @@ Architecture and security references:
 - [Version 1.0 scope and release boundary](docs/version-1-scope-and-release-boundary.md)
 - [Efficiency improvement plan](docs/efficiency-improvement-plan.md)
 - [Execution identity backends](docs/execution-identity-backends.md)
+- [Command execution identity](docs/command-execution-identity.md)
 - [Native runtime and service plan](docs/native-multi-mode-runtime-and-service-plan.md)
 - [Comparative MCP review](docs/comparative-mcp-review-2026-07-17.md)
 - [Security model](docs/security.md)

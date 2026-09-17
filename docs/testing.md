@@ -968,6 +968,20 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - response files, hooks, plugins, loaders, config overrides, and unapproved environment are rejected;
 - stdout/stderr, runtime, process count, and network policy limits;
 - Windows/Linux isolation outcomes and redaction.
+- direct-mode child identity matches the deliberately selected launcher and
+  never elevates;
+- service-mode child identity is the configured restricted service account,
+  never the caller, `LocalSystem`, or `root`;
+- payload credentials or identity selectors are rejected before process
+  creation;
+- required identity/isolation failure creates no child and never falls back to
+  a more privileged launch;
+- audit distinguishes caller from effective backend while results and
+  diagnostics omit account and credential details.
+
+These identity assertions require native Windows and Linux execution; Cloud
+and cross-build results are not substitutes. The normative matrix is in
+[Command Execution Identity](command-execution-identity.md).
 
 ### System service and execution-identity tests
 
