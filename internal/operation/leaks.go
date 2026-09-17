@@ -142,13 +142,15 @@ func (r *LeakRegistry) Sweep(ctx context.Context, now time.Time) []LeakOutcome {
 
 		err := runCleanup(ctx, cleanup)
 		r.mu.Lock()
-		entry, exists = r.entries[id]
-		if exists {
+		current, exists := r.entries[id]
+		// Removal followed by handle reuse must not let stale cleanup mutate the
+		// replacement entry (an ABA race across the unlocked callback).
+		if exists && current == entry {
 			if err == nil {
 				delete(r.entries, id)
 				r.metrics.Cleaned++
 			} else {
-				entry.cleaning = false
+				current.cleaning = false
 				r.metrics.CleanupFailures++
 			}
 		}

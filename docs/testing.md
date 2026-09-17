@@ -967,6 +967,14 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Operations and multi-principal tests
 
+The implemented Operations/Job lifecycle subset has focused security and race
+coverage for concurrent owner denial, identifier-safe errors, single-claim TTL
+cleanup, handle reuse while an old cleanup is in flight, and registration racing
+with shutdown. Run `go test -race ./internal/operation` as the focused native
+Linux race gate. Windows race/lifecycle finalization remains required; the
+broader handle-binding, limits, scheduling, result-storage, and backpressure
+bullets below become executable as their owning runtime features land.
+
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
 - cross-principal status/result/cancel/cache/resource denial;
 - global, per-domain, and per-principal concurrency limits;
