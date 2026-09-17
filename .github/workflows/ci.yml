@@ -461,6 +461,32 @@ jobs:
         shell: pwsh
         run: .\scripts\smoke-startup-negative.ps1
 
+  process-tests:
+    name: Process lifecycle (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: ubuntu-latest
+            platform: linux
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run process observation and managed lifecycle tests
+        run: go test -count=1 ./...
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
