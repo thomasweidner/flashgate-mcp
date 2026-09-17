@@ -1,7 +1,7 @@
 # FlashGate MCP — Planning Artifact Index
 
 **Date:** 2026-09-17  
-**Bound main:** `d0aa7dda7e2cbd9d1e1f13abd918e0ac335ccc97`
+**Bound main:** `1c6fcc121e7ee1c782134fec28d3bfa3b4326e4a`
 
 These dated artifacts preserve the Mobile/Vacation preparation and Classic review evidence outside chat history. They are non-canonical planning/review evidence; `BACKLOG.md`, current governance, ADRs and repository truth remain authoritative.
 
@@ -14,6 +14,7 @@ These dated artifacts preserve the Mobile/Vacation preparation and Classic revie
 5. `mobile-prepared-pr-review-remediation-register-2026-09-17.md` — consolidated review-signal inventory and candidate remediation classes pending Classic disposition.
 6. `classic-independent-review-batch-01-2026-09-17.md` — completed read-only Classic independent review of PR #105 / BL-100, PR #188 / BL-114, PR #193 / BL-117, and PR #129 / BL-162, including confirmed and newly identified findings; no fixes were performed in the review.
 7. `classic-independent-review-batch-02-2026-09-17.md` — completed read-only Classic independent review of PR #132 / BL-153, PR #213 / BL-155, PR #215 / BL-156, and PR #211 / BL-154 including inherited BL-062 native behavior; no fixes were performed in the review.
+8. `classic-independent-review-batch-03-2026-09-17.md` — completed read-only Classic independent review of the BL-136→138 command line and BL-107→109 named-root line, including confirmed and newly identified findings; no fixes were performed in the review.
 
 ## Interpretation
 
