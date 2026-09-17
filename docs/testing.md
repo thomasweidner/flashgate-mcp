@@ -39,6 +39,19 @@ panic containment, aggregate metrics, and single-claim behavior under
 concurrent sweeps. Cleanup callbacks remain domain-owned and receive the sweep
 context.
 
+BL-099 adds a reusable race/security gate for the implemented Operations
+lifecycle boundary:
+
+```text
+go test -race ./internal/operation
+```
+
+The gate combines concurrent hostile-owner checks, authorized lookups, expiry
+sweeps, exactly-once cleanup, denial accounting, and retry-after-failure leak
+checks. It covers the currently implemented shutdown and leak-registry
+contracts without claiming the still-separate CI orchestration owned by
+BL-254 or Windows/native lifecycle evidence.
+
 ## Legacy governance enforcement reference
 
 The historical governance-orchestration material below, through `Test Commands`,
