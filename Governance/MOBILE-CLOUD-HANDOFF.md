@@ -130,6 +130,8 @@ BLOCKED_DEPENDENCY_DECISION
 BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
 ```
 
+`STACK_RESTART_BASE_AMBIGUOUS` is a selector outcome for the read-only restart pass, not an additional dependency-execution state.
+
 ### 4.0 Concrete-delta feasibility test
 
 Before assigning any dependency state, identify the candidate's **concrete task-pure delta** and answer these questions from the current checkout:
@@ -197,9 +199,11 @@ The direct parent branch remains the later PR base even when that parent ancestr
 Use `STACK_REQUIRED` only when:
 
 - the candidate's concrete task-pure delta genuinely consumes hard predecessor changes that are not already present in the current checkout; and
-- exactly one open Mobile PR head ancestry contains **all** hard predecessor deltas required to implement the candidate.
+- after reducing sufficient open PR heads by ancestry lineage as defined in section 4.4, exactly one minimal sufficient head remains.
 
-The candidate may have several logical prerequisite BLs when they are already cumulative in that one head ancestry. `STACK_REQUIRED` becomes `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when no single open PR head contains the complete hard-predecessor set and two or more independent heads would have to be combined.
+The candidate may have several logical prerequisite BLs when they are already cumulative in one head ancestry. Several sufficient heads on the **same** ancestry line do not create ambiguity: if PR B descends from PR A and A already contains the candidate's complete hard-predecessor set, discard B as an unnecessarily broad restart base and keep A. The minimal sufficient head is the sufficient head with no sufficient ancestor in that same lineage.
+
+`STACK_REQUIRED` becomes `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when no single open PR head contains the complete hard-predecessor set and two or more independent heads would have to be combined. If several **incomparable** open heads each independently contain the complete set, no combination is required; section 4.4 handles that as restart-base ambiguity instead.
 
 Do not use `STACK_REQUIRED` for a future consumer relationship, deferred integration/CI/native evidence, or a generic gate that can be implemented correctly against the current checkout.
 
@@ -228,13 +232,23 @@ Automatic selection is two-tiered **inside each Planned sprint**.
 1. First run the normal current-checkout feasibility/dependency pass.
 2. If that sprint contains an unreserved `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidate, select from those executable candidates and do not prefer a restart merely because one exists.
 3. If the sprint has no current-checkout executable candidate, perform a read-only restart pass over its remaining unreserved candidates before advancing to the next sprint.
-4. For each such candidate, identify the complete hard-predecessor delta set and inspect the open Vacation Reservation Ledger plus public PR/base/head/compare metadata to determine whether one open PR head ancestry contains that complete set.
-5. If exactly one sufficient head exists for a candidate, that candidate is a single-head restart candidate. `MOBILE.md` may describe this snapshot condition as `PR_STACK_CANDIDATE`; the canonical dependency state remains `STACK_REQUIRED` until a new Cloud task actually starts from that head and locally verifies `STACK_BASE_READY`.
-6. If two or more candidate tasks in the same sprint each have one sufficient head, that is valid. Choose among the tasks with the normal mode, effort, Windows-residual, and collision preferences. The word **single** applies to the sufficient head for each candidate, not to the number of restartable candidates in the sprint.
-7. If no single head contains a candidate's complete hard-predecessor set, classify only that candidate as `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` when multiple independent heads are genuinely required.
-8. Advance to the next Planned sprint only when the current sprint has neither a current-checkout executable candidate nor a single-head restart candidate.
+4. For each such candidate, identify the complete hard-predecessor delta set and collect **all** open PR heads whose ancestry contains that complete set.
+5. Use public PR/base/head/compare metadata to partition sufficient heads into comparable ancestry lineages. Within each lineage, discard every sufficient descendant when a sufficient ancestor already contains the complete hard-predecessor set. Retain the **minimal sufficient head** for that lineage: the earliest/narrowest sufficient head with no sufficient ancestor in the same lineage.
+6. If exactly one minimal sufficient lineage head remains, the candidate is an unambiguous single-line restart candidate. `MOBILE.md` may describe this snapshot condition as `PR_STACK_CANDIDATE`; the canonical dependency state remains `STACK_REQUIRED` until a new Cloud task starts from that head and locally verifies `STACK_BASE_READY`.
+7. If two or more **incomparable** minimal sufficient heads remain and each independently contains the complete hard-predecessor set, return the candidate-local selector outcome:
 
-For the selected single-head restart candidate, stop before implementation with:
+```text
+Status=STACK_RESTART_BASE_AMBIGUOUS
+TaskID=BL-xxx
+MutationCount=0
+```
+
+Report every candidate parent PR, head branch, and head SHA. Do not choose arbitrarily and do not classify this as `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, because either lineage is individually sufficient and no merge is required. Continue evaluating other candidates in the sprint. If the sprint has no executable or unambiguous restartable candidate but retains one or more restart-base ambiguities, surface the earliest ambiguity instead of returning a global no-executable result.
+8. If two or more **candidate tasks** in the same sprint each have one unambiguous minimal sufficient head, that is valid. Choose among the tasks with the normal mode, effort, Windows-residual, and collision preferences. The word **single** applies to the reduced sufficient lineage head for each candidate, not to the number of restartable candidate tasks in the sprint.
+9. If no individual open head contains a candidate's complete hard-predecessor set and two or more independent heads would genuinely have to be combined, classify only that candidate as `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`.
+10. Advance to the next Planned sprint only when the current sprint has no current-checkout executable candidate, no unambiguous single-line restart candidate, and no restart-base ambiguity that must be surfaced.
+
+For the selected single-line restart candidate, stop before implementation with:
 
 ```text
 Status              : STACK_RESTART_REQUIRED
@@ -260,9 +274,9 @@ The failed attempt to import a predecessor is not a reason to request reauthoriz
 
 ### 4.5 Multiple predecessors
 
-Use `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when the candidate's concrete task-pure delta genuinely consumes more than one independent uncombined open Mobile predecessor and the complete required changes are not already represented by any one open PR-head ancestry.
+Use `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when the candidate's concrete task-pure delta genuinely consumes more than one independent uncombined open Mobile predecessor and the complete required changes are not already represented by **any one** open PR-head ancestry.
 
-Do not create this state from future consumers, deferred integration evidence, or multiple components that a generic repository-wide gate can cover later without changing the gate implementation.
+Do not create this state when several sufficient heads are comparable within one ancestry lineage; reduce that lineage to its minimal sufficient head. Do not create it when several incomparable heads are each independently sufficient; that is `STACK_RESTART_BASE_AMBIGUOUS`, because no combination is necessary. Do not create it from future consumers, deferred integration evidence, or multiple components that a generic repository-wide gate can cover later without changing the gate implementation.
 
 ```text
 Status=BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
@@ -283,12 +297,13 @@ Before selecting the next Mobile task:
 7. run the current-checkout pass through sections 4.1–4.3 and select only `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidates when at least one exists;
 8. within that sprint apply the mode/effort/Windows-residual/collision preferences from root `AGENTS.md`;
 9. when the sprint has no current-checkout executable candidate, run the open-PR-head restart pass from section 4.4 before considering a later sprint;
-10. for every restart-pass candidate, accept one cumulative open PR ancestry as sufficient when it contains the candidate's entire hard-predecessor set; do not require every logical prerequisite to be a separate direct parent;
-11. when one or more candidates in the sprint each have one sufficient head, choose among them with the normal preferences and return `STACK_RESTART_REQUIRED` for the selected candidate;
-12. do not attempt network Git operations to promote `STACK_REQUIRED` into an executable state;
-13. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the automatic scan; continue with other candidates, then later Planned sprints only if this sprint has no restartable path;
-14. return a global no-executable Planned result only after every allowed Planned sprint has completed both the current-checkout pass and, where needed, the open-PR-head restart pass;
-15. do not jump to `Later` work while executable or single-head-restartable unreserved `Planned` work exists.
+10. for every restart-pass candidate, collect all sufficient heads, collapse comparable heads within each ancestry lineage, and retain only the minimal sufficient head per lineage;
+11. when a candidate has exactly one reduced sufficient lineage head, treat it as unambiguously restartable; when one or more candidate tasks in the sprint meet that condition, choose among the tasks with the normal preferences and return `STACK_RESTART_REQUIRED` for the selected candidate;
+12. when a candidate has several incomparable reduced sufficient heads that are each independently sufficient, record `STACK_RESTART_BASE_AMBIGUOUS`, continue evaluating other candidates, and surface the ambiguity instead of a global no-executable result if no better path exists in that sprint;
+13. do not attempt network Git operations to promote `STACK_REQUIRED` into an executable state;
+14. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the automatic scan; continue with other candidates, then later Planned sprints only if this sprint has no executable, restartable, or ambiguity outcome that must be surfaced;
+15. return a global no-executable Planned result only after every allowed Planned sprint has completed both the current-checkout pass and, where needed, the open-PR-head restart pass, with no restart-base ambiguity remaining to report;
+16. do not jump to `Later` work while executable or unambiguously restartable unreserved `Planned` work exists.
 
 An existing reservation does not mean the BL task is `Done`. It means only:
 

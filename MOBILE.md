@@ -86,13 +86,15 @@ When the user says only “next task”:
    - `BLOCKED_DEPENDENCY_DECISION`; or
    - `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`;
 7. if that sprint contains an unreserved `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidate, select from it and prefer mode A before B before C, independent before stack-base-ready, then lower effort, lower Windows residual and lower collision risk;
-8. if the sprint has no current-checkout executable candidate, run the read-only **open-PR-head restart pass** before advancing to a later sprint: for each remaining candidate, determine whether exactly one open PR head ancestry contains every hard predecessor delta it needs;
-9. when one or more candidates in the sprint each have one sufficient open PR head, choose among those candidates with the same mode/effort/Windows-residual/collision preferences and return `STACK_RESTART_REQUIRED` with the selected parent PR, branch and SHA;
-10. `PR_STACK_CANDIDATE` in this file is only a snapshot hint for that restart pass; the canonical state remains `STACK_REQUIRED` until a new Cloud task starts from the parent and verifies `STACK_BASE_READY` locally;
-11. if a candidate genuinely requires several independent uncombined PR heads, classify it `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, exclude only that candidate and continue;
-12. advance to the next Planned sprint only when the current sprint has neither a current-checkout executable candidate nor a single-head restart candidate;
-13. return a global no-executable Planned result only after every allowed Planned sprint has completed both passes;
-14. do not auto-select `Later` while executable or single-head-restartable unreserved `Planned` work exists.
+8. if the sprint has no current-checkout executable candidate, run the read-only **open-PR-head restart pass** before advancing to a later sprint: for each remaining candidate, collect all open PR heads whose ancestry contains every hard predecessor delta it needs, group comparable heads into ancestry lineages, and retain the minimal sufficient head in each lineage;
+9. when a candidate has exactly one reduced minimal sufficient head, it is unambiguously restartable. When one or more candidates in the sprint meet that condition, choose among those candidates with the same mode/effort/Windows-residual/collision preferences and return `STACK_RESTART_REQUIRED` with the selected parent PR, branch and SHA;
+10. several sufficient heads on one lineage do not create ambiguity: if a sufficient ancestor already contains the complete hard-predecessor set, discard later sufficient descendants and use that minimal sufficient ancestor;
+11. if a candidate has several **incomparable** reduced sufficient heads and each is independently sufficient, record `STACK_RESTART_BASE_AMBIGUOUS`, exclude only that candidate from automatic choice, and continue. This is not a multi-predecessor block because no merge is required. Surface the ambiguity instead of a global no-executable result if no better path exists in the sprint;
+12. `PR_STACK_CANDIDATE` in this file is only a snapshot hint for an unambiguous restart path; the canonical state remains `STACK_REQUIRED` until a new Cloud task starts from the selected parent and verifies `STACK_BASE_READY` locally;
+13. if a candidate genuinely requires several independent uncombined PR heads because no single head contains its complete predecessor set, classify it `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, exclude only that candidate and continue;
+14. advance to the next Planned sprint only when the current sprint has no executable candidate, no unambiguous restart candidate, and no restart-base ambiguity that must be surfaced;
+15. return a global no-executable Planned result only after every allowed Planned sprint has completed both passes and no restart-base ambiguity remains to report;
+16. do not auto-select `Later` while executable or unambiguously restartable unreserved `Planned` work exists.
 
 The user may explicitly name a task, but naming a reserved or decision-blocked task does not make it executable.
 
@@ -140,7 +142,9 @@ Mobile-Depends-On: <direct-parent-BL>[,<contained-prerequisite-BL>...]
 
 ### Stack required / restart candidate
 
-If the hard predecessor delta set is absent from the current checkout but exactly one open PR head ancestry contains all of it, do not import that head with fetch/pull/merge/cherry-pick/patch replay/downloaded Git objects/credential setup. Classify the candidate canonically as `STACK_REQUIRED`; this catalog may additionally label the current snapshot as `PR_STACK_CANDIDATE`.
+If the hard predecessor delta set is absent from the current checkout, collect all sufficient open PR heads and reduce them by ancestry lineage. Within one lineage, keep the **minimal sufficient head**: a sufficient head with no sufficient ancestor that already contains the complete predecessor set. Descendant sufficient heads are broader-than-needed restart bases and are discarded for selection.
+
+If exactly one minimal sufficient head remains after lineage reduction, do not import that head with fetch/pull/merge/cherry-pick/patch replay/downloaded Git objects/credential setup. Classify the candidate canonically as `STACK_REQUIRED`; this catalog may additionally label the current snapshot as `PR_STACK_CANDIDATE`.
 
 Return:
 
@@ -153,6 +157,8 @@ ParentHeadBranch=<branch>
 ParentHeadSha=<sha>
 MutationCount=0
 ```
+
+If several incomparable minimal sufficient heads remain and each independently contains the complete predecessor set, return the candidate-local selector outcome `STACK_RESTART_BASE_AMBIGUOUS` with the candidate heads. Do not choose arbitrarily and do not call it `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, because no branch combination is required.
 
 A reserved predecessor PR is a valid stack start. Reservation prevents duplicate implementation of the predecessor; it does not prohibit an unreserved child from using that predecessor head as its initial checkout.
 
@@ -170,7 +176,7 @@ MOBILE     : 85ad498761f45849e749d85c19fa822c2d9a3600 (pre-this-update)
 Ledger     : 198 open GitHub PRs, through #257 at snapshot time
 ```
 
-No new reservation was created between the preceding queue refresh and this topology correction. The most recent reservation delta remains:
+No new reservation was created between the preceding Mobile queue refresh and this topology correction. The most recent reservation delta remains:
 
 `BL-060`, `BL-098`, `BL-099`, `BL-103`, `BL-144`, `BL-145`, `BL-148`, `BL-149`, `BL-151`, `BL-164`, `BL-226`, `BL-227`, `BL-237`, `BL-253`, `BL-254`.
 
@@ -246,13 +252,13 @@ PR_STACK_CANDIDATE  : BL-229
 WAIT_MULTI          : 20 topics
 ```
 
-### 10.1 Single-head restart candidate
+### 10.1 Single-line restart candidate
 
-`BL-229` is currently the earliest verified single-head restart path.
+`BL-229` is currently the earliest verified single-line restart path.
 
-Its concrete owned delta is automatic managed-endpoint discovery and safe STDIO fallback. Open PR #205 (`BL-233`) already contains the accepted runtime configuration, canonical endpoint, discovery, timeout/retry, `proxy`/`auto` fallback, diagnostics and redaction contract that `BL-229` must consume. The `BL-229` selection/decision logic can be implemented and meaningfully validated from that one contract head without importing the Windows Named Pipe, Unix-socket, service-host or execution-identity sibling PRs; integration with those later runtime components remains deferred evidence rather than a reason to combine their branches into this Cloud task.
+Its concrete owned delta is automatic managed-endpoint discovery and safe STDIO fallback. Open PR #205 (`BL-233`) already contains the accepted runtime configuration, canonical endpoint, discovery, timeout/retry, `proxy`/`auto` fallback, diagnostics and redaction contract that `BL-229` must consume. The `BL-229` selection/decision logic can be implemented and meaningfully validated from that lineage without importing the Windows Named Pipe, Unix-socket, service-host or execution-identity sibling PRs; integration with those later runtime components remains deferred evidence rather than a reason to combine their branches into this Cloud task.
 
-Fresh selection must re-check that the PR is still open and its head identity is unchanged. Snapshot start data:
+Fresh selection must re-check that the PR is still open, its head identity is unchanged, and no sufficient ancestor/descendant relationship changes the minimal sufficient restart head. Snapshot start data:
 
 ```text
 CatalogEntryClass   : PR_STACK_CANDIDATE
@@ -272,17 +278,19 @@ Expected restart instruction after fresh read-only revalidation:
 Führe BL-229 gemäß `MOBILE.md` V3 als abhängigen Mobile-Task aus. Der ausgewählte Start-Ref ist der Vorgänger von BL-233. Verifiziere lokal, dass ParentHeadSha e084895636e92e22f0b85f9e97d6e914f740ce81 im aktuellen Checkout enthalten ist. Kein Fetch, Pull, Merge oder Cherry-Pick des Vorgängers. Der spätere Child-PR muss den direkten Vorgängerbranch `codex/fuhre-cloud-task-aus-mobile.md-v3-aus-djhu71` als Base verwenden.
 ```
 
+If fresh inspection finds additional sufficient heads in the same ancestry lineage, reduce them to the minimal sufficient head before returning the restart. If it instead finds several incomparable sufficient lineages, do not choose arbitrarily; return `STACK_RESTART_BASE_AMBIGUOUS` for `BL-229` with all candidate heads.
+
 ### 10.2 Remaining multi-line candidates
 
 The other 20 active topics still require more than one independent prepared line, or integrated runtime surfaces that are currently split across those lines. They are therefore snapshot `WAIT_MULTI` candidates, not global queue blockers:
 
-| Tasks | Why one current PR head is not sufficient at this snapshot |
+| Tasks | Why one current PR lineage is not sufficient at this snapshot |
 |---|---|
 | `BL-064` | Integrates long filesystem operations with Operations/Job; filesystem and Operations/Job implementations are on independent lines. |
 | `BL-118` | Must register and execute-authorize `process.observe`; process-observation work through PR #193 and capability/authorization work are on separate lines. |
 | `BL-139` | Connects typed commands to named-root process-working-directory policy; command and named-root/capability lines are independent. |
 | `BL-143` | `run_command` must be the synchronous wrapper over the Managed Process Engine; command and managed-process lines remain independent. |
-| `BL-146–BL-147` | Windows/Linux execution isolation consumes command policy plus Managed Process/execution-identity/platform controls that are not cumulative in one current head. |
+| `BL-146–BL-147` | Windows/Linux execution isolation consumes command policy plus Managed Process/execution-identity/platform controls that are not cumulative in one current line. |
 | `BL-152` | Cross-platform execution security tests need allowlist/args/roots/environment/output/timeout/isolation surfaces that are split across current command, roots and platform lines. |
 | `BL-157` | `system.read` requires the System Information line plus server-side capability/authorization enforcement. |
 | `BL-160` | Authorization-bypass coverage requires execution-time authorization together with named-root/domain policy surfaces; the relevant open lines diverge. |
@@ -295,9 +303,9 @@ The other 20 active topics still require more than one independent prepared line
 | `BL-241–BL-242`, `BL-244` | Integrated multi-mode tests, CI/release validation and benchmarks require several proxy/service/transport/lifecycle implementations to exist together first. |
 | `BL-341` | Canonically consumes process-root lifecycle plus Operations/Job (`BL-094`) and Managed Child (`BL-129`) cleanup owners, which remain independent prepared lines. |
 
-`WAIT_MULTI` is a snapshot catalog annotation, not a new governance state. Fresh task selection must still run the concrete-delta test and public-PR ancestry check because a later stacked PR may consolidate the required lines and turn one of these topics into a single-head restart candidate.
+`WAIT_MULTI` is a snapshot catalog annotation, not a new governance state. Fresh task selection must still run the concrete-delta test and public-PR ancestry reduction because a later stacked PR may consolidate the required lines and turn one of these topics into a `PR_STACK_CANDIDATE`.
 
-The default phone prompt should therefore currently return `STACK_RESTART_REQUIRED` for `BL-229` after fresh validation, rather than `NO_EXECUTABLE_UNRESERVED_PLANNED_MOBILE_TASK`.
+The default phone prompt should therefore currently return `STACK_RESTART_REQUIRED` for `BL-229` after fresh validation and lineage reduction, rather than `NO_EXECUTABLE_UNRESERVED_PLANNED_MOBILE_TASK`.
 
 ## 11. Implementation and validation contract
 
