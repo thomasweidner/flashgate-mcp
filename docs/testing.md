@@ -948,6 +948,13 @@ Currently tested:
 - `internal/mcp/transport`
 - `internal/mcp/initialize`
 - `internal/mcp/tools`
+- `internal/operation`
+
+The portable `internal/operation` integration suite runs unchanged on Windows
+and Linux. It combines real contexts, goroutines, and temporary files to cover
+caller cancellation, server deadlines, graceful shutdown, leak-registry
+cleanup, and removal of partial temporary resources. Platform-native execution
+of the suite remains required before BL-098 can be finalized.
 
 ## Version 1.0 Planned Validation Matrix
 
