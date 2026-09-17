@@ -978,6 +978,10 @@ caller attributes, policy-controlled backend selection, complete execution
 context binding, authorization before OS-adapter dispatch, cancellation
 propagation, and fail-closed reserved/unknown/duplicate backends. These tests do
 not substitute for native peer-identity, service-account, or ACL validation.
+The Variant A unit gate also verifies startup rejection of privileged or
+incomplete backend configuration, pre-dispatch rejection of roots absent from
+the explicit grant set, safe normalization of OS permission denial, and bounded
+dual-identity audit events.
 
 - Windows SCM and Linux systemd lifecycle;
 - Named Pipe ACL and Unix socket ownership/mode;
