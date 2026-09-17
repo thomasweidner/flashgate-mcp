@@ -66,7 +66,7 @@ Reservation is independent of commit SHA, branch name, mergeability, review resu
 
 Known duplicate reservation collisions at this snapshot include:
 
-`BL-036`, `BL-202`, `BL-203`, `BL-205`, `BL-206`, `BL-212`, `BL-213`, `BL-214`, `BL-216`, `BL-218`, `BL-219`.
+`BL-036`, `BL-099`, `BL-149`, `BL-202`, `BL-203`, `BL-205`, `BL-206`, `BL-212`, `BL-213`, `BL-214`, `BL-216`, `BL-218`, `BL-219`.
 
 Do not create another candidate for a collision. Reconcile competing candidates during Windows/Classic finalization.
 
@@ -155,31 +155,33 @@ If the concrete delta genuinely requires multiple independent uncombined predece
 
 ```text
 Repository : thomasweidner/flashgate-mcp
-Main       : c761fed9a1543467f37208bc3352e564d61f193c
+Main       : df258b3ee6db7858371848747f402b8d565d6572
 AGENTS     : 0e686cbbd305204cb077771bd0f88a1a15d164d2
 BACKLOG    : a02db7c09b10dba8c827f62618c7c6eb9f096591
-MOBILE     : 21200e7f851d06df81862ef192d25050b337bc47 (pre-this-update)
-Ledger     : open GitHub PRs through #238 at snapshot time
+MOBILE     : 34c46c5536deb7e48f35e88cf83c7a2fb20cf1e8 (pre-this-update)
+Ledger     : 198 open GitHub PRs, through #257 at snapshot time
 ```
 
 Since the preceding Mobile refresh, these formerly active topics are now prepared/reserved and are removed from new Mobile selection:
 
-`BL-056`, `BL-057`, `BL-061`, `BL-063`, `BL-095`, `BL-134`, `BL-135`, `BL-142`, `BL-256`.
+`BL-060`, `BL-098`, `BL-099`, `BL-103`, `BL-144`, `BL-145`, `BL-148`, `BL-149`, `BL-151`, `BL-164`, `BL-226`, `BL-227`, `BL-237`, `BL-253`, `BL-254`.
 
 Reservation evidence for this refresh:
 
-- PR #231 prepares `BL-056` from `main`, and PR #232 prepares `BL-057` as its stack child.
-- PR #233 prepares the `BL-063` safe-write-mode delta. Its UI-generated title/body omit the BL marker, but the selected task is unambiguous from the explicit `write_file` create-only/replace-only/upsert scope; record this reservation as `PROVISIONAL_UI_GENERATED`.
-- PR #237 prepares `BL-061` directly from `main`.
-- PR #238 prepares `BL-095` on the cumulative Operations/Job chain through controlled shutdown.
-- PR #230 prepares `BL-134` from the managed-process chain through `BL-133`, and PR #234 prepares `BL-135` as its child.
-- PR #236 prepares `BL-142` from the cumulative command chain through `BL-141`.
-- PR #229 prepares `BL-256` directly from `main`.
-- PR #235 creates an additional open reservation for already-reserved `BL-218`; it is therefore added to the duplicate-reservation collision set and does not change the active count.
+- PR #240 prepares `BL-164` on the Operations/Job chain.
+- PR #241 prepares `BL-098`; PRs #242 and #243 both reserve `BL-099` and therefore form a duplicate reservation collision.
+- PR #244 prepares `BL-103`.
+- PR #245 prepares `BL-151`; PR #246 prepares `BL-144`; PR #248 prepares `BL-145`; PR #252 prepares `BL-148`.
+- PRs #253 and #254 both reserve `BL-149` and therefore form a duplicate reservation collision.
+- PR #247 prepares `BL-253`.
+- PR #250 prepares `BL-060`.
+- PR #251 is a provisional UI-generated reservation for `BL-254`: its Operations/Job CI orchestration scope maps unambiguously to the canonical `BL-254` row even though its title omits the BL marker.
+- PR #255 prepares `BL-227`; PR #256 prepares `BL-226`.
+- PR #257 prepares `BL-237` as the Variant A service-account backend.
 
-The complete current Search implementation queue represented by `BL-068–BL-080` and `BL-082` remains reserved by open PRs. No new Version-1.0 Search BL remains in the active Mobile list at this snapshot.
+PR #249 overlaps the already-reserved execution-redaction candidate but does not create a new active BL identity; `BL-145` is already durably reserved by PR #248.
 
-The filesystem plan/safe-mode work now leaves only `BL-060` and `BL-064` active in that epic. The process-observation chain still leaves `BL-118` unreserved, while the managed-process implementation chain through `BL-135` is now reserved. The command result foundation through `BL-142` is reserved, so later command/runtime tasks must be classified from their concrete deltas against the current open stacks.
+The complete Version-1.0 Search queue remains reserved by open PRs. The Operations/Job, named-root/profile and CI candidates that were still active in the prior snapshot are now also reserved. The remaining catalog therefore consists only of unreserved Planned work whose current concrete deltas are blocked by uncombined Mobile predecessor topology from this `main` checkout.
 
 ## 8. Classic/owner decision exclusions
 
@@ -197,71 +199,55 @@ The following Planned tasks are intentionally absent from the active queue until
 
 Decision-gated post-1.0 work is also excluded from the current queue, including `BL-083`, `BL-112`, `BL-127–BL-128`, `BL-150`, `BL-158`, `BL-169`, `BL-176`, `BL-181–BL-188`, `BL-217`, `BL-232`, `BL-240` and `BL-313`.
 
-There are no active Mode-C rows at this snapshot because the four previously active bounded-contract tasks (`BL-225`, `BL-233`, `BL-235`, `BL-238`) are reserved by open PRs. This does **not** change the A→B→C selection contract or make Mode C categorically ineligible.
+There are no active Mode-C rows at this snapshot. This does **not** change the A→B→C selection contract or make Mode C categorically ineligible after a future refresh.
 
 ## 9. Active Planned candidates
 
-These IDs were unreserved at the snapshot, are `Planned`, and are not blocked by a known unresolved Classic/owner decision. Re-run concrete-delta feasibility and real dependency classification before every mutation.
+These IDs are unreserved at the snapshot, are `Planned`, and are not blocked by a known unresolved Classic/owner decision. They remain open Mobile work, but the current dependency topology does not provide a task-pure executable candidate from this `main` checkout.
 
 | Epic | Mode A | Mode B | Mode C |
 |---|---|---|---|
-| Filesystem | `BL-064` | `BL-060` | — |
-| Operations / Job | — | `BL-098–BL-099` | — |
-| Named roots / capabilities | `BL-103` | — | — |
+| Filesystem | `BL-064` | — | — |
 | Process | `BL-118` | — | — |
-| Command execution | `BL-139`, `BL-143–BL-145`, `BL-148–BL-149`, `BL-151` | `BL-146–BL-147`, `BL-152` | — |
+| Command execution | `BL-139`, `BL-143` | `BL-146–BL-147`, `BL-152` | — |
 | System information | `BL-157` | — | — |
-| Security | `BL-160`, `BL-163–BL-164`, `BL-167` | `BL-168` | — |
-| Native multi-mode / service | `BL-228` | `BL-226–BL-227`, `BL-229–BL-231`, `BL-234`, `BL-237`, `BL-241–BL-242`, `BL-244` | — |
-| CI / release quality | — | `BL-253–BL-254` | — |
+| Security | `BL-160`, `BL-163`, `BL-167` | `BL-168` | — |
+| Native multi-mode / service | `BL-228` | `BL-229–BL-231`, `BL-234`, `BL-241–BL-242`, `BL-244` | — |
 | Cross-mode host lifecycle | — | `BL-341` | — |
 
 Snapshot totals:
 
 ```text
-Mode A active : 16
-Mode B active : 20
+Mode A active : 9
+Mode B active : 12
 Mode C active : 0
-Total active  : 36
+Total active  : 21
 ```
 
 `Later`, completed, reserved, known decision-blocked, Mode-D and Mode-X rows are intentionally omitted.
 
-## 10. Immediate launch topology
+## 10. Current execution topology
 
-These are current **preclassifications** only. Fresh inspection always wins.
+A complete Planned scan from the current `main` checkout, with the then-parallel `BL-237` work explicitly excluded, returned:
 
-The feasibility rule distinguishes a hard code/contract dependency from merely deferred coverage. The newly prepared PRs remove the previously advertised `BL-134`, `BL-142` and `BL-256` launch paths; remaining candidates must be rebound from their concrete deltas.
+```text
+Status=NO_EXECUTABLE_UNRESERVED_PLANNED_MOBILE_TASK
+```
 
-| Task | Mode | Snapshot state | Start ref / reason |
-|---|:---:|---|---|
-| `BL-060` | B | `RECHECK_FEASIBILITY` | Determine whether the bounded directory copy/move delta can be prepared against current filesystem contracts without consuming the still-unintegrated Job Manager; mentions of jobs alone are not a hard dependency. |
-| `BL-064` | A | `WAIT_MULTI` | Its owned delta is explicitly the integration of long filesystem work with Operations/Job, so it must consume both filesystem and Job Manager implementations rather than merely defer their evidence. |
-| `BL-098–BL-099` | B | `RECHECK_ON_PR238` | PR #238 now carries the cumulative Operations/Job chain through `BL-095`; determine from the concrete test delta whether that single ancestry is sufficient or whether additional sibling contracts are genuinely consumed. |
-| `BL-103` | A | `RECHECK_FEASIBILITY` | Profile/risk-policy configuration may be Cloud-preparable from current contracts; do not require every named-root/capability PR merely because later runtime consumers use the profile. |
-| `BL-118` | A | `WAIT_MULTI` | Its concrete runtime registration/authorization delta consumes the process-observation stack and capability/authorization foundations. |
-| `BL-139` | A | `WAIT_MULTI` | Its concrete working-directory enforcement consumes both the command stack and named-root working-directory policy. |
-| `BL-143` | A | `WAIT_MULTI` | `run_command` must consume both the command/result stack through `BL-142` and the separately prepared Managed Process Engine chain; no single current ancestry represents both. |
-| `BL-157` | A | `WAIT_MULTI` | Its concrete `system.read` registration/execution delta consumes both the system-information chain and server-side capability/authorization work. |
-| `BL-164` | A | `RECHECK_ON_PR238` | Job-limit security tests may be able to use the cumulative Operations/Job chain through PR #238; verify the concrete test targets before declaring additional hard predecessors. |
-| `BL-228` | A | `WAIT_MULTI` | Proxy-mode runtime implementation consumes lifecycle/IPC plus platform transport behavior that is not represented by one current ancestry. |
-| `BL-253–BL-254` | B | `RECHECK_FEASIBILITY` | CI orchestration can be independent when the gate itself is complete and later packages/tests are only deferred coverage; classify from the concrete workflow delta rather than future consumers. |
-| `BL-341` | B | `WAIT_MULTI` | Host-process lifecycle integration spans Operations/Job cleanup and Managed Process cleanup/lifecycle foundations that are currently represented by separate open ancestries. |
+`BL-237` is now additionally reserved by PR #257, so that result remains valid or becomes more restrictive; it does not create a new executable path.
 
-The automatic selector must inspect the concrete owned delta before treating missing future components as ancestry. A task is not blocked merely because complete integration/native evidence is deferred.
+Current preclassification:
 
-### Workstream notes
+| Tasks | Snapshot state | Reason |
+|---|---|---|
+| `BL-064`, `BL-118`, `BL-139`, `BL-143`, `BL-157`, `BL-228`, `BL-341` | `WAIT_MULTI` | Their concrete deltas consume multiple independently prepared foundations that are not represented by one current ancestry. |
+| `BL-146–BL-147`, `BL-152` | `CURRENT_MAIN_BLOCKED` | Remaining command-runtime/isolation work requires command, Managed Process and/or execution-identity foundations from open stacks; no task-pure current-main implementation survived the complete scan. |
+| `BL-160`, `BL-163`, `BL-167–BL-168` | `CURRENT_MAIN_BLOCKED` | Remaining security work consumes authorization, root/domain, command/process or audit foundations currently split across open stacks. |
+| `BL-229–BL-231`, `BL-234`, `BL-241–BL-242`, `BL-244` | `CURRENT_MAIN_BLOCKED` | Proxy/service/transport/identity/lifecycle work depends on IPC and native multi-mode implementations currently represented by separate open PR stacks. |
 
-- **Filesystem:** `BL-056`, `BL-057`, `BL-061` and provisional `BL-063` are now reserved by PRs #231, #232, #237 and #233. Only `BL-060` and `BL-064` remain active; apply the concrete-delta test before deciding whether Job Manager ancestry is hard.
-- **Search:** all current Version-1.0 Search candidates remain reserved. Do not start another Search BL from this catalog.
-- **Named roots:** `BL-103` is the only unreserved Planned row; determine whether its profile/risk-policy configuration delta can be prepared against current contracts before treating all named-root/capability PRs as hard ancestry.
-- **Operations/Job:** `BL-095` is now reserved by PR #238. Remaining `BL-098–099` should first be tested against that cumulative chain before assuming multiple predecessors.
-- **Process:** `BL-134` and `BL-135` are now reserved by PRs #230 and #234, completing the currently planned managed-process implementation/testing chain. `BL-118` remains a separate cross-foundation process-observation authorization case.
-- **Command:** `BL-142` is now reserved by PR #236. `BL-143` still crosses the command and Managed Process ancestries; reclassify `BL-144–149` and `BL-151–152` from their actual owned deltas rather than sequence alone.
-- **System:** `BL-154–156` remain reserved. `BL-157` is the sole unreserved system-information row and concretely crosses system-info plus capability enforcement.
-- **Security:** `BL-161` remains reserved in addition to `BL-159`/`BL-171`. `BL-160` still crosses server authorization and root/domain bypass coverage; `BL-164` should be rebound against PR #238, while `BL-163`, `BL-167` and `BL-168` require concrete-delta classification.
-- **Multi-mode / service:** `BL-224–225`, `BL-233`, `BL-235–236`, `BL-238–239` remain reserved. No Mode-C row remains active. Classify the remaining transport/service/test work from the concrete runtime delta; do not synthesize a Cloud merge when multiple implementations are actually required.
-- **CI / release:** `BL-252`, `BL-256`, `BL-258` and `BL-262` are reserved. `BL-253–254` remain active under the concrete-delta feasibility rule. `BL-261` is excluded pending canonical selection/pinning of the external Rust/Go comparison servers.
+`CURRENT_MAIN_BLOCKED` is a snapshot description, not a new governance state. Every future task must re-run the concrete-delta feasibility test and map the candidate to the canonical dependency states from section 6. A later merge, retarget or consolidated predecessor may turn one of these into `STACK_BASE_READY`, `STACK_REQUIRED`, or independent work.
+
+Until repository topology changes, the default phone prompt may legitimately return the global no-executable result instead of creating another candidate.
 
 ## 11. Implementation and validation contract
 
