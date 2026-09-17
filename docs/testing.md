@@ -830,6 +830,14 @@ Unit tests are required for:
 - MCP protocol routing
 - tool execution
 
+Operations/Job limit security tests exercise the public lifecycle boundary as
+an external package. They verify exact TTL enforcement, deletion of temporary
+result data, owner-bound opaque handles, single-claim cleanup under competing
+sweeps, and retained owner-bound retry state after cleanup failure. Queue and
+worker quota enforcement remains covered when the corresponding manager
+implementations are present; these leak-registry tests do not simulate or
+silently define those separate limit contracts.
+
 ### Filesystem Tests
 
 Filesystem tests use:
