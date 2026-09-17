@@ -155,7 +155,8 @@ Security and path denials are mapped to generic invalid-path tool errors without
 | `MCP_MAX_TOOL_ARGUMENT_BYTES` | `12582912` | Maximum `tools/call` params or arguments payload. |
 | `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum `write_file` content bytes. |
 | `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum policy-visible entries returned by `list_directory`. |
-| `MCP_MAX_COPY_BYTES` | `10485760` | Maximum `copy_path` source file size. |
+| `MCP_MAX_COPY_BYTES` | `10485760` | Maximum total regular-file bytes copied by one `copy_path` operation. |
+| `MCP_MAX_COPY_ENTRIES` | `1000` | Maximum entries traversed by one directory `copy_path` operation. |
 | `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries allowed for recursive `delete_path`. |
 | `MCP_MAX_RESPONSE_BYTES` | `16777216` | Safety net for serialized JSON-RPC responses. |
 
@@ -754,7 +755,7 @@ Each feature should include:
 | `write_file` | Writes a text file. |
 | `create_directory` | Creates a directory and reports whether it was newly created. |
 | `delete_path` | Deletes a file or directory. |
-| `copy_path` | Copies a file. Directory copy is currently unsupported. |
+| `copy_path` | Copies a file or bounded directory tree. |
 | `move_path` | Moves or renames a file or directory on the same volume. |
 
 When `MCP_READ_ONLY=true`, only `list_directory`, `read_file`, and `get_path_info` are exposed.

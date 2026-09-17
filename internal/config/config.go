@@ -16,6 +16,7 @@ const (
 	envMaxWriteBytes    = "MCP_MAX_WRITE_BYTES"
 	envMaxListEntries   = "MCP_MAX_LIST_ENTRIES"
 	envMaxCopyBytes     = "MCP_MAX_COPY_BYTES"
+	envMaxCopyEntries   = "MCP_MAX_COPY_ENTRIES"
 	envMaxDeleteEntries = "MCP_MAX_DELETE_ENTRIES"
 	envAllowHiddenFiles = "MCP_ALLOW_HIDDEN_FILES"
 	envAllowUNCPaths    = "MCP_ALLOW_UNC_PATHS"
@@ -30,6 +31,7 @@ const (
 	defaultMaxWriteBytes    = int64(10 * 1024 * 1024) // 10 MiB
 	defaultMaxListEntries   = 1000
 	defaultMaxCopyBytes     = int64(10 * 1024 * 1024) // 10 MiB
+	defaultMaxCopyEntries   = 1000
 	defaultMaxDeleteEntries = 1000
 	defaultServerName       = "flashgate"
 	defaultVersion          = "0.1.0-dev"
@@ -54,6 +56,7 @@ type FilesystemConfig struct {
 	maxWriteBytes    int64
 	maxListEntries   int
 	maxCopyBytes     int64
+	maxCopyEntries   int
 	maxDeleteEntries int
 }
 
@@ -85,6 +88,7 @@ func DefaultConfig() Config {
 			maxWriteBytes:    defaultMaxWriteBytes,
 			maxListEntries:   defaultMaxListEntries,
 			maxCopyBytes:     defaultMaxCopyBytes,
+			maxCopyEntries:   defaultMaxCopyEntries,
 			maxDeleteEntries: defaultMaxDeleteEntries,
 		},
 		security: SecurityConfig{
@@ -162,6 +166,14 @@ func LoadFromEnvironment() (Config, error) {
 			return Config{}, err
 		}
 		cfg.filesystem.maxCopyBytes = parsed
+	}
+
+	if value := os.Getenv(envMaxCopyEntries); value != "" {
+		parsed, err := parsePositiveInt(value, envMaxCopyEntries)
+		if err != nil {
+			return Config{}, err
+		}
+		cfg.filesystem.maxCopyEntries = parsed
 	}
 
 	if value := os.Getenv(envMaxDeleteEntries); value != "" {
@@ -257,6 +269,10 @@ func (c Config) Validate() error {
 		return errors.New("maximum copy size must be greater than zero")
 	}
 
+	if c.filesystem.maxCopyEntries <= 0 {
+		return errors.New("maximum copy entries must be greater than zero")
+	}
+
 	if c.filesystem.maxDeleteEntries <= 0 {
 		return errors.New("maximum delete entries must be greater than zero")
 	}
@@ -350,6 +366,11 @@ func (c FilesystemConfig) MaxListEntries() int {
 // MaxCopyBytes returns the maximum allowed copy source size in bytes.
 func (c FilesystemConfig) MaxCopyBytes() int64 {
 	return c.maxCopyBytes
+}
+
+// MaxCopyEntries returns the maximum number of entries traversed by copy_path.
+func (c FilesystemConfig) MaxCopyEntries() int {
+	return c.maxCopyEntries
 }
 
 // MaxDeleteEntries returns the maximum entries allowed for recursive delete.

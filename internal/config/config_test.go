@@ -39,6 +39,9 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Filesystem().MaxCopyBytes() != defaultMaxCopyBytes {
 		t.Fatalf("expected max copy bytes %d, got %d", defaultMaxCopyBytes, cfg.Filesystem().MaxCopyBytes())
 	}
+	if cfg.Filesystem().MaxCopyEntries() != defaultMaxCopyEntries {
+		t.Fatalf("expected max copy entries %d, got %d", defaultMaxCopyEntries, cfg.Filesystem().MaxCopyEntries())
+	}
 
 	if cfg.Filesystem().MaxDeleteEntries() != defaultMaxDeleteEntries {
 		t.Fatalf("expected max delete entries %d, got %d", defaultMaxDeleteEntries, cfg.Filesystem().MaxDeleteEntries())
@@ -89,6 +92,7 @@ func TestLoadFromEnvironment(t *testing.T) {
 	t.Setenv(envMaxWriteBytes, "2048")
 	t.Setenv(envMaxListEntries, "25")
 	t.Setenv(envMaxCopyBytes, "4096")
+	t.Setenv(envMaxCopyEntries, "20")
 	t.Setenv(envMaxDeleteEntries, "30")
 	t.Setenv(envAllowHiddenFiles, "true")
 	t.Setenv(envAllowUNCPaths, "true")
@@ -125,6 +129,9 @@ func TestLoadFromEnvironment(t *testing.T) {
 
 	if cfg.Filesystem().MaxCopyBytes() != 4096 {
 		t.Fatalf("expected max copy bytes 4096, got %d", cfg.Filesystem().MaxCopyBytes())
+	}
+	if cfg.Filesystem().MaxCopyEntries() != 20 {
+		t.Fatalf("expected max copy entries 20, got %d", cfg.Filesystem().MaxCopyEntries())
 	}
 
 	if cfg.Filesystem().MaxDeleteEntries() != 30 {
@@ -208,6 +215,7 @@ func TestLoadFromEnvironmentRejectsInvalidLimits(t *testing.T) {
 		envMaxWriteBytes:    "-1",
 		envMaxListEntries:   "not-a-number",
 		envMaxCopyBytes:     "0",
+		envMaxCopyEntries:   "0",
 		envMaxDeleteEntries: "-1",
 		envMaxMessageBytes:  "9223372036854775808",
 		envMaxArgumentBytes: "0",

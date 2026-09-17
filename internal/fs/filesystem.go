@@ -22,9 +22,6 @@ var (
 	// ErrDirectoryNotEmpty is returned when deleting a non-empty directory without recursive deletion.
 	ErrDirectoryNotEmpty = errors.New("directory is not empty")
 
-	// ErrCopyDirectoryUnsupported is returned when attempting to copy a directory.
-	ErrCopyDirectoryUnsupported = errors.New("copying directories is not supported")
-
 	// ErrLimitExceeded is returned when an operation exceeds a configured limit.
 	ErrLimitExceeded = errors.New("filesystem limit exceeded")
 
@@ -52,6 +49,7 @@ type Limits struct {
 	MaxWriteBytes    int64
 	MaxListEntries   int
 	MaxCopyBytes     int64
+	MaxCopyEntries   int
 	MaxDeleteEntries int
 }
 
@@ -61,6 +59,7 @@ func DefaultLimits() Limits {
 		MaxWriteBytes:    10 * 1024 * 1024,
 		MaxListEntries:   1000,
 		MaxCopyBytes:     10 * 1024 * 1024,
+		MaxCopyEntries:   1000,
 		MaxDeleteEntries: 1000,
 	}
 }
@@ -128,6 +127,7 @@ func validateLimits(limits Limits) error {
 	if limits.MaxWriteBytes <= 0 ||
 		limits.MaxListEntries <= 0 ||
 		limits.MaxCopyBytes <= 0 ||
+		limits.MaxCopyEntries <= 0 ||
 		limits.MaxDeleteEntries <= 0 {
 		return ErrLimitExceeded
 	}

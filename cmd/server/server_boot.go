@@ -152,6 +152,7 @@ func filesystemLimitsFromConfig(cfg config.Config) fs.Limits {
 		MaxWriteBytes:    cfg.Filesystem().MaxWriteBytes(),
 		MaxListEntries:   cfg.Filesystem().MaxListEntries(),
 		MaxCopyBytes:     cfg.Filesystem().MaxCopyBytes(),
+		MaxCopyEntries:   cfg.Filesystem().MaxCopyEntries(),
 		MaxDeleteEntries: cfg.Filesystem().MaxDeleteEntries(),
 	}
 }

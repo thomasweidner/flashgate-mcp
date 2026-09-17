@@ -56,6 +56,7 @@ func TestFilesystemLimitsFromConfigUsesEnvironment(t *testing.T) {
 	t.Setenv("MCP_MAX_WRITE_BYTES", "111")
 	t.Setenv("MCP_MAX_LIST_ENTRIES", "22")
 	t.Setenv("MCP_MAX_COPY_BYTES", "333")
+	t.Setenv("MCP_MAX_COPY_ENTRIES", "33")
 	t.Setenv("MCP_MAX_DELETE_ENTRIES", "44")
 
 	cfg, err := config.LoadFromEnvironment()
@@ -75,6 +76,9 @@ func TestFilesystemLimitsFromConfigUsesEnvironment(t *testing.T) {
 
 	if limits.MaxCopyBytes != 333 {
 		t.Fatalf("expected max copy bytes 333, got %d", limits.MaxCopyBytes)
+	}
+	if limits.MaxCopyEntries != 33 {
+		t.Fatalf("expected max copy entries 33, got %d", limits.MaxCopyEntries)
 	}
 
 	if limits.MaxDeleteEntries != 44 {
