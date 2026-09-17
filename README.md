@@ -765,6 +765,12 @@ Planned work is maintained authoritatively in [BACKLOG.md](BACKLOG.md). [docs/ro
 
 The backlog covers Version 1.0 filesystem, search, process, typed command, system, security, payload-efficiency, hybrid identity, service, CI, supply-chain, release, and documentation work. Tasks marked `Later` are accepted post-Version-1.0 work and do not delay the initial stable release.
 
+## Community
+
+Contributions and participation in project spaces are governed by the
+[Code of Conduct](CODE_OF_CONDUCT.md). Development and validation expectations
+are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0.

@@ -1,5 +1,9 @@
 # Contributing to FlashGate MCP
 
+Participation in FlashGate MCP is governed by the project
+[Code of Conduct](CODE_OF_CONDUCT.md). By contributing or taking part in
+project spaces, you agree to follow its community and reporting expectations.
+
 ## Slim governance checkpoints
 
 Before implementation, after a material scope change, and before a local Git
