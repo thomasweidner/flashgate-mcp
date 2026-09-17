@@ -431,6 +431,17 @@ The service derives caller identity from Named Pipe or Unix socket peer informat
 
 Windows uses a local Named Pipe with restrictive ACLs. Linux uses a local Unix Domain Socket with restrictive ownership/mode and OS peer credentials.
 
+The Windows transport creates only `\\.\pipe\...` endpoints, rejects remote
+clients at the Named Pipe API boundary, and installs a protected DACL granting
+full control to SYSTEM and Administrators and read/write access to authenticated
+users. Endpoint access is not authorization: after connection, the service
+impersonates the pipe client only long enough to read the client token SID,
+immediately reverts to its own identity, and passes that OS-derived SID to the
+later authorization boundary. Protocol payloads cannot replace that identity.
+The framing layer validates the fixed header and configured payload ceiling
+before allocation. Closing a connection cancels its blocked I/O without
+stopping the persistent listener or service.
+
 The IPC contract includes framing, size limits, compatibility handshake, correlation, cancellation, overload, resource handles, disconnect behavior, and service generation.
 The normative [local IPC protocol contract](local-ipc-protocol.md) requires
 strict bounded frames, OS-derived peer identity, explicit version/feature
