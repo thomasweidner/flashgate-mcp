@@ -17,6 +17,17 @@ This contract does not implement the transports, proxy, service, or future
 worker. Their backlog owners remain responsible for implementation and native
 Windows/Linux validation.
 
+The Linux transport owner provides a filesystem-backed Unix Domain Socket
+listener in `internal/ipc/unixsocket`. It accepts only a clean absolute path,
+applies owner read/write with optional group read/write and no permissions for
+other users, refuses to replace a non-socket or an answering socket, and
+removes a stale socket only after a failed local connection probe and a stable
+filesystem-identity check. Accepted connections expose credentials captured
+from Linux `SO_PEERCRED` before application dispatch. Listener shutdown removes
+only the same socket object that the listener created. Endpoint selection,
+runtime-directory provisioning/ownership, protocol framing, authorization,
+systemd hosting, and service lifecycle remain with their respective owners.
+
 ## Security invariants
 
 Every implementation must preserve these invariants:
