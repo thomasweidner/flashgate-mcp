@@ -150,6 +150,14 @@ closed during registration or dispatch. Native service-account setup, root ACL
 validation, transport-derived peer authentication, and platform adapters remain
 owned by their dedicated implementation and Windows/Linux validation tasks.
 
+The Variant A backend additionally requires a trusted, non-privileged effective
+identity, at least one explicitly granted root ID, and an audit sink at startup.
+It rejects ungranted roots before OS dispatch, normalizes an OS permission
+failure to the stable execution-denied category, and emits bounded audit fields
+for the caller and effective service identity. Native SCM/systemd account
+creation and ACL inspection remain platform finalization work; a caller-provided
+account name is never used to establish whether an identity is privileged.
+
 ## Variant A — service-account roots
 
 ### Required behavior

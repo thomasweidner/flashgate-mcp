@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"sort"
 )
 
@@ -112,6 +113,33 @@ type Backend interface {
 	Dispatch(context.Context, ExecutionContext, Operation, OSAdapter) (any, error)
 }
 
+// EffectiveIdentity identifies the operating-system account under which an
+// operation is executed. Privileged must be supplied by trusted service
+// bootstrap code, never inferred from a caller-controlled name.
+type EffectiveIdentity struct {
+	Principal  string
+	Privileged bool
+}
+
+// AuditEvent records both sides of the service-account identity boundary.
+// It deliberately contains stable IDs rather than host paths or credentials.
+type AuditEvent struct {
+	CallerPrincipal    string
+	EffectivePrincipal string
+	Backend            BackendID
+	RootID             string
+	Capability         string
+	Operation          string
+	Correlation        string
+	ServiceGeneration  string
+	Result             string
+}
+
+// AuditSink receives bounded service-account dispatch records.
+type AuditSink interface {
+	Record(context.Context, AuditEvent)
+}
+
 // Registry is an immutable backend selector after construction.
 type Registry struct{ backends map[BackendID]Backend }
 
@@ -206,4 +234,63 @@ func (b PassthroughBackend) Dispatch(ctx context.Context, binding ExecutionConte
 		return nil, ErrInvalidContext
 	}
 	return adapter.Execute(ctx, binding, operation)
+}
+
+// ServiceAccountBackend executes only roots explicitly granted to a dedicated,
+// non-privileged service identity. Native service bootstrap remains responsible
+// for creating the account and granting the corresponding OS ACLs.
+type ServiceAccountBackend struct {
+	identity EffectiveIdentity
+	roots    map[string]struct{}
+	audit    AuditSink
+}
+
+// NewServiceAccountBackend constructs the Variant A backend. An empty root
+// list and privileged convenience identities fail closed at startup.
+func NewServiceAccountBackend(identity EffectiveIdentity, grantedRoots []string, audit AuditSink) (*ServiceAccountBackend, error) {
+	if identity.Principal == "" || identity.Privileged || audit == nil || len(grantedRoots) == 0 {
+		return nil, fmt.Errorf("%w: invalid service-account configuration", ErrBackendUnavailable)
+	}
+	roots := make(map[string]struct{}, len(grantedRoots))
+	for _, root := range grantedRoots {
+		if root == "" {
+			return nil, fmt.Errorf("%w: invalid service-account root", ErrBackendUnavailable)
+		}
+		if _, exists := roots[root]; exists {
+			return nil, fmt.Errorf("%w: duplicate service-account root", ErrBackendUnavailable)
+		}
+		roots[root] = struct{}{}
+	}
+	return &ServiceAccountBackend{identity: identity, roots: roots, audit: audit}, nil
+}
+
+func (*ServiceAccountBackend) ID() BackendID { return BackendServiceAccount }
+
+func (b *ServiceAccountBackend) Dispatch(ctx context.Context, binding ExecutionContext, operation Operation, adapter OSAdapter) (any, error) {
+	if b == nil || binding.Backend() != BackendServiceAccount || operation == nil || adapter == nil {
+		return nil, ErrInvalidContext
+	}
+	event := AuditEvent{
+		CallerPrincipal: binding.Caller().Principal(), EffectivePrincipal: b.identity.Principal,
+		Backend: BackendServiceAccount, RootID: binding.RootID(), Capability: binding.Capability(),
+		Operation: operation.Name(), Correlation: binding.Correlation(), ServiceGeneration: binding.ServiceGeneration(),
+	}
+	if _, granted := b.roots[binding.RootID()]; !granted {
+		event.Result = "denied_root"
+		b.audit.Record(ctx, event)
+		return nil, ErrDenied
+	}
+	result, err := adapter.Execute(ctx, binding, operation)
+	switch {
+	case err == nil:
+		event.Result = "allowed"
+	case errors.Is(err, fs.ErrPermission):
+		event.Result = "denied_os_permission"
+		result = nil
+		err = ErrDenied
+	default:
+		event.Result = "operation_failed"
+	}
+	b.audit.Record(ctx, event)
+	return result, err
 }
