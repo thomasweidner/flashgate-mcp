@@ -14,6 +14,7 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
@@ -77,6 +78,14 @@ func runWithIO(
 	}
 	if isNilBootstrapValue(filesystem) {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
+	}
+	rootRegistry, err := roots.Single(filesystem)
+	if err != nil {
+		return config.NewError(config.CategoryStartupFailed, err)
+	}
+	filesystem, err = rootRegistry.FileSystem(roots.DefaultID)
+	if err != nil {
+		return config.NewError(config.CategoryStartupFailed, err)
 	}
 
 	toolRegistry := dependencies.newToolRegistry(

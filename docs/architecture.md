@@ -81,7 +81,9 @@ Startup fails closed before runtime exposure. Production roots must be explicit 
 
 Not yet implemented:
 
-- multiple named roots;
+- external configuration and MCP request selection for multiple named roots (the
+  application-level immutable named-root registry and compatible `default`
+  single-root migration are implemented);
 - general profiles/capabilities;
 - safe read-only as the profile-system default;
 - search;
