@@ -87,6 +87,9 @@ const (
 	categoryUnsupportedOperation filesystemErrorCategory = "unsupported_operation"
 	categoryLimitExceeded        filesystemErrorCategory = "limit_exceeded"
 	categoryIOError              filesystemErrorCategory = "io_error"
+	categoryInvalidArguments     filesystemErrorCategory = "invalid_arguments"
+	categoryUnavailableTool      filesystemErrorCategory = "unavailable_tool"
+	categoryInternalError        filesystemErrorCategory = "internal_error"
 )
 
 func classifyFilesystemError(err error) filesystemErrorCategory {
@@ -130,5 +133,16 @@ func mapFilesystemError(err error) *protocol.Error {
 		code = protocol.ErrInternalError
 	}
 
-	return &protocol.Error{Code: code, Message: "filesystem error: " + strings.ReplaceAll(string(category), "_", " ")}
+	return &protocol.Error{
+		Code:    code,
+		Message: "filesystem error: " + strings.ReplaceAll(string(category), "_", " "),
+		Data:    toolErrorData(category),
+	}
+}
+
+func toolErrorData(category filesystemErrorCategory) json.RawMessage {
+	data, _ := json.Marshal(struct {
+		Category filesystemErrorCategory `json:"category"`
+	}{Category: category})
+	return data
 }

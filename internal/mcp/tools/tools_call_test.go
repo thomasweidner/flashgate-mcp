@@ -60,17 +60,10 @@ func TestCallHandlerReturnsInvalidParamsForUnknownTool(t *testing.T) {
 		json.RawMessage(`{"name":"missing_tool","arguments":{}}`),
 	)
 
-	if result != nil {
-		t.Fatalf("expected nil result, got %#v", result)
+	if rpcErr != nil {
+		t.Fatalf("unexpected JSON-RPC error: %#v", rpcErr)
 	}
-
-	if rpcErr == nil {
-		t.Fatal("expected rpc error")
-	}
-
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
-	}
+	assertWrappedToolError(t, result, "unavailable_tool", "tool unavailable")
 }
 
 func TestCallHandlerRejectsRemovedToolNames(t *testing.T) {
@@ -78,9 +71,10 @@ func TestCallHandlerRejectsRemovedToolNames(t *testing.T) {
 		result, rpcErr := NewCallHandler(NewRegistry()).Handle(
 			handlers.Context{}, json.RawMessage(`{"name":"`+name+`","arguments":{}}`),
 		)
-		if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
-			t.Fatalf("expected removed tool %q to be rejected generically, result=%#v error=%#v", name, result, rpcErr)
+		if rpcErr != nil {
+			t.Fatalf("unexpected JSON-RPC error for %q: %#v", name, rpcErr)
 		}
+		assertWrappedToolError(t, result, "unavailable_tool", "tool unavailable")
 	}
 }
 
@@ -239,13 +233,10 @@ func TestCallHandlerReturnsToolError(t *testing.T) {
 		json.RawMessage(`{"name":"test_tool","arguments":{"path":"../outside"}}`),
 	)
 
-	if result != nil {
-		t.Fatalf("expected nil result, got %#v", result)
+	if rpcErr != nil {
+		t.Fatalf("unexpected JSON-RPC error: %#v", rpcErr)
 	}
-
-	if rpcErr != expectedErr {
-		t.Fatal("expected tool error to be returned unchanged")
-	}
+	assertWrappedToolError(t, result, "invalid_arguments", "invalid path")
 }
 
 func TestCallHandlerMethod(t *testing.T) {
@@ -311,11 +302,32 @@ func TestCallHandlerReturnsSafeInternalErrorForSerializationFailure(t *testing.T
 	result, rpcErr := NewCallHandler(registry).Handle(
 		handlers.Context{}, json.RawMessage(`{"name":"test_tool","arguments":{}}`),
 	)
-	if result != nil {
-		t.Fatalf("expected nil result, got %#v", result)
+	if rpcErr != nil {
+		t.Fatalf("unexpected JSON-RPC error: %#v", rpcErr)
 	}
-	if rpcErr == nil || rpcErr.Code != protocol.ErrInternalError || rpcErr.Message != "internal error" {
-		t.Fatalf("expected safe Internal error, got %#v", rpcErr)
+	assertWrappedToolError(t, result, "internal_error", "internal error")
+}
+
+func assertWrappedToolError(t *testing.T, value any, category, message string) {
+	t.Helper()
+	result, ok := value.(protocol.CallToolResult)
+	if !ok {
+		t.Fatalf("expected CallToolResult, got %#v", value)
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := mcptest.DecodeCallToolResult(encoded)
+	if err != nil {
+		t.Fatalf("strict CallToolResult validation failed: %v", err)
+	}
+	if !decoded.IsError {
+		t.Fatalf("expected isError=true: %s", encoded)
+	}
+	want := map[string]any{"category": category, "message": message}
+	if !reflect.DeepEqual(decoded.StructuredContent, want) {
+		t.Fatalf("error payload=%#v, want %#v", decoded.StructuredContent, want)
 	}
 }
 

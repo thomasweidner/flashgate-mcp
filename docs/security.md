@@ -198,7 +198,13 @@ Notifications do not receive JSON-RPC responses. `notifications/initialized` is 
 
 Unexpected handler panics are contained at the request boundary and returned as generic Internal error responses when the request requires a response.
 
-Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification is intentionally unchanged in `SPR-045`; BL-203 owns a later complete `isError=true` migration.
+Every filesystem `tools/call` crosses one central adapter boundary into MCP
+`CallToolResult`. Successful calls and normalized tool failures both use one
+compact JSON text block plus matching `structuredContent`; failures additionally
+set `isError: true`. Error objects expose only a stable category and safe generic
+message. They never include raw operating-system errors or resolved host paths.
+Malformed request envelopes and malformed outer call parameters remain JSON-RPC
+errors because they do not identify an executable tool invocation.
 
 ## Limits and Redaction
 
