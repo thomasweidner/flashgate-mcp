@@ -390,6 +390,13 @@ Version 1.0 command execution uses server-defined command IDs. A definition fixe
 - network policy;
 - OS isolation.
 
+Command admission is subject to explicit process-wide and effective-profile
+concurrency budgets. Admission is non-blocking: work that would exceed either
+budget is rejected with a bounded categorical error rather than accumulated in
+an internal command queue. Profiles without an explicit command budget fail
+closed. A successful admission owns one slot until its idempotent release
+function runs, including every startup-failure and terminal-process path.
+
 The server constructs argv. Standard profiles do not accept a free shell string, response files, arbitrary config overrides, unapproved hooks/plugins/loaders, or uncontrolled environment inheritance.
 
 Interactive shell and process input remain post-Version 1.0.
