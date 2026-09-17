@@ -16,8 +16,16 @@ func TestDefaultConfig(t *testing.T) {
 		t.Fatalf("expected root path %q, got %q", defaultRootPath, cfg.Filesystem().RootPath())
 	}
 
-	if cfg.Filesystem().ReadOnly() {
-		t.Fatal("expected read-only mode to be disabled by default")
+	if !cfg.Filesystem().ReadOnly() {
+		t.Fatal("expected safe read-only mode by default")
+	}
+
+	if cfg.Profile() != ProfileSafeRead {
+		t.Fatalf("expected default profile %q, got %q", ProfileSafeRead, cfg.Profile())
+	}
+
+	if got := cfg.RiskPolicy(); len(got) != 1 || got[0] != RiskStandard {
+		t.Fatalf("expected default standard risk policy, got %v", got)
 	}
 
 	if cfg.Filesystem().AllowCWDRoot() {
@@ -158,6 +166,74 @@ func TestLoadFromEnvironment(t *testing.T) {
 	if cfg.Server().MaxResponseBytes() != 16384 {
 		t.Fatalf("expected max response bytes 16384, got %d", cfg.Server().MaxResponseBytes())
 	}
+}
+
+func TestLoadFromEnvironmentDefaultsToSafeReadProfile(t *testing.T) {
+	setValidRoot(t)
+
+	cfg, err := LoadFromEnvironment()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Profile() != ProfileSafeRead || !cfg.Filesystem().ReadOnly() {
+		t.Fatalf("expected safe read-only default, got profile=%q readOnly=%t", cfg.Profile(), cfg.Filesystem().ReadOnly())
+	}
+}
+
+func TestLoadFromEnvironmentActivatesFilesystemWriteProfileExplicitly(t *testing.T) {
+	setValidRoot(t)
+	t.Setenv(envProfile, string(ProfileFilesystemWrite))
+	t.Setenv(envRiskPolicy, "high-risk,destructive")
+
+	cfg, err := LoadFromEnvironment()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Profile() != ProfileFilesystemWrite || cfg.Filesystem().ReadOnly() {
+		t.Fatalf("expected explicit write profile, got profile=%q readOnly=%t", cfg.Profile(), cfg.Filesystem().ReadOnly())
+	}
+	wantRisk := []RiskClass{RiskHigh, RiskDestructive}
+	if got := cfg.RiskPolicy(); len(got) != len(wantRisk) || got[0] != wantRisk[0] || got[1] != wantRisk[1] {
+		t.Fatalf("expected risk policy %v, got %v", wantRisk, got)
+	}
+}
+
+func TestLoadFromEnvironmentSupportsLegacyReadOnlyFalseAsExplicitWriteActivation(t *testing.T) {
+	setValidRoot(t)
+	t.Setenv(envReadOnly, "false")
+
+	cfg, err := LoadFromEnvironment()
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if cfg.Profile() != ProfileFilesystemWrite || cfg.Filesystem().ReadOnly() {
+		t.Fatalf("expected legacy false to activate write profile, got profile=%q readOnly=%t", cfg.Profile(), cfg.Filesystem().ReadOnly())
+	}
+}
+
+func TestLoadFromEnvironmentRejectsProfileAndLegacyConflict(t *testing.T) {
+	setValidRoot(t)
+	t.Setenv(envProfile, string(ProfileSafeRead))
+	t.Setenv(envReadOnly, "false")
+
+	_, err := LoadFromEnvironment()
+	assertCategory(t, err, CategoryInvalidProfile)
+}
+
+func TestLoadFromEnvironmentRejectsInvalidProfileAndRiskPolicy(t *testing.T) {
+	t.Run("profile", func(t *testing.T) {
+		setValidRoot(t)
+		t.Setenv(envProfile, "admin")
+		_, err := LoadFromEnvironment()
+		assertCategory(t, err, CategoryInvalidProfile)
+	})
+
+	t.Run("risk policy", func(t *testing.T) {
+		setValidRoot(t)
+		t.Setenv(envRiskPolicy, "standard,high-risk")
+		_, err := LoadFromEnvironment()
+		assertCategory(t, err, CategoryInvalidRiskPolicy)
+	})
 }
 
 func TestLoadFromEnvironmentParsesFalseSecurityFlags(t *testing.T) {

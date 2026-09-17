@@ -12,6 +12,7 @@ const (
 	CategoryRootNotDirectory         ErrorCategory = "root_not_directory"
 	CategoryRootNotAllowed           ErrorCategory = "root_not_allowed"
 	CategoryInvalidProfile           ErrorCategory = "invalid_profile"
+	CategoryInvalidRiskPolicy        ErrorCategory = "invalid_risk_policy"
 	CategoryInvalidDevelopmentOption ErrorCategory = "invalid_development_option"
 	CategoryStartupFailed            ErrorCategory = "startup_failed"
 )
