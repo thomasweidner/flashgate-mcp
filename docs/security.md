@@ -394,6 +394,34 @@ The server constructs argv. Standard profiles do not accept a free shell string,
 
 Interactive shell and process input remain post-Version 1.0.
 
+#### Least-privilege command execution identity
+
+`run_command` and managed process start use the execution backend already bound
+to the server-created execution context. Identity is not a tool argument and a
+caller cannot request a user name, UID/GID, Windows token, group set,
+credential, elevation mode, or alternate backend.
+
+| Runtime path | Child OS identity | Required behavior |
+|---|---|---|
+| Direct STDIO | FlashGate process identity | No elevation or credential switching; the operator is responsible for starting FlashGate with an appropriately restricted account. |
+| Version 1.0 system service | Dedicated restricted FlashGate service account | Use only administratively granted roots and runtime directories; never fall back to `LocalSystem`, `root`, or another ambient privileged identity. |
+| Reserved `user-worker` backend | Unavailable in Version 1.0 | Reject configuration or dispatch as unsupported; do not emulate it with in-process impersonation. |
+
+Caller authorization and child OS identity remain separate. The authenticated
+caller continues to own quotas, handles, results, cancellation rights, and
+audit attribution when the child runs as the service account. Executable
+allowlisting does not grant additional root, profile, capability, environment,
+network, or identity rights.
+
+Every launch must preserve the authorized executable definition, named root
+and working directory, profile and capability, backend identity, service
+generation, resource budget, deadline, and correlation identity. Child
+environment and inherited handles are minimized. Platform adapters apply the
+strongest configured Windows or Linux isolation while preserving equivalent
+policy outcomes. If the required backend identity or mandatory restriction
+cannot be established, launch fails closed before the child starts; FlashGate
+does not silently retry under a more privileged ambient identity.
+
 ### Native OS and interpreter boundary
 
 Normal Version 1.0 runtime prefers:
