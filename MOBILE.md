@@ -195,7 +195,7 @@ Reservation evidence remains:
 
 PR #249 overlaps the already-reserved execution-redaction candidate but does not create a new active BL identity; `BL-145` is already durably reserved by PR #248.
 
-The complete Version-1.0 Search queue remains reserved by open PRs. The active catalog still contains 21 unreserved, non-decision-bound Planned topics. The important correction in this snapshot is that **absence from current `main` is not the end of selection**: after the current-checkout pass, open PR heads must be evaluated as possible stack restart bases.
+The complete Version-1.0 Search queue remains reserved by open PRs. The active catalog still contains 21 unreserved, non-decision-bound Planned topics. The important correction in this snapshot is that **absence from current `main` is not the end of selection**: after the current-checkout pass, open PR heads must be evaluated as possible stack restart bases. The present topology happens not to contain a complete single-head restart path after all mandatory ADR dependencies are included.
 
 ## 8. Classic/owner decision exclusions
 
@@ -242,47 +242,39 @@ Total active  : 21
 
 ## 10. Current execution-entry topology
 
-The current `main` checkout still has no task-pure executable unreserved candidate among these 21. That result is only the **first pass** and must no longer be returned as the final selector outcome without the PR-head restart pass.
+The current `main` checkout has no task-pure executable unreserved candidate among these 21. The required PR-head restart pass was also applied against the current open topology and, after including mandatory ADR dependencies, found no complete unambiguous single-head restart path.
 
 Snapshot entry classes:
 
 ```text
 MAIN_EXECUTABLE     : none
-PR_STACK_CANDIDATE  : BL-229
-WAIT_MULTI          : 20 topics
+PR_STACK_CANDIDATE  : none
+WAIT_MULTI          : 21 topics
 ```
 
-### 10.1 Single-line restart candidate
+This does **not** disable the PR-head restart mechanism. Future PR stacking or integration can consolidate currently split prerequisites into one ancestry; every later automatic selection must therefore rerun the restart pass rather than trust this snapshot.
 
-`BL-229` is currently the earliest verified single-line restart path.
+### 10.1 Rejected apparent single-head path: `BL-229`
 
-Its concrete owned delta is automatic managed-endpoint discovery and safe STDIO fallback. Open PR #205 (`BL-233`) already contains the accepted runtime configuration, canonical endpoint, discovery, timeout/retry, `proxy`/`auto` fallback, diagnostics and redaction contract that `BL-229` must consume. The `BL-229` selection/decision logic can be implemented and meaningfully validated from that lineage without importing the Windows Named Pipe, Unix-socket, service-host or execution-identity sibling PRs; integration with those later runtime components remains deferred evidence rather than a reason to combine their branches into this Cloud task.
+PR #205 (`BL-233`) contains the accepted runtime configuration, canonical endpoint, discovery, timeout/retry, `proxy`/`auto` fallback, diagnostics and redaction contract relevant to `BL-229`. That is necessary but **not sufficient** for the `BL-229` implementation.
 
-Fresh selection must re-check that the PR is still open, its head identity is unchanged, and no sufficient ancestor/descendant relationship changes the minimal sufficient restart head. Snapshot start data:
+Accepted ADR-014 states that ADR-017 and `BL-341` are mandatory lifecycle dependencies of the later `BL-226` through `BL-231` multi-mode implementation. `BL-229` is inside that range. `BL-341` owns direct/proxy/auto-edge lifecycle, definitive owner/transport-loss handling, bounded shutdown, Operations/Job cleanup and Managed Child cleanup. No current open PR ancestry contains both the PR #205 / `BL-233` discovery/fallback contract and the required `BL-341` implementation.
+
+Therefore the current snapshot classification is:
 
 ```text
-CatalogEntryClass   : PR_STACK_CANDIDATE
-CanonicalState      : STACK_REQUIRED
 TaskID              : BL-229
-DependsOn           : BL-233
-ParentPR             : #205
-ParentHeadBranch     : codex/fuhre-cloud-task-aus-mobile.md-v3-aus-djhu71
-ParentHeadSha        : e084895636e92e22f0b85f9e97d6e914f740ce81
-CurrentMain          : 383714cf77a816f0427b7a5e842139351b96b2d5
-ExpectedSelector     : STACK_RESTART_REQUIRED
+CatalogEntryClass   : WAIT_MULTI
+RequiredLines       : BL-233 + BL-341
+CanonicalOutcome    : BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
+MutationCount        : 0
 ```
 
-Expected restart instruction after fresh read-only revalidation:
+Do not start `BL-229` from PR #205 alone. A future stacked or integrated head that contains both required lines may turn it into `PR_STACK_CANDIDATE`; fresh ancestry reduction must prove that before restart.
 
-```text
-Führe BL-229 gemäß `MOBILE.md` V3 als abhängigen Mobile-Task aus. Der ausgewählte Start-Ref ist der Vorgänger von BL-233. Verifiziere lokal, dass ParentHeadSha e084895636e92e22f0b85f9e97d6e914f740ce81 im aktuellen Checkout enthalten ist. Kein Fetch, Pull, Merge oder Cherry-Pick des Vorgängers. Der spätere Child-PR muss den direkten Vorgängerbranch `codex/fuhre-cloud-task-aus-mobile.md-v3-aus-djhu71` als Base verwenden.
-```
+### 10.2 Current multi-line candidates
 
-If fresh inspection finds additional sufficient heads in the same ancestry lineage, reduce them to the minimal sufficient head before returning the restart. If it instead finds several incomparable sufficient lineages, do not choose arbitrarily; return `STACK_RESTART_BASE_AMBIGUOUS` for `BL-229` with all candidate heads.
-
-### 10.2 Remaining multi-line candidates
-
-The other 20 active topics still require more than one independent prepared line, or integrated runtime surfaces that are currently split across those lines. They are therefore snapshot `WAIT_MULTI` candidates, not global queue blockers:
+All 21 active topics currently require more than one independent prepared line, or integrated runtime surfaces that are split across those lines. They are snapshot `WAIT_MULTI` candidates, not permanent queue removals:
 
 | Tasks | Why one current PR lineage is not sufficient at this snapshot |
 |---|---|
@@ -297,15 +289,16 @@ The other 20 active topics still require more than one independent prepared line
 | `BL-163` | Execution policy enforcement spans command definitions/arguments, roots, environment, limits and isolation, currently split across multiple PR lines. |
 | `BL-167` | Cross-domain secret redaction must cover process, execution, system, jobs and audit owners; those domains are not represented by one current ancestry. |
 | `BL-168` | Least-privilege validation needs execution identity/service-account behavior plus child/platform-isolation behavior from separate lines. |
-| `BL-228` | STDIO proxy mode needs transport-neutral lifecycle/runtime plus local IPC protocol/transport behavior that is currently split. |
-| `BL-230–BL-231` | Windows SCM/Linux systemd hosting needs lifecycle, platform transport and service execution-identity foundations from separate lines. |
+| `BL-228` | STDIO proxy mode needs transport-neutral lifecycle/runtime, local IPC behavior and the mandatory ADR-017/`BL-341` host-lifecycle implementation; these are split. |
+| `BL-229` | Auto discovery/fallback consumes the PR #205 / `BL-233` contract, but ADR-014 also makes ADR-017/`BL-341` mandatory for `BL-226–231`; no one current ancestry contains both. |
+| `BL-230–BL-231` | Windows SCM/Linux systemd hosting needs lifecycle, platform transport and service execution-identity foundations from separate lines, including mandatory ADR-017/`BL-341`. |
 | `BL-234` | Service-side authorization combines OS-derived transport caller identity, roots/profiles/capabilities, execution-identity dispatch, per-principal limits and audit; no one head contains all of those foundations. |
 | `BL-241–BL-242`, `BL-244` | Integrated multi-mode tests, CI/release validation and benchmarks require several proxy/service/transport/lifecycle implementations to exist together first. |
 | `BL-341` | Canonically consumes process-root lifecycle plus Operations/Job (`BL-094`) and Managed Child (`BL-129`) cleanup owners, which remain independent prepared lines. |
 
 `WAIT_MULTI` is a snapshot catalog annotation, not a new governance state. Fresh task selection must still run the concrete-delta test and public-PR ancestry reduction because a later stacked PR may consolidate the required lines and turn one of these topics into a `PR_STACK_CANDIDATE`.
 
-The default phone prompt should therefore currently return `STACK_RESTART_REQUIRED` for `BL-229` after fresh validation and lineage reduction, rather than `NO_EXECUTABLE_UNRESERVED_PLANNED_MOBILE_TASK`.
+Until topology changes, the default phone prompt may legitimately return `NO_EXECUTABLE_UNRESERVED_PLANNED_MOBILE_TASK` **only after** completing both the current-checkout and open-PR-head restart passes across the allowed Planned queue. The selector must not infer that result merely from `main` or from this snapshot.
 
 ## 11. Implementation and validation contract
 
