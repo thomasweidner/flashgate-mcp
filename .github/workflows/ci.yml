@@ -461,6 +461,36 @@ jobs:
         shell: pwsh
         run: .\scripts\smoke-startup-negative.ps1
 
+  operations-job:
+    name: Operations/Job integration (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+          - os: ubuntu-latest
+            platform: linux
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Run Operations/Job integration suite
+        run: go test -count=1 ./internal/operation
+
+      - name: Run stateful race gate
+        if: matrix.os == 'ubuntu-latest'
+        run: go test -race -count=1 ./...
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

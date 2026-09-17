@@ -954,7 +954,11 @@ The portable `internal/operation` integration suite runs unchanged on Windows
 and Linux. It combines real contexts, goroutines, and temporary files to cover
 caller cancellation, server deadlines, graceful shutdown, leak-registry
 cleanup, and removal of partial temporary resources. Platform-native execution
-of the suite remains required before BL-098 can be finalized.
+of the suite remains required before BL-098 can be finalized. The dedicated
+`operations-job` CI matrix runs that package on Windows and Linux without the
+test cache. Its Linux leg also runs the repository-wide `go test -race ./...`
+stateful race gate; Windows race-toolchain evidence remains a native
+finalization responsibility.
 
 ## Version 1.0 Planned Validation Matrix
 
