@@ -79,17 +79,22 @@ When the user says only “next task”:
 3. exclude every task with a known unresolved Classic/owner decision and every task directly blocked by one;
 4. inspect `Planned` sprints in ascending order defined by root `AGENTS.md`;
 5. for each serious candidate, run the **concrete-delta feasibility test** from `Governance/MOBILE-CLOUD-HANDOFF.md` before assigning a dependency state;
-6. classify candidates from the **current checkout** as:
+6. inside each sprint, first run the **current-checkout pass** and classify candidates as:
    - `INDEPENDENT_FROM_CURRENT_CHECKOUT`;
    - `STACK_BASE_READY`;
    - `STACK_REQUIRED`;
    - `BLOCKED_DEPENDENCY_DECISION`; or
    - `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`;
-7. select from the earliest sprint with an executable unreserved candidate;
-8. inside that sprint prefer mode A before B before C, independent before stack-base-ready, then lower effort, lower Windows residual and lower collision risk;
-9. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the scan; continue with other candidates and later Planned sprints;
-10. return a global no-executable Planned result only after the complete allowed Planned scan, subject to the single-predecessor `STACK_RESTART_REQUIRED` rule;
-11. do not auto-select `Later` while executable unreserved `Planned` work exists.
+7. if that sprint contains an unreserved `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidate, select from it and prefer mode A before B before C, independent before stack-base-ready, then lower effort, lower Windows residual and lower collision risk;
+8. if the sprint has no current-checkout executable candidate, run the read-only **open-PR-head restart pass** before advancing to a later sprint: for each remaining candidate, collect all open PR heads whose ancestry contains every hard predecessor delta it needs, group comparable heads into ancestry lineages, and retain the minimal sufficient head in each lineage;
+9. when a candidate has exactly one reduced minimal sufficient head, it is unambiguously restartable. When one or more candidates in the sprint meet that condition, choose among those candidates with the same mode/effort/Windows-residual/collision preferences and return `STACK_RESTART_REQUIRED` with the selected parent PR, branch and SHA;
+10. several sufficient heads on one lineage do not create ambiguity: if a sufficient ancestor already contains the complete hard-predecessor set, discard later sufficient descendants and use that minimal sufficient ancestor;
+11. if a candidate has several **incomparable** reduced sufficient heads and each is independently sufficient, record `STACK_RESTART_BASE_AMBIGUOUS`, exclude only that candidate from automatic choice, and continue. This is not a multi-predecessor block because no merge is required. Surface the ambiguity instead of a global no-executable result if no better path exists in the sprint;
+12. `PR_STACK_CANDIDATE` in this file is only a snapshot hint for an unambiguous restart path; the canonical state remains `STACK_REQUIRED` until a new Cloud task starts from the selected parent and verifies `STACK_BASE_READY` locally;
+13. if a candidate genuinely requires several independent uncombined PR heads because no single head contains its complete predecessor set, classify it `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, exclude only that candidate and continue;
+14. advance to the next Planned sprint only when the current sprint has no executable candidate, no unambiguous restart candidate, and no restart-base ambiguity that must be surfaced;
+15. return a global no-executable Planned result only after every allowed Planned sprint has completed both passes and no restart-base ambiguity remains to report;
+16. do not auto-select `Later` while executable or unambiguously restartable unreserved `Planned` work exists.
 
 The user may explicitly name a task, but naming a reserved or decision-blocked task does not make it executable.
 
@@ -119,7 +124,7 @@ This includes generic tests/CI gates whose future coverage grows automatically w
 
 ### Stack base ready
 
-A dependent task is executable only when the current checkout already contains the exact predecessor it consumes. The normal route is a **new Codex Cloud task started directly from the predecessor PR head branch/SHA**.
+A dependent task is executable only when the current checkout already contains every hard predecessor delta it consumes. The normal route is a **new Codex Cloud task started directly from one sufficient predecessor PR head branch/SHA**. That head may itself contain a cumulative chain of earlier Mobile prerequisites.
 
 Verify locally, when possible:
 
@@ -132,12 +137,16 @@ Then:
 ```text
 DependencyExecution=STACK_BASE_READY
 ExpectedPRBase=<ParentHeadBranch>
-Mobile-Depends-On: <ParentBL>
+Mobile-Depends-On: <direct-parent-BL>[,<contained-prerequisite-BL>...]
 ```
 
-### Stack required
+### Stack required / restart candidate
 
-If exactly one genuinely required predecessor is open but absent from the checkout, do not import it with fetch/pull/merge/cherry-pick/patch replay/downloaded Git objects/credential setup. Return:
+If the hard predecessor delta set is absent from the current checkout, collect all sufficient open PR heads and reduce them by ancestry lineage. Within one lineage, keep the **minimal sufficient head**: a sufficient head with no sufficient ancestor that already contains the complete predecessor set. Descendant sufficient heads are broader-than-needed restart bases and are discarded for selection.
+
+If exactly one minimal sufficient head remains after lineage reduction, do not import that head with fetch/pull/merge/cherry-pick/patch replay/downloaded Git objects/credential setup. Classify the candidate canonically as `STACK_REQUIRED`; this catalog may additionally label the current snapshot as `PR_STACK_CANDIDATE`.
+
+Return:
 
 ```text
 Status=STACK_RESTART_REQUIRED
@@ -149,24 +158,29 @@ ParentHeadSha=<sha>
 MutationCount=0
 ```
 
-If the concrete delta genuinely requires multiple independent uncombined predecessors, classify that candidate as `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, exclude it, and continue scanning. Never synthesize a Cloud merge branch.
+If several incomparable minimal sufficient heads remain and each independently contains the complete predecessor set, return the candidate-local selector outcome `STACK_RESTART_BASE_AMBIGUOUS` with the candidate heads. Do not choose arbitrarily and do not call it `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, because no branch combination is required.
+
+A reserved predecessor PR is a valid stack start. Reservation prevents duplicate implementation of the predecessor; it does not prohibit an unreserved child from using that predecessor head as its initial checkout.
+
+If the concrete delta genuinely requires multiple independent uncombined predecessors and no one open PR head ancestry contains the complete required set, classify that candidate as `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, exclude it, and continue scanning. Never synthesize a Cloud merge branch.
 
 ## 7. Snapshot binding — 2026-09-17
 
 ```text
 Repository : thomasweidner/flashgate-mcp
-Main       : df258b3ee6db7858371848747f402b8d565d6572
-AGENTS     : 0e686cbbd305204cb077771bd0f88a1a15d164d2
+Main       : 383714cf77a816f0427b7a5e842139351b96b2d5
+AGENTS     : 0e686cbbd305204cb077771bd0f88a1a15d164d2 (pre-this-update)
+MobileGov  : dd0e55f7251ab9c97f8b777fd574561b5134044b (pre-this-update)
 BACKLOG    : a02db7c09b10dba8c827f62618c7c6eb9f096591
-MOBILE     : 34c46c5536deb7e48f35e88cf83c7a2fb20cf1e8 (pre-this-update)
+MOBILE     : 85ad498761f45849e749d85c19fa822c2d9a3600 (pre-this-update)
 Ledger     : 198 open GitHub PRs, through #257 at snapshot time
 ```
 
-Since the preceding Mobile refresh, these formerly active topics are now prepared/reserved and are removed from new Mobile selection:
+No new reservation was created between the preceding Mobile queue refresh and this topology correction. The most recent reservation delta remains:
 
 `BL-060`, `BL-098`, `BL-099`, `BL-103`, `BL-144`, `BL-145`, `BL-148`, `BL-149`, `BL-151`, `BL-164`, `BL-226`, `BL-227`, `BL-237`, `BL-253`, `BL-254`.
 
-Reservation evidence for this refresh:
+Reservation evidence remains:
 
 - PR #240 prepares `BL-164` on the Operations/Job chain.
 - PR #241 prepares `BL-098`; PRs #242 and #243 both reserve `BL-099` and therefore form a duplicate reservation collision.
@@ -181,7 +195,7 @@ Reservation evidence for this refresh:
 
 PR #249 overlaps the already-reserved execution-redaction candidate but does not create a new active BL identity; `BL-145` is already durably reserved by PR #248.
 
-The complete Version-1.0 Search queue remains reserved by open PRs. The Operations/Job, named-root/profile and CI candidates that were still active in the prior snapshot are now also reserved. The remaining catalog therefore consists only of unreserved Planned work whose current concrete deltas are blocked by uncombined Mobile predecessor topology from this `main` checkout.
+The complete Version-1.0 Search queue remains reserved by open PRs. The active catalog still contains 21 unreserved, non-decision-bound Planned topics. The important correction in this snapshot is that **absence from current `main` is not the end of selection**: after the current-checkout pass, open PR heads must be evaluated as possible stack restart bases. The present topology happens not to contain a complete single-head restart path after all mandatory ADR dependencies are included.
 
 ## 8. Classic/owner decision exclusions
 
@@ -203,7 +217,7 @@ There are no active Mode-C rows at this snapshot. This does **not** change the A
 
 ## 9. Active Planned candidates
 
-These IDs are unreserved at the snapshot, are `Planned`, and are not blocked by a known unresolved Classic/owner decision. They remain open Mobile work, but the current dependency topology does not provide a task-pure executable candidate from this `main` checkout.
+These IDs are unreserved at the snapshot, are `Planned`, and are not blocked by a known unresolved Classic/owner decision.
 
 | Epic | Mode A | Mode B | Mode C |
 |---|---|---|---|
@@ -226,28 +240,65 @@ Total active  : 21
 
 `Later`, completed, reserved, known decision-blocked, Mode-D and Mode-X rows are intentionally omitted.
 
-## 10. Current execution topology
+## 10. Current execution-entry topology
 
-A complete Planned scan from the current `main` checkout, with the then-parallel `BL-237` work explicitly excluded, returned:
+The current `main` checkout has no task-pure executable unreserved candidate among these 21. The required PR-head restart pass was also applied against the current open topology and, after including mandatory ADR dependencies, found no complete unambiguous single-head restart path.
+
+Snapshot entry classes:
 
 ```text
-Status=NO_EXECUTABLE_UNRESERVED_PLANNED_MOBILE_TASK
+MAIN_EXECUTABLE     : none
+PR_STACK_CANDIDATE  : none
+WAIT_MULTI          : 21 topics
 ```
 
-`BL-237` is now additionally reserved by PR #257, so that result remains valid or becomes more restrictive; it does not create a new executable path.
+This does **not** disable the PR-head restart mechanism. Future PR stacking or integration can consolidate currently split prerequisites into one ancestry; every later automatic selection must therefore rerun the restart pass rather than trust this snapshot.
 
-Current preclassification:
+### 10.1 Rejected apparent single-head path: `BL-229`
 
-| Tasks | Snapshot state | Reason |
-|---|---|---|
-| `BL-064`, `BL-118`, `BL-139`, `BL-143`, `BL-157`, `BL-228`, `BL-341` | `WAIT_MULTI` | Their concrete deltas consume multiple independently prepared foundations that are not represented by one current ancestry. |
-| `BL-146–BL-147`, `BL-152` | `CURRENT_MAIN_BLOCKED` | Remaining command-runtime/isolation work requires command, Managed Process and/or execution-identity foundations from open stacks; no task-pure current-main implementation survived the complete scan. |
-| `BL-160`, `BL-163`, `BL-167–BL-168` | `CURRENT_MAIN_BLOCKED` | Remaining security work consumes authorization, root/domain, command/process or audit foundations currently split across open stacks. |
-| `BL-229–BL-231`, `BL-234`, `BL-241–BL-242`, `BL-244` | `CURRENT_MAIN_BLOCKED` | Proxy/service/transport/identity/lifecycle work depends on IPC and native multi-mode implementations currently represented by separate open PR stacks. |
+PR #205 (`BL-233`) contains the accepted runtime configuration, canonical endpoint, discovery, timeout/retry, `proxy`/`auto` fallback, diagnostics and redaction contract relevant to `BL-229`. That is necessary but **not sufficient** for the `BL-229` implementation.
 
-`CURRENT_MAIN_BLOCKED` is a snapshot description, not a new governance state. Every future task must re-run the concrete-delta feasibility test and map the candidate to the canonical dependency states from section 6. A later merge, retarget or consolidated predecessor may turn one of these into `STACK_BASE_READY`, `STACK_REQUIRED`, or independent work.
+Accepted ADR-014 states that ADR-017 and `BL-341` are mandatory lifecycle dependencies of the later `BL-226` through `BL-231` multi-mode implementation. `BL-229` is inside that range. `BL-341` owns direct/proxy/auto-edge lifecycle, definitive owner/transport-loss handling, bounded shutdown, Operations/Job cleanup and Managed Child cleanup. No current open PR ancestry contains both the PR #205 / `BL-233` discovery/fallback contract and the required `BL-341` implementation.
 
-Until repository topology changes, the default phone prompt may legitimately return the global no-executable result instead of creating another candidate.
+Therefore the current snapshot classification is:
+
+```text
+TaskID              : BL-229
+CatalogEntryClass   : WAIT_MULTI
+RequiredLines       : BL-233 + BL-341
+CanonicalOutcome    : BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
+MutationCount        : 0
+```
+
+Do not start `BL-229` from PR #205 alone. A future stacked or integrated head that contains both required lines may turn it into `PR_STACK_CANDIDATE`; fresh ancestry reduction must prove that before restart.
+
+### 10.2 Current multi-line candidates
+
+All 21 active topics currently require more than one independent prepared line, or integrated runtime surfaces that are split across those lines. They are snapshot `WAIT_MULTI` candidates, not permanent queue removals:
+
+| Tasks | Why one current PR lineage is not sufficient at this snapshot |
+|---|---|
+| `BL-064` | Integrates long filesystem operations with Operations/Job; filesystem and Operations/Job implementations are on independent lines. |
+| `BL-118` | Must register and execute-authorize `process.observe`; process-observation work through PR #193 and capability/authorization work are on separate lines. |
+| `BL-139` | Connects typed commands to named-root process-working-directory policy; command and named-root/capability lines are independent. |
+| `BL-143` | `run_command` must be the synchronous wrapper over the Managed Process Engine; command and managed-process lines remain independent. |
+| `BL-146–BL-147` | Windows/Linux execution isolation consumes command policy plus Managed Process/execution-identity/platform controls that are not cumulative in one current line. |
+| `BL-152` | Cross-platform execution security tests need allowlist/args/roots/environment/output/timeout/isolation surfaces that are split across current command, roots and platform lines. |
+| `BL-157` | `system.read` requires the System Information line plus server-side capability/authorization enforcement. |
+| `BL-160` | Authorization-bypass coverage requires execution-time authorization together with named-root/domain policy surfaces; the relevant open lines diverge. |
+| `BL-163` | Execution policy enforcement spans command definitions/arguments, roots, environment, limits and isolation, currently split across multiple PR lines. |
+| `BL-167` | Cross-domain secret redaction must cover process, execution, system, jobs and audit owners; those domains are not represented by one current ancestry. |
+| `BL-168` | Least-privilege validation needs execution identity/service-account behavior plus child/platform-isolation behavior from separate lines. |
+| `BL-228` | STDIO proxy mode needs transport-neutral lifecycle/runtime, local IPC behavior and the mandatory ADR-017/`BL-341` host-lifecycle implementation; these are split. |
+| `BL-229` | Auto discovery/fallback consumes the PR #205 / `BL-233` contract, but ADR-014 also makes ADR-017/`BL-341` mandatory for `BL-226–231`; no one current ancestry contains both. |
+| `BL-230–BL-231` | Windows SCM/Linux systemd hosting needs lifecycle, platform transport and service execution-identity foundations from separate lines, including mandatory ADR-017/`BL-341`. |
+| `BL-234` | Service-side authorization combines OS-derived transport caller identity, roots/profiles/capabilities, execution-identity dispatch, per-principal limits and audit; no one head contains all of those foundations. |
+| `BL-241–BL-242`, `BL-244` | Integrated multi-mode tests, CI/release validation and benchmarks require several proxy/service/transport/lifecycle implementations to exist together first. |
+| `BL-341` | Canonically consumes process-root lifecycle plus Operations/Job (`BL-094`) and Managed Child (`BL-129`) cleanup owners, which remain independent prepared lines. |
+
+`WAIT_MULTI` is a snapshot catalog annotation, not a new governance state. Fresh task selection must still run the concrete-delta test and public-PR ancestry reduction because a later stacked PR may consolidate the required lines and turn one of these topics into a `PR_STACK_CANDIDATE`.
+
+Until topology changes, the default phone prompt may legitimately return `NO_EXECUTABLE_UNRESERVED_PLANNED_MOBILE_TASK` **only after** completing both the current-checkout and open-PR-head restart passes across the allowed Planned queue. The selector must not infer that result merely from `main` or from this snapshot.
 
 ## 11. Implementation and validation contract
 

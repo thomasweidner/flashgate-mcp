@@ -22,11 +22,49 @@ Before every automatic Mobile task selection, query the public GitHub API for op
 
 `thomasweidner/flashgate-mcp`
 
-Canonical endpoint:
+Canonical paginated endpoint pattern:
 
 ```text
-GET https://api.github.com/repos/thomasweidner/flashgate-mcp/pulls?state=open&per_page=100
+GET https://api.github.com/repos/thomasweidner/flashgate-mcp/pulls?state=open&per_page=100&page=<n>
 ```
+
+The Vacation Reservation Ledger is complete only after **all pages have been exhausted**. Start with `page=1`, use `per_page=100`, then continue with `page=2`, `page=3`, and so on while GitHub advertises `rel="next"` in the `Link` header. When response headers are unavailable to the calling tool, continue sequentially until the next requested page returns zero PRs. Do not stop merely because one page contains fewer than 100 results when GitHub still advertises a next page.
+
+Pagination exhaustion by itself is not selector-stable because the open-PR set can change while pages are being read. Every ledger bind therefore requires **two immediately consecutive complete pagination passes**, `PassA` and `PassB`. Each pass starts again at `page=1` and independently exhausts all pages. Reject a pass if the same PR number appears more than once inside that pass.
+
+For each complete pass, build a deterministic selector-relevant projection sorted by PR number and containing exactly these fields for every open PR:
+
+```text
+number
+state
+title
+body
+base.ref
+head.repo.full_name
+head.ref
+head.sha
+```
+
+`updated_at`, comments, review state, labels, reactions, mergeability, and other metadata that do not determine Mobile reservation identity or restart topology are intentionally excluded from this stability projection.
+
+The ledger is selector-stable only when `PassA` and `PassB` have the same PR count and their selector-relevant projections are byte-for-byte identical. Only then record:
+
+```text
+LedgerPaginationComplete=true
+LedgerSnapshotStable=true
+```
+
+If either pass cannot be exhausted, contains duplicate PR numbers, or the two projections differ, do not select or implement a Mobile task. Return fail-closed:
+
+```text
+Status=BLOCKED_MOBILE_GITHUB_LEDGER_UNSTABLE
+LedgerSnapshotStable=false
+MutationCount=0
+```
+
+Do not reuse either partial or drifted pass as authority. A later fresh selection attempt must start again with a new `PassA` from `page=1`.
+
+Reservation identity resolution, `ReservedTaskIDs`, sufficient-head collection, ancestry-lineage reduction, restart selection, ambiguity reporting, and any global no-executable result are all prohibited until **both** `LedgerPaginationComplete=true` and `LedgerSnapshotStable=true`. Never analyze only the first page or a single pagination pass. A secondary GitHub search total may be used as a read-only cross-check, but it does not replace the stable two-pass `pulls` enumeration.
 
 The Mobile read path is intentionally narrow:
 
@@ -130,6 +168,8 @@ BLOCKED_DEPENDENCY_DECISION
 BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
 ```
 
+`STACK_RESTART_BASE_AMBIGUOUS` is a selector outcome for the read-only restart pass, not an additional dependency-execution state.
+
 ### 4.0 Concrete-delta feasibility test
 
 Before assigning any dependency state, identify the candidate's **concrete task-pure delta** and answer these questions from the current checkout:
@@ -169,9 +209,9 @@ Do not manufacture a stack solely to mirror a dependency hint or future integrat
 
 ### 4.2 Stack base ready
 
-Use `STACK_BASE_READY` only when the current Codex Cloud checkout already contains the exact predecessor Mobile implementation that the child genuinely consumes.
+Use `STACK_BASE_READY` only when the current Codex Cloud checkout already contains every hard predecessor delta that the child genuinely consumes.
 
-A child task intentionally started from the predecessor PR head branch or commit is the normal way to reach this state.
+A child task intentionally started from one sufficient predecessor PR head branch or commit is the normal way to reach this state. That one head may itself be the tip of a cumulative Mobile ancestry and therefore contain several logical prerequisite BLs.
 
 Before child implementation, verify locally that the selected predecessor commit is present in the current checkout. When the predecessor SHA is available as a local object, use:
 
@@ -187,15 +227,22 @@ For a valid stack child:
 
 ```text
 ExpectedPRBase=<ParentHeadBranch>
-Mobile-Depends-On: <ParentBL>
+Mobile-Depends-On: <direct-parent-BL>[,<contained-prerequisite-BL>...]
 ```
+
+The direct parent branch remains the later PR base even when that parent ancestry contains earlier prerequisites.
 
 ### 4.3 Stack required
 
-Use `STACK_REQUIRED` only when:
+Use `STACK_REQUIRED` when the candidate's concrete task-pure delta genuinely consumes hard predecessor changes that are not already present in the current checkout, unless the candidate instead requires a real combination of multiple independent uncombined predecessor lines as defined in section 4.5.
 
-- the candidate's concrete task-pure delta genuinely consumes unintegrated changes from exactly one open predecessor Mobile PR; and
-- those predecessor changes are not already present in the current checkout.
+`STACK_REQUIRED` describes the missing hard ancestry in the current checkout. It does **not** depend on whether the Vacation Reservation Ledger currently exposes zero, one, or several sufficient restart heads. The number and topology of sufficient open PR heads determine only the restart-pass selector outcome in section 4.4.
+
+The candidate may have several logical prerequisite BLs when they are already cumulative in one head ancestry. Several sufficient heads on the **same** ancestry line do not create ambiguity: if PR B descends from PR A and A already contains the candidate's complete hard-predecessor set, discard B as an unnecessarily broad restart base and keep A. The minimal sufficient head is the sufficient head with no sufficient ancestor in that same lineage.
+
+If several **incomparable** open heads each independently contain the complete hard-predecessor set, the candidate remains `STACK_REQUIRED`; section 4.4 reports `STACK_RESTART_BASE_AMBIGUOUS` because parent selection is ambiguous even though no branch combination is required.
+
+`STACK_REQUIRED` becomes `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when no single open PR head contains the complete hard-predecessor set and the candidate genuinely needs two or more independent heads to be combined.
 
 Do not use `STACK_REQUIRED` for a future consumer relationship, deferred integration/CI/native evidence, or a generic gate that can be implemented correctly against the current checkout.
 
@@ -213,19 +260,40 @@ Do not make it executable by:
 - synthetic merge branch;
 - manual credential or token configuration.
 
-The public GitHub API may be used read-only to identify the predecessor PR, branch, and head SHA. It is not a transport for importing the predecessor Git history.
+The public GitHub API may be used read-only to identify candidate predecessor PRs, branches, head SHAs, bases, and ancestry relationships. It is not a transport for importing predecessor Git history.
 
-### 4.4 Stack restart
+A predecessor BL being reserved is expected and does not disqualify its PR head as a stack start. Reservation prevents reimplementing that predecessor; it does not prohibit an unreserved child from starting from the predecessor's existing head.
 
-If a `main`-based automatic task reaches a genuine single-predecessor `STACK_REQUIRED` candidate, continue looking for an executable independent/base-ready candidate in the same earliest Planned sprint.
+### 4.4 Open-PR-head restart pass
 
-If one exists, select that executable task instead.
+Automatic selection is two-tiered **inside each Planned sprint**.
 
-If no executable candidate remains in that earliest relevant Planned sprint and the next actionable work is a single-predecessor stack, stop before implementation with:
+1. First run the normal current-checkout feasibility/dependency pass.
+2. If that sprint contains an unreserved `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidate, select from those executable candidates and do not prefer a restart merely because one exists.
+3. If the sprint has no current-checkout executable candidate, perform a read-only restart pass over its remaining unreserved candidates before advancing to the next sprint.
+4. For each `STACK_REQUIRED` candidate, identify the complete hard-predecessor delta set and collect **all** open PR heads whose ancestry contains that complete set from the stable complete ledger established in section 2. If none exists, the dependency state remains `STACK_REQUIRED` but there is no restart path from the current ledger; continue evaluating other candidates.
+5. Use public PR/base/head/compare metadata to partition sufficient heads into comparable ancestry lineages. Within each lineage, discard every sufficient descendant when a sufficient ancestor already contains the complete hard-predecessor set. Retain the **minimal sufficient head** for that lineage: the earliest/narrowest sufficient head with no sufficient ancestor in the same lineage.
+6. If exactly one minimal sufficient lineage head remains, the candidate is an unambiguous single-line restart candidate. `MOBILE.md` may describe this snapshot condition as `PR_STACK_CANDIDATE`; the dependency state remains `STACK_REQUIRED` until a new Cloud task starts from that head and locally verifies `STACK_BASE_READY`.
+7. If two or more **incomparable** minimal sufficient heads remain and each independently contains the complete hard-predecessor set, the dependency state still remains `STACK_REQUIRED`; return the candidate-local selector outcome:
+
+```text
+Status=STACK_RESTART_BASE_AMBIGUOUS
+TaskID=BL-xxx
+DependencyExecution=STACK_REQUIRED
+MutationCount=0
+```
+
+Report every candidate parent PR, head branch, and head SHA. Do not choose arbitrarily and do not classify this as `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`, because either lineage is individually sufficient and no merge is required. Continue evaluating other candidates in the sprint. If the sprint has no executable or unambiguous restartable candidate but retains one or more restart-base ambiguities, surface the earliest ambiguity instead of returning a global no-executable result.
+8. If two or more **candidate tasks** in the same sprint each have one unambiguous minimal sufficient head, that is valid. Choose among the tasks with the normal mode, effort, Windows-residual, and collision preferences. The word **single** applies to the reduced sufficient lineage head for each candidate, not to the number of restartable candidate tasks in the sprint.
+9. If no individual open head contains a candidate's complete hard-predecessor set and two or more independent heads would genuinely have to be combined, reclassify only that candidate from `STACK_REQUIRED` to `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`.
+10. Advance to the next Planned sprint only when the current sprint has no current-checkout executable candidate, no unambiguous single-line restart candidate, and no restart-base ambiguity that must be surfaced.
+
+For the selected single-line restart candidate, stop before implementation with:
 
 ```text
 Status              : STACK_RESTART_REQUIRED
 TaskID              : BL-xxx
+DependencyExecution : STACK_REQUIRED
 DependsOn           : BL-yyy
 ParentPR             : #<number>
 ParentHeadBranch     : <GitHub predecessor branch>
@@ -234,6 +302,8 @@ CurrentCheckoutBase  : <current branch/ref>
 MutationCount        : 0
 NextAction           : Start a new Codex Cloud task from ParentHeadBranch (or ParentHeadSha) and execute TaskID as the stack child
 ```
+
+`DependsOn` identifies the selected direct-parent PR's Mobile task. Any earlier hard prerequisites already contained in that head ancestry remain represented by the ancestry rather than requiring another import.
 
 Also provide this exact short restart instruction with the actual values filled in:
 
@@ -245,33 +315,37 @@ The failed attempt to import a predecessor is not a reason to request reauthoriz
 
 ### 4.5 Multiple predecessors
 
-Use `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when the candidate's concrete task-pure delta genuinely consumes more than one independent uncombined open Mobile predecessor and those required changes are not already represented by one ancestry chain.
+Use `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` only when the candidate's concrete task-pure delta genuinely consumes more than one independent uncombined open Mobile predecessor and the complete required changes are not already represented by **any one** open PR-head ancestry.
 
-Do not create this state from future consumers, deferred integration evidence, or multiple components that a generic repository-wide gate can cover later without changing the gate implementation.
+Do not create this state when several sufficient heads are comparable within one ancestry lineage; reduce that lineage to its minimal sufficient head. Do not create it when several incomparable heads are each independently sufficient; the candidate remains `STACK_REQUIRED` and only the selector outcome is `STACK_RESTART_BASE_AMBIGUOUS`, because no combination is necessary. Do not create it from future consumers, deferred integration evidence, or multiple components that a generic repository-wide gate can cover later without changing the gate implementation.
 
 ```text
 Status=BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS
 ```
 
-This state is **candidate-local**. Do not synthesize a merge branch in Cloud. Exclude the blocked candidate and continue evaluating other candidates and later Planned sprints. Defer combination to Windows unless the user explicitly authorizes another strategy.
+This state is **candidate-local**. Do not synthesize a merge branch in Cloud. Exclude the blocked candidate and continue evaluating other candidates in the sprint and later Planned sprints. Defer combination to Windows unless the user explicitly authorizes another strategy.
 
 ## 5. Automatic task selection
 
 Before selecting the next Mobile task:
 
-1. enumerate open GitHub PRs through section 2;
-2. build `ReservedTaskIDs` through section 3;
+1. bind the open-PR ledger through section 2 and require both `LedgerPaginationComplete=true` and `LedgerSnapshotStable=true` from two identical consecutive full passes;
+2. build `ReservedTaskIDs` through section 3 only after that stable ledger bind succeeds;
 3. exclude `ReservedTaskIDs`;
 4. read current Planned sprints in the order defined by root `AGENTS.md`;
-5. for every serious candidate, run the concrete-delta feasibility test in section 4.0 before assigning an ancestry/dependency state;
-6. classify dependency execution for each candidate through sections 4.1–4.5;
-7. select only `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidates;
-8. within the earliest eligible sprint apply the mode/effort/Windows-residual/collision preferences from root `AGENTS.md`;
-9. do not attempt network Git operations to promote `STACK_REQUIRED` into an executable state;
-10. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the automatic scan; continue with other candidates and later Planned sprints;
-11. if no executable candidate remains in the earliest relevant sprint but a single-predecessor stack is the next actionable path, return `STACK_RESTART_REQUIRED`;
-12. return a global no-executable Planned result only after the complete allowed Planned scan, subject to the preceding single-predecessor stack-restart rule;
-13. do not jump to `Later` work while executable unreserved `Planned` work exists.
+5. process each Planned sprint in ascending order;
+6. for every serious candidate in that sprint, run the concrete-delta feasibility test in section 4.0 before assigning an ancestry/dependency state;
+7. run the current-checkout pass through sections 4.1–4.3 and select only `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidates when at least one exists;
+8. within that sprint apply the mode/effort/Windows-residual/collision preferences from root `AGENTS.md`;
+9. when the sprint has no current-checkout executable candidate, run the open-PR-head restart pass from section 4.4 before considering a later sprint;
+10. for every `STACK_REQUIRED` restart-pass candidate, collect all sufficient heads from the stable complete ledger, collapse comparable heads within each ancestry lineage, and retain only the minimal sufficient head per lineage;
+11. when a candidate has exactly one reduced sufficient lineage head, treat it as unambiguously restartable; when one or more candidate tasks in the sprint meet that condition, choose among the tasks with the normal preferences and return `STACK_RESTART_REQUIRED` for the selected candidate;
+12. when a `STACK_REQUIRED` candidate has several incomparable reduced sufficient heads that are each independently sufficient, record `STACK_RESTART_BASE_AMBIGUOUS`, continue evaluating other candidates, and surface the ambiguity instead of a global no-executable result if no better path exists in that sprint;
+13. when a candidate has no sufficient individual head and genuinely requires multiple independent heads to be combined, classify it `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`;
+14. do not attempt network Git operations to promote `STACK_REQUIRED` into an executable state;
+15. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the automatic scan; continue with other candidates, then later Planned sprints only if this sprint has no executable, restartable, or ambiguity outcome that must be surfaced;
+16. return a global no-executable Planned result only after the stable complete ledger is bound and every allowed Planned sprint has completed both the current-checkout pass and, where needed, the open-PR-head restart pass, with no restart-base ambiguity remaining to report;
+17. do not jump to `Later` work while executable or unambiguously restartable unreserved `Planned` work exists.
 
 An existing reservation does not mean the BL task is `Done`. It means only:
 
@@ -513,7 +587,7 @@ CloudCommitSha            : <Cloud commit SHA>
 GitHubHeadSha             : <GitHub commit SHA>
 CommitShaRematerialized   : true | false
 CloudTreeSha              : <Cloud tree SHA>
-GitHubTreeSha             : <GitHub tree SHA>
+GitHubTreeSha              : <GitHub tree SHA>
 ContentIdentity           : PASS
 GitHubReadback            : PASS
 WindowsFinalization       : REQUIRED
