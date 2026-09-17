@@ -67,7 +67,7 @@ For Mobile work, `Governance/MOBILE-CLOUD-HANDOFF.md` defines the vacation reser
 
 When the user asks for the **next suitable** Mobile task without naming a BL task or epic, do not choose an arbitrary Cloud-suitable item from the full backlog.
 
-1. Read the open-PR Vacation Reservation Ledger from GitHub exactly as defined in `Governance/MOBILE-CLOUD-HANDOFF.md`.
+1. Read the **complete paginated** open-PR Vacation Reservation Ledger from GitHub exactly as defined in `Governance/MOBILE-CLOUD-HANDOFF.md`; do not begin reservation or restart analysis from a partial first page.
 2. Exclude every task ID that the ledger marks reserved, including metadata-valid Mobile PRs and unambiguous provisional UI-generated PRs.
 3. Read the current `Sprint sequence and status` table in `BACKLOG.md`.
 4. Inspect `Planned` sprints in ascending `SPR-xxx` order.

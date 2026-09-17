@@ -22,11 +22,21 @@ Before every automatic Mobile task selection, query the public GitHub API for op
 
 `thomasweidner/flashgate-mcp`
 
-Canonical endpoint:
+Canonical paginated endpoint pattern:
 
 ```text
-GET https://api.github.com/repos/thomasweidner/flashgate-mcp/pulls?state=open&per_page=100
+GET https://api.github.com/repos/thomasweidner/flashgate-mcp/pulls?state=open&per_page=100&page=<n>
 ```
+
+The Vacation Reservation Ledger is complete only after **all pages have been exhausted**. Start with `page=1`, use `per_page=100`, then continue with `page=2`, `page=3`, and so on while GitHub advertises `rel="next"` in the `Link` header. When response headers are unavailable to the calling tool, continue sequentially until the next requested page returns zero PRs. Do not stop merely because one page contains fewer than 100 results when GitHub still advertises a next page.
+
+Required pre-selection result:
+
+```text
+LedgerPaginationComplete=true
+```
+
+Reservation identity resolution, `ReservedTaskIDs`, sufficient-head collection, ancestry-lineage reduction, restart selection, ambiguity reporting, and any global no-executable result are all prohibited until `LedgerPaginationComplete=true`. Never analyze only the first page. A secondary GitHub search total may be used as a read-only cross-check, but it does not replace enumeration of every `pulls` page.
 
 The Mobile read path is intentionally narrow:
 
@@ -233,7 +243,7 @@ Automatic selection is two-tiered **inside each Planned sprint**.
 1. First run the normal current-checkout feasibility/dependency pass.
 2. If that sprint contains an unreserved `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidate, select from those executable candidates and do not prefer a restart merely because one exists.
 3. If the sprint has no current-checkout executable candidate, perform a read-only restart pass over its remaining unreserved candidates before advancing to the next sprint.
-4. For each `STACK_REQUIRED` candidate, identify the complete hard-predecessor delta set and collect **all** open PR heads whose ancestry contains that complete set. If none exists, the dependency state remains `STACK_REQUIRED` but there is no restart path from the current ledger; continue evaluating other candidates.
+4. For each `STACK_REQUIRED` candidate, identify the complete hard-predecessor delta set and collect **all** open PR heads whose ancestry contains that complete set from the fully paginated ledger established in section 2. If none exists, the dependency state remains `STACK_REQUIRED` but there is no restart path from the current ledger; continue evaluating other candidates.
 5. Use public PR/base/head/compare metadata to partition sufficient heads into comparable ancestry lineages. Within each lineage, discard every sufficient descendant when a sufficient ancestor already contains the complete hard-predecessor set. Retain the **minimal sufficient head** for that lineage: the earliest/narrowest sufficient head with no sufficient ancestor in the same lineage.
 6. If exactly one minimal sufficient lineage head remains, the candidate is an unambiguous single-line restart candidate. `MOBILE.md` may describe this snapshot condition as `PR_STACK_CANDIDATE`; the dependency state remains `STACK_REQUIRED` until a new Cloud task starts from that head and locally verifies `STACK_BASE_READY`.
 7. If two or more **incomparable** minimal sufficient heads remain and each independently contains the complete hard-predecessor set, the dependency state still remains `STACK_REQUIRED`; return the candidate-local selector outcome:
@@ -291,8 +301,8 @@ This state is **candidate-local**. Do not synthesize a merge branch in Cloud. Ex
 
 Before selecting the next Mobile task:
 
-1. enumerate open GitHub PRs through section 2;
-2. build `ReservedTaskIDs` through section 3;
+1. enumerate **all pages** of open GitHub PRs through section 2 and require `LedgerPaginationComplete=true`;
+2. build `ReservedTaskIDs` through section 3 only after pagination is complete;
 3. exclude `ReservedTaskIDs`;
 4. read current Planned sprints in the order defined by root `AGENTS.md`;
 5. process each Planned sprint in ascending order;
@@ -300,13 +310,13 @@ Before selecting the next Mobile task:
 7. run the current-checkout pass through sections 4.1–4.3 and select only `INDEPENDENT_FROM_CURRENT_CHECKOUT` or `STACK_BASE_READY` candidates when at least one exists;
 8. within that sprint apply the mode/effort/Windows-residual/collision preferences from root `AGENTS.md`;
 9. when the sprint has no current-checkout executable candidate, run the open-PR-head restart pass from section 4.4 before considering a later sprint;
-10. for every `STACK_REQUIRED` restart-pass candidate, collect all sufficient heads, collapse comparable heads within each ancestry lineage, and retain only the minimal sufficient head per lineage;
+10. for every `STACK_REQUIRED` restart-pass candidate, collect all sufficient heads from the complete ledger, collapse comparable heads within each ancestry lineage, and retain only the minimal sufficient head per lineage;
 11. when a candidate has exactly one reduced sufficient lineage head, treat it as unambiguously restartable; when one or more candidate tasks in the sprint meet that condition, choose among the tasks with the normal preferences and return `STACK_RESTART_REQUIRED` for the selected candidate;
 12. when a `STACK_REQUIRED` candidate has several incomparable reduced sufficient heads that are each independently sufficient, record `STACK_RESTART_BASE_AMBIGUOUS`, continue evaluating other candidates, and surface the ambiguity instead of a global no-executable result if no better path exists in that sprint;
 13. when a candidate has no sufficient individual head and genuinely requires multiple independent heads to be combined, classify it `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS`;
 14. do not attempt network Git operations to promote `STACK_REQUIRED` into an executable state;
 15. a candidate-local `BLOCKED_MULTIPLE_UNCOMBINED_MOBILE_PREDECESSORS` does not end the automatic scan; continue with other candidates, then later Planned sprints only if this sprint has no executable, restartable, or ambiguity outcome that must be surfaced;
-16. return a global no-executable Planned result only after every allowed Planned sprint has completed both the current-checkout pass and, where needed, the open-PR-head restart pass, with no restart-base ambiguity remaining to report;
+16. return a global no-executable Planned result only after the complete paginated ledger is bound and every allowed Planned sprint has completed both the current-checkout pass and, where needed, the open-PR-head restart pass, with no restart-base ambiguity remaining to report;
 17. do not jump to `Later` work while executable or unambiguously restartable unreserved `Planned` work exists.
 
 An existing reservation does not mean the BL task is `Done`. It means only:
