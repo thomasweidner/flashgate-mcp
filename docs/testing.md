@@ -1046,6 +1046,13 @@ generation invalidation, compatibility mismatch, upgrade/rollback, and the
 optional negotiated lease. Native transport evidence cannot be replaced by an
 in-memory fake.
 
+Linux-native Unix socket tests create a real filesystem socket and verify its
+mode, successful local connection, kernel PID/UID/GID capture, active-listener
+exclusion, guarded stale-socket replacement, non-socket preservation, and
+replacement-safe shutdown cleanup. The later service/systemd integration gate
+must additionally prove deployed runtime-directory ownership, service-account
+behavior, authorization, framing limits, concurrent clients, and lifecycle.
+
 Before Version 1.0, publish and test the supported MCP revision matrix:
 
 - current `2025-11-25` behavior;

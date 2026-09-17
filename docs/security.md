@@ -431,6 +431,12 @@ The service derives caller identity from Named Pipe or Unix socket peer informat
 
 Windows uses a local Named Pipe with restrictive ACLs. Linux uses a local Unix Domain Socket with restrictive ownership/mode and OS peer credentials.
 
+The Linux socket adapter now enforces a filesystem-only absolute endpoint,
+restrictive `0600`/`0660`-class permissions, guarded stale-socket replacement,
+identity-safe shutdown cleanup, and kernel-derived PID/UID/GID credentials
+before dispatch. It does not select or provision the systemd runtime directory
+and does not itself authorize the resulting principal.
+
 The IPC contract includes framing, size limits, compatibility handshake, correlation, cancellation, overload, resource handles, disconnect behavior, and service generation.
 The normative [local IPC protocol contract](local-ipc-protocol.md) requires
 strict bounded frames, OS-derived peer identity, explicit version/feature
