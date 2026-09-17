@@ -976,6 +976,10 @@ Version 1.0 tests Variant A only:
 - Windows SCM and Linux systemd lifecycle;
 - Named Pipe ACL and Unix socket ownership/mode;
 - OS-derived peer identity cannot be overridden by payload;
+- Windows Named Pipe endpoints reject non-local names and zero framing/buffer
+  limits; Windows finalization must additionally exercise the real protected
+  DACL, remote-client rejection, impersonation-token SID extraction, prompt
+  revert-to-self behavior, blocked-I/O cancellation, and concurrent clients;
 - caller authorization independent of service-account filesystem permission;
 - allowed FlashGate policy plus denied service-account ACL fails safely;
 - denied caller plus available service-account ACL fails before execution;
