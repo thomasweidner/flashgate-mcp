@@ -43,7 +43,8 @@ func (t *ListDirectoryTool) InputSchema() any {
 	}
 }
 func (t *ListDirectoryTool) Definition() protocol.Tool {
-	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name())}
+	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()),
+		Annotations: readOnlyAnnotations}
 }
 
 func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
