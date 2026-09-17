@@ -132,7 +132,7 @@ The standard cross-platform API remains path-based: a concurrent writer could ex
 
 `Copy()` does not overwrite existing targets unless `overwrite=true`.
 
-Directory copy is currently unsupported by design.
+Directory copy preflights path policy, entry count, and aggregate regular-file bytes before creating a new target directory. Existing directory targets are rejected even when `overwrite=true`, avoiding merge/replacement ambiguity. If execution fails after target creation, the newly created partial tree is removed. Job-backed execution remains deferred to the dedicated filesystem/job integration task.
 
 ## Symlinks
 
@@ -211,7 +211,8 @@ Every successful filesystem `tools/call` now crosses one central adapter boundar
 | `MCP_MAX_TOOL_ARGUMENT_BYTES` | `12582912` | Maximum `tools/call` params or arguments payload. |
 | `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum `write_file` content size. |
 | `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum policy-visible `list_directory` entries. |
-| `MCP_MAX_COPY_BYTES` | `10485760` | Maximum `copy_path` source file size. |
+| `MCP_MAX_COPY_BYTES` | `10485760` | Maximum total regular-file bytes copied by one `copy_path` operation. |
+| `MCP_MAX_COPY_ENTRIES` | `1000` | Maximum entries traversed by one directory `copy_path` operation. |
 | `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries for recursive `delete_path`. |
 | `MCP_MAX_RESPONSE_BYTES` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
 

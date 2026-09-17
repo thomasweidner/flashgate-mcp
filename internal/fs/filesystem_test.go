@@ -1217,18 +1217,101 @@ func TestLocalFileSystemCopyFile(t *testing.T) {
 	}
 }
 
-func TestLocalFileSystemCopyRejectsDirectory(t *testing.T) {
+func TestLocalFileSystemCopyCopiesDirectoryTree(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
 	mkdir(t, filepath.Join(root, "source-dir"))
+	mkdir(t, filepath.Join(root, "source-dir", "nested"))
+	writeTestFile(t, filepath.Join(root, "source-dir", "nested", "file.txt"), "content")
 
 	filesystem := mustNewLocalFileSystem(t, root)
 
 	err := filesystem.Copy("source-dir", "target-dir", false)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if got := readTestFile(t, filepath.Join(root, "target-dir", "nested", "file.txt")); got != "content" {
+		t.Fatalf("expected copied content, got %q", got)
+	}
+}
 
-	if !errors.Is(err, ErrCopyDirectoryUnsupported) {
-		t.Fatalf("expected ErrCopyDirectoryUnsupported, got %v", err)
+func TestLocalFileSystemCopyDirectoryRejectsEntryLimitBeforeCreatingTarget(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	mkdir(t, filepath.Join(root, "source"))
+	writeTestFile(t, filepath.Join(root, "source", "a.txt"), "a")
+	writeTestFile(t, filepath.Join(root, "source", "b.txt"), "b")
+	filesystem := mustNewLocalFileSystemWithLimits(t, root, Limits{
+		MaxWriteBytes:    1024,
+		MaxListEntries:   10,
+		MaxCopyBytes:     1024,
+		MaxCopyEntries:   1,
+		MaxDeleteEntries: 10,
+	})
+
+	err := filesystem.Copy("source", "target", false)
+	if !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("expected ErrLimitExceeded, got %v", err)
+	}
+	if fileExists(t, filepath.Join(root, "target")) {
+		t.Fatal("expected preflight failure not to create target")
+	}
+}
+
+func TestLocalFileSystemCopyDirectoryRejectsByteLimitBeforeCreatingTarget(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	mkdir(t, filepath.Join(root, "source"))
+	writeTestFile(t, filepath.Join(root, "source", "a.txt"), "123")
+	writeTestFile(t, filepath.Join(root, "source", "b.txt"), "456")
+	filesystem := mustNewLocalFileSystemWithLimits(t, root, Limits{
+		MaxWriteBytes:    1024,
+		MaxListEntries:   10,
+		MaxCopyBytes:     5,
+		MaxCopyEntries:   10,
+		MaxDeleteEntries: 10,
+	})
+
+	err := filesystem.Copy("source", "target", false)
+	if !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("expected ErrLimitExceeded, got %v", err)
+	}
+	if fileExists(t, filepath.Join(root, "target")) {
+		t.Fatal("expected preflight failure not to create target")
+	}
+}
+
+func TestLocalFileSystemCopyDirectoryRejectsTargetInsideSource(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	mkdir(t, filepath.Join(root, "source"))
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	err := filesystem.Copy("source", filepath.Join("source", "target"), false)
+	if !errors.Is(err, ErrMoveIntoSelf) {
+		t.Fatalf("expected ErrMoveIntoSelf, got %v", err)
+	}
+}
+
+func TestLocalFileSystemCopyDirectoryRejectsExistingTarget(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	mkdir(t, filepath.Join(root, "source"))
+	mkdir(t, filepath.Join(root, "target"))
+	writeTestFile(t, filepath.Join(root, "target", "keep.txt"), "keep")
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	err := filesystem.Copy("source", "target", true)
+	if !errors.Is(err, ErrFileExists) {
+		t.Fatalf("expected ErrFileExists, got %v", err)
+	}
+	if got := readTestFile(t, filepath.Join(root, "target", "keep.txt")); got != "keep" {
+		t.Fatalf("expected existing target to remain unchanged, got %q", got)
 	}
 }
 
@@ -1417,6 +1500,7 @@ func TestLocalFileSystemListRejectsTooManyEntries(t *testing.T) {
 		MaxWriteBytes:    1024,
 		MaxListEntries:   1,
 		MaxCopyBytes:     1024,
+		MaxCopyEntries:   10,
 		MaxDeleteEntries: 10,
 	})
 
@@ -1435,6 +1519,7 @@ func TestLocalFileSystemWriteRejectsContentOverLimit(t *testing.T) {
 		MaxWriteBytes:    4,
 		MaxListEntries:   10,
 		MaxCopyBytes:     1024,
+		MaxCopyEntries:   10,
 		MaxDeleteEntries: 10,
 	})
 
@@ -1458,6 +1543,7 @@ func TestLocalFileSystemCopyRejectsSourceOverLimit(t *testing.T) {
 		MaxWriteBytes:    1024,
 		MaxListEntries:   10,
 		MaxCopyBytes:     4,
+		MaxCopyEntries:   10,
 		MaxDeleteEntries: 10,
 	})
 
@@ -1483,6 +1569,7 @@ func TestLocalFileSystemDeleteRecursiveRejectsTooManyEntries(t *testing.T) {
 		MaxWriteBytes:    1024,
 		MaxListEntries:   10,
 		MaxCopyBytes:     1024,
+		MaxCopyEntries:   10,
 		MaxDeleteEntries: 1,
 	})
 

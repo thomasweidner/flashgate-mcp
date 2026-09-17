@@ -174,7 +174,7 @@ Required: `source` and `target`. Optional: `overwrite`, default `false`.
 { "source": "a.txt", "target": "b.txt", "copied": true }
 ```
 
-This contract copies files only. Directory copy and recursive copy are not supported.
+Directory copies recursively preflight the complete tree against the configured entry and aggregate-byte limits before creating the target. The target directory must not already exist, and a failed copy removes the newly created partial target. Long-operation job integration remains separate planned work.
 
 ## `move_path`
 

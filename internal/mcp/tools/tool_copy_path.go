@@ -34,7 +34,7 @@ func (t *CopyPathTool) Title() string {
 
 // Description returns the tool description.
 func (t *CopyPathTool) Description() string {
-	return "Copies a file below the configured filesystem root. Directory copy is not supported."
+	return "Copies a file or bounded directory below the configured filesystem root."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -45,12 +45,12 @@ func (t *CopyPathTool) InputSchema() any {
 			"source": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative source file path below the configured filesystem root.",
+				"description": "Relative source path below the configured filesystem root.",
 			},
 			"target": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative target file path below the configured filesystem root.",
+				"description": "Relative target path below the configured filesystem root.",
 			},
 			"overwrite": map[string]any{
 				"type":        "boolean",
