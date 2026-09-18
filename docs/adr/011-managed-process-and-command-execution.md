@@ -37,6 +37,9 @@ Executable allowlisting, argument separation, root-confined working directories,
 
 Threat-model observation and execution separately. Implement registry identity and cleanup before control tools. Test PID reuse assumptions, races, timeouts, redaction, and platform isolation.
 
+The planned Version 1.0 cleanup, restart, orphan, TTL, and diagnostic behavior
+is defined in the [managed process lifecycle contract](../managed-process-lifecycle.md).
+
 ## Decision Gates
 
 - external PID control remains separately capable, high-risk classified, and opt-in

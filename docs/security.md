@@ -374,6 +374,10 @@ Default control is limited to server-managed processes. External PID control is 
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
 
+The planned Version 1.0 [managed process lifecycle contract](managed-process-lifecycle.md)
+requires authoritative child ownership, PID plus start-identity checks, bounded
+graceful/forced cleanup, stale-generation denial, and fail-closed recovery.
+
 ### Typed command execution boundary
 
 Version 1.0 command execution uses server-defined command IDs. A definition fixes or constrains:
