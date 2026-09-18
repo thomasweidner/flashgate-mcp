@@ -39,7 +39,7 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The deterministic UTF-8 JSONL response snapshot, including its trailing newline, is 2134 bytes for read-only and 6069 bytes for default. The default catalog includes the conditional-write precondition schema added by BL-053. Hard catalog budgets track these complete current payloads.
 
 ## `list_directory`
 
@@ -110,13 +110,15 @@ Only genuine missing-path errors become `exists:false`. Security and policy deni
 
 ## `write_file`
 
-Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (default `false`). Existing limits and root/security enforcement apply.
+Required: `path`. Optional: `content` (empty is allowed), `overwrite` (default `false`), and conditional preconditions `expectedSha256`, `expectedModifiedTime`, and `expectedPathType` (`missing` or `file`). Existing limits and root/security enforcement apply. SHA-256 accepts exactly 64 hexadecimal characters, modification times use RFC 3339, and all supplied preconditions must match before any content is changed. Hash and modification-time conditions require an existing regular file; `expectedPathType: "missing"` provides an exclusive conditional create.
 
 ```json
 {
   "path": "output.txt",
   "content": "text",
-  "overwrite": false
+  "overwrite": true,
+  "expectedSha256": "48d6f8a946c4ef3f31db5a9f8e2e6cf9d060c3aa588b0a75073e0e7f100f6210",
+  "expectedPathType": "file"
 }
 ```
 

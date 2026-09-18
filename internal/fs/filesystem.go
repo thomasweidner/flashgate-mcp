@@ -2,6 +2,7 @@ package fs
 
 import (
 	"errors"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
@@ -45,6 +46,10 @@ var (
 
 	// ErrMovePathChanged is returned when a move path changes during validation.
 	ErrMovePathChanged = errors.New("move path changed during validation")
+
+	// ErrWritePreconditionFailed is returned before content is changed when a
+	// conditional write does not match the current target.
+	ErrWritePreconditionFailed = errors.New("write precondition failed")
 )
 
 // Limits contains filesystem operation limits.
@@ -79,12 +84,21 @@ type Metadata struct {
 	Size  int64  `json:"size"`
 }
 
+// WritePreconditions describe optional conditions that must match the target
+// observed through the same file handle used for an overwrite.
+type WritePreconditions struct {
+	SHA256       *string
+	ModifiedTime *time.Time
+	PathType     *string
+}
+
 // FileSystem defines filesystem operations used by MCP tools.
 type FileSystem interface {
 	List(path string) ([]Entry, error)
 	Read(path string, maxBytes int64) ([]byte, error)
 	Stat(path string) (Metadata, error)
 	Write(path string, content []byte, overwrite bool) error
+	WriteConditional(path string, content []byte, overwrite bool, preconditions WritePreconditions) error
 	Mkdir(path string) (bool, error)
 	Delete(path string, recursive bool) error
 	Move(source string, target string, overwrite bool) error

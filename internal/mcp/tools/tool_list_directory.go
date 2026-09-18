@@ -86,6 +86,7 @@ const (
 	categoryUnsupportedPathType  filesystemErrorCategory = "unsupported_path_type"
 	categoryUnsupportedOperation filesystemErrorCategory = "unsupported_operation"
 	categoryLimitExceeded        filesystemErrorCategory = "limit_exceeded"
+	categoryPreconditionFailed   filesystemErrorCategory = "precondition_failed"
 	categoryIOError              filesystemErrorCategory = "io_error"
 )
 
@@ -118,6 +119,8 @@ func classifyFilesystemError(err error) filesystemErrorCategory {
 		return categoryUnsupportedOperation
 	case errors.Is(err, fs.ErrFileTooLarge), errors.Is(err, fs.ErrLimitExceeded):
 		return categoryLimitExceeded
+	case errors.Is(err, fs.ErrWritePreconditionFailed):
+		return categoryPreconditionFailed
 	default:
 		return categoryIOError
 	}

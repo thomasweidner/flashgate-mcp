@@ -3,34 +3,35 @@ package tools
 import "github.com/thomasweidner/flashgate-mcp/internal/fs"
 
 type fakeFileSystem struct {
-	entries         []fs.Entry
-	err             error
-	listPath        string
-	readPath        string
-	readMaxBytes    int64
-	readContent     []byte
-	readErr         error
-	statPath        string
-	statMetadata    fs.Metadata
-	statErr         error
-	writePath       string
-	writeContent    []byte
-	writeOverwrite  bool
-	writeErr        error
-	mkdirPath       string
-	mkdirCreated    bool
-	mkdirErr        error
-	deletePath      string
-	deleteRecursive bool
-	deleteErr       error
-	moveSource      string
-	moveTarget      string
-	moveOverwrite   bool
-	moveErr         error
-	copySource      string
-	copyTarget      string
-	copyOverwrite   bool
-	copyErr         error
+	entries            []fs.Entry
+	err                error
+	listPath           string
+	readPath           string
+	readMaxBytes       int64
+	readContent        []byte
+	readErr            error
+	statPath           string
+	statMetadata       fs.Metadata
+	statErr            error
+	writePath          string
+	writeContent       []byte
+	writeOverwrite     bool
+	writePreconditions fs.WritePreconditions
+	writeErr           error
+	mkdirPath          string
+	mkdirCreated       bool
+	mkdirErr           error
+	deletePath         string
+	deleteRecursive    bool
+	deleteErr          error
+	moveSource         string
+	moveTarget         string
+	moveOverwrite      bool
+	moveErr            error
+	copySource         string
+	copyTarget         string
+	copyOverwrite      bool
+	copyErr            error
 }
 
 func newFakeFileSystem() *fakeFileSystem { return &fakeFileSystem{} }
@@ -48,6 +49,11 @@ func (f *fakeFileSystem) Stat(path string) (fs.Metadata, error) {
 }
 func (f *fakeFileSystem) Write(path string, content []byte, overwrite bool) error {
 	f.writePath, f.writeContent, f.writeOverwrite = path, append([]byte(nil), content...), overwrite
+	return f.writeErr
+}
+func (f *fakeFileSystem) WriteConditional(path string, content []byte, overwrite bool, preconditions fs.WritePreconditions) error {
+	f.writePath, f.writeContent, f.writeOverwrite = path, append([]byte(nil), content...), overwrite
+	f.writePreconditions = preconditions
 	return f.writeErr
 }
 func (f *fakeFileSystem) Mkdir(path string) (bool, error) {

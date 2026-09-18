@@ -183,6 +183,21 @@
           "overwrite": {
             "type": "boolean",
             "description": "Whether an existing file may be overwritten. Defaults to false."
+          },
+          "expectedSha256": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{64}$",
+            "description": "Require the existing file to have this SHA-256 digest."
+          },
+          "expectedModifiedTime": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Require the existing file to have this RFC 3339 modification time."
+          },
+          "expectedPathType": {
+            "type": "string",
+            "enum": ["missing", "file"],
+            "description": "Require the target to be missing or a regular file."
           }
         }
       },

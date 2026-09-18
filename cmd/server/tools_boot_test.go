@@ -141,6 +141,10 @@ func (noopFileSystem) Write(string, []byte, bool) error {
 	return errors.New("not implemented")
 }
 
+func (noopFileSystem) WriteConditional(string, []byte, bool, fs.WritePreconditions) error {
+	return errors.New("not implemented")
+}
+
 func (noopFileSystem) Mkdir(string) (bool, error) {
 	return false, errors.New("not implemented")
 }
