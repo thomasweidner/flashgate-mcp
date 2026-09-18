@@ -268,6 +268,10 @@ The executable remains a native ELF binary. systemd is supervision, not an inter
 ## Local IPC contract
 
 The proxy/service protocol is internal, local-only, bounded, and versioned.
+Its normative wire framing, strict handshake, feature/version negotiation,
+correlation, cancellation, disconnect, mismatch, error, and optional lease
+semantics are specified in the
+[local IPC protocol contract](local-ipc-protocol.md).
 
 It defines:
 
@@ -664,5 +668,6 @@ Any remote transport, product split, or broader provider-isolation mechanism req
 - [Execution identity backends](execution-identity-backends.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
+- [Local IPC protocol contract](local-ipc-protocol.md)
 - [Security model](security.md)
 - [Authoritative backlog](../BACKLOG.md)

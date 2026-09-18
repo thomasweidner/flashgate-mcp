@@ -139,6 +139,13 @@ broker/worker peers. It is never silently inferred from public MCP traffic.
 Every proxy connection has a connection/session ownership identity. Disconnect
 cancels and cleans connection-owned work and partial results, but does not stop
 the persistent SCM/systemd service.
+
+The normative framing, version/feature handshake, correlation, cancellation,
+disconnect, error, upgrade, and optional lease rules are defined in the
+[local IPC protocol contract](local-ipc-protocol.md). Build-version equality is
+not a compatibility mechanism; peers must negotiate an overlapping protocol
+revision and every required feature explicitly.
+
 ## Limits and backpressure
 
 Every transport enforces bounded:
@@ -164,6 +171,7 @@ The supported protocol/extension matrix is a released artifact. A specification 
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
 - [Efficiency plan](efficiency-improvement-plan.md)
 - [Runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
+- [Local IPC protocol contract](local-ipc-protocol.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [ADR-013](adr/013-mcp-version-and-extension-compatibility.md)
 - [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)
