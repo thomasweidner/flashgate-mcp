@@ -228,6 +228,7 @@ CHANGELOG.md
 Architecture and security references:
 
 - [Architecture](docs/architecture.md)
+- [Process and execution security](docs/process-and-execution-security.md)
 - [Version 1.0 scope and release boundary](docs/version-1-scope-and-release-boundary.md)
 - [Efficiency improvement plan](docs/efficiency-improvement-plan.md)
 - [Execution identity backends](docs/execution-identity-backends.md)
