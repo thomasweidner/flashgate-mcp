@@ -25,7 +25,8 @@ func (t *CreateDirectoryTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path below the configured filesystem root."},
+			"path":   map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path below the configured filesystem root."},
+			"dryRun": dryRunInputSchema(),
 		},
 		"required": []string{"path"}, "additionalProperties": false,
 	}
@@ -38,6 +39,12 @@ func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMe
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil || !isNonBlank(arguments.Path) {
 		return nil, invalidParamsError()
 	}
+	if arguments.DryRun {
+		if err := t.filesystem.ValidatePath(arguments.Path, false); err != nil {
+			return nil, mapFilesystemError(err)
+		}
+		return createDirectoryResult{Path: arguments.Path, DryRun: true}, nil
+	}
 
 	created, err := t.filesystem.Mkdir(arguments.Path)
 	if err != nil {
@@ -48,9 +55,11 @@ func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMe
 }
 
 type createDirectoryArguments struct {
-	Path string `json:"path"`
+	Path   string `json:"path"`
+	DryRun bool   `json:"dryRun,omitempty"`
 }
 type createDirectoryResult struct {
 	Path    string `json:"path"`
 	Created bool   `json:"created"`
+	DryRun  bool   `json:"dryRun,omitempty"`
 }
