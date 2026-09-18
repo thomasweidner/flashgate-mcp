@@ -33,6 +33,10 @@ FlashGate is not a remote-shell replacement, web-hosting service, cloud agent, o
 - protocol-version independence below the MCP adapter;
 - measurable release and supply-chain quality gates.
 
+The [sandbox-boundary and residual-risk disclosure](sandbox-boundaries-and-residual-risk.md)
+defines what these layered controls do and do not isolate, and separates the
+implemented root-confined boundary from target platform isolation.
+
 ## Version 1.0 planning rule
 
 `BACKLOG.md` is authoritative:

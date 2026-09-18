@@ -832,6 +832,13 @@ Production code outside `internal/fs` must not use direct filesystem operations.
 
 ### Security Tests
 
+The [sandbox-boundary and residual-risk disclosure](sandbox-boundaries-and-residual-risk.md)
+defines the negative-test and native-evidence expectations for filesystem,
+process, command, configuration, and platform isolation boundaries. Test
+reports must distinguish portable policy tests, simulated adapters,
+cross-build/static checks, and real Windows/Linux execution; one class must not
+be presented as evidence for another.
+
 Security tests must cover:
 
 - path traversal
