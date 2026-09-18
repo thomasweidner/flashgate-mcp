@@ -23,6 +23,11 @@ task-bound work root:
 }
 ```
 
+The Version 1.0 [cross-volume move contract](cross-volume-move-contract.md)
+defines its focused failure-injection, cancellation, partial-completion, and
+native Windows/Linux validation matrix. Cloud or synthetic filesystem tests do
+not replace real distinct-volume platform evidence.
+
 ## Legacy governance enforcement reference
 
 The historical governance-orchestration material below, through `Test Commands`,
