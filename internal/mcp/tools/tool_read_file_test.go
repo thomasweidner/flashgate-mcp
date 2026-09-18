@@ -142,6 +142,44 @@ func TestReadFileToolAcceptsOneByteLimit(t *testing.T) {
 	}
 }
 
+func TestReadFileToolByteRanges(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		args           string
+		offset, length int64
+	}{
+		{"offset and length", `{"path":"file","byteOffset":7,"byteLength":3}`, 7, 3},
+		{"head", `{"path":"file","headBytes":5}`, 0, 5},
+		{"tail", `{"path":"file","tailBytes":4}`, -4, 4},
+		{"empty head", `{"path":"file","headBytes":0}`, 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			filesystem := newFakeFileSystem()
+			if _, rpcErr := NewReadFileTool(filesystem, 10).Execute(context.Background(), json.RawMessage(tc.args)); rpcErr != nil {
+				t.Fatalf("Execute: %v", rpcErr)
+			}
+			if filesystem.readRangeOffset != tc.offset || filesystem.readRangeLength != tc.length {
+				t.Fatalf("range=(%d,%d), want (%d,%d)", filesystem.readRangeOffset, filesystem.readRangeLength, tc.offset, tc.length)
+			}
+		})
+	}
+}
+
+func TestReadFileToolRejectsInvalidByteRanges(t *testing.T) {
+	for _, args := range []string{
+		`{"path":"file","byteOffset":1}`,
+		`{"path":"file","byteLength":1}`,
+		`{"path":"file","byteOffset":-1,"byteLength":1}`,
+		`{"path":"file","headBytes":1,"tailBytes":1}`,
+		`{"path":"file","byteOffset":0,"byteLength":1,"headBytes":1}`,
+		`{"path":"file","headBytes":11}`,
+	} {
+		if _, rpcErr := NewReadFileTool(newFakeFileSystem(), 10).Execute(context.Background(), json.RawMessage(args)); rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+			t.Fatalf("expected invalid params for %s, got %#v", args, rpcErr)
+		}
+	}
+}
+
 func TestReadFileToolRejectsNonPositiveMaxBytes(t *testing.T) {
 	for _, maxBytes := range []string{"0", "-1"} {
 		_, rpcErr := NewReadFileTool(newFakeFileSystem(), 4096).Execute(
