@@ -248,6 +248,15 @@ Security tests currently cover:
 - response-size safety net
 - strict successful `CallToolResult` envelope and text/structured parity without host-path additions
 - diagnostics redaction
+- bounded process-list argument and cursor rejection before native observation
+
+The BL-114 `list_processes` implementation returns only PID and executable name,
+uses a hard page ceiling, and never returns command lines, environments, users,
+working directories, or executable paths. Linux reads procfs and Windows uses
+the native Toolhelp snapshot API without an interpreter. It remains
+unregistered, so there is no new runtime observation surface before BL-118 adds
+effective `process.observe` registration and execution authorization. The
+implementation performs no process-control operation.
 
 Startup preflight completes before any tool Registry, Router or MCP server is created. Normal starts remain silent; diagnostics never share JSON-RPC stdout.
 

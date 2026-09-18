@@ -49,7 +49,8 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 
 - environment-based configuration;
 - JSON-RPC validation, routing, initialization, `tools/list`, and `tools/call`;
-- eight filesystem tools;
+- eight exposed filesystem tools plus an unregistered bounded native
+  process-list implementation pending BL-118 authorization wiring;
 - one required root through `MCP_ROOT`;
 - optional read-only tool registration through `MCP_READ_ONLY`;
 - central path validation and filesystem abstraction;
@@ -69,12 +70,9 @@ MCP Client
 STDIO
     |
 JSON-RPC / MCP server -> router -> handlers -> tools
+    +-> Filesystem abstraction -> PathGuard -> operating-system filesystem
     |
-Filesystem abstraction
-    |
-PathGuard and current policies
-    |
-Operating-system filesystem
+    +-> Unregistered process observation adapter -> Linux procfs / Windows Toolhelp snapshot
 ```
 
 Startup fails closed before runtime exposure. Production roots must be explicit absolute directories and pass existence/type/effective-path policy. `MCP_ROOT=.` remains development-only and requires `MCP_ALLOW_CWD_ROOT=true`.
@@ -86,7 +84,7 @@ Not yet implemented:
 - safe read-only as the profile-system default;
 - search;
 - Operations/Job Manager;
-- process observation/management;
+- process details, process capability enforcement, and managed-process control;
 - typed command execution;
 - system-information tools;
 - payload-class and large-result resources;
