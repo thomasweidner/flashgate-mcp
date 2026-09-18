@@ -830,6 +830,10 @@ This is allowed in tests.
 
 Production code outside `internal/fs` must not use direct filesystem operations.
 
+### Search Tests
+
+The planned Search implementation must satisfy the permanent matrix in the [search model and threat model](search-model-and-threat-model.md). Focused gates cover deterministic ordering, root/link/reparse confinement, every incremental resource limit, cancellation and deadlines, pattern/regex rejection, binary and encoding outcomes, file changes during scans, cursor binding and invalidation, capability bypass attempts, and safe diagnostics. Native Windows and Linux validation is required for platform path and filesystem behavior; Cloud-only tests cannot establish that evidence.
+
 ### Security Tests
 
 Security tests must cover:

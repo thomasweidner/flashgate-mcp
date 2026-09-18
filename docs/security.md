@@ -544,6 +544,8 @@ The vendored Windows resource generator and committed icon source are covered by
 
 Stateful components require race-detector coverage, restart/shutdown analysis, negative capability tests, quota/fairness tests, and cleanup verification.
 
+The complete Version 1.0 Search boundary—including root confinement, TOCTOU handling, deterministic traversal, incremental budgets, RE2-style matching, cursor binding, result minimization, and accelerator non-goals—is defined in the [search model and threat model](search-model-and-threat-model.md).
+
 ### MCP host lifecycle
 
 This planned Version 1.0 workstream treats top-level host lifecycle separately
