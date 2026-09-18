@@ -6,6 +6,47 @@ import (
 	"os"
 )
 
+// EditRange replaces the half-open byte range [startByte,endByte) in an
+// existing file. Both the source and resulting file are bounded by the
+// configured write limit.
+func (f *LocalFileSystem) EditRange(path string, startByte, endByte int64, content []byte) (int64, error) {
+	if startByte < 0 || endByte < startByte || int64(len(content)) > f.limits.MaxWriteBytes {
+		return 0, ErrLimitExceeded
+	}
+
+	safePath, err := f.guard.ResolveExisting(path)
+	if err != nil {
+		return 0, err
+	}
+	info, err := os.Stat(safePath.String())
+	if err != nil {
+		return 0, err
+	}
+	if info.IsDir() {
+		return 0, ErrPathIsDirectory
+	}
+	if info.Size() > f.limits.MaxWriteBytes || startByte > info.Size() || endByte > info.Size() {
+		return 0, ErrLimitExceeded
+	}
+	resultSize := info.Size() - (endByte - startByte) + int64(len(content))
+	if resultSize > f.limits.MaxWriteBytes {
+		return 0, ErrLimitExceeded
+	}
+
+	existing, err := os.ReadFile(safePath.String())
+	if err != nil {
+		return 0, err
+	}
+	result := make([]byte, 0, resultSize)
+	result = append(result, existing[:startByte]...)
+	result = append(result, content...)
+	result = append(result, existing[endByte:]...)
+	if err := os.WriteFile(safePath.String(), result, info.Mode().Perm()); err != nil {
+		return 0, err
+	}
+	return resultSize, nil
+}
+
 // Write writes a file. Existing files are only overwritten when overwrite is true.
 func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) error {
 	safePath, err := f.guard.ResolveForCreate(path)
