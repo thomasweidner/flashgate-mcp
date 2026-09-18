@@ -397,6 +397,59 @@ jobs:
         shell: pwsh
         run: ./scripts/Test-GoCoverage.ps1 -PlatformName '${{ matrix.platform }}' -MinimumCoverage ${{ matrix.minimum_coverage }}
 
+      - name: Run native Linux race gate
+        if: ${{ always() && !cancelled() && matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/native-policy/linux
+          go test -race ./... 2>&1 | tee build/native-policy/linux/race.log
+
+      - name: Run Linux benchmark record-policy gate
+        if: ${{ always() && !cancelled() && matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/native-policy/linux
+          /usr/bin/bash scripts/benchmark-record-policy.tests.sh 2>&1 | tee build/native-policy/linux/record-policy.log
+
+      - name: Run Linux benchmark measurement-window gate
+        if: ${{ always() && !cancelled() && matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build/native-policy/linux
+          /usr/bin/bash scripts/benchmark-window.tests.sh 2>&1 | tee build/native-policy/linux/measurement-window.log
+
+      - name: Run Windows benchmark record-policy gate
+        if: ${{ always() && !cancelled() && matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $artifactRoot = Join-Path $PWD 'build/native-policy/windows'
+          [void][System.IO.Directory]::CreateDirectory($artifactRoot)
+          & .\scripts\benchmark-record-policy.tests.ps1 *>&1 |
+            Tee-Object -FilePath (Join-Path $artifactRoot 'record-policy.log')
+
+      - name: Run Windows benchmark measurement-window gate
+        if: ${{ always() && !cancelled() && matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $artifactRoot = Join-Path $PWD 'build/native-policy/windows'
+          [void][System.IO.Directory]::CreateDirectory($artifactRoot)
+          & .\scripts\benchmark-window.tests.ps1 *>&1 |
+            Tee-Object -FilePath (Join-Path $artifactRoot 'measurement-window.log')
+
+      - name: Upload native race and benchmark policy results
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-policy-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/native-policy/${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload coverage report
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
