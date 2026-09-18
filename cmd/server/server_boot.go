@@ -11,6 +11,7 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/diagnostics"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/lifecycle"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
@@ -100,7 +101,10 @@ func runWithIO(
 		_, _ = fmt.Fprintln(stderr, developmentCWDWarning)
 	}
 
-	return mcpServer.Run(ctx)
+	processRoot := lifecycle.New(ctx)
+	runErr := mcpServer.Run(processRoot.Context())
+	shutdownErr := processRoot.Shutdown(context.Background())
+	return errors.Join(runErr, shutdownErr)
 }
 
 func validateBootstrapDependencies(dependencies bootstrapDependencies) error {
