@@ -16,6 +16,7 @@ func TestAllToolsRejectMalformedUnknownTrailingAndWrongTypes(t *testing.T) {
 		{"list_directory", NewListDirectoryTool(newFakeFileSystem())},
 		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024)},
 		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem())},
+		{"hash_files", NewHashFilesTool(newFakeFileSystem(), 1024)},
 		{"write_file", NewWriteFileTool(newFakeFileSystem())},
 		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem())},
 		{"delete_path", NewDeletePathTool(newFakeFileSystem())},

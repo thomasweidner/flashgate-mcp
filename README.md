@@ -99,9 +99,9 @@ tools/list
 tools/call
 ```
 
-Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present eight-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
+Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present nine-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
 
-Runtime `outputSchema` is exposed for all eight tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
+Runtime `outputSchema` is exposed for all nine tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; the current safe JSON-RPC tool-error contract remains unchanged pending BL-203.
 
 JSON-RPC request envelopes are validated before dispatch. Unsupported batch requests, invalid protocol versions, missing or invalid methods, invalid IDs, and malformed method params are rejected with generic JSON-RPC errors. Parse errors and invalid requests without a valid request ID serialize `id:null`. Notifications do not receive responses; `notifications/initialized` is accepted as a no-op, and other notifications are not executed.
 

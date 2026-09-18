@@ -35,6 +35,17 @@ func filesystemOutputSchema(toolName string) map[string]any {
 				}, "path", "exists", "name", "isDir", "size"),
 			},
 		}
+	case hashFilesToolName:
+		return objectOutputSchema(map[string]any{
+			"algorithm": map[string]any{"const": "sha256"},
+			"items": map[string]any{"type": "array", "items": map[string]any{
+				"type": "object", "oneOf": []any{
+					objectOutputSchema(map[string]any{"path": map[string]any{"type": "string"}, "size": map[string]any{"type": "integer"}, "fingerprint": map[string]any{"type": "string"}}, "path", "size", "fingerprint"),
+					objectOutputSchema(map[string]any{"path": map[string]any{"type": "string"}, "error": map[string]any{"type": "string"}}, "path", "error"),
+				},
+			}},
+			"completed": map[string]any{"type": "integer"}, "failed": map[string]any{"type": "integer"}, "bytesHashed": map[string]any{"type": "integer"},
+		}, "algorithm", "items", "completed", "failed", "bytesHashed")
 	case writeFileToolName:
 		return objectOutputSchema(map[string]any{
 			"path":    map[string]any{"type": "string"},
