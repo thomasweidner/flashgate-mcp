@@ -238,6 +238,13 @@ Accepted internal statuses:
 
 The registry retains bounded timestamps, deadline, progress, byte counters, result/resource reference, error category, temporary resources, TTL, and cleanup status.
 
+Operation progress uses separate cumulative read, written, and scanned byte
+counters plus optional domain-defined `completed`/`total` progress. The tracker
+rejects counter overflow and progress beyond the declared total atomically; a
+zero total represents unavailable domain progress rather than an unbounded
+counter. These transport-neutral values report work only and do not grant
+authorization or define a domain result.
+
 Resource governance includes:
 
 - global concurrency;
