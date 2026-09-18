@@ -10,6 +10,15 @@ PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+### Single execution engine gate
+
+`TestProductionProcessStartsUseApprovedExecutionOwners` scans production Go
+sources and rejects process-start primitives outside the Managed Process Engine.
+The benchmark harness is the sole current exception because it starts the built
+FlashGate binary as the system under measurement, not as a user-requested
+command. This repository-wide gate also covers command packages added later, so
+`run_command` cannot introduce a second execution engine.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
