@@ -250,6 +250,13 @@ Resource governance includes:
 - leak detection;
 - slow-reader and backpressure handling.
 
+The implemented transport-neutral scheduler bounds retained queued work with
+explicit global and per-principal capacities. It preserves FIFO order within
+each principal and rotates among active principals after every dequeue. Queue
+admission fails deterministically at the exhausted scope and does not partially
+mutate accounting. The scheduler retains only operation/domain identities;
+domains still own validation, execution, cancellation, and result semantics.
+
 The normal execution unit is a cancellable Go goroutine. A subprocess is justified for an approved external program, hard resource/crash isolation, a different OS identity, or work that cannot be reliably cancelled in-process.
 
 ## Managed processes and typed command execution
