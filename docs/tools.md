@@ -65,6 +65,12 @@ No pagination, filtering, recursion, or batch behavior is provided.
 
 Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the configured server limit is used; a larger client value is capped at that limit.
 
+The filesystem adapter reads through a bounded stream from one open file handle. It
+checks the handle's size before reading and retains at most one additional detection
+byte, so a file that grows concurrently cannot cause the operation to allocate or
+return more than the effective limit. Files above the inline limit are rejected;
+range reads and opaque large-result handoff remain Version 1.0 follow-up contracts.
+
 ```json
 {
   "path": "README.md",
