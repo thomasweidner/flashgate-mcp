@@ -256,6 +256,11 @@ The normal execution unit is a cancellable Go goroutine. A subprocess is justifi
 
 Managed process handles are the primary identity; PIDs are diagnostic only because of reuse risk.
 
+The Version 1.0 [process policy model](process-policy-model.md) separates
+observation, management of FlashGate-owned processes, and excluded high-risk
+external control. It defines the server-derived policy inputs and complete
+ownership binding without implying that process tools are implemented today.
+
 Process output uses separate bounded stdout/stderr buffers, truncation markers, and cursors. Status, wait, output, and stop operations require the owning execution context.
 
 Typed command definitions resolve a command ID to a server-approved executable path and contract. Tool input is structured; the server creates argv. Standard profiles reject:

@@ -23,6 +23,12 @@ task-bound work root:
 }
 ```
 
+The planned process implementation must satisfy the negative matrix in the
+[process policy model](process-policy-model.md), including capability and
+ownership denial, observation/management separation, stale handles, PID reuse,
+redaction, bounded enumeration, lifecycle races, and native Windows/Linux
+identity behavior. Pure policy fakes do not replace platform evidence.
+
 ## Legacy governance enforcement reference
 
 The historical governance-orchestration material below, through `Test Commands`,
