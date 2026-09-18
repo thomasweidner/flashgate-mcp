@@ -844,6 +844,12 @@ Security tests must cover:
 - filesystem read, write, list, copy, and recursive delete limits
 - diagnostics redaction
 
+The Operations handle unit tests verify the opaque `op_` format, complete and
+canonical ownership bindings, fail-closed entropy errors, binding immutability,
+and uniqueness across repeated cryptographically secure generation. Registry,
+expiry, and adapter authorization tests remain owned by their respective
+Operations/Job tasks.
+
 ### Integration Tests
 
 JSON-RPC smoke tests exercise the built server binary over STDIO.
