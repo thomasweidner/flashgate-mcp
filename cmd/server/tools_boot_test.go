@@ -141,6 +141,10 @@ func (noopFileSystem) Write(string, []byte, bool) error {
 	return errors.New("not implemented")
 }
 
+func (noopFileSystem) WriteWithMode(string, []byte, fs.WriteMode) error {
+	return errors.New("not implemented")
+}
+
 func (noopFileSystem) Mkdir(string) (bool, error) {
 	return false, errors.New("not implemented")
 }

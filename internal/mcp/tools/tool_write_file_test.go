@@ -158,6 +158,45 @@ func TestWriteFileToolForwardsOverwrite(t *testing.T) {
 	}
 }
 
+func TestWriteFileToolForwardsExplicitModes(t *testing.T) {
+	t.Parallel()
+
+	for _, mode := range []fs.WriteMode{fs.WriteCreateOnly, fs.WriteReplaceOnly, fs.WriteUpsert} {
+		t.Run(string(mode), func(t *testing.T) {
+			t.Parallel()
+			filesystem := newFakeFileSystem()
+			tool := NewWriteFileTool(filesystem)
+
+			_, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"path":"file.txt","mode":"`+string(mode)+`"}`))
+			if rpcErr != nil {
+				t.Fatalf("expected no error, got %v", rpcErr)
+			}
+			if filesystem.writeMode != mode {
+				t.Fatalf("expected mode %q, got %q", mode, filesystem.writeMode)
+			}
+		})
+	}
+}
+
+func TestWriteFileToolRejectsInvalidOrConflictingMode(t *testing.T) {
+	t.Parallel()
+
+	for _, arguments := range []string{
+		`{"path":"file.txt","mode":"unknown"}`,
+		`{"path":"file.txt","mode":"create_only","overwrite":false}`,
+	} {
+		filesystem := newFakeFileSystem()
+		tool := NewWriteFileTool(filesystem)
+		result, rpcErr := tool.Execute(context.Background(), json.RawMessage(arguments))
+		if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+			t.Fatalf("arguments %s: expected invalid params, got result=%#v error=%v", arguments, result, rpcErr)
+		}
+		if filesystem.writePath != "" {
+			t.Fatalf("arguments %s: filesystem write was attempted", arguments)
+		}
+	}
+}
+
 func TestWriteFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 	t.Parallel()
 

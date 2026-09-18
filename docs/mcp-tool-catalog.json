@@ -183,6 +183,11 @@
           "overwrite": {
             "type": "boolean",
             "description": "Whether an existing file may be overwritten. Defaults to false."
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["create_only", "replace_only", "upsert"],
+            "description": "Explicit existence policy. create_only requires absence, replace_only requires an existing file, and upsert permits either. Cannot be combined with overwrite."
           }
         }
       },
