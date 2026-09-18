@@ -87,6 +87,11 @@ Version 1.0 defines representation by payload class instead of applying one enve
 
 All handles are opaque, random, expiring, and bound to principal, root, profile, capability set, execution backend, service instance, and operation ownership. Host absolute paths are never encoded into public URIs.
 
+Cursor-producing results follow the [stable cursor contract](cursor-semantics.md):
+continuations are bound to one deterministic sequence and the current security
+context, and source or policy changes invalidate rather than approximately
+resume that sequence.
+
 ## Large-result resources
 
 Version 1.0 may expose identity-bound URIs such as:
@@ -163,6 +168,7 @@ The supported protocol/extension matrix is a released artifact. A specification 
 - [Architecture](architecture.md)
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
 - [Efficiency plan](efficiency-improvement-plan.md)
+- [Stable cursor semantics](cursor-semantics.md)
 - [Runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [ADR-013](adr/013-mcp-version-and-extension-compatibility.md)

@@ -146,6 +146,10 @@ New tools prefer one bounded call over repeated scalar calls when this lowers to
 
 Range, page, field-selection, and cursor arguments are explicit and closed. Default values are conservative and server caps always win.
 
+The [stable cursor contract](cursor-semantics.md) defines opaque continuation,
+deterministic ordering, snapshot validation, security-context binding, expiry,
+and fail-closed invalidation for all cursor-producing operations.
+
 ### Typed command tools
 
 Command execution never accepts a shell command string. A command tool selects a server-defined `command_id` and supplies a closed typed argument object. Each definition fixes or constrains:

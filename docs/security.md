@@ -350,6 +350,10 @@ Resource control combines:
 
 A service restart changes the generation and invalidates stale state.
 
+The [stable cursor contract](cursor-semantics.md) requires current authorization
+to be repeated on every continuation, binds cursors to their complete security
+and query context, and fails closed on mutation, expiry, or service restart.
+
 ### Payload and resource boundary
 
 Payload-heavy content must not be duplicated between MCP result fields or IPC layers.
