@@ -425,6 +425,12 @@ The endpoint is local-only. No TCP/HTTP/remote-host listener is included. `auto`
 
 ## Host-process ownership and lifecycle
 
+The [CLI mode and host lifecycle contract](cli-mode-lifecycle-contract.md)
+binds the accepted runtime roles to the Version 1.0 invocation grammar,
+system-service management verbs, and stable exit categories. These are target
+contracts; their runtime implementation remains assigned to the corresponding
+multi-mode and lifecycle backlog tasks.
+
 This section is an accepted Version 1.0 target; BL-341 remains `Planned` and
 the behavior is not implemented yet.
 

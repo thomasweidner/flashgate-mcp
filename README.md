@@ -268,6 +268,8 @@ docs/
                         Service-account and future user-worker architecture
   native-multi-mode-runtime-and-service-plan.md
                         STDIO/proxy/auto/system-service plan
+  cli-mode-lifecycle-contract.md
+                        Version 1.0 CLI grammar, lifecycle, and exit contract
   protocol.md           MCP and local IPC protocol architecture
   specification.md      Consolidated Version 1.0 requirements
   coding-style.md       Go, native adapter, lifecycle, and payload rules
