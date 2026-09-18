@@ -951,6 +951,8 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Operations and multi-principal tests
 
+- server-owned deadline watchdog expiry, parent-cancellation distinction,
+  idempotent/concurrent stop, and immutable deadline reporting;
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
 - cross-principal status/result/cancel/cache/resource denial;
 - global, per-domain, and per-principal concurrency limits;
