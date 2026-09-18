@@ -122,6 +122,13 @@ FlashGate does not add proprietary ELF metadata sections or extended attributes.
 
 ## Controlled builds
 
+The controlled Windows and Linux build paths compile `./cmd/server` as the
+single primary runtime entry point. Future `stdio`, `proxy`, `auto`, service,
+user-host, or worker roles remain modes of that executable; they do not receive
+separate runtime binaries without a new evidence-backed ADR. A permanent Go
+contract test checks both controlled build scripts and both release validators
+for this single-binary boundary.
+
 ### PowerShell
 
 ```powershell

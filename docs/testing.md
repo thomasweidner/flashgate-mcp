@@ -937,6 +937,12 @@ Currently tested:
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
 
+The current build-contract suite verifies that both controlled build scripts
+select `./cmd/server`, that release validators reject unexpected archive
+entries, and that no separate proxy, service, or worker runtime binary is
+accepted. This preserves the one-self-contained-binary boundary while the
+additional runtime modes remain planned.
+
 ### Payload and catalog tests
 
 - payload-class selection for metadata, structured pages, heavy text, media/binary, and large results;
