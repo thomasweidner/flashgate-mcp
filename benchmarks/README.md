@@ -192,6 +192,16 @@ Version 1.0 extends the benchmark system with the following measurements:
 - audit/logging overhead under bounded normal load;
 - native adapter versus any proposed external native-program adapter before adoption.
 
+The deterministic catalog gate is active independently of host benchmark runs. Its
+reviewed limits live in `catalog-budgets.json`, and
+`TestProfileCatalogAndInitializationBudgets` enforces the `read_only` and `default`
+profiles on every ordinary Go test run. The gate measures combined input/output
+schema bytes, approximate tokens (UTF-8 bytes divided by four, rounded up), complete
+`tools/list` response size, tool count, initialization response and instructions
+sizes, registration order, and the SHA-256 fingerprint of the compact catalog
+result. A deliberate catalog, schema, order, profile, or initialization change must
+therefore update the reviewed budget fixture in the same change.
+
 Payload-heavy content must be counted once as useful payload even when a client-compatibility fallback causes additional wire bytes. Metadata-only operations report zero useful payload and are evaluated through absolute response/catalog budgets rather than division by zero.
 
 ## Runtime-mode benchmark matrix

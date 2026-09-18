@@ -888,7 +888,18 @@ Limit and redaction behavior is primarily covered by Go unit tests. Additional l
 
 Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, and deeply equal runtime `outputSchema`/catalog `resultSchema`. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, and the `read_file` outer-array/inner-string distinction. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
 
-The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` records 1239/2134 bytes for read-only and 3850/5657 bytes for default; no regression budget is enforced.
+The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and records deterministic UTF-8 JSONL sizes with and without output schemas. `SPR-046` recorded 1239/2134 bytes for read-only and 3850/5657 bytes for default before the permanent BL-256 regression gate was added.
+
+BL-256 adds a permanent deterministic regression gate for the `read_only` and
+`default` catalogs. `go test ./...` validates exact tool counts and registration
+order, combined input/output schema byte and approximate-token ceilings, complete
+`tools/list` and `initialize` response ceilings, initialization-instruction
+ceilings, and an exact SHA-256 fingerprint of each compact catalog result against
+`benchmarks/catalog-budgets.json`. The fingerprint makes catalog content and order
+changes explicit, while maximum sizes fail closed on silent growth. Future profiles
+are covered by extending the ordered fixture and test table when their runtime
+registration integrates; no host-performance measurement window is required for
+this deterministic gate.
 
 ### MCP Compatibility Testing
 
