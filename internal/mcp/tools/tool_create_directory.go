@@ -23,7 +23,8 @@ func (t *CreateDirectoryTool) Description() string {
 }
 func (t *CreateDirectoryTool) InputSchema() any {
 	return map[string]any{
-		"type": "object",
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type":    "object",
 		"properties": map[string]any{
 			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path below the configured filesystem root."},
 		},
