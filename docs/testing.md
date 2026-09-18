@@ -1141,3 +1141,11 @@ copy, hash scan, JSON verification, report, archive, or OneDrive access.
 flags, not an authoritative workflow. A separately prepared controller implements
 the two-phase attempt; no wrapper-side shortcut or time override is permitted.
 <!-- FLASHGATE_PERFORMANCE_WORKSPACE_POLICY_END -->
+
+## Bounded filesystem plan tests
+
+`internal/fs/plan_test.go` verifies the closed operation set, whole-plan
+prevalidation before mutation, caller-selected operation caps, cancellation,
+and deterministic stop-on-first-error/partial-completion behavior. Native
+Windows reparse and platform filesystem evidence remains part of Windows
+finalization.
