@@ -23,6 +23,16 @@ task-bound work root:
 }
 ```
 
+### Operations/Job lifecycle tests
+
+The transport-neutral Operations package tests controlled shutdown with
+deterministic cancellation ordering, bounded grace and escalation phases,
+explicit incomplete-worker reporting, idempotent concurrent callers, immutable
+reports, late-registration rejection, and caller-context isolation. Race
+detector coverage is required for its concurrent shutdown path. Windows/native
+integration must later verify the owner-provided process termination and
+resource-cleanup adapters; these unit tests do not claim that host evidence.
+
 ## Legacy governance enforcement reference
 
 The historical governance-orchestration material below, through `Test Commands`,
