@@ -951,6 +951,9 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Operations and multi-principal tests
 
+- operation cancellation propagates from the parent context, remains isolated
+  from the parent when requested for one operation, and is safe under repeated
+  concurrent cancellation requests;
 - opaque handles bound to principal, profile, root, execution backend, and service generation;
 - cross-principal status/result/cancel/cache/resource denial;
 - global, per-domain, and per-principal concurrency limits;
