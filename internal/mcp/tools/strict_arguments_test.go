@@ -15,6 +15,7 @@ func TestAllToolsRejectMalformedUnknownTrailingAndWrongTypes(t *testing.T) {
 	}{
 		{"list_directory", NewListDirectoryTool(newFakeFileSystem())},
 		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024)},
+		{"read_files", NewReadFilesTool(newFakeFileSystem(), 1024)},
 		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem())},
 		{"write_file", NewWriteFileTool(newFakeFileSystem())},
 		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem())},
@@ -44,6 +45,7 @@ func TestRequiredPathsRejectMissingEmptyAndWhitespace(t *testing.T) {
 		blank   string
 	}{
 		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024), `{}`, `{"path":""}`, `{"path":"  "}`},
+		{"read_files", NewReadFilesTool(newFakeFileSystem(), 1024), `{}`, `{"paths":[]}`, `{"paths":["  "]}`},
 		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem()), `{}`, `{"path":""}`, `{"path":"  "}`},
 		{"write_file", NewWriteFileTool(newFakeFileSystem()), `{}`, `{"path":""}`, `{"path":"  "}`},
 		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem()), `{}`, `{"path":""}`, `{"path":"  "}`},
@@ -72,6 +74,7 @@ func TestAllToolsRejectExplicitNullFields(t *testing.T) {
 	}{
 		{"list_directory", NewListDirectoryTool(newFakeFileSystem()), []string{`{"path":null}`}},
 		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024), []string{`{"path":null}`, `{"path":"file","maxBytes":null}`}},
+		{"read_files", NewReadFilesTool(newFakeFileSystem(), 1024), []string{`{"paths":null}`, `{"paths":["file"],"maxBytesPerFile":null}`}},
 		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem()), []string{`{"path":null}`}},
 		{"write_file", NewWriteFileTool(newFakeFileSystem()), []string{`{"path":"file","content":null}`, `{"path":"file","overwrite":null}`}},
 		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem()), []string{`{"path":null}`}},

@@ -8,6 +8,9 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added the bounded `read_files` MCP tool for BL-046. Ordered batches accept up
+  to 100 relative paths, preserve per-item successes and safe failure
+  categories, and enforce per-file plus aggregate content-byte limits.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,

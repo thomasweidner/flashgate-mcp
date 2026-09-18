@@ -186,21 +186,21 @@
   "tools_list_measurements": [
     {
       "profile": "read_only",
-      "tool_count": 3,
-      "schema_count": 3,
+      "tool_count": 4,
+      "schema_count": 4,
       "request_bytes": 59,
-      "response_bytes": 2134,
-      "result_bytes": 2099,
-      "approx_tokens_bytes4": 534
+      "response_bytes": 3340,
+      "result_bytes": 3305,
+      "approx_tokens_bytes4": 835
     },
     {
       "profile": "default",
-      "tool_count": 8,
-      "schema_count": 8,
+      "tool_count": 9,
+      "schema_count": 9,
       "request_bytes": 59,
-      "response_bytes": 5657,
-      "result_bytes": 5622,
-      "approx_tokens_bytes4": 1415
+      "response_bytes": 6863,
+      "result_bytes": 6828,
+      "approx_tokens_bytes4": 1716
     }
   ],
   "workflow_measurements": [
