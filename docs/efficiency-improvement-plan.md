@@ -204,6 +204,10 @@ Version 1.0 defines:
 - list-result TTL/cache semantics compatible with supported MCP revisions;
 - no reuse of a catalog fingerprint across incompatible protocol contracts.
 
+The normative target rules for canonical bytes, digest inputs, invalidation,
+TTL behavior, downgrade handling, and security boundaries are in the
+[tool catalog fingerprint and cache contract](catalog-fingerprint-and-cache-contract.md).
+
 This supports client caching without exposing sensitive configuration details.
 
 ## Read-only safe default
