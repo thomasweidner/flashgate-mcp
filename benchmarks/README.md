@@ -31,6 +31,15 @@ bash scripts/benchmark.sh
 bash scripts/benchmark.sh --quick
 ```
 
+The `Benchmark Diagnostics` GitHub Actions workflow runs the quick command on
+native Windows and Linux AMD64 runners for pushes to `main`, pull requests, and
+manual dispatches. Each matrix leg uploads its machine-readable JSON result as
+a uniquely named, 14-day diagnostic artifact. The runner still fails the job
+for deterministic hard-budget violations; soft performance-budget excesses and
+scheduled-window contamination remain warnings in the result. These hosted
+quick runs are stable CI diagnostics only: they do not create, replace, approve,
+or compare the versioned authoritative baselines.
+
 The legacy `-RecordBaseline` and `--record-baseline` flags remain recognized for
 compatibility but fail closed before any Go command, build, directory creation,
 benchmark execution, or output write. These wrappers are diagnostic development
@@ -172,7 +181,7 @@ a supported race platform; for the current Windows host, missing CGO/GCC is an
 infrastructure limitation and does not justify relaxing allocation budgets. Native
 Linux `go test -race ./...` remains required.
 
-A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. `SPR-047` does not add the full process benchmark to CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
+A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. The quick process benchmark runs in CI and preserves its JSON diagnostics under `BL-249`; cross-run baseline comparison and budget-trend enforcement remain `BL-250`.
 
 ## Version 1.0 benchmark expansion
 
