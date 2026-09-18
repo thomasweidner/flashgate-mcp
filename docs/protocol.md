@@ -59,6 +59,11 @@ Version 1.0 initialization includes:
 
 The server instructions prioritize efficient usage: batch rather than repeated scalar calls, ranges/pages rather than unbounded content, exact field selection, dry-run before risky multi-step work, and cursor continuation for process/search results. Instructions are bounded and benchmarked.
 
+The Version 1.0 [extension-negotiation and stateless-adapter contract](mcp-extension-negotiation.md)
+defines exact-identifier admission, required/optional mismatch behavior,
+per-request adapter context, and cache invalidation. It is a target contract;
+the current runtime advertises no extensions.
+
 ## Tool discovery
 
 `tools/list` is deterministic for a fixed tuple of:
@@ -165,5 +170,6 @@ The supported protocol/extension matrix is a released artifact. A specification 
 - [Efficiency plan](efficiency-improvement-plan.md)
 - [Runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
 - [Execution identity backends](execution-identity-backends.md)
+- [MCP extension negotiation and stateless adapter](mcp-extension-negotiation.md)
 - [ADR-013](adr/013-mcp-version-and-extension-compatibility.md)
 - [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)

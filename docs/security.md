@@ -2,6 +2,12 @@
 
 FlashGate MCP is designed as a secure-by-default local host-operations MCP server. It currently exposes only the filesystem functionality described below.
 
+MCP protocol and extension negotiation selects a wire contract only; it never
+grants an operation capability. The
+[extension-negotiation contract](mcp-extension-negotiation.md) requires current
+server-side authorization for every request and rejects cross-context cache or
+state reuse.
+
 Filesystem access is security-sensitive because MCP clients may request operations on local files. For this reason, all filesystem operations are restricted to a configured sandbox root.
 
 ## Core Security Principles
