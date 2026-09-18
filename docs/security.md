@@ -350,6 +350,13 @@ Resource control combines:
 
 A service restart changes the generation and invalidates stale state.
 
+The in-memory operation result store enforces entry-count, per-result-byte,
+aggregate-byte, and maximum-TTL limits selected by configuration. It copies bytes on
+insertion and retrieval, does not slide expiry on reads, reclaims expired capacity,
+and returns the same unavailable result for missing, expired, or binding-mismatched
+handles. These rules prevent handle probing and cross-context reuse; the stored
+payload remains owned and validated by its domain.
+
 ### Payload and resource boundary
 
 Payload-heavy content must not be duplicated between MCP result fields or IPC layers.
