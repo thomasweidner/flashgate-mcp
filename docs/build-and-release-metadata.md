@@ -198,6 +198,14 @@ byte-for-byte and leak-scanned before its first build and JSON audit report are
 uploaded. The existing CI workflow continues to run formatting, vet, unit
 tests, coverage, lint, and JSON-RPC smoke tests.
 
+The current hosted jobs run on `windows-latest` and `ubuntu-latest` x64 hosts.
+Their ARM64 matrix entries are cross-build and static-validation paths: they
+inspect PE/ELF architecture, embedded metadata, resources, provenance, archive
+contents, reproducibility, and leak results, but do not execute the ARM64
+binaries. Native Windows ARM64 and Ubuntu ARM64 execution is a future,
+runner-availability-dependent validation layer and is not evidence produced by
+the current workflow.
+
 `.github/workflows/release-build.yml` builds and validates tagged release
 archives with canonical source values. Before any upload, each matrix path
 performs build 1, metadata and archive validation, build 2, binary/archive/
