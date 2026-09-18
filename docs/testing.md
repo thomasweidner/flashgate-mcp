@@ -830,6 +830,12 @@ This is allowed in tests.
 
 Production code outside `internal/fs` must not use direct filesystem operations.
 
+The focused disk-usage tests require a root-relative existing path, reject
+traversal and missing paths, and check the portable capacity invariants
+`usedBytes <= totalBytes` and `availableBytes <= totalBytes`. Linux executes
+the native filesystem query in Cloud; Windows compilation is checked in Cloud,
+while real Windows volume behavior remains part of Windows finalization.
+
 ### Security Tests
 
 Security tests must cover:

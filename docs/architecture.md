@@ -197,6 +197,12 @@ Execution does not expose a general shell. A command definition can fix subcomma
 
 Owns only explicitly released OS/architecture/resource facts, scoped disk use, filtered environment fields, and redaction. Network information remains post-Version 1.0.
 
+The filesystem core implements root-confined, privacy-safe disk-capacity lookup
+for an existing relative path. The result contains only total, used, and
+caller-available byte counts; it exposes no mount point, volume name, device
+identifier, or host path. Public system-information exposure remains owned by
+the planned system-information adapter.
+
 ### Operations and jobs
 
 Owns generic queued/running/completed/failed/cancelled/timed-out lifecycle, deadlines, cancellation, progress, bounded result storage, TTL, cleanup, and leak protection.
