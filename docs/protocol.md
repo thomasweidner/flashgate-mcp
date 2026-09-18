@@ -16,6 +16,7 @@ The current server:
 - writes protocol messages only to stdout;
 - returns successful filesystem results as one compact JSON text block plus the same object in `structuredContent`;
 - exposes successful `outputSchema` definitions for the current eight tools;
+- returns compact initialization instructions tailored to the current read-only or default filesystem profile;
 - retains safe generic JSON-RPC errors for current tool failures.
 
 `flashgate-mcp --version` and `flashgate-mcp --version --verbose` are pre-protocol CLI exits. They print build identity and terminate before reading MCP input. During normal server operation, stdout remains reserved exclusively for JSON-RPC protocol messages.
@@ -57,7 +58,7 @@ Version 1.0 initialization includes:
 - compact profile-specific server instructions;
 - catalog fingerprint and cache invalidation inputs where supported by the selected protocol contract.
 
-The server instructions prioritize efficient usage: batch rather than repeated scalar calls, ranges/pages rather than unbounded content, exact field selection, dry-run before risky multi-step work, and cursor continuation for process/search results. Instructions are bounded and benchmarked.
+The implemented instructions identify the current profile's available filesystem operations, tell clients to reuse returned metadata, and avoid claiming that planned operations already exist. Conditional guidance prepares clients to prefer batches, selected fields/ranges, pages, dry-runs, and cursor continuation when those capabilities are exposed. Each current instruction is a deterministic string below 512 UTF-8 bytes; profile-wide initialization budgets and benchmark enforcement remain owned by `BL-215` and `BL-256`.
 
 ## Tool discovery
 
