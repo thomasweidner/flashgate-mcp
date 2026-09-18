@@ -366,6 +366,8 @@ The server enforces:
 - bounded inline compatibility fallback;
 - no unrestricted base64 output.
 
+`get_paths_info` caps each request at 100 paths, validates every path before filesystem access, preserves input order, and reports policy or I/O failures per item using safe categories and messages. It never converts policy denial into `exists:false`.
+
 ### Managed process identity and control
 
 Server-started processes receive opaque handles. PIDs are diagnostic only and cannot be the sole authority because PID reuse may target the wrong process.

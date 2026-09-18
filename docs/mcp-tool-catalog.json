@@ -139,25 +139,174 @@
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": false }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": false
+              }
             },
-            "required": ["path", "exists"],
+            "required": [
+              "path",
+              "exists"
+            ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": true },
-              "name": { "type": "string" },
-              "isDir": { "type": "boolean" },
-              "size": { "type": "integer" }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer"
+              }
             },
-            "required": ["path", "exists", "name", "isDir", "size"],
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
             "additionalProperties": false
           }
         ]
+      }
+    },
+    {
+      "name": "get_paths_info",
+      "title": "Get Paths Info",
+      "description": "Returns ordered existence and metadata results for up to 100 paths below the configured filesystem root.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "One to 100 relative file or directory paths below the configured filesystem root."
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "additionalProperties": false
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "exists": {
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "exists"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "exists": {
+                      "const": true
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "isDir": {
+                      "type": "boolean"
+                    },
+                    "size": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "exists",
+                    "name",
+                    "isDir",
+                    "size"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "path",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "accepted": {
+            "type": "integer"
+          },
+          "completed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "results",
+          "accepted",
+          "completed",
+          "failed"
+        ],
+        "additionalProperties": false
       }
     },
     {
