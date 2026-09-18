@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var timeType = reflect.TypeOf(time.Time{})
@@ -19,6 +20,9 @@ func decodeStrictJSON(data []byte, destination any) error {
 	destinationType := reflect.TypeOf(destination)
 	if destinationType == nil || destinationType.Kind() != reflect.Pointer || reflect.ValueOf(destination).IsNil() {
 		return fmt.Errorf("destination must be a non-nil pointer")
+	}
+	if err := validateJSONUnicode(data); err != nil {
+		return err
 	}
 
 	shapeDecoder := json.NewDecoder(bytes.NewReader(data))
@@ -50,6 +54,70 @@ func decodeStrictJSON(data []byte, destination any) error {
 		return fmt.Errorf("trailing JSON data")
 	}
 	return nil
+}
+
+// validateJSONUnicode closes encoding/json's intentionally permissive handling
+// of malformed UTF-8 and invalid UTF-16 surrogate escapes. Replacement
+// characters that are genuinely present in the input remain valid.
+func validateJSONUnicode(data []byte) error {
+	if !utf8.Valid(data) {
+		return fmt.Errorf("invalid JSON Unicode: malformed UTF-8")
+	}
+
+	for index := 0; index < len(data); index++ {
+		if data[index] != '"' {
+			continue
+		}
+		for index++; index < len(data) && data[index] != '"'; index++ {
+			if data[index] != '\\' {
+				continue
+			}
+			index++
+			if index >= len(data) || data[index] != 'u' {
+				continue
+			}
+			codeUnit, ok := parseJSONHexCodeUnit(data, index+1)
+			if !ok {
+				continue // The JSON decoder reports malformed escape syntax.
+			}
+			index += 4
+			switch {
+			case codeUnit >= 0xDC00 && codeUnit <= 0xDFFF:
+				return fmt.Errorf("invalid JSON Unicode: unpaired low surrogate escape")
+			case codeUnit >= 0xD800 && codeUnit <= 0xDBFF:
+				if index+6 >= len(data) || data[index+1] != '\\' || data[index+2] != 'u' {
+					return fmt.Errorf("invalid JSON Unicode: unpaired high surrogate escape")
+				}
+				low, validLow := parseJSONHexCodeUnit(data, index+3)
+				if !validLow || low < 0xDC00 || low > 0xDFFF {
+					return fmt.Errorf("invalid JSON Unicode: unpaired high surrogate escape")
+				}
+				index += 6
+			}
+		}
+	}
+	return nil
+}
+
+func parseJSONHexCodeUnit(data []byte, start int) (uint16, bool) {
+	if start+4 > len(data) {
+		return 0, false
+	}
+	var value uint16
+	for _, character := range data[start : start+4] {
+		value <<= 4
+		switch {
+		case character >= '0' && character <= '9':
+			value += uint16(character - '0')
+		case character >= 'a' && character <= 'f':
+			value += uint16(character-'a') + 10
+		case character >= 'A' && character <= 'F':
+			value += uint16(character-'A') + 10
+		default:
+			return 0, false
+		}
+	}
+	return value, true
 }
 
 func decodeUniqueJSONValue(decoder *json.Decoder, path string) (any, error) {
