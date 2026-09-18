@@ -10,16 +10,17 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 )
 
-func TestFilesystemRuntimeOutputSchemas(t *testing.T) {
+func TestRuntimeOutputSchemas(t *testing.T) {
 	fake := newFakeFileSystem()
 	runtimeTools := []Tool{
 		NewListDirectoryTool(fake), NewReadFileTool(fake, 1024), NewGetPathInfoTool(fake),
+		NewSystemInfoTool(fakeSystemInfoProvider{}),
 		NewWriteFileTool(fake), NewCreateDirectoryTool(fake), NewDeletePathTool(fake),
 		NewCopyPathTool(fake), NewMovePathTool(fake),
 	}
 
-	if len(runtimeTools) != 8 {
-		t.Fatalf("expected exactly 8 runtime tools, got %d", len(runtimeTools))
+	if len(runtimeTools) != 9 {
+		t.Fatalf("expected exactly 9 runtime tools, got %d", len(runtimeTools))
 	}
 	for _, runtimeTool := range runtimeTools {
 		schema := normalizeSchema(t, runtimeTool.Definition().OutputSchema)
@@ -84,6 +85,14 @@ func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 		property := properties[tc.property].(map[string]any)
 		if property["type"] != tc.expected {
 			t.Fatalf("%s.%s type=%#v, want %s", tc.tool, tc.property, property["type"], tc.expected)
+		}
+	}
+
+	systemSchema := normalizeSchema(t, systemInfoOutputSchema())
+	systemProperties := systemSchema["properties"].(map[string]any)
+	for _, name := range []string{"os", "architecture", "version"} {
+		if systemProperties[name].(map[string]any)["type"] != "string" {
+			t.Fatalf("system_info.%s must be a string", name)
 		}
 	}
 
