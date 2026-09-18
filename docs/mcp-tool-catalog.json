@@ -139,22 +139,45 @@
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": false }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": false
+              }
             },
-            "required": ["path", "exists"],
+            "required": [
+              "path",
+              "exists"
+            ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": true },
-              "name": { "type": "string" },
-              "isDir": { "type": "boolean" },
-              "size": { "type": "integer" }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer"
+              }
             },
-            "required": ["path", "exists", "name", "isDir", "size"],
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
             "additionalProperties": false
           }
         ]
@@ -203,6 +226,49 @@
           "path",
           "size",
           "written"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "append_file",
+      "title": "Append File",
+      "description": "Appends bounded text content to a file below the configured filesystem root, creating the file when absent.",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Relative file path below the configured filesystem root."
+          },
+          "content": {
+            "type": "string",
+            "description": "Text content to append. An empty string is allowed."
+          }
+        }
+      },
+      "resultSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "appended": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "size",
+          "appended"
         ],
         "additionalProperties": false
       }

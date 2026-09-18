@@ -59,6 +59,47 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 	return nil
 }
 
+// Append appends content to a file, creating it when it does not exist.
+func (f *LocalFileSystem) Append(path string, content []byte) error {
+	safePath, err := f.guard.ResolveForCreate(path)
+	if err != nil {
+		return err
+	}
+
+	if int64(len(content)) > f.limits.MaxWriteBytes {
+		return ErrLimitExceeded
+	}
+	if info, statErr := os.Stat(safePath.String()); statErr == nil && info.IsDir() {
+		return ErrPathIsDirectory
+	} else if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
+		return statErr
+	}
+
+	file, err := os.OpenFile(safePath.String(), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return ErrPathIsDirectory
+	}
+
+	written, err := file.Write(content)
+	if err != nil {
+		return err
+	}
+	if written != len(content) {
+		return io.ErrShortWrite
+	}
+
+	return nil
+}
+
 // Mkdir creates a directory and any missing parent directories and reports whether the leaf was created.
 func (f *LocalFileSystem) Mkdir(path string) (bool, error) {
 	safePath, err := f.guard.ResolveForCreate(path)
