@@ -370,6 +370,12 @@ The server enforces:
 
 Server-started processes receive opaque handles. PIDs are diagnostic only and cannot be the sole authority because PID reuse may target the wrong process.
 
+The current managed-process registry provides concurrency-safe ownership and a
+never-reused internal instance ID. The internal ID is not exposed as a public
+handle and grants no authority by itself. Opaque handle generation and binding
+to principal, profile, root, execution backend, and service generation remain
+separate enforcement work.
+
 Default control is limited to server-managed processes. External PID control is post-Version 1.0 and requires a separate high-risk capability and threat model.
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
