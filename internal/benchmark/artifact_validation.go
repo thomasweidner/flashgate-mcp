@@ -11,6 +11,9 @@ import (
 )
 
 var benchmarkCommitPattern = regexp.MustCompile(`^(unknown|[0-9a-f]{7,40})$`)
+var benchmarkExitStatusPattern = regexp.MustCompile(`^-?(0|[1-9][0-9]*)$`)
+
+const benchmarkJSONMaxInt = int64(1<<31 - 1)
 
 func loadValidatedBaselineArtifact(artifactPath string, budgetPath string) (Result, []byte, error) {
 	artifactName := filepath.Base(artifactPath)
@@ -86,7 +89,7 @@ func validateBaselineSchemaInvariants(result Result) error {
 	if result.RuntimeMode != "direct_stdio" || result.Transport != "stdio" || result.ExecutionBackend != "current_process" || result.Profile != "read_only" {
 		return fmt.Errorf("execution provenance is invalid")
 	}
-	if result.Parallelism != 1 || result.Repetitions < 1 {
+	if result.Parallelism != 1 || !validPositiveJSONInt(result.Repetitions) {
 		return fmt.Errorf("parallelism or repetitions violate the schema")
 	}
 	if len(result.ToolsList) < 2 {
@@ -108,13 +111,13 @@ func validateBaselineSchemaInvariants(result Result) error {
 		if measurement.Profile != "read_only" && measurement.Profile != "default" {
 			return fmt.Errorf("tools_list_measurements[%d].profile=%q is invalid", index, measurement.Profile)
 		}
-		if measurement.ToolCount < 0 || measurement.SchemaCount < 0 {
+		if !validNonnegativeJSONInt(measurement.ToolCount) || !validNonnegativeJSONInt(measurement.SchemaCount) {
 			return fmt.Errorf("tools_list_measurements[%d] contains a negative count", index)
 		}
 	}
 	for index, measurement := range result.Workflows {
 		name := fmt.Sprintf("workflow_measurements[%d]", index)
-		if measurement.Name == "" || measurement.Repetitions < 1 || measurement.Calls < 0 || measurement.WarningCount < 0 {
+		if measurement.Name == "" || !validPositiveJSONInt(measurement.Repetitions) || !validNonnegativeJSONInt(measurement.Calls) || !validNonnegativeJSONInt(measurement.WarningCount) {
 			return fmt.Errorf("%s identity or counts violate the schema", name)
 		}
 		for _, metric := range []struct {
@@ -134,15 +137,18 @@ func validateBaselineSchemaInvariants(result Result) error {
 		if err := validateResourceSchema(name+".resources", measurement.Resources); err != nil {
 			return err
 		}
+		if err := validateExitStatusesSchema(name+".exit_statuses", measurement.ExitStatuses); err != nil {
+			return err
+		}
 	}
-	if result.BudgetEvaluation.SchemaVersion != BudgetSchemaVersion || result.BudgetEvaluation.HardFailures < 0 || result.BudgetEvaluation.SoftWarnings < 0 {
+	if result.BudgetEvaluation.SchemaVersion != BudgetSchemaVersion || !validNonnegativeJSONInt(result.BudgetEvaluation.HardFailures) || !validNonnegativeJSONInt(result.BudgetEvaluation.SoftWarnings) {
 		return fmt.Errorf("budget_evaluation violates the schema")
 	}
 	return nil
 }
 
 func validateStartMeasurementSchema(name string, measurement StartMeasurement) error {
-	if measurement.Repetitions < 1 || measurement.WarningCount < 0 {
+	if !validPositiveJSONInt(measurement.Repetitions) || !validNonnegativeJSONInt(measurement.WarningCount) {
 		return fmt.Errorf("%s counts violate the schema", name)
 	}
 	for _, metric := range []struct {
@@ -156,10 +162,8 @@ func validateStartMeasurementSchema(name string, measurement StartMeasurement) e
 			return err
 		}
 	}
-	for code, count := range measurement.ExitStatuses {
-		if count < 0 {
-			return fmt.Errorf("%s.exit_statuses.%s is negative", name, code)
-		}
+	if err := validateExitStatusesSchema(name+".exit_statuses", measurement.ExitStatuses); err != nil {
+		return err
 	}
 	return validateResourceSchema(name+".resources", measurement.Resources)
 }
@@ -187,8 +191,28 @@ func validateResourceSchema(name string, resources ResourceSummary) error {
 }
 
 func validateMetricSchema(name string, summary MetricSummary) error {
-	if summary.Samples < 0 {
-		return fmt.Errorf("%s.samples is negative", name)
+	if !validNonnegativeJSONInt(summary.Samples) {
+		return fmt.Errorf("%s.samples is outside the schema range", name)
 	}
 	return nil
+}
+
+func validateExitStatusesSchema(name string, statuses map[string]int) error {
+	for code, count := range statuses {
+		if !benchmarkExitStatusPattern.MatchString(code) {
+			return fmt.Errorf("%s.%s is not a canonical signed decimal exit status", name, code)
+		}
+		if !validNonnegativeJSONInt(count) {
+			return fmt.Errorf("%s.%s is outside the schema range", name, code)
+		}
+	}
+	return nil
+}
+
+func validNonnegativeJSONInt(value int) bool {
+	return value >= 0 && int64(value) <= benchmarkJSONMaxInt
+}
+
+func validPositiveJSONInt(value int) bool {
+	return value >= 1 && int64(value) <= benchmarkJSONMaxInt
 }
