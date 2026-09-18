@@ -536,8 +536,15 @@ go test ./...
 Run tests with the race detector:
 
 ```bash
-go test -race ./...
+bash scripts/test-go-race.sh
 ```
+
+The reusable race command runs `go test -race -mod=vendor ./...` from the
+repository root, so current and future stateful packages—including Operations/Job,
+process registry, output-buffer, cancellation, and shutdown implementations—are
+covered without maintaining a package allowlist. The Ubuntu CI test job invokes
+the same command as a required failure gate; later domain-specific CI jobs must
+reuse it rather than define a narrower race invocation.
 
 The authoritative race gate runs on a platform with a supported race toolchain.
 The current Windows host has no CGO/GCC race toolchain, so Windows race is reported
