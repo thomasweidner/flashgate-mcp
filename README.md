@@ -490,6 +490,10 @@ The technically authoritative thresholds are maintained in `.github/workflows/ci
 
 Run the JSON-RPC smoke test on Windows:
 
+The focused [non-developer smoke-testing guide](docs/non-developer-smoke-testing.md)
+provides the complete Windows and Linux command sequence, expected pass output,
+and failure-handling rules for validating a prebuilt binary.
+
 ```powershell
 .\scripts\smoke-jsonrpc.ps1
 ```
