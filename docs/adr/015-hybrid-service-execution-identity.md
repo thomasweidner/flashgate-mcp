@@ -127,6 +127,7 @@ The implementation must:
 
 - [ADR-014: Native multi-mode runtime](014-native-multi-mode-runtime-and-local-service-deployment.md)
 - [Execution identity backends](../execution-identity-backends.md)
+- [Variant B user-worker contract and threat model](../variant-b-user-worker-threat-model.md)
 - [Native runtime and service plan](../native-multi-mode-runtime-and-service-plan.md)
 - [Security model](../security.md)
 - [Version 1.0 scope](../version-1-scope-and-release-boundary.md)

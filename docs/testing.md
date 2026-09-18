@@ -988,7 +988,14 @@ Version 1.0 tests Variant A only:
 - `auto` never falls back after managed denial or incompatibility;
 - proxy/client stdout remains MCP-only.
 
-Variant B worker tests are post-Version 1.0 and require a separate implementation gate.
+Variant B worker runtime tests are post-Version 1.0 and require a separate
+implementation gate. The Version 1.0
+[user-worker contract and threat model](variant-b-user-worker-threat-model.md)
+defines the required future native Windows/Linux matrix: identity and session
+changes, private-handshake spoof/replay, cross-user state denial, environment
+and handle inheritance, containment and descendant cleanup, resource limits,
+crash/restart behavior, audit/redaction, and fail-closed unsupported-backend
+coverage.
 
 ### BL-241 additive multi-client and host-process lifecycle matrix
 
