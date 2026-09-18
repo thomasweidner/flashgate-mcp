@@ -179,6 +179,13 @@ Go components in this repository reuse the core directly. Future MCPs built on F
 
 Owns files, directories, metadata, ranged reads, text/media/binary classification, writes, edits, copying, moving, deletion, hashing, fingerprints, directory size, and bounded plans.
 
+The directory-size core operation performs a cancellable streaming walk with
+fixed entry and aggregate-byte ceilings. It does not follow denied links or
+expose host paths, and its optional monotonic progress callback lets the future
+Operations/Job adapter report progress without moving filesystem business logic
+into the job manager. MCP exposure and asynchronous job orchestration remain
+separate adapter work.
+
 ### Search
 
 Owns root-scoped path/name/metadata/content search, include/exclude rules, bounded recursion, pagination, context, and optional later accelerators.
