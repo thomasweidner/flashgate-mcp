@@ -1093,6 +1093,14 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - pinned/validated workflow policy;
 - atomic rollback documentation and smoke procedure.
 
+`go test ./internal/releaseevidence ./cmd/releaseevidence` covers deterministic
+evidence creation and fail-closed archive-checksum validation. The release
+workflow runs the generator only after artifact validation, reproducibility
+comparison, and leak scanning, and uploads all three evidence files with each
+platform artifact. Native finalization must still review signing configuration
+when one is approved and rehearse the platform-specific rollback procedure;
+generated provenance is never treated as a code signature.
+
 The controlled commands and expected fields are documented in [Build and
 release metadata](build-and-release-metadata.md), [Artifact
 verification](artifact-verification.md), and [Manual metadata
