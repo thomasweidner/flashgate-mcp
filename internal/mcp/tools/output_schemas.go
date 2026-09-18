@@ -15,9 +15,11 @@ func filesystemOutputSchema(toolName string) map[string]any {
 		}, "entries")
 	case readFileToolName:
 		return objectOutputSchema(map[string]any{
-			"content": map[string]any{"type": "string"},
-			"size":    map[string]any{"type": "integer"},
-		}, "content", "size")
+			"content":  map[string]any{"type": "string"},
+			"size":     map[string]any{"type": "integer"},
+			"mimeType": map[string]any{"type": "string"},
+			"encoding": map[string]any{"type": "string", "enum": []string{"utf-8", "base64"}},
+		}, "content", "size", "mimeType", "encoding")
 	case getPathInfoToolName:
 		return map[string]any{
 			"type": "object",

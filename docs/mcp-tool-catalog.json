@@ -78,7 +78,7 @@
     {
       "name": "read_file",
       "title": "Read File",
-      "description": "Reads a text file below the configured filesystem root.",
+      "description": "Reads bounded text, media, or binary content below the configured filesystem root.",
       "inputSchema": {
         "type": "object",
         "required": [
@@ -95,6 +95,15 @@
             "type": "integer",
             "minimum": 1,
             "description": "Maximum number of bytes to read. Defaults to the configured maximum file size."
+          },
+          "mode": {
+            "type": "string",
+            "description": "Output mode. text (default) requires UTF-8 text, binary returns base64, and auto selects between them.",
+            "enum": [
+              "text",
+              "binary",
+              "auto"
+            ]
           }
         }
       },
@@ -106,11 +115,23 @@
           },
           "size": {
             "type": "integer"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "encoding": {
+            "type": "string",
+            "enum": [
+              "utf-8",
+              "base64"
+            ]
           }
         },
         "required": [
           "content",
-          "size"
+          "size",
+          "mimeType",
+          "encoding"
         ],
         "additionalProperties": false
       }
@@ -139,22 +160,45 @@
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": false }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": false
+              }
             },
-            "required": ["path", "exists"],
+            "required": [
+              "path",
+              "exists"
+            ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": true },
-              "name": { "type": "string" },
-              "isDir": { "type": "boolean" },
-              "size": { "type": "integer" }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer"
+              }
             },
-            "required": ["path", "exists", "name", "isDir", "size"],
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
             "additionalProperties": false
           }
         ]

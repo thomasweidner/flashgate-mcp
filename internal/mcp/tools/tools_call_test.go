@@ -260,7 +260,7 @@ func TestCallHandlerMethod(t *testing.T) {
 func TestWrapSuccessfulToolResultCoversAllFilesystemResultForms(t *testing.T) {
 	tests := map[string]any{
 		"list_directory":         listDirectoryResult{Entries: []fs.Entry{{Name: "Folder With Spaces", IsDir: true}, {Name: "grüße.txt", Size: 7}}},
-		"read_file":              readFileResult{Content: "line 1\nUnicode ÄÖÜ and folder\\relative\\file.txt", Size: 50},
+		"read_file":              readFileResult{Content: "line 1\nUnicode ÄÖÜ and folder\\relative\\file.txt", Size: 50, MIMEType: "text/plain; charset=utf-8", Encoding: "utf-8"},
 		"get_path_info existing": getPathInfoExistingResult{Path: "Folder With Spaces\\grüße.txt", Exists: true, Name: "grüße.txt", Size: 7},
 		"get_path_info missing":  getPathInfoMissingResult{Path: "does-not-exist.txt", Exists: false},
 		"write_file":             writeFileResult{Path: "output file.txt", Size: 4, Written: true},
@@ -269,7 +269,7 @@ func TestWrapSuccessfulToolResultCoversAllFilesystemResultForms(t *testing.T) {
 		"copy_path":              copyPathResult{Source: "source.txt", Target: "target.txt", Copied: true},
 		"move_path":              movePathResult{Source: "old.txt", Target: "new.txt", Moved: true},
 		"empty directory":        listDirectoryResult{Entries: []fs.Entry{}},
-		"empty file":             readFileResult{Content: "", Size: 0},
+		"empty file":             readFileResult{Content: "", Size: 0, MIMEType: "text/plain; charset=utf-8", Encoding: "utf-8"},
 	}
 
 	for name, domainResult := range tests {
