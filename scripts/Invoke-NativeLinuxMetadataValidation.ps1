@@ -316,6 +316,18 @@ try {
     }
 
     $RunId = "flashgate-file-properties-$Timestamp"
+    $WindowsUserPath = [Environment]::GetFolderPath('UserProfile')
+    if ([string]::IsNullOrWhiteSpace($WindowsUserPath)) {
+        throw 'The Windows user-profile path could not be resolved for leak validation.'
+    }
+    $WindowsUserWslPath = ConvertTo-WslPath -WindowsPath $WindowsUserPath
+    $SyncRoots = @(
+        'OneDrive'
+        'OneDriveCommercial'
+        'OneDriveConsumer'
+    ) | ForEach-Object { [Environment]::GetEnvironmentVariable($_) } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -Unique
 
     $WslOutput = @(
         Invoke-ExternalRequired `
@@ -337,6 +349,9 @@ try {
                 "FG_RUN_ID=$RunId"
                 "FG_DISTRO_NAME=$DistroName"
                 "FG_VERSION=$Version"
+                "FG_FORBIDDEN_WINDOWS_USER=$WindowsUserPath"
+                "FG_FORBIDDEN_WSL_USER=$WindowsUserWslPath"
+                ('FG_FORBIDDEN_SYNC_ROOTS={0}' -f ($SyncRoots -join "`n"))
                 'bash'
                 $DriverWslPath
             ) `

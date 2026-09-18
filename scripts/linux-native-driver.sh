@@ -12,6 +12,8 @@ set -Eeuo pipefail
 : "${FG_OUTPUT_DIR:?FG_OUTPUT_DIR is required}"
 : "${FG_RUN_ID:?FG_RUN_ID is required}"
 : "${FG_DISTRO_NAME:?FG_DISTRO_NAME is required}"
+: "${FG_FORBIDDEN_WINDOWS_USER:?FG_FORBIDDEN_WINDOWS_USER is required}"
+: "${FG_FORBIDDEN_WSL_USER:?FG_FORBIDDEN_WSL_USER is required}"
 
 version="${FG_VERSION:-1.2.3-rc.1}"
 NATIVE_SAFETY_HELPER="$FG_NATIVE_SAFETY_HELPER"
@@ -111,7 +113,8 @@ chmod +x \
     scripts/test-release-artifact.sh \
     scripts/test-build-input-validation.sh \
     scripts/test-build-repository.sh \
-    scripts/test-native-validation-safety.sh
+    scripts/test-native-validation-safety.sh \
+    scripts/test-native-leak-markers.sh
 
 head_commit="$(git rev-parse HEAD)"
 [[ "$head_commit" =~ ^[0-9a-f]{40}$ ]]
@@ -146,6 +149,8 @@ bash scripts/test-build-repository.sh \
     >"$logs_dir/build-repository.log" 2>&1
 bash scripts/test-native-validation-safety.sh \
     >"$logs_dir/native-root-safety.log" 2>&1
+bash scripts/test-native-leak-markers.sh \
+    >"$logs_dir/native-leak-markers.log" 2>&1
 python3 scripts/test-snapshot-security.py \
     >"$logs_dir/snapshot-security.log" 2>&1
 
@@ -344,8 +349,10 @@ if bash scripts/Test-LinuxMetadata.sh \
 fi
 
 strings "$x64_a" >"$logs_dir/linux-x64-strings.log"
-if grep -E -i \
-    'C:\\Users\\ThomasW|/mnt/c/Users/ThomasW|OneDrive - VOXTRONIC' \
+# shellcheck source=native-leak-markers.sh
+source scripts/native-leak-markers.sh
+mapfile -t host_leak_markers < <(flashgate_native_leak_markers)
+if grep -F -i -f <(printf '%s\n' "${host_leak_markers[@]}") \
     "$logs_dir/linux-x64-strings.log" >"$logs_dir/path-leak-findings.log"; then
     printf 'local Windows path or user data found in Linux binary strings\n' >&2
     exit 1
@@ -433,10 +440,10 @@ leak_arguments=(
     --forbidden "$native_root"
     --forbidden "$HOME"
     --forbidden "$host_name"
-    --forbidden 'C:\Users\ThomasW'
-    --forbidden '/mnt/c/Users/ThomasW'
-    --forbidden 'OneDrive - VOXTRONIC'
 )
+for marker in "${host_leak_markers[@]}"; do
+    leak_arguments+=(--forbidden "$marker")
+done
 go -C "$repo_dir" run -mod=vendor ./cmd/releaseaudit scan \
     --artifact "$linux_x64_archive" \
     --checksum "$linux_x64_checksum" \
