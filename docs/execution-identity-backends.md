@@ -2,9 +2,14 @@
 
 ## Status
 
-**Accepted architecture. Version 1.0 implements Variant A; Variant B is designed but deferred.**
+**Accepted architecture. Version 1.0 requires Variant A; Variant B is designed but deferred.**
 
 This document refines the native service architecture. ADR-015 is binding. `BACKLOG.md` remains authoritative for implementation status.
+
+The architecture decision is complete, but the runtime is not. In particular,
+this document does not claim completion of the backend-neutral interfaces,
+service-account backend, service hosts, or native platform validation while
+their canonical backlog rows remain `Planned`.
 
 ## Decision summary
 
@@ -12,11 +17,30 @@ FlashGate uses a hybrid per-root execution-identity architecture:
 
 | Variant | Description | Version 1.0 |
 |---|---|---|
-| A | OS access through a dedicated FlashGate service account and explicitly granted service roots | Implemented |
+| A | OS access through a dedicated FlashGate service account and explicitly granted service roots | Required; implementation remains tracked by `BL-237` |
 | B | Broker-managed worker process under the authenticated user's OS identity | Interface and threat model only |
 | C | In-process impersonation inside the shared service process | Permanently excluded |
 
 The hybrid decision separates **caller authorization** from **effective OS execution identity**. A caller may be authorized to use a root even though the operating system operation is performed by the service account. Both identities are visible in audit records.
+
+### Version 1.0 delivery boundary
+
+The accepted decision is split deliberately across independently reviewable
+owners:
+
+| Backlog owner | Delivery boundary |
+|---|---|
+| `BL-235` | Adopt the hybrid per-root architecture, Variant A selection, Variant B reservation, and Variant C prohibition |
+| `BL-236` | Implement backend-neutral execution-identity interfaces |
+| `BL-237` | Implement the Variant A service-account root backend |
+| `BL-238` | Complete the Variant B worker contract and threat model without implementing workers |
+| `BL-239` | Bind state, caches, handles, and result resources to the execution context |
+
+No row in this matrix substitutes for another. The accepted `BL-235`
+architecture neither makes the later implementation rows complete nor permits
+a service adapter to bypass them. Windows service-account, Linux service-user,
+ACL, peer-identity, and native audit evidence remains a platform-finalization
+requirement.
 
 ## Identity model
 

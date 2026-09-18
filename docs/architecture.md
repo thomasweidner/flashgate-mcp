@@ -323,7 +323,7 @@ Version 1.0:
 - user-worker backend: interface/threat model only;
 - in-process impersonation: prohibited.
 
-The backend-neutral boundary is implemented before the service so Variant B can be added later without changing domains or MCP tools.
+The backend-neutral boundary must be implemented before the service so Variant B can be added later without changing domains or MCP tools. Its implementation remains owned by `BL-236`; the accepted `BL-235` architecture does not claim that runtime work is complete.
 
 All authorization-sensitive handles, cursors, caches, resources, temporary data, and cancellation rights are bound to principal, profile, root, backend, and service generation.
 
