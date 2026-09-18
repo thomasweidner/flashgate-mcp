@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 )
@@ -12,6 +13,12 @@ type toolCapabilities struct {
 func capabilitiesFromReadOnly(readOnly bool) toolCapabilities {
 	return toolCapabilities{
 		filesystemWrite: !readOnly,
+	}
+}
+
+func capabilitiesFromProfile(profile config.Profile) toolCapabilities {
+	return toolCapabilities{
+		filesystemWrite: profile == config.ProfileFilesystemWrite,
 	}
 }
 

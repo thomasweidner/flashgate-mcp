@@ -10,6 +10,8 @@ import (
 
 const (
 	envRootPath         = "MCP_ROOT"
+	envProfile          = "MCP_PROFILE"
+	envRiskPolicy       = "MCP_RISK_POLICY"
 	envReadOnly         = "MCP_READ_ONLY"
 	envAllowCWDRoot     = "MCP_ALLOW_CWD_ROOT"
 	envMaxFileSize      = "MCP_MAX_FILE_SIZE"
@@ -38,11 +40,35 @@ const (
 	defaultMaxResponseBytes = int64(16 * 1024 * 1024) // 16 MiB
 )
 
+// Profile identifies an operator-selected capability profile. Profiles are
+// deliberately separate from risk policy: selecting a risk classification
+// never grants a functional capability.
+type Profile string
+
+const (
+	ProfileSafeRead        Profile = "safe-read"
+	ProfileFilesystemWrite Profile = "filesystem-write"
+)
+
+// RiskClass identifies an additional policy condition. The current
+// filesystem tools do not consume elevated risk classes, but parsing them now
+// gives later domains one strict, fail-closed configuration contract.
+type RiskClass string
+
+const (
+	RiskStandard    RiskClass = "standard"
+	RiskHigh        RiskClass = "high-risk"
+	RiskDestructive RiskClass = "destructive"
+	RiskInteractive RiskClass = "interactive"
+)
+
 // Config contains the complete application configuration.
 type Config struct {
 	filesystem FilesystemConfig
 	security   SecurityConfig
 	server     ServerConfig
+	profile    Profile
+	riskPolicy []RiskClass
 }
 
 // FilesystemConfig contains filesystem-related configuration.
@@ -79,7 +105,7 @@ func DefaultConfig() Config {
 	return Config{
 		filesystem: FilesystemConfig{
 			rootPath:         defaultRootPath,
-			readOnly:         false,
+			readOnly:         true,
 			allowCWDRoot:     false,
 			maxFileSize:      defaultMaxFileSize,
 			maxWriteBytes:    defaultMaxWriteBytes,
@@ -100,6 +126,8 @@ func DefaultConfig() Config {
 			maxArgumentBytes: defaultMaxArgumentBytes,
 			maxResponseBytes: defaultMaxResponseBytes,
 		},
+		profile:    ProfileSafeRead,
+		riskPolicy: []RiskClass{RiskStandard},
 	}
 }
 
@@ -113,12 +141,38 @@ func LoadFromEnvironment() (Config, error) {
 	}
 	cfg.filesystem.rootPath = rootPath
 
+	profileConfigured := false
+	if value, configured := os.LookupEnv(envProfile); configured {
+		profile, err := parseProfile(value)
+		if err != nil {
+			return Config{}, err
+		}
+		cfg.profile = profile
+		profileConfigured = true
+	}
+
 	if value, configured := os.LookupEnv(envReadOnly); configured {
 		parsed, err := strconv.ParseBool(value)
 		if err != nil {
 			return Config{}, NewError(CategoryInvalidProfile, err)
 		}
-		cfg.filesystem.readOnly = parsed
+		legacyProfile := ProfileFilesystemWrite
+		if parsed {
+			legacyProfile = ProfileSafeRead
+		}
+		if profileConfigured && cfg.profile != legacyProfile {
+			return Config{}, NewError(CategoryInvalidProfile, errors.New("MCP_PROFILE conflicts with MCP_READ_ONLY"))
+		}
+		cfg.profile = legacyProfile
+	}
+	cfg.filesystem.readOnly = cfg.profile == ProfileSafeRead
+
+	if value, configured := os.LookupEnv(envRiskPolicy); configured {
+		riskPolicy, err := parseRiskPolicy(value)
+		if err != nil {
+			return Config{}, err
+		}
+		cfg.riskPolicy = riskPolicy
 	}
 
 	if value, configured := os.LookupEnv(envAllowCWDRoot); configured {
@@ -241,6 +295,13 @@ func (c Config) Validate() error {
 		return NewError(CategoryInvalidRoot, nil)
 	}
 
+	if _, err := parseProfile(string(c.profile)); err != nil {
+		return err
+	}
+	if _, err := validateRiskPolicy(c.riskPolicy); err != nil {
+		return err
+	}
+
 	if c.filesystem.maxFileSize <= 0 {
 		return errors.New("maximum file size must be greater than zero")
 	}
@@ -302,9 +363,65 @@ func parsePositiveInt(value string, name string) (int, error) {
 	return int(parsed), nil
 }
 
+func parseProfile(value string) (Profile, error) {
+	profile := Profile(strings.TrimSpace(value))
+	switch profile {
+	case ProfileSafeRead, ProfileFilesystemWrite:
+		return profile, nil
+	default:
+		return "", NewError(CategoryInvalidProfile, errors.New("unsupported profile"))
+	}
+}
+
+func parseRiskPolicy(value string) ([]RiskClass, error) {
+	parts := strings.Split(value, ",")
+	policy := make([]RiskClass, 0, len(parts))
+	for _, part := range parts {
+		policy = append(policy, RiskClass(strings.TrimSpace(part)))
+	}
+	return validateRiskPolicy(policy)
+}
+
+func validateRiskPolicy(policy []RiskClass) ([]RiskClass, error) {
+	if len(policy) == 0 {
+		return nil, NewError(CategoryInvalidRiskPolicy, errors.New("empty risk policy"))
+	}
+
+	seen := make(map[RiskClass]struct{}, len(policy))
+	for _, riskClass := range policy {
+		switch riskClass {
+		case RiskStandard, RiskHigh, RiskDestructive, RiskInteractive:
+		default:
+			return nil, NewError(CategoryInvalidRiskPolicy, errors.New("unsupported risk classification"))
+		}
+		if _, duplicate := seen[riskClass]; duplicate {
+			return nil, NewError(CategoryInvalidRiskPolicy, errors.New("duplicate risk classification"))
+		}
+		seen[riskClass] = struct{}{}
+	}
+	if len(policy) > 1 {
+		if _, mixedStandard := seen[RiskStandard]; mixedStandard {
+			return nil, NewError(CategoryInvalidRiskPolicy, errors.New("standard cannot be combined with elevated risk classifications"))
+		}
+	}
+
+	return policy, nil
+}
+
 // Filesystem returns the filesystem configuration.
 func (c Config) Filesystem() FilesystemConfig {
 	return c.filesystem
+}
+
+// Profile returns the validated effective capability profile.
+func (c Config) Profile() Profile {
+	return c.profile
+}
+
+// RiskPolicy returns a defensive copy of the explicitly configured risk
+// classifications.
+func (c Config) RiskPolicy() []RiskClass {
+	return append([]RiskClass(nil), c.riskPolicy...)
 }
 
 // Security returns the security configuration.
