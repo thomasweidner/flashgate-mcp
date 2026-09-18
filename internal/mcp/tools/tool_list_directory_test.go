@@ -23,6 +23,10 @@ func TestListDirectoryDefinition(t *testing.T) {
 	if schema["additionalProperties"] != false {
 		t.Fatalf("expected closed schema: %#v", schema)
 	}
+	fields := schema["properties"].(map[string]any)["fields"].(map[string]any)
+	if fields["minItems"] != 1 || fields["uniqueItems"] != true {
+		t.Fatalf("expected bounded unique field selection: %#v", fields)
+	}
 }
 
 func TestListDirectoryDefaultsOnlyMissingPath(t *testing.T) {
@@ -32,11 +36,45 @@ func TestListDirectoryDefaultsOnlyMissingPath(t *testing.T) {
 	if rpcErr != nil || fake.listPath != "." {
 		t.Fatalf("expected default path, got path=%q error=%v", fake.listPath, rpcErr)
 	}
-	want := listDirectoryResult{Entries: fake.entries}
+	want := listDirectoryResult{Entries: []listDirectoryEntry{{Name: stringPointer("file.txt"), IsDir: boolPointer(false), Size: int64Pointer(1)}}}
 	if !reflect.DeepEqual(result, want) {
 		t.Fatalf("unexpected result: %#v", result)
 	}
 }
+
+func TestListDirectorySelectsOnlyRequestedFields(t *testing.T) {
+	fake := newFakeFileSystem()
+	fake.entries = []fs.Entry{{Name: "directory", IsDir: true, Size: 42}}
+
+	result, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"fields":["name","isDir"]}`))
+	if rpcErr != nil {
+		t.Fatalf("unexpected error: %#v", rpcErr)
+	}
+	raw, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != `{"entries":[{"name":"directory","isDir":true}]}` {
+		t.Fatalf("unexpected projected result: %s", raw)
+	}
+}
+
+func TestListDirectoryRejectsInvalidFieldSelectionsBeforeListing(t *testing.T) {
+	for _, raw := range []string{`{"fields":[]}`, `{"fields":["unknown"]}`, `{"fields":["name","name"]}`} {
+		fake := newFakeFileSystem()
+		_, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(raw))
+		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+			t.Fatalf("expected invalid params for %s, got %#v", raw, rpcErr)
+		}
+		if fake.listPath != "" {
+			t.Fatalf("filesystem listing occurred for invalid fields %s", raw)
+		}
+	}
+}
+
+func stringPointer(value string) *string { return &value }
+func boolPointer(value bool) *bool       { return &value }
+func int64Pointer(value int64) *int64    { return &value }
 
 func TestListDirectoryRejectsInvalidArguments(t *testing.T) {
 	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"unknown":true}`, `{} {}`} {
