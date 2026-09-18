@@ -1,27 +1,34 @@
 package main
 
 import (
+	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 )
 
-type toolCapabilities struct {
-	filesystemWrite bool
-}
+type toolCapabilities = capability.Set
 
 func capabilitiesFromReadOnly(readOnly bool) toolCapabilities {
-	return toolCapabilities{
-		filesystemWrite: !readOnly,
+	names := []capability.Name{capability.FilesystemRead}
+	if !readOnly {
+		names = append(names, capability.FilesystemWrite)
 	}
+	capabilities, ok := capability.NewSet(names...)
+	if !ok {
+		panic("server capability constants are invalid")
+	}
+	return capabilities
 }
 
 func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilities toolCapabilities) *tools.Registry {
 	toolRegistry := tools.NewRegistry()
-	toolRegistry.Register(tools.NewListDirectoryTool(filesystem))
-	toolRegistry.Register(tools.NewReadFileTool(filesystem, maxFileSize))
-	toolRegistry.Register(tools.NewGetPathInfoTool(filesystem))
+	if capabilities.Has(capability.FilesystemRead) {
+		toolRegistry.Register(tools.NewListDirectoryTool(filesystem))
+		toolRegistry.Register(tools.NewReadFileTool(filesystem, maxFileSize))
+		toolRegistry.Register(tools.NewGetPathInfoTool(filesystem))
+	}
 
-	if !capabilities.filesystemWrite {
+	if !capabilities.Has(capability.FilesystemWrite) {
 		return toolRegistry
 	}
 

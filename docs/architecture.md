@@ -215,6 +215,13 @@ Operations/jobs do not own filesystem, search, process, execution, or system sem
 - Windows/Linux adapters;
 - MCP and IPC adapters.
 
+The implemented functional capability vocabulary is centralized in
+`internal/capability` and kept distinct from profiles and risk classifications.
+The current single-root `MCP_READ_ONLY` compatibility input is translated into
+`filesystem.read` and, when write access is enabled, `filesystem.write` before
+the filesystem catalog is registered. Future profile and named-root policy may
+calculate the same capability set without changing the functional identifiers.
+
 ## Operations and Job Manager
 
 Long work may use an opaque handle such as `op_<opaque-id>`. The handle is server-generated and bound to:

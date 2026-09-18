@@ -16,7 +16,7 @@ import (
 )
 
 func TestCreateRouterRegistersInitialize(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
 	mcpRouter := createRouter("test-server", "test-version", registry)
 
 	params := json.RawMessage(`{
@@ -44,7 +44,7 @@ func TestCreateRouterRegistersInitialize(t *testing.T) {
 }
 
 func TestCreateRouterRegistersToolsList(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
 	mcpRouter := createRouter("test-server", "test-version", registry)
 
 	result, protocolErr := mcpRouter.Dispatch(
@@ -63,7 +63,7 @@ func TestCreateRouterRegistersToolsList(t *testing.T) {
 }
 
 func TestCreateRouterRegistersToolsCall(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
 	mcpRouter := createRouter("test-server", "test-version", registry)
 
 	_, protocolErr := mcpRouter.Dispatch(
@@ -105,7 +105,7 @@ func TestCreateRouterRejectsWriteToolCallWhenReadOnly(t *testing.T) {
 }
 
 func TestCreateRouterRejectsUnknownMethod(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	registry := createToolRegistry(noopFileSystem{}, 1024, capabilitiesFromReadOnly(false))
 	mcpRouter := createRouter("test-server", "test-version", registry)
 
 	_, protocolErr := mcpRouter.Dispatch(
@@ -128,7 +128,7 @@ func TestCreateRouterCallsGetPathInfoForMissingPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true}))
+	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(false)))
 
 	result, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`))
 	if protocolErr != nil {
@@ -157,7 +157,7 @@ func TestCreateRouterUsesMovePathForRename(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true}))
+	router := createRouter("test-server", "test-version", createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(false)))
 
 	_, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`))
 	if protocolErr != nil {

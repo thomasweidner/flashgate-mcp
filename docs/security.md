@@ -301,6 +301,13 @@ higher-risk profile              -> explicit validated activation
 
 Tool registration reflects effective capability but execution checks remain authoritative. Direct calls cannot bypass hidden/unregistered tools.
 
+The current implementation uses a closed functional capability vocabulary and
+rejects unknown identifiers rather than treating arbitrary profile or risk
+labels as rights. The legacy `MCP_READ_ONLY` switch resolves to explicit
+filesystem read/write capabilities for catalog registration. Per-operation
+server-side authorization remains separate planned enforcement and is not
+replaced by catalog filtering.
+
 MCP annotations are accurate hints only and never grant permission.
 
 ### Per-root policies and execution backend
