@@ -843,6 +843,8 @@ Security tests must cover:
 - JSON-RPC message and tool argument limits
 - filesystem read, write, list, copy, and recursive delete limits
 - diagnostics redaction
+- command-environment allowlisting, denied loader/interpreter/hook controls,
+  deterministic propagation, and absence of inherited server variables
 
 ### Integration Tests
 
