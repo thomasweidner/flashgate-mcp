@@ -118,6 +118,8 @@ Destructive operations are intentionally conservative.
 
 `Write()` does not overwrite existing files unless `overwrite=true`.
 
+`write_file` supports explicit atomic publication. The server stages bounded content beside the target, synchronizes and closes it before a same-filesystem publish, and removes any unpublished stage. Create-without-overwrite remains fail-closed when the target already exists; replacement requires both `atomic=true` and `overwrite=true`.
+
 ### Delete
 
 `Delete()` does not delete non-empty directories unless `recursive=true`.

@@ -183,6 +183,10 @@
           "overwrite": {
             "type": "boolean",
             "description": "Whether an existing file may be overwritten. Defaults to false."
+          },
+          "atomic": {
+            "type": "boolean",
+            "description": "Whether to stage and publish the complete file atomically. Defaults to false."
           }
         }
       },
