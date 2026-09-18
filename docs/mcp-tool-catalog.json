@@ -39,6 +39,40 @@
             "type": "string",
             "minLength": 1,
             "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted."
+          },
+          "filter": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "namePrefix": {
+                "type": "string"
+              },
+              "nameSuffix": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "file",
+                  "directory"
+                ]
+              }
+            }
+          },
+          "sortBy": {
+            "type": "string",
+            "enum": [
+              "name",
+              "type",
+              "size"
+            ]
+          },
+          "sortOrder": {
+            "type": "string",
+            "enum": [
+              "ascending",
+              "descending"
+            ]
           }
         }
       },
@@ -139,22 +173,45 @@
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": false }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": false
+              }
             },
-            "required": ["path", "exists"],
+            "required": [
+              "path",
+              "exists"
+            ],
             "additionalProperties": false
           },
           {
             "type": "object",
             "properties": {
-              "path": { "type": "string" },
-              "exists": { "const": true },
-              "name": { "type": "string" },
-              "isDir": { "type": "boolean" },
-              "size": { "type": "integer" }
+              "path": {
+                "type": "string"
+              },
+              "exists": {
+                "const": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "integer"
+              }
             },
-            "required": ["path", "exists", "name", "isDir", "size"],
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
             "additionalProperties": false
           }
         ]
