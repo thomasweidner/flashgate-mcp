@@ -269,6 +269,12 @@ Version 1.0 security work includes:
 
 Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, conditional read cache semantics, optional accelerators, and any external provider ecosystem.
 
+The Version 1.0 target for structured audit events, immutable event and trace
+correlation, redaction, bounded backpressure, rotation, retention, disk-full
+behavior, and log-injection resistance is defined by the
+[Audit Lifecycle and Trace Correlation Contract](audit-lifecycle-and-trace-contract.md).
+It is not implemented by the current filesystem-only runtime.
+
 ## Accepted Target Security Architecture
 
 Except where the current-state sections above state otherwise, the controls below are planned and are not implemented yet.
