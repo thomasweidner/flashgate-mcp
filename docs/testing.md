@@ -959,6 +959,12 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - TTL cleanup, restart invalidation, shutdown, and leak detection;
 - slow-reader and audit/log backpressure behavior.
 
+The implemented concurrency-limiter unit and race tests cover invalid limit
+configuration, canonical identity keys, global/domain/principal exhaustion,
+atomic rejection, concurrent idempotent release, capacity reuse, and immutable
+counter snapshots. Queueing and starvation-resistance tests remain owned by the
+fair scheduler work.
+
 ### Typed command tests
 
 - executable ID resolves only to approved absolute binary;
