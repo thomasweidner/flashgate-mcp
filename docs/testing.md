@@ -1084,6 +1084,8 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
   child-tree/process-group cleanup;
 - regular-clone, linked-worktree, nonrepository, and damaged-Git fixtures;
 - no interpreter runtime dependency;
+- strict native-adapter policy decoding and a product-runtime source scan that
+  rejects undeclared `os/exec` imports;
 - service asset syntax and install/remove dry validation;
 - checksums;
 - SBOM and dependency inventory;

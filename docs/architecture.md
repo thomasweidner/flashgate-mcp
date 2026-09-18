@@ -395,6 +395,9 @@ Version 1.0 implementation priority:
 
 PowerShell and shell scripts may be development, installation, validation, or administrator tooling. They are not normal FlashGate runtime dependencies.
 
+The normative admission criteria and machine-readable permanent source gate are
+defined in [Native OS adapter and no-interpreter policy](native-os-adapter-policy.md).
+
 ## Runtime and deployment model
 
 One repository and one primary binary remain the baseline.

@@ -405,6 +405,10 @@ Normal Version 1.0 runtime prefers:
 
 Python, PHP, Node.js, Java, PowerShell, Bash, or another interpreter is not a required runtime layer for the FlashGate core/service. Scripts may remain development, installation, smoke, or administrator tooling.
 
+The [native OS adapter and no-interpreter policy](native-os-adapter-policy.md)
+defines the external-program evidence gate, runtime boundary, and permanent
+machine-readable source check.
+
 ### Hybrid service execution identity
 
 A multi-client system service is a local privilege boundary. Every request has:
