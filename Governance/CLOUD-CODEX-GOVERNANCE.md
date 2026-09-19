@@ -110,7 +110,7 @@ Prefer:
 
 Do not rerun large unaffected matrices only for ceremony. Reuse unchanged valid evidence.
 
-PowerShell target standard is 7.6.5 through `pwsh`. If a required Windows/native validation environment is unavailable in Cloud, do not fabricate or silently replace it; defer that validation explicitly.
+PowerShell target standard is the 7.6 LTS line through `pwsh` (Major 7, Minor 6); record the observed patch separately. If a required Windows/native validation environment is unavailable in Cloud, do not fabricate or silently replace it; defer that validation explicitly.
 
 ## 7. Hard-One-Shot boundary
 
@@ -222,3 +222,7 @@ Every open Mobile PR must be rebound on return to Windows against:
 - all real prerequisite Mobile branches/PRs.
 
 Only Windows/local finalization may establish canonical task completion and authorize integration/cleanup.
+
+## PowerShell 7.6 LTS patch contract
+
+The general compatibility gate requires `Major=7` and `Minor=6`. The actual patch is recorded as `ObservedPowerShellVersion`; `MinimumPowerShellVersion` is `null` unless a concrete fix proves a minimum; `ServicingTarget=LatestServicedPatchWithin7.6`. Exact patch/path/hash bindings are permitted only for historical evidence, bug-reproduction fixtures, installer/download/hash/SBOM/supply-chain provenance, or a documented minimum-patch fix, and must be classified and allowlisted.

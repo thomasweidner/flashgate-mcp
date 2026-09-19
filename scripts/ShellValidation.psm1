@@ -1,7 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$script:RequiredPowerShellVersion = '7.6.5'
+$script:RequiredPowerShellLine = '7.6'
 $script:RequiredGitBashPath = 'C:\Program Files\Git\bin\bash.exe'
 $script:ProcessTerminationWaitMilliseconds = 5000
 $script:StreamDrainWaitMilliseconds = 5000
@@ -174,11 +174,8 @@ function Test-RequiredPowerShellVersion {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$ActualVersion)
 
-    return [string]::Equals(
-        $ActualVersion,
-        $script:RequiredPowerShellVersion,
-        [StringComparison]::Ordinal
-    )
+    try { $parsed = [version]$ActualVersion } catch { return $false }
+    return $parsed.Major -eq 7 -and $parsed.Minor -eq 6
 }
 
 function Test-RepositoryStateUnchanged {
@@ -369,7 +366,7 @@ function Invoke-FlashGateShellValidation {
     try {
         $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
         if (-not (Test-RequiredPowerShellVersion -ActualVersion $actualPowerShellVersion)) {
-            throw "PowerShell $($script:RequiredPowerShellVersion) is required; actual=$actualPowerShellVersion"
+            throw "PowerShell $($script:RequiredPowerShellLine).x (Major 7, Minor 6) is required; actual=$actualPowerShellVersion"
         }
 
         $resolvedRoot = [IO.Path]::GetFullPath($RepositoryRoot)

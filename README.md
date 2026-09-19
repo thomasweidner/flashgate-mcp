@@ -390,7 +390,7 @@ Porcelain-v2 status and `staged=false` remain separate mandatory evidence. The
 authoritative binary patch includes both rename sides and is byte-equal to both
 packaged patches.
 
-Run the documentation consistency gate with PowerShell 7.6.5:
+Run the documentation consistency gate with PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
 .\scripts\Test-DocumentationConsistency.ps1
@@ -399,7 +399,7 @@ Run the documentation consistency gate with PowerShell 7.6.5:
 The detailed checklist and exit-code contract are documented in [docs/documentation-quality-gate.md](docs/documentation-quality-gate.md).
 
 Validate the complete PowerShell and Bash entry-point inventory on Windows
-with the required PowerShell 7.6.5 and Git Bash runtimes:
+with the required PowerShell 7.6 LTS line and Git Bash runtimes:
 
 ```powershell
 & {
@@ -447,7 +447,7 @@ changes require the controlled native Linux validation described in
 remains the leading development environment; WSL2 receives a one-way test copy
 and never returns source changes.
 
-Invoke the canonical Windows entry point with PowerShell 7.6.5:
+Invoke the canonical Windows entry point with PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
 & {
@@ -474,7 +474,7 @@ FlashGate enforces separate repository-wide Go statement-coverage gates for Wind
 | Windows | 71.4% |
 | Linux | 70.6% |
 
-Run the Windows coverage gate with PowerShell 7.6.5:
+Run the Windows coverage gate with PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
 .\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 71.4
@@ -601,13 +601,14 @@ BL-248 artifact verification is complete and was merged through PR #25 on
 Metadata Regression Run 11 succeeded, the final Windows and native Linux
 contract suites passed `201/201` and `206/206`, respectively, and all six
 original findings are closed with no open BL-248 finding. BL-333/BL-334 and
-BL-335 and BL-251 are complete. The canonical orchestrator binds PowerShell
-7.6.5, the native Linux `standard` gate passes, and the final runspace-free
+BL-335 and BL-251 are complete. The canonical orchestrator binds the PowerShell
+7.6 LTS line, the native Linux `standard` gate passes, and the final runspace-free
 wrapper plus atomically persisted child result prove `225/225` governance
 fixtures with zero failures, skips, warnings, timeouts, cleanup errors, or
-repository mutation. The Windows shell harness passes 21/21 cases and obtains
+repository mutation. At BL-251 closure, the Windows shell harness passed 21/21 cases and obtained
 the bounded child PID directly from the process-start result, so its timeout
-cleanup evidence no longer depends on child-authored PID-file timing. The PID
+cleanup evidence no longer depended on child-authored PID-file timing. The
+current INF-181 PowerShell 7.6.x shell harness passes 25/25 cases. The PID
 correction passed focused independent delta review with no warnings or
 failures, and `BL-251-REV-005` is closed. The exact commit, remote
 push, Draft PR, Hosted CI, and focused independent review of the documentation
@@ -772,3 +773,7 @@ The backlog covers Version 1.0 filesystem, search, process, typed command, syste
 This project is licensed under the GNU General Public License v3.0.
 
 See `LICENSE` for details.
+
+## PowerShell-7.6-LTS-Patchvertrag
+
+Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.

@@ -6,7 +6,7 @@ FlashGate inherits the central Slim Governance security and authorization
 boundaries through its thin project adapter. Normal development uses
 `DIRECTLY_AFFECTED_FIRST`, reuses valid unchanged evidence, and runs affected
 product, Go, coverage, lint, build, release, metadata, Windows/Linux, shell,
-PowerShell 7.6.5 and security gates. Large Generic-Handoff, Finding-Correction,
+PowerShell 7.6 LTS-line and security gates. Large Generic-Handoff, Finding-Correction,
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
@@ -34,7 +34,7 @@ BL-333 supplies the change-trigger, finding-remediation/review-mode, and
 handoff-readiness foundation. BL-334 enforces it through
 `scripts/Test-GovernanceConsistency.ps1`.
 
-Parse every new or changed PowerShell source with PowerShell 7.6.5 before its
+Parse every new or changed PowerShell source with PowerShell 7.6.x (Major 7, Minor 6) before its
 first execution. Then run:
 
 ```powershell
@@ -390,7 +390,7 @@ unknown or duplicate status records, and CR/LF/NUL paths fail their named gate.
 The `info/alternates` and fixture-only object-divergence paths are constructed
 component by component so the same child hierarchy is exercised on Windows and
 Unix filesystems. A change to this shared Git-evidence helper requires the full
-generic fixture matrix under PowerShell 7.6.5 on Windows and on a native Linux
+generic fixture matrix under PowerShell 7.6.x on Windows and on a native Linux
 copy below `/home`; the real Unix executable package must run on Linux, and a
 platform-gated synthetic result does not satisfy that end-to-end gate.
 
@@ -569,7 +569,7 @@ go test -cover ./...
 ### Shell script validation
 
 BL-251 validates the complete repository shell-entry-point inventory rather
-than a fixed file list. The Windows gate requires PowerShell 7.6.5 and
+than a fixed file list. The Windows gate requires PowerShell 7.6.x (Major 7, Minor 6) and
 `C:\Program Files\Git\bin\bash.exe`, parses every `.ps1` and `.psm1`, runs
 Git Bash syntax checks for every `.sh`, validates strict UTF-8, line endings,
 final newlines and supported Bash shebangs, and proves that validation did not
@@ -601,11 +601,11 @@ The bounded-process result records the PID immediately after a successful
 process start. Its timeout regression validates the positive direct PID,
 exit code 124, confirmed tree termination, absence of that concrete process,
 and the case where timeout occurs before an optional child-authored PID file.
-The PowerShell matrix currently passes 21/21 cases. The Bash cleanup-negative
+The PowerShell matrix currently passes 25/25 cases. The Bash cleanup-negative
 probe uses only its task-local fixture root and requires `Status: FAIL`,
 `Cleanup: FAIL`, a nonzero failure count, a nonzero exit code, and exactly one
 terminal status block. CI
-runs both Windows commands after binding the verified PowerShell 7.6.5
+runs both Windows commands after binding a verified PowerShell 7.6.x
 runtime, and both native Bash commands on Ubuntu. PSScriptAnalyzer and
 ShellCheck remain optional local enrichments: when they are unavailable and
 installation is not authorized, the parser, native syntax checks, structural
@@ -644,7 +644,7 @@ MCP project is activated by this workflow.
 
 ### Canonical entry points
 
-Run PowerShell 7.6.5 through the Windows orchestrator:
+Run PowerShell 7.6.x through the Windows orchestrator:
 
 ```text
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Scripts\Invoke-FlashGateLinuxValidation.ps1
@@ -1142,3 +1142,7 @@ copy, hash scan, JSON verification, report, archive, or OneDrive access.
 flags, not an authoritative workflow. A separately prepared controller implements
 the two-phase attempt; no wrapper-side shortcut or time override is permitted.
 <!-- FLASHGATE_PERFORMANCE_WORKSPACE_POLICY_END -->
+
+## PowerShell-7.6-LTS-Patchvertrag
+
+Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.

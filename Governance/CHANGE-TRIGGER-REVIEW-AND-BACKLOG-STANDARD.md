@@ -39,7 +39,7 @@ and run only affected project gates:
   build;
 - product, MCP, protocol, filesystem and security contracts;
 - platform-specific Windows/Linux behavior;
-- release, metadata, shell and PowerShell 7.6.5 checks when their sources are
+- release, metadata, shell and PowerShell 7.6 LTS-line checks when their sources are
   affected;
 - focused documentation consistency for active project statements.
 
@@ -73,3 +73,7 @@ later consumer-cutover decision.
 BL-337 is terminally superseded by this adapter. BL-330 remains `Planned` for
 the small FlashGate-specific status-legend and validator-parity decision; that
 project detail is not silently claimed as resolved by central governance.
+
+## PowerShell-7.6-LTS-Patchvertrag
+
+Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.

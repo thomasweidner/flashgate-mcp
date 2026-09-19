@@ -105,12 +105,12 @@ try {
     $wrongShell = Invoke-FlashGateShellValidation -RepositoryRoot $successRoot -GitBashPath 'C:\Windows\System32\cmd.exe'
     Add-TestResult -Name 'wrong-git-bash-path-fails' -Passed ($wrongShell.Status -eq 'FAIL') -Detail 'Wrong shell path passed.'
 
-    Add-TestResult -Name 'wrong-powershell-version-fails' -Passed (
-        -not (Test-RequiredPowerShellVersion -ActualVersion '7.6.3')
-    ) -Detail 'PowerShell 7.6.3 was accepted.'
-    Add-TestResult -Name 'required-powershell-version-passes' -Passed (
-        Test-RequiredPowerShellVersion -ActualVersion '7.6.5'
-    ) -Detail 'PowerShell 7.6.5 was rejected.'
+    foreach ($acceptedVersion in @('7.6.5', '7.6.6', '7.6.99')) {
+        Add-TestResult -Name "powershell-line-accepts-$acceptedVersion" -Passed (Test-RequiredPowerShellVersion -ActualVersion $acceptedVersion) -Detail "PowerShell $acceptedVersion was rejected."
+    }
+    foreach ($rejectedVersion in @('7.5.99', '7.7.0', 'invalid')) {
+        Add-TestResult -Name "powershell-line-rejects-$rejectedVersion" -Passed (-not (Test-RequiredPowerShellVersion -ActualVersion $rejectedVersion)) -Detail "PowerShell $rejectedVersion was accepted."
+    }
 
     $invalidRoot = Invoke-FlashGateShellValidation -RepositoryRoot (Join-Path $testRoot 'not-present') -GitBashPath $gitBashPath
     Add-TestResult -Name 'invalid-repository-root-fails' -Passed ($invalidRoot.Status -eq 'FAIL') -Detail 'Invalid root passed.'

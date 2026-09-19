@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  POWERSHELL_765_URI: https://github.com/PowerShell/PowerShell/releases/download/v7.6.5/PowerShell-7.6.5-win-x64.zip
-  POWERSHELL_765_SHA256: 32EB8F6CDCE08F86E987D625A2733E54AC3E289AE7E1621B14C0B5BCEC2434EA
+  POWERSHELL_766_URI: https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-x64.zip
+  POWERSHELL_766_SHA256: 02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860
 
 jobs:
   project-quality:
@@ -55,16 +55,16 @@ jobs:
           fetch-depth: 0
           ref: ${{ steps.exact_head.outputs.expected_head }}
 
-      - name: Prepare PowerShell 7.6.5
-        id: pwsh765
+      - name: Prepare PowerShell 7.6.6
+        id: pwsh766
         shell: pwsh
         env:
-          POWERSHELL_URI: ${{ env.POWERSHELL_765_URI }}
-          POWERSHELL_SHA256: ${{ env.POWERSHELL_765_SHA256 }}
+          POWERSHELL_URI: ${{ env.POWERSHELL_766_URI }}
+          POWERSHELL_SHA256: ${{ env.POWERSHELL_766_SHA256 }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $packagePath = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.5-win-x64.zip'
-          $installRoot = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.5-win-x64'
+          $packagePath = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.6-win-x64.zip'
+          $installRoot = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.6-win-x64'
           $pwshPath = Join-Path $installRoot 'pwsh.exe'
           try {
             Invoke-WebRequest -Uri $env:POWERSHELL_URI -OutFile $packagePath
@@ -104,9 +104,9 @@ jobs:
           GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
           GITHUB_RUN_ATTEMPT_VALUE: ${{ github.run_attempt }}
           GITHUB_REF_VALUE: ${{ github.ref }}
-          EXPECTED_PWSH_PATH: ${{ steps.pwsh765.outputs.pwsh_path }}
-          PWSH_PACKAGE_PATH: ${{ steps.pwsh765.outputs.package_path }}
-          PWSH_PACKAGE_SHA256: 32EB8F6CDCE08F86E987D625A2733E54AC3E289AE7E1621B14C0B5BCEC2434EA
+          EXPECTED_PWSH_PATH: ${{ steps.pwsh766.outputs.pwsh_path }}
+          PWSH_PACKAGE_PATH: ${{ steps.pwsh766.outputs.package_path }}
+          PWSH_PACKAGE_SHA256: 02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860
         run: |
           $ErrorActionPreference = 'Stop'
           $governanceReportPath = Join-Path $env:RUNNER_TEMP 'flashgate-governance-report.json'
@@ -118,8 +118,8 @@ jobs:
             "PowerShellVersion: $powerShellVersion"
             "ExpectedPowerShellPath: $expectedPwshPath"
             "ActualPowerShellPath: $resolvedActualPwshPath"
-            if ($powerShellVersion -cne '7.6.5') {
-              throw "PowerShell 7.6.5 is required; actual=$powerShellVersion"
+            if ($powerShellVersion -cne '7.6.6') {
+              throw "PowerShell 7.6.6 is required; actual=$powerShellVersion"
             }
             $powerShellProcessPathParity = [string]::Equals(
               $resolvedActualPwshPath,
@@ -232,7 +232,7 @@ jobs:
               -ExpectedEvent $env:EVENT_NAME `
               -ExpectedRef $env:GITHUB_REF_VALUE `
               -ExpectedHeadSha $expectedHead `
-              -ExpectedPowerShellVersion '7.6.5' `
+              -ExpectedPowerShellVersion '7.6.6' `
               -PowerShellPackagePath $env:PWSH_PACKAGE_PATH `
               -ExpectedPowerShellPackageSha256 $env:PWSH_PACKAGE_SHA256 `
               -ReportPath $governanceReportPath
@@ -299,17 +299,17 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Prepare Windows test PowerShell 7.6.5
+      - name: Prepare Windows test PowerShell 7.6.6
         if: matrix.os == 'windows-latest'
-        id: test_pwsh765
+        id: test_pwsh766
         shell: pwsh
         env:
-          POWERSHELL_URI: ${{ env.POWERSHELL_765_URI }}
-          POWERSHELL_SHA256: ${{ env.POWERSHELL_765_SHA256 }}
+          POWERSHELL_URI: ${{ env.POWERSHELL_766_URI }}
+          POWERSHELL_SHA256: ${{ env.POWERSHELL_766_SHA256 }}
         run: |
           $ErrorActionPreference = 'Stop'
-          $packagePath = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.5-win-x64-test.zip'
-          $installRoot = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.5-win-x64-test'
+          $packagePath = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.6-win-x64-test.zip'
+          $installRoot = Join-Path $env:RUNNER_TEMP 'PowerShell-7.6.6-win-x64-test'
           $pwshPath = Join-Path $installRoot 'pwsh.exe'
           try {
             Invoke-WebRequest -Uri $env:POWERSHELL_URI -OutFile $packagePath
@@ -335,13 +335,13 @@ jobs:
             $actualHash = $null
           }
 
-      - name: Bind Windows test job to exact PowerShell 7.6.5
+      - name: Bind Windows test job to exact PowerShell 7.6.6
         if: matrix.os == 'windows-latest'
         shell: pwsh
         env:
-          EXPECTED_PWSH_PATH: ${{ steps.test_pwsh765.outputs.pwsh_path }}
-          PWSH_PACKAGE_PATH: ${{ steps.test_pwsh765.outputs.package_path }}
-          PWSH_PACKAGE_SHA256: ${{ env.POWERSHELL_765_SHA256 }}
+          EXPECTED_PWSH_PATH: ${{ steps.test_pwsh766.outputs.pwsh_path }}
+          PWSH_PACKAGE_PATH: ${{ steps.test_pwsh766.outputs.package_path }}
+          PWSH_PACKAGE_SHA256: ${{ env.POWERSHELL_766_SHA256 }}
         run: |
           $ErrorActionPreference = 'Stop'
           $result = $null
@@ -350,8 +350,8 @@ jobs:
             $expectedPwshPath = [System.IO.Path]::GetFullPath($env:EXPECTED_PWSH_PATH)
             $resolvedActualPwshPath = [System.IO.Path]::GetFullPath((Get-Process -Id $PID).Path)
             $actualPackageSha256 = (Get-FileHash -LiteralPath $env:PWSH_PACKAGE_PATH -Algorithm SHA256).Hash
-            if ($powerShellVersion -cne '7.6.5') {
-              throw "PowerShell 7.6.5 is required; actual=$powerShellVersion"
+            if ($powerShellVersion -cne '7.6.6') {
+              throw "PowerShell 7.6.6 is required; actual=$powerShellVersion"
             }
             if ($actualPackageSha256 -cne $env:PWSH_PACKAGE_SHA256) {
               throw "PowerShell package SHA-256 mismatch: expected=$($env:PWSH_PACKAGE_SHA256); actual=$actualPackageSha256"

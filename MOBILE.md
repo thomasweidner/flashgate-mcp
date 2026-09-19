@@ -312,7 +312,7 @@ For exactly one selected task:
 - preserve root/realpath/symlink/reparse/UNC, read-only, capability, caller/backend, principal, quota/fairness, resource-budget and safe-error boundaries;
 - stop on a new product/architecture/security/platform/dependency/release/scope decision instead of inventing one.
 
-Validation follows `DIRECTLY_AFFECTED_FIRST`: focused tests/static checks first, then the smallest sufficient consolidated gate. Use relevant `gofmt`, `go test`, race tests, `go vet`, build, schema/docs checks and `git diff --check`. PowerShell target is 7.6.5. Never claim unavailable Windows/WSL/SCM/systemd/ACL/native-host evidence.
+Validation follows `DIRECTLY_AFFECTED_FIRST`: focused tests/static checks first, then the smallest sufficient consolidated gate. Use relevant `gofmt`, `go test`, race tests, `go vet`, build, schema/docs checks and `git diff --check`. PowerShell target is the 7.6 LTS line (Major 7, Minor 6). Never claim unavailable Windows/WSL/SCM/systemd/ACL/native-host evidence.
 
 Cloud work must not mark `BACKLOG.md` `Done` or claim local integration. A task may report deferred integration/native validation without becoming blocked when its own Cloud delta is complete.
 
@@ -381,7 +381,7 @@ For every open Mobile PR on return:
 1. bind current local governance, `AGENTS.md`, `BACKLOG.md`, `main` and toolchain;
 2. process dependency roots before stacked children;
 3. inspect complete diff/ancestry and perform independent review where required;
-4. run real Windows/native Linux/PowerShell 7.6.5 validation;
+4. run real Windows/native Linux/PowerShell 7.6.x validation;
 5. correct directly caused findings;
 6. integrate/retarget/merge/cleanup only under then-applicable Git/remote approvals;
 7. update canonical backlog/status only from verified integration truth.
@@ -403,3 +403,7 @@ Replace `Filesystem` with `Operations/Job`, `Named roots`, `Process`, `Command E
 ### Named task
 
 > Führe `BL-xxx` gemäß `MOBILE.md` V3 aus. Prüfe zuerst den konkreten task-puren Delta und erst dann die DependencyExecution aus dem aktuellen Checkout; bei echtem `STACK_REQUIRED` stoppe mit dem exakten Vorgänger-Ref für einen neuen Cloud-Task. Kein Fetch/Pull/Merge/Cherry-Pick des Vorgängers und kein Merge des späteren PRs.
+
+## PowerShell 7.6 LTS patch contract
+
+The general compatibility gate requires `Major=7` and `Minor=6`. The actual patch is recorded as `ObservedPowerShellVersion`; `MinimumPowerShellVersion` is `null` unless a concrete fix proves a minimum; `ServicingTarget=LatestServicedPatchWithin7.6`. Exact patch/path/hash bindings are permitted only for historical evidence, bug-reproduction fixtures, installer/download/hash/SBOM/supply-chain provenance, or a documented minimum-patch fix, and must be classified and allowlisted.

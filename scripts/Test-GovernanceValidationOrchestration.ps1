@@ -244,7 +244,7 @@ try {
             groups = @()
             tags = @()
             targetPlatform = if ($IsWindows) { 'windows' } else { 'linux' }
-            availableCapabilities = @('git', 'powershell-7.6.5')
+            availableCapabilities = @('git', 'powershell-7.6')
         }
         exactCommit = $null
         stateComponents = @(

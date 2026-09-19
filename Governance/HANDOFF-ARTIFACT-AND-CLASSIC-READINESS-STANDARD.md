@@ -232,7 +232,7 @@ The authoritative external artifact gate is:
 C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Scripts\Test-ClassicReviewArtifact.ps1
 ```
 
-Binding invocation under PowerShell 7.6.5:
+Binding invocation under PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
 & {
@@ -430,3 +430,7 @@ fails readiness, even if the ZIP itself is technically valid.
 
 `NextAction` must not instruct the user to pass an artifact that the producing
 assignment did not create.
+
+## PowerShell-7.6-LTS-Patchvertrag
+
+Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.

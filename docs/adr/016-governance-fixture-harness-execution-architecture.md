@@ -240,7 +240,7 @@ and no redundant blocker or invocation summary fields are introduced.
 - blocked-without-failure, selector-preflight, duplicate-event/heartbeat,
   explicit-source/worktree, helper-shadowing, detached-HEAD, exit-code, and
   scope-overrun positives or fail-closed negatives;
-- Windows PowerShell 7.6.5 and native Linux PowerShell validation.
+- Windows and native Linux PowerShell 7.6.x (Major 7, Minor 6) validation.
 
 ## Related documents
 
@@ -248,3 +248,7 @@ and no redundant blocker or invocation summary fields are introduced.
 - [Efficiency improvement plan](../efficiency-improvement-plan.md)
 - [Change-trigger standard](../../Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md)
 - [Finding and review-mode standard](../../Governance/FINDING-REMEDIATION-AND-REVIEW-MODE-STANDARD.md)
+
+## PowerShell 7.6 LTS patch contract
+
+The general compatibility gate requires `Major=7` and `Minor=6`. The actual patch is recorded as `ObservedPowerShellVersion`; `MinimumPowerShellVersion` is `null` unless a concrete fix proves a minimum; `ServicingTarget=LatestServicedPatchWithin7.6`. Exact patch/path/hash bindings are permitted only for historical evidence, bug-reproduction fixtures, installer/download/hash/SBOM/supply-chain provenance, or a documented minimum-patch fix, and must be classified and allowlisted.
