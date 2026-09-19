@@ -83,7 +83,7 @@ FlashGate MCP is developed as a general, vendor-neutral open-source project. The
 
 Public, community, vendor, organization-internal, and Voxtronic-specific FlashGate modules/providers are post-Version-1.0 work. No module/provider contract or runtime model is part of the initial stable release, and future providers may not bypass central security or execution-identity controls.
 
-MCP protocol extensions are separate negotiated wire-protocol features. The implemented protocol remains MCP `2025-11-25`. The 2026 stateless-core release candidate and final Tasks Extension inform Version 1.0 adapter planning but are not advertised until implemented and tested. Deprecated MCP Roots is not the basis of FlashGate named roots.
+MCP protocol extensions are separate negotiated wire-protocol features. The implemented protocol remains MCP `2025-11-25`. Version 1.0 targets explicit support for the final `2026-07-28` revision alongside the `2025-11-25` initialization path, but no revision is advertised until its adapter path and compatibility tests are implemented. FlashGate names protocol paths by exact revision so future revisions remain explicit. The project keeps its own Go MCP adapter; official MCP SDKs/specification artifacts are interoperability references, not a new runtime dependency. Deprecated MCP Roots is not the basis of FlashGate named roots.
 
 ## Protocol and Transport
 
@@ -98,6 +98,8 @@ initialize
 tools/list
 tools/call
 ```
+
+The planned `2026-07-28` path is separate: it removes the initialization handshake, requires per-request protocol/capability metadata, implements `server/discover`, and returns revision-specific result/cache metadata. Those behaviors are target architecture only until BL-207/208 are implemented and validated.
 
 Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present eight-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
 

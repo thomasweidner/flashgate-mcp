@@ -46,16 +46,26 @@ Auto mode must distinguish:
 
 Only explicitly allowed absence/unavailability cases may fall back to direct STDIO. Authorization, policy, identity, or compatibility rejection must fail closed and must never be bypassed by direct fallback. Auto mode never installs a service, requests elevation, or changes policy.
 
-## Initialization and negotiation
+## Revision-specific protocol entry and negotiation
 
-Version 1.0 initialization includes:
+Version 1.0 uses exact revision-specific paths rather than one permanent generation abstraction.
 
-- explicit supported MCP revision selection;
-- negotiated extension set;
-- deterministic server information;
-- active profile/capability-derived tool catalog;
-- compact profile-specific server instructions;
-- catalog fingerprint and cache invalidation inputs where supported by the selected protocol contract.
+For the `2025-11-25` initialization path:
+
+- retain the `initialize`/`notifications/initialized` contract while that revision is supported;
+- select only behavior defined and implemented for that revision;
+- preserve current clients until an explicit later deprecation/removal decision.
+
+For the `2026-07-28` stateless path:
+
+- do not use `initialize`, `notifications/initialized`, or a protocol-level MCP session;
+- require the request's `_meta` protocol version and client capabilities, with client information treated only as self-reported compatibility/diagnostic metadata;
+- implement `server/discover` as required by the revision, while allowing clients to invoke ordinary RPCs without a prior discovery call;
+- return `UnsupportedProtocolVersion` for unsupported requested revisions with the exact supported revision set;
+- stamp server identity in result `_meta` as defined by the revision;
+- negotiate only explicitly supported extensions.
+
+The adapter derives the active profile/capability tool catalog, compact server instructions, exact-revision catalog fingerprint, and cache invalidation inputs from current server state. None of these artifacts grants authorization.
 
 The server instructions prioritize efficient usage: batch rather than repeated scalar calls, ranges/pages rather than unbounded content, exact field selection, dry-run before risky multi-step work, and cursor continuation for process/search results. Instructions are bounded and benchmarked.
 
@@ -73,7 +83,7 @@ schema version
 relevant configuration
 ```
 
-The catalog fingerprint changes whenever that tuple changes. Tool annotations aid clients but do not authorize operations.
+The catalog fingerprint changes whenever that tuple changes. On the `2026-07-28` path, list results also carry the revision-required `ttlMs` and `cacheScope`; FlashGate plans non-shared/private caching unless the complete result is proven independent of principal/profile-sensitive state. Tool annotations and cacheability aid clients but do not authorize operations.
 
 ## Tool result classes
 
@@ -84,6 +94,8 @@ Version 1.0 defines representation by payload class instead of applying one enve
 - text payload appears once plus compact metadata;
 - binary/media payload uses bounded inline representation or an opaque result/resource handle;
 - long-running work returns an operation/job handle and bounded status/result pages.
+
+Wire encoding is revision-specific. The current `2025-11-25` result envelope remains unchanged until its own contract changes. Every successful `2026-07-28` result carries the required `resultType` (normally `"complete"`; `"input_required"` only for the revision's Multi Round-Trip Requests pattern), plus revision-defined result `_meta` such as server identity. Shared domain result objects do not acquire protocol-version fields.
 
 All handles are opaque, random, expiring, and bound to principal, root, profile, capability set, execution backend, service instance, and operation ownership. Host absolute paths are never encoded into public URIs.
 
@@ -118,11 +130,11 @@ Errors distinguish at least:
 
 No error permits auto-mode fallback after an authorization, policy, identity, or compatibility rejection.
 
-## Stateless-core and Tasks planning
+## `2026-07-28` stateless path and Tasks planning
 
-Version 1.0 architecture does not bind durable authorization or operation ownership solely to one transport connection. Server-side state is addressed through identity-bound handles and survives only within explicit TTL and lifecycle rules.
+Version 1.0 architecture does not bind durable authorization or operation ownership solely to one transport connection. The `2026-07-28` path must process each request from its own metadata and current server state; an STDIO process or IPC connection is not a conversation/session authority. Server-side state is addressed through identity-bound handles and survives only within explicit TTL and lifecycle rules.
 
-The final supported protocol matrix decides whether and how the MCP Tasks Extension is exposed. FlashGate must not combine the experimental 2025 task lifecycle with a later final extension contract. Internal Operations/Job Manager semantics remain protocol-independent and are adapted only after negotiation.
+The supported protocol matrix decides whether and how the final `io.modelcontextprotocol/tasks` Extension is exposed. FlashGate must not combine the experimental 2025 task lifecycle with that final extension contract. Internal Operations/Job Manager semantics remain protocol-independent and are adapted only after exact-revision/extension negotiation. If Multi Round-Trip Requests are used, they are implemented only on revision paths that define them rather than by reintroducing server-initiated JSON-RPC requests.
 
 Deprecated MCP Roots, Sampling, and Logging are not architectural dependencies. FlashGate named roots are server configuration and authorization objects, not client-provided trust roots.
 

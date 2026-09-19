@@ -2549,7 +2549,6 @@ try {
     [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
     $requiredPowerShellLine = '7.6'
     $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
-    $fixturePowerShellVersion = $actualPowerShellVersion
     if ($PSVersionTable.PSVersion.Major -ne 7 -or $PSVersionTable.PSVersion.Minor -ne 6) {
         throw "PowerShell $requiredPowerShellLine.x is required; actual=$actualPowerShellVersion"
     }
@@ -2562,6 +2561,24 @@ try {
     if (-not (Test-Path -LiteralPath $pwsh -PathType Leaf)) {
         throw "Current PowerShell executable does not exist: $pwsh"
     }
+    $selectedPowerShellVersionOutput = @(
+        & $pwsh -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' 2>&1
+    )
+    $selectedPowerShellProbeExit = $LASTEXITCODE
+    if ($selectedPowerShellProbeExit -ne 0 -or $selectedPowerShellVersionOutput.Count -ne 1) {
+        throw "Cannot determine selected PowerShell executable version: $pwsh"
+    }
+    $selectedPowerShellVersionText = [string]$selectedPowerShellVersionOutput[0]
+    try {
+        $selectedPowerShellVersion = [version]$selectedPowerShellVersionText
+    }
+    catch {
+        throw "Selected PowerShell executable returned an invalid version: $selectedPowerShellVersionText"
+    }
+    if ($selectedPowerShellVersion.Major -ne 7 -or $selectedPowerShellVersion.Minor -ne 6) {
+        throw "Selected PowerShell executable must be $requiredPowerShellLine.x; actual=$selectedPowerShellVersionText"
+    }
+    $fixturePowerShellVersion = $selectedPowerShellVersion.ToString()
     Push-Location -LiteralPath $temporaryRoot
     $locationPushed = $true
 

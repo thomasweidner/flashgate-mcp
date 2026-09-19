@@ -892,9 +892,9 @@ The `tools/list` JSON-RPC wire test checks schema exposure for both profiles and
 
 ### MCP Compatibility Testing
 
-The implemented protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, legacy unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the unchanged error contract. The decoder intentionally validates the exact FlashGate-emitted subset (one text block, required object `structuredContent`, optional boolean `isError`, no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
+The implemented protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, pre-`CallToolResult` unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the unchanged error contract. The decoder intentionally validates the exact FlashGate-emitted `2025-11-25` subset (one text block, required object `structuredContent`, optional boolean `isError`, no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
 
-Future protocol or extension support still requires version-negotiation, extension-negotiation, client fallback, and compatibility tests before it is advertised. Complete JSON Schema 2020-12 validation and official MCP conformance tooling remain planned.
+Version 1.0 adds a separate `2026-07-28` compatibility matrix rather than mutating the `2025-11-25` expectations in place. Required coverage includes `server/discover`; per-request protocol/capability `_meta`; optional self-reported `clientInfo` without authorization effect; response `serverInfo`; `UnsupportedProtocolVersion`; required result `resultType`; list `ttlMs`/`cacheScope`; extension downgrade/mismatch; no connection-history authority; and cross-revision opening/probe behavior on STDIO. Future protocol revisions require their own explicit matrix/path delta. Complete JSON Schema 2020-12 validation and official MCP conformance tooling remain planned.
 
 ### Benchmarks
 
@@ -1040,14 +1040,15 @@ request-count, singleton, PID-only, or registry-only termination.
 
 Before Version 1.0, publish and test the supported MCP revision matrix:
 
-- current `2025-11-25` behavior;
-- any later final revision only after implementation;
-- stateless-core behavior where selected;
-- deterministic list cache/TTL invalidation;
+- exact current `2025-11-25` initialization behavior, preserved while that revision is supported;
+- final `2026-07-28` stateless behavior only after implementation, including `server/discover`, per-request metadata, supported-version errors, result typing, server identity metadata, and list cache fields;
+- cross-revision STDIO opening/probe/fallback behavior without ambiguous connection-state authority;
+- deterministic exact-revision catalog fingerprint and cache invalidation, including safe `cacheScope`;
 - final Tasks Extension mapping without mixing the 2025 experimental lifecycle;
-- extension downgrade/mismatch;
+- extension downgrade/mismatch and missing-required-capability cases;
 - JSON Schema 2020-12 validation;
-- deprecated Roots never overrides server roots.
+- deprecated Roots never overrides server roots;
+- any future revision only through a new explicit matrix/path entry and directly affected tests.
 
 ### Audit and failure-path tests
 

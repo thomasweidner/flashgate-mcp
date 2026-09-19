@@ -110,15 +110,20 @@ Payload-heavy content is transmitted once. Small metadata results may retain tex
 
 Version 1.0 must publish an explicit supported MCP protocol matrix.
 
-At this planning date, the implemented revision remains `2025-11-25`. The `2026-07-28` release candidate informs architecture but is not claimed as implemented before the final specification and corresponding FlashGate adapter/tests exist.
+The implemented revision remains `2025-11-25`. The final `2026-07-28` specification is now an accepted Version 1.0 implementation target. The planned release matrix supports both exact revisions after BL-207/208 complete: a `2025-11-25` initialization path and a separate `2026-07-28` stateless path. This is a release target, not a claim that `2026-07-28` is implemented today.
+
+FlashGate documentation and code name protocol paths by exact revision. A later MCP revision therefore receives its own explicit support-matrix entry, adapter delta, and tests.
 
 Before Version 1.0:
 
-- every advertised revision must have negotiation and compatibility tests;
-- the adapter must support the selected stateless-core behavior where applicable;
-- Tasks must use the final negotiated extension contract, not a mixture with the 2025 experimental lifecycle;
+- every advertised revision must have exact opening/dispatch, incompatibility, positive, negative, and cross-revision compatibility tests;
+- the `2025-11-25` path must preserve its initialization-based behavior while supported;
+- the `2026-07-28` path must implement per-request protocol/capability `_meta`, mandatory `server/discover`, `UnsupportedProtocolVersion`, required result `resultType`, result `serverInfo` metadata, and required list-result `ttlMs`/`cacheScope`;
+- client self-reported metadata, discovery, extension declarations, and cached catalogs must never become authorization authority;
+- Tasks must use the final negotiated `io.modelcontextprotocol/tasks` extension contract, not a mixture with the 2025 experimental lifecycle;
 - deprecated Roots, Sampling, and Logging must not become architectural dependencies;
-- JSON Schema 2020-12 validation and deterministic schema snapshots must pass.
+- JSON Schema 2020-12 validation and deterministic schema snapshots must pass;
+- the migration must not add an MCP SDK runtime dependency without a separate dependency/architecture decision.
 
 ### Security and multi-client service controls
 
