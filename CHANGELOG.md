@@ -78,6 +78,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Planning
 
+- Rebased the Version 1.0 MCP compatibility plan onto the final `2026-07-28` specification without changing runtime behavior. FlashGate continues to implement only `2025-11-25`; SPR-048 now explicitly targets a `2025-11-25` initialization path plus a separate `2026-07-28` stateless path with per-request `_meta`, `server/discover`, revision-specific result/cache semantics, extension negotiation, and no client-metadata authorization authority. Planning names paths by exact revision so future revisions remain explicit, and it retains the existing Go MCP adapter without adding an SDK runtime dependency. Existing Mobile PRs #60/#69/#149 require fresh rebase/review against this convergence before later implementation merge.
 - Formally closed BL-341 planning, architecture, documentation, and review work
   without runtime implementation. The focused independent delta review passed
   and closed `BL-341-REV-001`, `BL-341-REV-002`, and `BL-341-REV-003` with no new

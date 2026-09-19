@@ -201,8 +201,8 @@ Version 1.0 defines:
 - deterministic schema property ordering where the serializer permits;
 - a catalog fingerprint derived from protocol revision, active profile, effective capabilities, schema versions, and relevant configuration generation;
 - invalidation when the effective catalog changes;
-- list-result TTL/cache semantics compatible with supported MCP revisions;
-- no reuse of a catalog fingerprint across incompatible protocol contracts.
+- revision-specific list-result cache semantics; on `2026-07-28`, return the required `ttlMs` and `cacheScope` fields and keep `cacheScope` non-shared/private unless the complete result is proven independent of principal/profile-sensitive state;
+- no reuse of a catalog fingerprint across incompatible protocol revisions or security contexts.
 
 This supports client caching without exposing sensitive configuration details.
 
