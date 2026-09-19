@@ -110,7 +110,6 @@ func classifyFilesystemError(err error) filesystemErrorCategory {
 		return categoryAccessDenied
 	case errors.Is(err, fs.ErrPathIsDirectory),
 		errors.Is(err, fs.ErrPathIsNotDirectory),
-		errors.Is(err, fs.ErrCopyDirectoryUnsupported),
 		errors.Is(err, fs.ErrMoveTypeMismatch),
 		errors.Is(err, fs.ErrDirectoryNotEmpty):
 		return categoryUnsupportedPathType

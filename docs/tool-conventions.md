@@ -49,7 +49,7 @@ All client paths are relative to the configured root. Results may echo the publi
 
 `create_directory.created` is `true` only when the leaf directory was created by that call and `false` for an existing directory.
 
-`copy_path` is file-only. `move_path` is the sole Move/Rename contract and is same-volume only.
+`copy_path` supports files and bounded directory trees; directory targets must be new. `move_path` is the sole Move/Rename contract and is same-volume only.
 
 ## Capability gating
 

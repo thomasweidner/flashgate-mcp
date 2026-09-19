@@ -284,7 +284,7 @@
     {
       "name": "copy_path",
       "title": "Copy Path",
-      "description": "Copies a file below the configured filesystem root. Directory copy is not supported.",
+      "description": "Copies a file or bounded directory below the configured filesystem root.",
       "inputSchema": {
         "type": "object",
         "required": [
@@ -296,12 +296,12 @@
           "source": {
             "type": "string",
             "minLength": 1,
-            "description": "Relative source file path below the configured filesystem root."
+            "description": "Relative source path below the configured filesystem root."
           },
           "target": {
             "type": "string",
             "minLength": 1,
-            "description": "Relative target file path below the configured filesystem root."
+            "description": "Relative target path below the configured filesystem root."
           },
           "overwrite": {
             "type": "boolean",
