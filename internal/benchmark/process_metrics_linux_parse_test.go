@@ -1,6 +1,7 @@
 package benchmark
 
 import (
+	"encoding/binary"
 	"strings"
 	"testing"
 )
@@ -82,6 +83,59 @@ func TestParseLinuxStatHandlesProcessNamesAndInvalidInput(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := parseLinuxStat([]byte(tc.data), tc.ticks); err == nil {
 				t.Fatal("invalid proc stat accepted")
+			}
+		})
+	}
+}
+
+func TestParseLinuxStatUsesNonStandardClockTickRate(t *testing.T) {
+	stat := []byte("123 (server) S 1 2 3 4 5 6 7 8 9 10 25 50")
+	metrics, err := parseLinuxStat(stat, 250)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metrics.userCPUNS == nil || *metrics.userCPUNS != 100_000_000 || metrics.systemCPUNS == nil || *metrics.systemCPUNS != 200_000_000 {
+		t.Fatalf("CPU metrics=%+v", metrics)
+	}
+}
+
+func TestParseLinuxClockTicks(t *testing.T) {
+	encode := func(wordBytes int, entries ...uint64) []byte {
+		data := make([]byte, len(entries)*wordBytes)
+		for index, value := range entries {
+			if wordBytes == 4 {
+				binary.LittleEndian.PutUint32(data[index*wordBytes:], uint32(value))
+			} else {
+				binary.LittleEndian.PutUint64(data[index*wordBytes:], value)
+			}
+		}
+		return data
+	}
+	for _, wordBytes := range []int{4, 8} {
+		data := encode(wordBytes, 6, 4096, linuxAuxvClockTicks, 250, 0, 0)
+		got, err := parseLinuxClockTicks(data, wordBytes, binary.LittleEndian)
+		if err != nil {
+			t.Fatalf("word size %d: %v", wordBytes, err)
+		}
+		if got != 250 {
+			t.Fatalf("word size %d: clock ticks=%d, want 250", wordBytes, got)
+		}
+	}
+
+	invalid := []struct {
+		name      string
+		data      []byte
+		wordBytes int
+	}{
+		{"unsupported word size", nil, 2},
+		{"malformed length", []byte{1}, 8},
+		{"missing clock ticks", encode(8, 6, 4096, 0, 0), 8},
+		{"zero clock ticks", encode(8, linuxAuxvClockTicks, 0), 8},
+	}
+	for _, tc := range invalid {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := parseLinuxClockTicks(tc.data, tc.wordBytes, binary.LittleEndian); err == nil {
+				t.Fatal("invalid auxiliary vector accepted")
 			}
 		})
 	}
