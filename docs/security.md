@@ -470,17 +470,20 @@ A heavy telemetry dependency is not required. Optional standard trace-context pr
 
 ### MCP version and extension compatibility
 
-The implemented revision remains MCP `2025-11-25` until another revision is finalized, implemented, and tested.
+The implemented revision remains MCP `2025-11-25`. The final `2026-07-28` revision is a Version 1.0 target but remains unadvertised until its exact adapter path and tests are complete.
 
 Version 1.0 protocol security includes:
 
-- explicit supported-revision matrix;
+- an explicit exact-revision matrix and revision dispatcher using the `2025-11-25` initialization path and `2026-07-28` stateless path;
 - adapter-only version/extension logic;
-- stateless-core and list-cache/TTL review for the 2026 line;
+- `2026-07-28` per-request protocol/capability validation with no connection-history authority;
+- mandatory `server/discover` support without treating discovery or self-reported `clientInfo` as identity/authorization evidence;
+- fail-closed unsupported-version, malformed-`_meta`, missing-required-capability, and revision-mismatch behavior;
+- exact-revision catalog/cache invalidation, with non-shared/private `cacheScope` unless sharing safety is proven;
 - final Tasks Extension mapping without mixing the 2025 experimental lifecycle;
 - JSON Schema 2020-12 validation;
 - capability downgrade/mismatch tests;
-- no authorization implication from extension support;
+- no authorization implication from extension support, annotations, result metadata, or caches;
 - no architectural dependency on deprecated Roots, Sampling, or Logging.
 
 ### Release and supply-chain security
@@ -538,7 +541,7 @@ The vendored Windows resource generator and committed icon source are covered by
 | MCP host lifecycle | orphaned direct/proxy hosts, retained pipes, long-lived wrappers, PID reuse, false owner attribution, stale/manipulated instance records, unsafe idle/singleton heuristics, owned-child/job survival, connection-owned state after proxy loss, unrelated-process targeting |
 | Future user workers | token/UID/session acquisition, groups/env, broker IPC, worker reuse, cross-user state, resource/crash isolation |
 | Payload/resources | amplification, base64 cost, host-path URI leak, owner/TTL checks, stale generation, compatibility fallback |
-| MCP versions/extensions | downgrade/mismatch, stateless routing, cache invalidation, Tasks lifecycle, deprecated capability confusion |
+| MCP versions/extensions | exact-revision dispatch, downgrade/mismatch, malformed/missing per-request metadata, connection-state confusion, discovery/clientInfo trust, cache-scope isolation, Tasks lifecycle, deprecated capability confusion |
 | Supply chain | dependency/workflow compromise, artifact substitution, unsigned updates, provenance, rollback |
 | Future providers | policy bypass, capability inflation, dependency/update risk, in-process versus IPC isolation |
 

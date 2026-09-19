@@ -92,7 +92,7 @@ Not yet implemented:
 - payload-class and large-result resources;
 - proxy/auto/system-service modes;
 - hybrid execution-identity backends;
-- MCP 2026 stateless/extension support;
+- explicit `2026-07-28` stateless revision support alongside the `2025-11-25` initialization path;
 - external provider system.
 
 ## Accepted Version 1.0 target architecture
@@ -331,23 +331,32 @@ See [Execution Identity Backends](execution-identity-backends.md) and ADR-015.
 
 ## MCP compatibility boundary
 
-The core is protocol independent. The MCP adapter owns all version-specific wire behavior.
+The core is protocol independent. The MCP adapter owns all revision-specific wire behavior.
 
-Current implementation remains `2025-11-25`. The `2026-07-28` release candidate informs planning but is not advertised until the final specification and FlashGate implementation/tests exist.
+Current implementation remains only `2025-11-25`. The final `2026-07-28` specification is an accepted Version 1.0 target, not an implementation claim.
+
+FlashGate names protocol paths by exact revision:
+
+- **`2025-11-25` initialization path:** `initialize`/`notifications/initialized` behavior and the current wire/result contracts;
+- **`2026-07-28` stateless path:** no initialization handshake or protocol-level session; each request carries protocol version/capabilities in `_meta`, the server implements `server/discover`, and results/cache metadata follow the final revision;
+- **future revisions:** each receives an explicit protocol-matrix entry and adapter/test delta. No future revision implicitly inherits every `2026-07-28` behavior merely because it is newer.
+
+One binary/process may support multiple exact revisions concurrently while all domain services remain protocol-neutral. Revision dispatch must never become an authorization boundary: OS/transport identity, server policy, principal/root/profile/backend bindings, and current generation remain authoritative.
+
+The migration keeps FlashGate's own Go MCP adapter. Official MCP SDKs and schemas are interoperability/conformance references; adopting a runtime SDK dependency requires a separate dependency/architecture decision.
 
 Version 1.0 protocol work includes:
 
-- explicit supported revision matrix;
-- stateless-core adaptation where selected;
-- deterministic tool catalogs and fingerprints;
-- list-result cache/TTL semantics;
+- an exact supported-revision matrix covering `2025-11-25` and, after implementation, `2026-07-28`;
+- revision-specific opening/dispatch and incompatibility behavior;
+- `2026-07-28` per-request `_meta`, mandatory `server/discover`, `UnsupportedProtocolVersion`, result `resultType`, response `serverInfo`, and list `ttlMs`/`cacheScope`;
+- deterministic tool catalogs and exact-revision fingerprints;
 - full JSON Schema 2020-12 validation;
-- final Tasks Extension evaluation/mapping;
-- no mixture of the 2025 experimental Tasks lifecycle with the final extension;
+- final Tasks Extension evaluation/mapping without mixing the 2025 experimental lifecycle;
 - bounded fallback for clients without optional extensions/resources;
 - deprecation awareness for Roots, Sampling, and Logging.
 
-MCP annotations and extension negotiation never grant authorization.
+MCP annotations, discovery, client metadata, extension negotiation, and cache state never grant authorization.
 
 ## Payload, resource, and token efficiency
 
