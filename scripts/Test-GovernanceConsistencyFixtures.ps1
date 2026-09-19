@@ -2548,8 +2548,8 @@ try {
     $temporaryRoot = Join-Path $temporaryBase ('flashgate-governance-fixtures-' + [guid]::NewGuid().ToString('N'))
     [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
     $requiredPowerShellLine = '7.6'
-    $fixturePowerShellVersion = '7.6.5'
     $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
+    $fixturePowerShellVersion = $actualPowerShellVersion
     if ($PSVersionTable.PSVersion.Major -ne 7 -or $PSVersionTable.PSVersion.Minor -ne 6) {
         throw "PowerShell $requiredPowerShellLine.x is required; actual=$actualPowerShellVersion"
     }
@@ -3734,7 +3734,9 @@ try {
     $runtimeFixtureName = [string]$runtimeFixtureNames[0]
     if ($runtimeFixtureName -cin $selectedFixtureNames) {
         $runtimeRecordPath = Join-Path $temporaryRoot 'runtime-release-record.json'
-        $runtimePackagePath = Join-Path $temporaryRoot 'PowerShell-7.6.5-win-x64.zip'
+        $runtimePackagePath = Join-Path $temporaryRoot (
+            "PowerShell-$fixturePowerShellVersion-win-x64.zip"
+        )
         [System.IO.File]::WriteAllText(
             $runtimeRecordPath,
             ($release | ConvertTo-Json -Depth 100),

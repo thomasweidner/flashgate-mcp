@@ -29,8 +29,8 @@ try {
         }
     }
     elseif ($IsLinux) {
-        $expectedLinuxPowerShellPath = '/home/weidnerthomas/voxtronic/tools/powershell/7.6.5/pwsh'
-        $expectedLinuxPowerShellSha256 = 'D989CD1AB2EAD1BE3331DB2EEF38D209759128981873E6300653DF27BC7246C5'
+        $expectedLinuxPowerShellPath = '/home/weidnerthomas/voxtronic/tools/powershell/7.6.6/pwsh'
+        $expectedLinuxPowerShellSha256 = '3C6E4D629571429CF6CC86DB94278E2CE17349EDBBFE0A0DE007BB6BCCDBC208'
         if (([version]$powerShellVersion).Major -ne 7 -or ([version]$powerShellVersion).Minor -ne 6) {
             throw "Native Linux PowerShell 7.6.x is required; actual=$powerShellVersion"
         }
