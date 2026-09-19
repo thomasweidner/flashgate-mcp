@@ -66,7 +66,7 @@ try {
     Import-Module -Name $modulePath -Force
 
     $metadata = Read-GovernanceCaseMetadata -Path $metadataPath -SchemaPath $schemaPath
-    $available = @('git', 'powershell-7.6.5')
+    $available = @('git', 'powershell-7.6')
     $single = Resolve-GovernanceCaseSelection -Metadata $metadata `
         -CaseName 'positive-bundled-start' -TargetPlatform windows `
         -AvailableCapability $available
@@ -132,7 +132,7 @@ try {
         })
     $linuxCase = Resolve-GovernanceCaseSelection -Metadata $metadata `
         -CaseName 'positive-bundled-start' -TargetPlatform linux `
-        -AvailableCapability @('git', 'powershell-7.6.5')
+        -AvailableCapability @('git', 'powershell-7.6')
     $results.Add([pscustomobject]@{
             Id = 'BL338-POS-010-PLATFORM-CAPABILITIES-COMPLETE'
             Passed = $windowsCase.CapabilityIncompleteSelectorCount -eq 0 -and
@@ -208,7 +208,7 @@ try {
 
     $platformFailure = Resolve-GovernanceCaseSelection -Metadata $metadata `
         -CaseName 'positive-commit-preparation' -TargetPlatform linux `
-        -AvailableCapability @('git', 'powershell-7.6.5')
+        -AvailableCapability @('git', 'powershell-7.6')
     $results.Add([pscustomobject]@{
             Id = 'BL338-NEG-019-PLATFORM-INCOMPATIBLE'
             Passed = (Test-SelectionFailureGate -Selection $platformFailure) -and

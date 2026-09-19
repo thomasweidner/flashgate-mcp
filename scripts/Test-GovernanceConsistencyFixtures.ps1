@@ -2407,8 +2407,8 @@ try {
     }
     if (@($AvailableCapability).Count -eq 0) {
         $portableCapabilities = [System.Collections.Generic.List[string]]::new()
-        if ($PSVersionTable.PSVersion.ToString() -ceq '7.6.5') {
-            $portableCapabilities.Add('powershell-7.6.5')
+        if ($PSVersionTable.PSVersion.Major -eq 7 -and $PSVersionTable.PSVersion.Minor -eq 6) {
+            $portableCapabilities.Add('powershell-7.6')
             $powerShellCapabilitySource = 'PORTABLE_PROCESS_PREFLIGHT'
         }
         $portableGit = Get-Command git -CommandType Application -ErrorAction SilentlyContinue
@@ -2424,7 +2424,7 @@ try {
         $resolvedAvailableCapability = @(
             Get-OrdinalSortedUniqueStrings -Value $AvailableCapability
         )
-        $powerShellCapabilitySource = if ('powershell-7.6.5' -cin $resolvedAvailableCapability) {
+        $powerShellCapabilitySource = if ('powershell-7.6' -cin $resolvedAvailableCapability) {
             'CALLER_SUPPLIED_VALIDATED_CAPABILITY'
         }
         else {
@@ -2547,10 +2547,11 @@ try {
     $temporaryBase = [System.IO.Path]::GetTempPath()
     $temporaryRoot = Join-Path $temporaryBase ('flashgate-governance-fixtures-' + [guid]::NewGuid().ToString('N'))
     [void][System.IO.Directory]::CreateDirectory($temporaryRoot)
-    $requiredPowerShellVersion = '7.6.5'
+    $requiredPowerShellLine = '7.6'
     $actualPowerShellVersion = $PSVersionTable.PSVersion.ToString()
-    if ($actualPowerShellVersion -cne $requiredPowerShellVersion) {
-        throw "PowerShell $requiredPowerShellVersion is required; actual=$actualPowerShellVersion"
+    $fixturePowerShellVersion = $actualPowerShellVersion
+    if ($PSVersionTable.PSVersion.Major -ne 7 -or $PSVersionTable.PSVersion.Minor -ne 6) {
+        throw "PowerShell $requiredPowerShellLine.x is required; actual=$actualPowerShellVersion"
     }
     $pwsh = if (-not [string]::IsNullOrWhiteSpace($PowerShellExecutablePath)) {
         [System.IO.Path]::GetFullPath($PowerShellExecutablePath)
@@ -3733,7 +3734,9 @@ try {
     $runtimeFixtureName = [string]$runtimeFixtureNames[0]
     if ($runtimeFixtureName -cin $selectedFixtureNames) {
         $runtimeRecordPath = Join-Path $temporaryRoot 'runtime-release-record.json'
-        $runtimePackagePath = Join-Path $temporaryRoot 'PowerShell-7.6.5-win-x64.zip'
+        $runtimePackagePath = Join-Path $temporaryRoot (
+            "PowerShell-$fixturePowerShellVersion-win-x64.zip"
+        )
         [System.IO.File]::WriteAllText(
             $runtimeRecordPath,
             ($release | ConvertTo-Json -Depth 100),
@@ -3773,7 +3776,7 @@ try {
 
         $runtimeCommand = @(
             $runtimeCommandParts
-            "-ExpectedPowerShellVersion $requiredPowerShellVersion"
+            "-ExpectedPowerShellVersion $fixturePowerShellVersion"
             "-ExpectedPowerShellPackageSha256 $runtimePackageSha256"
         ) -join ' '
         $runtimeOutput = @(& $pwsh -NoLogo -NoProfile -Command $runtimeCommand 2>&1)
@@ -3805,7 +3808,7 @@ try {
         $wrongHashReportPath = Join-Path $temporaryRoot 'runtime-wrong-hash-report.json'
         $wrongHashCommand = @(
             $runtimeCommandParts
-            "-ExpectedPowerShellVersion $requiredPowerShellVersion"
+            "-ExpectedPowerShellVersion $fixturePowerShellVersion"
             "-ExpectedPowerShellPackageSha256 $('0' * 64)"
             '-ReportPath ' + (
                 ConvertTo-PowerShellSingleQuotedLiteral -Value $wrongHashReportPath

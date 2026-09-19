@@ -13,7 +13,7 @@ Heavy-Governance material may remain explicitly marked
 
 ## Command
 
-Use PowerShell 7.6.5:
+Use PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
 & pwsh -NoLogo -NoProfile -File .\scripts\Test-DocumentationConsistency.ps1
@@ -31,7 +31,7 @@ The focused gate verifies:
   project scope, and highest-ID truth;
 - presence of the thin project adapter and `DIRECTLY_AFFECTED_FIRST` policy;
 - active Windows/Linux Go, coverage, lint, build, release, metadata, shell,
-  PowerShell 7.6.5 and security gates;
+  PowerShell 7.6 LTS-line and security gates;
 - disabled Heavy-Governance orchestration in normal CI and its absence from the
   active release-preparation path;
 - absence of contributor-local Codex-Work or stale personal benchmark paths in
@@ -54,3 +54,8 @@ or destructive decision was introduced.
 Hosted CI consumes only repository files and prepared runner tools. It must not
 read contributor-local `<CodexPersistentRoot>`, personal benchmark paths, or
 task directories. Central governance is validated centrally when it changes.
+
+## PowerShell-7.6-LTS-Patchvertrag
+
+Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.
+

@@ -64,7 +64,7 @@ function Invoke-GitRequired {
 
     $Output = @(& git -C $RootPath @Arguments 2>&1)
     if ($LASTEXITCODE -ne 0) {
-        throw "git $($Arguments -join ' ') failed with exit code ${LASTEXITCODE}: $($Output -join ' ')"
+        throw ('git {0} failed with exit code {1}: {2}' -f ($Arguments -join ' '), $LASTEXITCODE, ($Output -join ' '))
     }
 
     return $Output
@@ -78,7 +78,7 @@ function Invoke-GoRequired {
 
     $Output = @(& go -C $RootPath @Arguments 2>&1)
     if ($LASTEXITCODE -ne 0) {
-        throw "go $($Arguments -join ' ') failed with exit code ${LASTEXITCODE}: $($Output -join ' ')"
+        throw ('go {0} failed with exit code {1}: {2}' -f ($Arguments -join ' '), $LASTEXITCODE, ($Output -join ' '))
     }
 
     return $Output
@@ -136,9 +136,9 @@ function Resolve-Version {
 }
 
 try {
-    if ($PSVersionTable.PSVersion -lt [version]'7.6.3') {
+    if ($PSVersionTable.PSVersion.Major -ne 7 -or $PSVersionTable.PSVersion.Minor -ne 6) {
         $Warnings.Add(
-            "PowerShell $($PSVersionTable.PSVersion) is in use; PowerShell 7.6.3 is expected."
+            "PowerShell $($PSVersionTable.PSVersion) is in use; PowerShell 7.6.x is expected."
         )
     }
 
@@ -165,7 +165,7 @@ try {
     )
 
     if ($ExistingResources.Count -gt 0) {
-        throw "Refusing to build with pre-existing Windows resource files: $($ExistingResources.FullName -join ', ')"
+        throw ('Refusing to build with pre-existing Windows resource files: {0}' -f ($ExistingResources.FullName -join ', '))
     }
 
     $Version = Resolve-Version -RequestedVersion $Version
@@ -178,7 +178,7 @@ try {
     ).Trim()
 
     if ($Commit -notmatch '^[0-9a-f]{40}$') {
-        throw "Unexpected Git commit format: $Commit"
+        throw ('Unexpected Git commit format: {0}' -f [string]$Commit)
     }
 
     if (-not [string]::IsNullOrWhiteSpace($env:SOURCE_DATE_EPOCH)) {
@@ -254,7 +254,7 @@ try {
         'FLASHGATE_BUILD_MANIFEST_V1'
         "version=$Version"
         "fileVersion=$FileVersion"
-        "commit=$Commit"
+        ('commit={0}' -f [string]$Commit)
         "sourceTime=$SourceTime"
         "modified=$($Modified.ToString().ToLowerInvariant())"
         "goos=$GOOS"
@@ -267,7 +267,7 @@ try {
         '-w'
         "-X $LinkerPrefix.version=$Version"
         "-X $LinkerPrefix.fileVersion=$FileVersion"
-        "-X $LinkerPrefix.commit=$Commit"
+        ('-X {0}.commit={1}' -f $LinkerPrefix, [string]$Commit)
         "-X $LinkerPrefix.date=$SourceTime"
         "-X $LinkerPrefix.modified=$($Modified.ToString().ToLowerInvariant())"
         "-X $LinkerPrefix.buildManifest=$BuildManifest"

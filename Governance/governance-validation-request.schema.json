@@ -114,7 +114,7 @@
       "required": ["powerShellPath", "powerShellVersion", "powerShellSha256", "gitPath", "gitSha256", "executionContext"],
       "properties": {
         "powerShellPath": { "$ref": "#/$defs/absolutePath" },
-        "powerShellVersion": { "const": "7.6.5" },
+        "powerShellVersion": { "type": "string", "pattern": "^7\\.6\\.[0-9]+$" },
         "powerShellSha256": { "$ref": "#/$defs/hash" },
         "gitPath": { "$ref": "#/$defs/absolutePath" },
         "gitSha256": { "$ref": "#/$defs/hash" },
@@ -233,14 +233,14 @@
       "then": {
         "properties": {
           "toolchain": {
-            "properties": { "powerShellVersion": { "const": "7.6.5" } }
+            "properties": { "powerShellVersion": { "type": "string", "pattern": "^7\\.6\\.[0-9]+$" } }
           }
         }
       },
       "else": {
         "properties": {
           "toolchain": {
-            "properties": { "powerShellVersion": { "const": "7.6.5" } }
+            "properties": { "powerShellVersion": { "type": "string", "pattern": "^7\\.6\\.[0-9]+$" } }
           }
         }
       }
