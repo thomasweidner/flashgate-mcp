@@ -303,4 +303,3 @@ No Git mutation is authorized by this document.
 ## PowerShell 7.6 LTS patch contract
 
 The general compatibility gate requires `Major=7` and `Minor=6`. The actual patch is recorded as `ObservedPowerShellVersion`; `MinimumPowerShellVersion` is `null` unless a concrete fix proves a minimum; `ServicingTarget=LatestServicedPatchWithin7.6`. Exact patch/path/hash bindings are permitted only for historical evidence, bug-reproduction fixtures, installer/download/hash/SBOM/supply-chain provenance, or a documented minimum-patch fix, and must be classified and allowlisted.
-
