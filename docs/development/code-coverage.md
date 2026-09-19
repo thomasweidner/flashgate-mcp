@@ -20,7 +20,7 @@ The initial dual-OS gates were merged through PR #18 in commit `a23b7a6b542e6cc3
 
 | Platform | Minimum statement coverage | Validation context |
 |---|---:|---|
-| Windows | 71.4% | Windows CI job and local PowerShell 7.6.5 validation |
+| Windows | 71.4% | Windows CI job and local PowerShell 7.6.x validation |
 | Linux | 70.6% | Native Ubuntu GitHub Actions job |
 
 The values are intentionally separate. Operating-system-specific source files and build behavior can produce different totals. The two percentages must not be averaged or replaced by one cross-platform value.
@@ -47,7 +47,7 @@ The CI gate fails when the measured value is below the platform-specific minimum
 
 ### Windows
 
-Run from the repository root with PowerShell 7.6.5:
+Run from the repository root with PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
 .\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 71.4
@@ -123,3 +123,8 @@ The following checks remain separate and mandatory where applicable:
 - Windows/Linux native validation;
 - Linux race detection;
 - security and release review.
+
+## PowerShell-7.6-LTS-Patchvertrag
+
+Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.
+

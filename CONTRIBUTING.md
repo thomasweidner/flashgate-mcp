@@ -188,7 +188,7 @@ go build -o build/flashgate-mcp ./cmd/server
 ```
 
 Changes to PowerShell, Bash, CI, build, release, smoke, or validation scripts
-also require the deterministic shell gates. On Windows, use PowerShell 7.6.5:
+also require the deterministic shell gates. On Windows, use PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
 & {
@@ -211,3 +211,8 @@ Also run affected Windows/Linux smoke, race, schema, response-size, security, se
 ## Git and review
 
 Keep changes focused and reviewable. Do not combine unrelated cleanup with a functional task. Commits, pushes, pull requests, merges, branch deletion, or remote changes require the applicable project authorization. Never commit secrets, private host paths, local credentials, generated benchmark corpora, or unreviewed release keys.
+
+## PowerShell-7.6-LTS-Patchvertrag
+
+Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.
+

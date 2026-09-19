@@ -24,15 +24,15 @@ $exitCode = 2
 try {
     $powerShellVersion = $PSVersionTable.PSVersion.ToString()
     if ($IsWindows) {
-        if ($powerShellVersion -cne '7.6.5') {
-            throw "Windows PowerShell 7.6.5 is required; actual=$powerShellVersion"
+        if ([version]$powerShellVersion -lt [version]'7.6.0' -or ([version]$powerShellVersion).Major -ne 7 -or ([version]$powerShellVersion).Minor -ne 6) {
+            throw "Windows PowerShell 7.6.x is required; actual=$powerShellVersion"
         }
     }
     elseif ($IsLinux) {
         $expectedLinuxPowerShellPath = '/home/weidnerthomas/voxtronic/tools/powershell/7.6.5/pwsh'
         $expectedLinuxPowerShellSha256 = 'D989CD1AB2EAD1BE3331DB2EEF38D209759128981873E6300653DF27BC7246C5'
-        if ($powerShellVersion -cne '7.6.5') {
-            throw "Native Linux PowerShell 7.6.5 is required; actual=$powerShellVersion"
+        if (([version]$powerShellVersion).Major -ne 7 -or ([version]$powerShellVersion).Minor -ne 6) {
+            throw "Native Linux PowerShell 7.6.x is required; actual=$powerShellVersion"
         }
         $actualLinuxPowerShellPath = (Get-Process -Id $PID).Path
         if ($actualLinuxPowerShellPath -cne $expectedLinuxPowerShellPath) {

@@ -50,7 +50,7 @@ LedgerSnapshotStable=true
 4. Re-read every affected PR's current base/head SHA and changed-file set.
 5. Verify ancestry from Git objects; never infer it from PR number, title, or stale handoff text.
 6. Finalize prerequisite roots before stacked children.
-7. Use PowerShell 7.6.5 for Windows/WSL validation. Native Linux validation follows `docs/testing.md` from `/home`, never `/mnt/c`.
+7. Use PowerShell 7.6.x (Major 7, Minor 6) for Windows/WSL validation. Native Linux validation follows `docs/testing.md` from `/home`, never `/mnt/c`.
 8. Run only scope-triggered gates plus directly caused corrections.
 9. Git mutations, remote updates, branch deletion, force operations and merges remain separate authorization boundaries.
 
@@ -78,7 +78,7 @@ This is the highest-reuse prerequisite because `BL-118`, `BL-157`, `BL-160`, and
 
 Finalize and integrate BL-100 → BL-159 as one coherent ancestry. Do not merge the child without proving BL-100 content is present.
 
-Validate capability construction, fail-closed unknown identifiers, `tools/list` visibility versus post-resolution `tools/call` authorization, crafted direct-call denial, affected Go/race/vet/build gates, PowerShell 7.6.5 documentation gates, and stdout purity.
+Validate capability construction, fail-closed unknown identifiers, `tools/list` visibility versus post-resolution `tools/call` authorization, crafted direct-call denial, affected Go/race/vet/build gates, PowerShell 7.6 LTS-line documentation gates, and stdout purity.
 
 After this line reaches `main`, rerun classification for `BL-118`, `BL-157`, `BL-160`, and `BL-163`.
 
@@ -458,3 +458,8 @@ MutationCount=0
 ```
 
 Only after that evidence should a separate integration authorization select the first actual Git operation.
+
+## PowerShell 7.6 LTS patch contract
+
+The general compatibility gate requires `Major=7` and `Minor=6`. The actual patch is recorded as `ObservedPowerShellVersion`; `MinimumPowerShellVersion` is `null` unless a concrete fix proves a minimum; `ServicingTarget=LatestServicedPatchWithin7.6`. Exact patch/path/hash bindings are permitted only for historical evidence, bug-reproduction fixtures, installer/download/hash/SBOM/supply-chain provenance, or a documented minimum-patch fix, and must be classified and allowlisted.
+

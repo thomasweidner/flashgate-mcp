@@ -71,7 +71,7 @@ AncestorTopologyMatch=true
 ChangedHeadCount=0
 ClosedOrMergedInputCount=0
 PowerShellVersion=NOT_PROBED_ON_PHONE
-RequiredPowerShellVersion=7.6.5
+HistoricalRequiredPowerShellVersion=7.6.5
 ConflictProjectionState=NO_CURRENT_MAIN_PRODUCT_COLLISION_BUT_PREPARED_PR_REVIEW_SIGNALS_AND_SIBLING_RECONCILIATION_EXIST
 MutationCount=0
 ```
@@ -138,7 +138,7 @@ If Classic confirms this finding, the correction should preserve BL-100's functi
 4. Keep the existing write-tool suppression semantics equivalent to `MCP_READ_ONLY`, without generalizing registration to arbitrary future capability absence.
 5. Remove/adjust tests such as "no tools without capabilities" that assert the future dynamic registration behavior.
 6. Adjust ADR/docs so BL-100 claims the vocabulary/model only; dynamic profiles and general capability-driven catalog construction remain owned by BL-110/BL-111.
-7. Re-run focused server/capability tests, full Go tests, race tests for affected packages, vet/build, documentation consistency and Windows PowerShell 7.6.5 gates.
+7. Re-run focused server/capability tests, full Go tests, race tests for affected packages, vet/build, documentation consistency and Windows PowerShell 7.6.x gates.
 8. Request a fresh review before any integration.
 
 ### Effect on PR #181
@@ -269,7 +269,7 @@ No local Windows host was available during this phone preflight.
 
 ```text
 PowerShellVersion=NOT_PROBED
-Required=7.6.5
+HistoricalRequiredPowerShellVersion=7.6.5
 ```
 
 Before actual integration:
@@ -278,7 +278,7 @@ Before actual integration:
 - fresh current governance and BACKLOG;
 - inspect whether any relevant PR was updated, closed, merged or superseded;
 - perform Classic independent review on the exact heads and disposition all recorded Codex review signals;
-- PowerShell 7.6.5;
+- PowerShell 7.6.x (Major 7, Minor 6);
 - scope-triggered Go tests, race tests, vet/build;
 - documentation consistency;
 - native Windows Toolhelp/process cases for process observation;
@@ -299,3 +299,8 @@ Recommended read-only sequence while still on vacation:
 6. Then preflight Wave 3 and Wave 4, followed by Wave 5/6.
 
 No Git mutation is authorized by this document.
+
+## PowerShell 7.6 LTS patch contract
+
+The general compatibility gate requires `Major=7` and `Minor=6`. The actual patch is recorded as `ObservedPowerShellVersion`; `MinimumPowerShellVersion` is `null` unless a concrete fix proves a minimum; `ServicingTarget=LatestServicedPatchWithin7.6`. Exact patch/path/hash bindings are permitted only for historical evidence, bug-reproduction fixtures, installer/download/hash/SBOM/supply-chain provenance, or a documented minimum-patch fix, and must be classified and allowlisted.
+

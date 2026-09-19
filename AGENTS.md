@@ -130,6 +130,11 @@ Windows finalization remains required for every Mobile PR.
 
 ## Toolchain
 
-PowerShell target standard for FlashGate is PowerShell 7.6.5 via `pwsh`.
+PowerShell target standard for FlashGate is the PowerShell 7.6 LTS line via `pwsh` (Major 7, Minor 6).
 
 If required tooling is unavailable in Codex Cloud, do not silently install or substitute a different authoritative environment. Run the checks that are genuinely available and record the remainder for Windows/native finalization.
+
+## PowerShell 7.6 LTS patch contract
+
+The general compatibility gate requires `Major=7` and `Minor=6`. The actual patch is recorded as `ObservedPowerShellVersion`; `MinimumPowerShellVersion` is `null` unless a concrete fix proves a minimum; `ServicingTarget=LatestServicedPatchWithin7.6`. Exact patch/path/hash bindings are permitted only for historical evidence, bug-reproduction fixtures, installer/download/hash/SBOM/supply-chain provenance, or a documented minimum-patch fix, and must be classified and allowlisted.
+
