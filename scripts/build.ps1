@@ -137,9 +137,7 @@ function Resolve-Version {
 
 try {
     if ($PSVersionTable.PSVersion.Major -ne 7 -or $PSVersionTable.PSVersion.Minor -ne 6) {
-        $Warnings.Add(
-            "PowerShell $($PSVersionTable.PSVersion) is in use; PowerShell 7.6.x is expected."
-        )
+        throw "PowerShell 7.6.x is required; actual=$($PSVersionTable.PSVersion)"
     }
 
     foreach ($RequiredPath in @(
