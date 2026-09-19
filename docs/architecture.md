@@ -270,6 +270,13 @@ Typed command definitions resolve a command ID to a server-approved executable p
 
 A future synchronous `run_command` remains a wrapper over the Managed Process Engine, not a second engine.
 
+Managed children inherit the effective identity of that engine's selected
+backend; command requests do not carry credentials or select an OS account.
+Direct STDIO uses the launcher's existing process identity, while Version 1.0
+service execution uses its dedicated restricted service account. Required
+identity or isolation failures fail closed rather than falling back to a more
+privileged launch. See [Command Execution Identity](command-execution-identity.md).
+
 ## Profiles, capabilities, and named roots
 
 Profiles determine tool exposure and policy composition; server-side authorization remains authoritative.
