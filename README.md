@@ -605,9 +605,10 @@ BL-335 and BL-251 are complete. The canonical orchestrator binds the PowerShell
 7.6 LTS line, the native Linux `standard` gate passes, and the final runspace-free
 wrapper plus atomically persisted child result prove `225/225` governance
 fixtures with zero failures, skips, warnings, timeouts, cleanup errors, or
-repository mutation. The Windows shell harness passes 21/21 cases and obtains
+repository mutation. At BL-251 closure, the Windows shell harness passed 21/21 cases and obtained
 the bounded child PID directly from the process-start result, so its timeout
-cleanup evidence no longer depends on child-authored PID-file timing. The PID
+cleanup evidence no longer depended on child-authored PID-file timing. The
+current INF-181 PowerShell 7.6.x shell harness passes 25/25 cases. The PID
 correction passed focused independent delta review with no warnings or
 failures, and `BL-251-REV-005` is closed. The exact commit, remote
 push, Draft PR, Hosted CI, and focused independent review of the documentation

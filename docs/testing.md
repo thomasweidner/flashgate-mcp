@@ -601,7 +601,7 @@ The bounded-process result records the PID immediately after a successful
 process start. Its timeout regression validates the positive direct PID,
 exit code 124, confirmed tree termination, absence of that concrete process,
 and the case where timeout occurs before an optional child-authored PID file.
-The PowerShell matrix currently passes 21/21 cases. The Bash cleanup-negative
+The PowerShell matrix currently passes 25/25 cases. The Bash cleanup-negative
 probe uses only its task-local fixture root and requires `Status: FAIL`,
 `Cleanup: FAIL`, a nonzero failure count, a nonzero exit code, and exactly one
 terminal status block. CI
