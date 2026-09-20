@@ -147,6 +147,7 @@ $requiredFiles = [string[]]@(
     'README.md',
     'Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md',
     'docs/documentation-quality-gate.md',
+    'docs/execution-identity-backends.md',
     'docs/testing.md',
     'benchmarks/README.md',
     '.github/workflows/ci.yml',
@@ -163,6 +164,7 @@ $backlog = [string]$documents['BACKLOG.md']
 $adapter = [string]$documents['Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md']
 $ci = [string]$documents['.github/workflows/ci.yml']
 $release = [string]$documents['.github/workflows/release-build.yml']
+$executionIdentity = [string]$documents['docs/execution-identity-backends.md']
 $combinedGuidance = [string]::Join("`n", [string[]]@(
         $documents['README.md'],
         $documents['CONTRIBUTING.md'],
@@ -199,6 +201,19 @@ $staleBenchmarkPath = 'C:\Voxtronic\Codex\Temp\Benchmarks'
 Add-Check -Id 'PORTABILITY-BENCHMARK-PATH' -Passed (-not $combinedGuidance.Contains($staleBenchmarkPath)) -Message 'Active guidance contains no stale personal benchmark root.'
 Add-Check -Id 'PORTABILITY-CODEX-ROOT' -Passed (-not ($combinedGuidance -match 'C:\\Users\\[^\\]+\\.*Codex-Work')) -Message 'Active repository guidance contains no contributor-local Codex-Work path.'
 Add-Check -Id 'LEGACY-EXPLICIT' -Passed ($combinedGuidance.Contains('LEGACY_COMPATIBILITY_ONLY')) -Message 'Historical Heavy material is explicitly nonblocking compatibility content.'
+
+Add-Check -Id 'EXECUTION-IDENTITY-VARIANTS' -Passed (
+    $executionIdentity.Contains('`BL-235` | Adopt the hybrid per-root architecture') -and
+    $executionIdentity.Contains('`BL-236` | Implement backend-neutral execution-identity interfaces') -and
+    $executionIdentity.Contains('`BL-237` | Implement the Variant A service-account root backend') -and
+    $executionIdentity.Contains('`BL-238` | Complete the Variant B worker contract and threat model') -and
+    $executionIdentity.Contains('`BL-239` | Bind state, caches, handles, and result resources')
+) -Message 'Hybrid execution-identity architecture keeps decision, interfaces, Variant A, Variant B contract, and state binding under distinct backlog owners.'
+Add-Check -Id 'EXECUTION-IDENTITY-STATUS' -Passed (
+    $executionIdentity.Contains('The architecture decision is complete, but the runtime is not.') -and
+    $executionIdentity.Contains('implementation remains tracked by `BL-237`') -and
+    -not $executionIdentity.Contains('| Implemented |')
+) -Message 'Accepted BL-235 architecture does not overclaim completion of the planned runtime implementation.'
 
 $failedChecks = [object[]]@($checks | Where-Object { -not $_.passed })
 $result = [pscustomobject]@{
