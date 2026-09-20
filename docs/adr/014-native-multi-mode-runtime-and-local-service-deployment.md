@@ -106,7 +106,6 @@ The service boundary is security-sensitive. The implementation must:
 The following details remain implementation decisions within this accepted direction:
 
 - exact CLI subcommand syntax for service/user-host management;
-- exact endpoint names and configuration paths;
 - internal IPC framing/envelope format;
 - exact dedicated Windows/Linux service-account form and ACL deployment model within ADR-015;
 - future per-user worker launch/session/resource-isolation model;
@@ -114,8 +113,12 @@ The following details remain implementation decisions within this accepted direc
 - proxy/service compatibility window and upgrade order;
 - benchmark thresholds for recommending `auto` or managed mode by default.
 
+BL-233 resolved the Version 1.0 endpoint names, configuration paths and source
+precedence in the linked runtime-configuration contract.
+
 ## Related Documents
 
+- [Runtime configuration, endpoint discovery, and logging contract](../runtime-configuration-and-endpoint-discovery.md)
 - [ADR-003: Use STDIO Transport](003-stdio-transport.md)
 - [ADR-008: Core Reuse, Deployment, and FlashGate Module/Provider Model](008-core-reuse-deployment-and-extension-model.md)
 - [ADR-015: Hybrid Service Execution Identity](015-hybrid-service-execution-identity.md)

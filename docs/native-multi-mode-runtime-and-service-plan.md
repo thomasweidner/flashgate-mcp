@@ -418,6 +418,13 @@ Minimum Version 1.0 requirements:
 
 ## Configuration
 
+BL-233 fixes the Version 1.0 source precedence, canonical Windows/Linux
+endpoints, discovery/fallback state machine, timeout categories, and logging
+destinations in the
+[runtime configuration, endpoint discovery, and logging contract](runtime-configuration-and-endpoint-discovery.md).
+The runtime implementation must consume that contract rather than inventing a
+second platform-specific precedence or discovery policy.
+
 Version 1.0 defines:
 
 - CLI, environment, user config, and system config precedence;

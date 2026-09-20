@@ -10,6 +10,13 @@ PowerShell 7.6 LTS-line and security gates. Large Generic-Handoff, Finding-Corre
 Commit-Preparation, publication and V3/V4 governance matrices are not normal
 Product-CI requirements.
 
+For the planned multi-mode runtime, the permanent configuration/discovery test
+matrix is defined by the
+[runtime configuration, endpoint discovery, and logging contract](runtime-configuration-and-endpoint-discovery.md).
+It requires precedence, invalid-source, endpoint, fallback, timeout, stdout,
+destination, redaction, and log-injection coverage plus native platform
+evidence where OS security properties are authoritative.
+
 Run the focused project documentation and shell gates with a caller-provided
 task-bound work root:
 
