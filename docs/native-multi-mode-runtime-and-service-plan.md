@@ -199,6 +199,9 @@ flashgate-mcp --mode worker
 ```
 
 This role is not a public Version 1.0 CLI commitment. Version 1.0 defines only its backend boundary and security contract.
+That normative boundary is documented in the
+[Variant B user-worker contract and threat model](variant-b-user-worker-threat-model.md);
+it does not enable the reserved backend.
 
 ## Platform integration
 

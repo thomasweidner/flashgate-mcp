@@ -148,6 +148,7 @@ $requiredFiles = [string[]]@(
     'Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md',
     'docs/documentation-quality-gate.md',
     'docs/testing.md',
+    'docs/variant-b-user-worker-threat-model.md',
     'benchmarks/README.md',
     '.github/workflows/ci.yml',
     '.github/workflows/metadata-regression.yml',
@@ -163,6 +164,7 @@ $backlog = [string]$documents['BACKLOG.md']
 $adapter = [string]$documents['Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md']
 $ci = [string]$documents['.github/workflows/ci.yml']
 $release = [string]$documents['.github/workflows/release-build.yml']
+$variantBThreatModel = [string]$documents['docs/variant-b-user-worker-threat-model.md']
 $combinedGuidance = [string]::Join("`n", [string[]]@(
         $documents['README.md'],
         $documents['CONTRIBUTING.md'],
@@ -199,6 +201,13 @@ $staleBenchmarkPath = 'C:\Voxtronic\Codex\Temp\Benchmarks'
 Add-Check -Id 'PORTABILITY-BENCHMARK-PATH' -Passed (-not $combinedGuidance.Contains($staleBenchmarkPath)) -Message 'Active guidance contains no stale personal benchmark root.'
 Add-Check -Id 'PORTABILITY-CODEX-ROOT' -Passed (-not ($combinedGuidance -match 'C:\\Users\\[^\\]+\\.*Codex-Work')) -Message 'Active repository guidance contains no contributor-local Codex-Work path.'
 Add-Check -Id 'LEGACY-EXPLICIT' -Passed ($combinedGuidance.Contains('LEGACY_COMPATIBILITY_ONLY')) -Message 'Historical Heavy material is explicitly nonblocking compatibility content.'
+Add-Check -Id 'VARIANT-B-THREAT-MODEL' -Passed (
+    $variantBThreatModel.Contains('This contract does **not** enable a worker mode') -and
+    $variantBThreatModel.Contains('Payload-supplied identity') -and
+    $variantBThreatModel.Contains('single-use, short-lived') -and
+    $variantBThreatModel.Contains('must never be shared across principals') -and
+    $variantBThreatModel.Contains('never falls back to service-account execution')
+) -Message 'The BL-238 Variant B contract preserves its fail-closed identity, handshake, isolation, and no-fallback boundaries.'
 
 $failedChecks = [object[]]@($checks | Where-Object { -not $_.passed })
 $result = [pscustomobject]@{
