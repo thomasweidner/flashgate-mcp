@@ -8,6 +8,11 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added explicit MCP `2025-11-25` discovery annotations to all eight filesystem
+  tool definitions. Runtime and static catalog contracts require the exact
+  annotation matrix and structural presence of all four members, including
+  `false`; annotations do not alter registration, profiles, capabilities,
+  path/security checks, execution identity, or server-side authorization.
 - Converged BL-343 to the Slim Governance project adapter. Product, Go,
   coverage, lint, build, release, metadata, PowerShell 7.6.5, Windows/Linux and
   security gates remain active, while Generic Handoff, Commit Preparation,

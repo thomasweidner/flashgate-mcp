@@ -30,6 +30,12 @@ func TestToolMarshal(t *testing.T) {
 			"required":             []string{"entries"},
 			"additionalProperties": false,
 		},
+		Annotations: ToolAnnotations{
+			ReadOnlyHint:    true,
+			DestructiveHint: false,
+			IdempotentHint:  true,
+			OpenWorldHint:   false,
+		},
 	}
 
 	encoded, err := json.Marshal(tool)
@@ -62,12 +68,29 @@ func TestToolMarshal(t *testing.T) {
 		t.Fatalf("expected outputSchema object, got %#v", decoded["outputSchema"])
 	}
 
+	annotations, ok := decoded["annotations"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected annotations object, got %#v", decoded["annotations"])
+	}
+	expectedAnnotations := map[string]any{
+		"readOnlyHint":    true,
+		"destructiveHint": false,
+		"idempotentHint":  true,
+		"openWorldHint":   false,
+	}
+	if !reflect.DeepEqual(annotations, expectedAnnotations) {
+		t.Fatalf("annotations=%#v, want %#v", annotations, expectedAnnotations)
+	}
+
 	var roundTrip Tool
 	if err := json.Unmarshal(encoded, &roundTrip); err != nil {
 		t.Fatalf("expected outputSchema to unmarshal, got %v", err)
 	}
 	if !reflect.DeepEqual(normalizeJSONValue(t, tool.OutputSchema), normalizeJSONValue(t, roundTrip.OutputSchema)) {
 		t.Fatalf("outputSchema changed after round trip: got %#v want %#v", roundTrip.OutputSchema, tool.OutputSchema)
+	}
+	if roundTrip.Annotations != tool.Annotations {
+		t.Fatalf("annotations changed after round trip: got %#v want %#v", roundTrip.Annotations, tool.Annotations)
 	}
 }
 
@@ -98,6 +121,20 @@ func TestToolMarshalOmitsEmptyTitle(t *testing.T) {
 
 	if _, exists := decoded["outputSchema"]; exists {
 		t.Fatal("did not expect outputSchema field")
+	}
+
+	annotations, ok := decoded["annotations"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected annotations object, got %#v", decoded["annotations"])
+	}
+	for _, member := range []string{"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"} {
+		value, exists := annotations[member]
+		if !exists {
+			t.Fatalf("annotations omitted explicit false member %q", member)
+		}
+		if value != false {
+			t.Fatalf("annotations.%s=%#v, want false", member, value)
+		}
 	}
 }
 
