@@ -21,6 +21,41 @@ func TestNewLocalFileSystemRejectsEmptyRoot(t *testing.T) {
 	}
 }
 
+func TestLocalFileSystemWriteWithModeEnforcesExistence(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	if err := filesystem.WriteWithMode("created.txt", []byte("created"), WriteCreateOnly); err != nil {
+		t.Fatalf("create-only write failed: %v", err)
+	}
+	if err := filesystem.WriteWithMode("created.txt", []byte("again"), WriteCreateOnly); !errors.Is(err, ErrFileExists) {
+		t.Fatalf("expected ErrFileExists, got %v", err)
+	}
+	if err := filesystem.WriteWithMode("missing.txt", []byte("value"), WriteReplaceOnly); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "missing.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("replace-only unexpectedly created target: %v", err)
+	}
+	if err := filesystem.WriteWithMode("created.txt", []byte("replaced"), WriteReplaceOnly); err != nil {
+		t.Fatalf("replace-only write failed: %v", err)
+	}
+	if err := filesystem.WriteWithMode("upserted.txt", []byte("upserted"), WriteUpsert); err != nil {
+		t.Fatalf("upsert create failed: %v", err)
+	}
+}
+
+func TestLocalFileSystemWriteWithModeRejectsUnknownMode(t *testing.T) {
+	t.Parallel()
+
+	filesystem := mustNewLocalFileSystem(t, t.TempDir())
+	if err := filesystem.WriteWithMode("file.txt", nil, WriteMode("unknown")); !errors.Is(err, ErrUnsupportedWriteMode) {
+		t.Fatalf("expected ErrUnsupportedWriteMode, got %v", err)
+	}
+}
+
 func TestLocalFileSystemListReturnsFilesAndDirectories(t *testing.T) {
 	t.Parallel()
 

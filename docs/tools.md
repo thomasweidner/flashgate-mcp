@@ -110,7 +110,9 @@ Only genuine missing-path errors become `exists:false`. Security and policy deni
 
 ## `write_file`
 
-Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (default `false`). Existing limits and root/security enforcement apply.
+Required: `path`. Optional: `content` (empty is allowed) and either the legacy `overwrite` flag (default `false`) or `mode`. `mode` is one of `create_only`, `replace_only`, or `upsert`; it cannot be combined with `overwrite`. `create_only` requires an absent target, `replace_only` requires an existing file, and `upsert` permits either. Existing limits and root/security enforcement apply.
+
+These existence modes do not imply atomic replacement or conditional content/metadata preconditions. Those separately planned options remain unavailable rather than being silently weakened.
 
 ```json
 {

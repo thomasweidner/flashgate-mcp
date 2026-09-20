@@ -114,7 +114,7 @@ func classifyFilesystemError(err error) filesystemErrorCategory {
 		errors.Is(err, fs.ErrMoveTypeMismatch),
 		errors.Is(err, fs.ErrDirectoryNotEmpty):
 		return categoryUnsupportedPathType
-	case errors.Is(err, fs.ErrCrossVolumeMoveUnsupported):
+	case errors.Is(err, fs.ErrCrossVolumeMoveUnsupported), errors.Is(err, fs.ErrUnsupportedWriteMode):
 		return categoryUnsupportedOperation
 	case errors.Is(err, fs.ErrFileTooLarge), errors.Is(err, fs.ErrLimitExceeded):
 		return categoryLimitExceeded

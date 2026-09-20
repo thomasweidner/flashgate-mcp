@@ -55,6 +55,11 @@ func (t *WriteFileTool) InputSchema() any {
 				"type":        "boolean",
 				"description": "Whether an existing file may be overwritten. Defaults to false.",
 			},
+			"mode": map[string]any{
+				"type":        "string",
+				"enum":        []string{string(fs.WriteCreateOnly), string(fs.WriteReplaceOnly), string(fs.WriteUpsert)},
+				"description": "Explicit existence policy. create_only requires absence, replace_only requires an existing file, and upsert permits either. Cannot be combined with overwrite.",
+			},
 		},
 		"required":             []string{"path"},
 		"additionalProperties": false,
@@ -85,7 +90,12 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 
 	content := []byte(arguments.Content)
 
-	if err := t.filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
+	mode, valid := arguments.writeMode()
+	if !valid {
+		return nil, invalidParamsError()
+	}
+
+	if err := t.filesystem.WriteWithMode(arguments.Path, content, mode); err != nil {
 		return nil, mapFilesystemError(err)
 	}
 
@@ -99,7 +109,22 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 type writeFileArguments struct {
 	Path      string `json:"path"`
 	Content   string `json:"content,omitempty"`
-	Overwrite bool   `json:"overwrite,omitempty"`
+	Overwrite *bool  `json:"overwrite,omitempty"`
+	Mode      string `json:"mode,omitempty"`
+}
+
+func (a writeFileArguments) writeMode() (fs.WriteMode, bool) {
+	if a.Mode != "" {
+		if a.Overwrite != nil {
+			return "", false
+		}
+		mode := fs.WriteMode(a.Mode)
+		return mode, mode == fs.WriteCreateOnly || mode == fs.WriteReplaceOnly || mode == fs.WriteUpsert
+	}
+	if a.Overwrite != nil && *a.Overwrite {
+		return fs.WriteUpsert, true
+	}
+	return fs.WriteCreateOnly, true
 }
 
 type writeFileResult struct {
