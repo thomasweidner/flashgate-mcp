@@ -16,7 +16,23 @@ The current server:
 - writes protocol messages only to stdout;
 - returns successful filesystem results as one compact JSON text block plus the same object in `structuredContent`;
 - exposes successful `outputSchema` definitions for the current eight tools;
+- exposes explicit `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` annotations for every current tool;
 - retains safe generic JSON-RPC errors for current tool failures.
+
+The implemented `2025-11-25` annotation values are:
+
+| Tool | Read-only | Destructive | Idempotent | Open world |
+|---|---:|---:|---:|---:|
+| `list_directory` | `true` | `false` | `true` | `false` |
+| `read_file` | `true` | `false` | `true` | `false` |
+| `get_path_info` | `true` | `false` | `true` | `false` |
+| `write_file` | `false` | `true` | `false` | `false` |
+| `create_directory` | `false` | `false` | `true` | `false` |
+| `delete_path` | `false` | `true` | `true` | `false` |
+| `copy_path` | `false` | `true` | `false` | `false` |
+| `move_path` | `false` | `true` | `true` | `false` |
+
+These values are discovery metadata, not authorization. They do not affect registration, profile/capability decisions, root or path checks, security policy, or execution identity. `write_file` and `copy_path` remain non-idempotent at the tool level because their `overwrite:true` variants can replace existing targets.
 
 `flashgate-mcp --version` and `flashgate-mcp --version --verbose` are pre-protocol CLI exits. They print build identity and terminate before reading MCP input. During normal server operation, stdout remains reserved exclusively for JSON-RPC protocol messages.
 

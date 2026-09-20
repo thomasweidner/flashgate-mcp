@@ -33,13 +33,29 @@ Each tool owns a compact definition containing:
 - human-readable title;
 - model-useful description;
 - closed input schema with explicit required fields;
-- closed success-only output schema for its `structuredContent` object.
+- closed success-only output schema for its `structuredContent` object;
+- all four MCP annotation members, including explicit `false` values.
 
 `docs/mcp-tool-catalog.json` is the static contract view. A focused contract test compares runtime and catalog name, title, description, complete input schema, and complete runtime `outputSchema`/catalog `resultSchema` parity without introducing a general schema engine.
 
 The catalog `resultSchema` values and runtime `outputSchema` values describe typed successful domain results only. They do not model the outer `CallToolResult.content[]` or the current JSON-RPC error contract. A tests-only structural checker covers the schema keywords emitted by this project; it is not a general JSON Schema 2020-12 validator.
 
 Every successful `tools/call` uses the central MCP adapter wrapper. The outer result is `CallToolResult` with exactly one `TextContent` block whose text is compact deterministic JSON and `structuredContent` containing the same object. No domain field is placed directly on the outer result. Productive results remain structs; Go's standard `encoding/json` provides deterministic struct-field output and sorted map keys if a map is ever used.
+
+The current MCP `2025-11-25` tool definitions expose this exact annotation matrix:
+
+| Tool | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+|---|---:|---:|---:|---:|
+| `list_directory` | `true` | `false` | `true` | `false` |
+| `read_file` | `true` | `false` | `true` | `false` |
+| `get_path_info` | `true` | `false` | `true` | `false` |
+| `write_file` | `false` | `true` | `false` | `false` |
+| `create_directory` | `false` | `false` | `true` | `false` |
+| `delete_path` | `false` | `true` | `true` | `false` |
+| `copy_path` | `false` | `true` | `false` | `false` |
+| `move_path` | `false` | `true` | `true` | `false` |
+
+`write_file` and `copy_path` are not tool-wide idempotent because both accept `overwrite:true`. The matrix is derived from runtime behavior, not CRUD-style name inference. Annotations are discovery metadata only: they never register a tool, grant a capability, alter profile exposure, bypass root/path/security checks, select an execution identity, or authorize an operation.
 
 ## Path and result conventions
 
@@ -122,17 +138,6 @@ Every result definition states:
 - authorization binding for later reads.
 
 Opaque handles must not expose absolute host paths. Handles, cursors, jobs, processes, and cached results are bound to caller principal, root, profile, capability set, execution backend, service instance, and expiry.
-
-### Tool annotations
-
-Where the negotiated MCP revision supports them, every tool declares accurate:
-
-- `readOnlyHint`;
-- `destructiveHint`;
-- `idempotentHint`;
-- `openWorldHint`.
-
-Annotations are discovery metadata only. They never replace server-side authorization, path validation, execution-identity selection, or risk policy.
 
 ### Partial, batch, and field-bounded operations
 

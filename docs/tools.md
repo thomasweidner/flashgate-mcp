@@ -39,7 +39,22 @@ The central adapter serializes the typed domain result once with `encoding/json`
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
 
-The deterministic UTF-8 JSONL response snapshot, including its trailing newline, changes from 1239 to 2134 bytes for read-only (+895, +72.24%) and from 3850 to 5657 bytes for default (+1807, +46.94%). This is a `SPR-046` snapshot, not a persistent payload budget.
+The same current MCP `2025-11-25` definitions expose all four annotation members explicitly:
+
+| Tool | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+|---|---:|---:|---:|---:|
+| `list_directory` | `true` | `false` | `true` | `false` |
+| `read_file` | `true` | `false` | `true` | `false` |
+| `get_path_info` | `true` | `false` | `true` | `false` |
+| `write_file` | `false` | `true` | `false` | `false` |
+| `create_directory` | `false` | `false` | `true` | `false` |
+| `delete_path` | `false` | `true` | `true` | `false` |
+| `copy_path` | `false` | `true` | `false` | `false` |
+| `move_path` | `false` | `true` | `true` | `false` |
+
+`write_file` and `copy_path` are not tool-wide idempotent because `overwrite:true` can replace an existing target. Annotations are client-facing discovery hints only. Registration, read-only/profile gating, capabilities, root/path/security checks, and execution identity remain authoritative server-side decisions.
+
+The current deterministic UTF-8 JSONL `tools/list` snapshot, including the response's trailing newline, is 2446 response bytes and 2411 result bytes for read-only, and 6492 response bytes and 6457 result bytes for default. Relative to the schema-bearing pre-BL-202 snapshot, explicit annotations add 312 bytes to read-only and 835 bytes to default. These are measured contract values, not a performance baseline.
 
 ## `list_directory`
 
@@ -212,7 +227,6 @@ Planned contract changes include:
 - text/media/binary classification and explicit transfer modes;
 - targeted edits, conditional/atomic writes, dry-run previews, and bounded filesystem plans;
 - search, process, typed command, system-information, and job tools in separate capabilities;
-- accurate MCP tool annotations;
 - deterministic profile catalogs and compact initialization instructions;
 - payload classes that transmit large content once instead of duplicating it in text and structured fields;
 - opaque principal-bound result/resource handles for content that should not be embedded in one tool response.

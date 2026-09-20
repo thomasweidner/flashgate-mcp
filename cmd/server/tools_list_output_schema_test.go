@@ -13,6 +13,16 @@ import (
 var benchmarkToolsListWireSink []byte
 
 func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
+	expectedAnnotations := map[string]protocol.ToolAnnotations{
+		"list_directory":   {ReadOnlyHint: true, IdempotentHint: true},
+		"read_file":        {ReadOnlyHint: true, IdempotentHint: true},
+		"get_path_info":    {ReadOnlyHint: true, IdempotentHint: true},
+		"write_file":       {DestructiveHint: true},
+		"create_directory": {IdempotentHint: true},
+		"delete_path":      {DestructiveHint: true, IdempotentHint: true},
+		"copy_path":        {DestructiveHint: true},
+		"move_path":        {DestructiveHint: true, IdempotentHint: true},
+	}
 	tests := []struct {
 		name                  string
 		capabilities          toolCapabilities
@@ -20,8 +30,8 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 		expectedResponseBytes int
 		expectedResultBytes   int
 	}{
-		{"read-only", capabilitiesFromReadOnly(true), 3, 2134, 2099},
-		{"default", toolCapabilities{filesystemWrite: true}, 8, 5657, 5622},
+		{"read-only", capabilitiesFromReadOnly(true), 3, 2446, 2411},
+		{"default", toolCapabilities{filesystemWrite: true}, 8, 6492, 6457},
 	}
 
 	for _, tc := range tests {
@@ -59,8 +69,14 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 			if len(response.Result.Tools) != tc.toolCount {
 				t.Fatalf("got %d tools, want %d", len(response.Result.Tools), tc.toolCount)
 			}
+			var rawResult struct {
+				Tools []map[string]json.RawMessage `json:"tools"`
+			}
+			if err := json.Unmarshal(envelope.Result, &rawResult); err != nil {
+				t.Fatalf("invalid raw tools/list result: %v", err)
+			}
 			schemaCount := 0
-			for _, tool := range response.Result.Tools {
+			for index, tool := range response.Result.Tools {
 				if tool.OutputSchema == nil {
 					t.Fatalf("tools/list omitted outputSchema for %s", tool.Name)
 				}
@@ -68,6 +84,25 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 					t.Fatalf("%s outputSchema root type=%#v", tool.Name, tool.OutputSchema["type"])
 				}
 				schemaCount++
+				expected, ok := expectedAnnotations[tool.Name]
+				if !ok {
+					t.Fatalf("unexpected runtime tool %q has no annotation contract", tool.Name)
+				}
+				if tool.Annotations != expected {
+					t.Fatalf("%s annotations=%#v, want %#v", tool.Name, tool.Annotations, expected)
+				}
+				var annotationMembers map[string]json.RawMessage
+				if err := json.Unmarshal(rawResult.Tools[index]["annotations"], &annotationMembers); err != nil {
+					t.Fatalf("%s annotations are missing or invalid: %v", tool.Name, err)
+				}
+				if len(annotationMembers) != 4 {
+					t.Fatalf("%s annotations have %d members, want 4", tool.Name, len(annotationMembers))
+				}
+				for _, member := range []string{"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"} {
+					if _, ok := annotationMembers[member]; !ok {
+						t.Fatalf("%s annotations omit %s", tool.Name, member)
+					}
+				}
 			}
 
 			withSchemas := output.Len()

@@ -31,6 +31,12 @@
       "name": "list_directory",
       "title": "List Directory",
       "description": "Lists files and directories below the configured filesystem root.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "additionalProperties": false,
@@ -79,6 +85,12 @@
       "name": "read_file",
       "title": "Read File",
       "description": "Reads a text file below the configured filesystem root.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": [
@@ -119,6 +131,12 @@
       "name": "get_path_info",
       "title": "Get Path Info",
       "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": [
@@ -164,6 +182,12 @@
       "name": "write_file",
       "title": "Write File",
       "description": "Writes a text file below the configured filesystem root.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": [
@@ -211,6 +235,12 @@
       "name": "create_directory",
       "title": "Create Directory",
       "description": "Creates a directory and any missing parents below the configured filesystem root.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": [
@@ -246,6 +276,12 @@
       "name": "delete_path",
       "title": "Delete Path",
       "description": "Deletes a file or directory below the configured filesystem root.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": [
@@ -285,6 +321,12 @@
       "name": "copy_path",
       "title": "Copy Path",
       "description": "Copies a file below the configured filesystem root. Directory copy is not supported.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": [
@@ -334,6 +376,12 @@
       "name": "move_path",
       "title": "Move Path",
       "description": "Moves or renames a file or directory on the same volume below the configured filesystem root.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
       "inputSchema": {
         "type": "object",
         "required": [
