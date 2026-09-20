@@ -23,6 +23,25 @@ task-bound work root:
 }
 ```
 
+## Command execution identity contract
+
+Command and Managed Process tests must verify that the server-created
+execution context, rather than tool input, selects the effective backend.
+Coverage includes rejection of caller-supplied identity, credential, elevation,
+group, and backend fields; preservation of caller ownership for handles,
+results, quotas, cancellation, and audit; and failure before process start when
+the required identity or isolation cannot be established. Direct-mode tests
+must prove there is no elevation or credential switching. Service-mode tests
+must prove there is no fallback to `LocalSystem`, `root`, or another ambient
+privileged identity. The reserved `user-worker` backend must fail closed in
+Version 1.0, and shared-process impersonation must remain unavailable.
+
+Windows and Linux adapters may expose different native mechanisms, but the
+negative outcomes above are portable contract tests. Actual token, UID/GID,
+group, ACL, service-account, and native isolation evidence remains a
+platform-native validation requirement and must not be inferred from a
+cross-build or mock.
+
 ## Legacy governance enforcement reference
 
 The historical governance-orchestration material below, through `Test Commands`,

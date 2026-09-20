@@ -16,6 +16,26 @@ Stopping defaults to server-managed processes. External PID control requires a d
 
 Command execution uses configured executable IDs resolved server-side to allowed absolute program paths. Arguments are separate arrays. Working directories must be within allowed roots. Environment propagation is allowlisted or explicitly defined. stdout and stderr are separate and bounded. Runtime, output, and concurrency are limited.
 
+The Managed Process Engine does not choose or elevate an execution identity on
+behalf of a tool caller. It receives the server-created execution context and
+launches the child through that context's already-authorized backend:
+
+- direct STDIO uses the FlashGate process's current OS identity;
+- the Version 1.0 system service uses its dedicated restricted service account;
+- the reserved `user-worker` backend remains unavailable in Version 1.0; and
+- shared-process impersonation, caller-supplied credentials, and per-call
+  identity selection are prohibited.
+
+Command authorization remains bound to the authenticated caller even when the
+child runs as the service account. The executable, working directory, root,
+profile, capability, limits, handles, output, cancellation rights, and audit
+records remain bound to the same immutable execution context. A child process
+must not receive broader filesystem, environment, group, token, capability, or
+network access than its approved command definition and execution backend
+provide. Platform adapters may use different isolation mechanisms, but they
+must fail closed when the configured identity or required restrictions cannot
+be established; they must not retry with the server's ambient privileges.
+
 A future `run_command` is a synchronous wrapper over the Managed Process Engine. No second execution engine is permitted. Free shell strings and interactive shells are disabled by default.
 
 ## Rationale
@@ -28,6 +48,7 @@ Opaque handles provide stronger lifecycle identity than reusable PIDs. A single 
 - Windows and Linux adapters must implement equivalent policy outcomes.
 - Output needs bounded ring buffers or equivalent streaming storage.
 - Server restart behavior must be defined.
+- Command execution cannot be used as an identity-selection or elevation API.
 
 ## Security Impact
 
@@ -35,7 +56,7 @@ Executable allowlisting, argument separation, root-confined working directories,
 
 ## Implementation Guidance
 
-Threat-model observation and execution separately. Implement registry identity and cleanup before control tools. Test PID reuse assumptions, races, timeouts, redaction, and platform isolation.
+Threat-model observation and execution separately. Implement registry identity and cleanup before control tools. Test PID reuse assumptions, races, timeouts, redaction, platform isolation, rejection of caller-selected identity data, context-bound ownership, and fail-closed launch behavior when the required backend identity or isolation cannot be established.
 
 ## Decision Gates
 
