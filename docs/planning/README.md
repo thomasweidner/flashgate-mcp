@@ -1,7 +1,7 @@
 # FlashGate MCP — Planning Artifact Index
 
-**Date:** 2026-09-17  
-**Bound main:** `03a4846e4a910231ef9e7a8e314de09c5f0112b3`
+**Date:** 2026-09-18  
+**Bound main:** `f615d6f54c967b1fae04c5378f32af0b648b40f7`
 
 These dated artifacts preserve the Mobile/Vacation preparation and Classic review evidence outside chat history. They are non-canonical planning/review evidence; `BACKLOG.md`, current governance, ADRs and repository truth remain authoritative.
 
@@ -17,6 +17,8 @@ These dated artifacts preserve the Mobile/Vacation preparation and Classic revie
 8. `classic-independent-review-batch-03-2026-09-17.md` — completed read-only Classic independent review of the BL-136→138 command line and BL-107→109 named-root line, including confirmed and newly identified findings; no fixes were performed in the review.
 9. `classic-independent-review-batch-04-2026-09-17.md` — completed read-only Classic independent review of BL-223/224/225 plus Operations/Job BL-094 and Managed Process BL-129 lifecycle contracts/owners, including a new Classic session-binding finding; no fixes were performed in the review.
 10. `classic-independent-review-batch-05-2026-09-17.md` — completed read-only Classic independent review of Linux/Windows local IPC transports, runtime configuration/discovery, backend-neutral execution identity and the Variant-A service-account backend, including new bounded-cancellation/stale-probe findings; no fixes were performed in the review.
+
+13. `classic-independent-review-batches-17-20-2026-09-18.md` — consolidated read-only Classic review of normal-backlog SPR-057 through SPR-060; no fixes were performed.
 
 ## Interpretation
 
