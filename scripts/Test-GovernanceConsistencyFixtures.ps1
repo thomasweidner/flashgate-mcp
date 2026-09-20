@@ -544,7 +544,8 @@ function New-MinimalClassicReviewPackage {
         [Parameter(Mandatory)][string]$Name,
         [Parameter(Mandatory)][string]$ReadmeText,
         [ValidateSet('NONE', 'DUPLICATE_PATH', 'CASE_COLLISION', 'ABSOLUTE_PATH', 'TRAVERSAL_PATH', 'REPARSE_ENTRY')]
-        [string]$Mutation = 'NONE'
+        [string]$Mutation = 'NONE',
+        [AllowEmptyCollection()][object[]]$AdditionalPayload = @()
     )
 
     $utf8 = [System.Text.UTF8Encoding]::new($false)
@@ -553,34 +554,49 @@ function New-MinimalClassicReviewPackage {
     $handoffBytes = $utf8.GetBytes(
         '{"schemaVersion":1,"classicReviewReady":true,"transferUnit":"single-package"}' + "`n"
     )
+    $payloads = [System.Collections.Generic.List[object]]::new()
+    $payloadPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($payload in @(
+            [pscustomobject]@{ Path = 'README.md'; Bytes = $readmeBytes; ExternalAttributes = 0 },
+            [pscustomobject]@{ Path = 'handoff.json'; Bytes = $handoffBytes; ExternalAttributes = 0 }
+        ) + @($AdditionalPayload)) {
+        $payloadPath = [string]$payload.Path
+        if ([string]::IsNullOrWhiteSpace($payloadPath) -or -not $payloadPaths.Add($payloadPath)) {
+            throw "Classic fixture payload path must be non-empty and unique: $payloadPath"
+        }
+        [void]$payloads.Add([pscustomobject]@{
+                Path = $payloadPath
+                Bytes = [byte[]]$payload.Bytes
+                ExternalAttributes = if ('ExternalAttributes' -in @($payload.PSObject.Properties.Name)) {
+                    [int]$payload.ExternalAttributes
+                }
+                else {
+                    0
+                }
+            })
+    }
     $manifestObject = [ordered]@{
         schemaVersion = 1
         classicReviewReady = $true
-        entries = @(
-            [ordered]@{
-                path = 'README.md'
-                length = $readmeBytes.LongLength
-                sha256 = Get-LowerSha256 -Bytes $readmeBytes
-            },
-            [ordered]@{
-                path = 'handoff.json'
-                length = $handoffBytes.LongLength
-                sha256 = Get-LowerSha256 -Bytes $handoffBytes
-            }
-        )
+        entries = @($payloads | ForEach-Object {
+                [ordered]@{
+                    path = [string]$_.Path
+                    length = ([byte[]]$_.Bytes).LongLength
+                    sha256 = Get-LowerSha256 -Bytes ([byte[]]$_.Bytes)
+                }
+            })
     }
     $manifestJsonBytes = $utf8.GetBytes(
         (($manifestObject | ConvertTo-Json -Depth 20) + "`n")
     )
 
-    $payloads = [System.Collections.Generic.List[object]]::new()
-    foreach ($payload in @(
-            [pscustomobject]@{ Path = 'README.md'; Bytes = $readmeBytes; ExternalAttributes = 0 },
-            [pscustomobject]@{ Path = 'handoff.json'; Bytes = $handoffBytes; ExternalAttributes = 0 },
-            [pscustomobject]@{ Path = 'manifest.json'; Bytes = $manifestJsonBytes; ExternalAttributes = 0 }
-        )) {
-        [void]$payloads.Add($payload)
-    }
+    [void]$payloads.Add([pscustomobject]@{
+            Path = 'manifest.json'
+            Bytes = $manifestJsonBytes
+            ExternalAttributes = 0
+        })
 
     $manifestRecords = @(
         $payloads |
@@ -3690,13 +3706,104 @@ try {
                     $firstPackage.PackageSha256 -cne $rebuiltPackage.PackageSha256 -and
                     $firstPackage.ManifestJsonSha256 -cne $rebuiltPackage.ManifestJsonSha256
                 )
-                $actualExit = if ($firstExit -eq 0 -and $secondExit -eq 0 -and $rebuildChanged) {
+                $tabPolicyDefinitions = @(
+                    [pscustomobject]@{
+                        Name = 'tab-policy-patch-positive'
+                        MemberPath = 'change.patch'
+                        Text = "diff --git a/main.go b/main.go`n--- a/main.go`n+++ b/main.go`n@@ -1 +1 @@`n- return nil`n+`treturn nil`n"
+                        ExpectedExit = 0
+                        ExpectedFailureCode = $null
+                    },
+                    [pscustomobject]@{
+                        Name = 'tab-policy-diff-positive'
+                        MemberPath = 'change.diff'
+                        Text = "diff --git a/main.go b/main.go`n--- a/main.go`n+++ b/main.go`n@@ -1 +1 @@`n- return nil`n+`treturn nil`n"
+                        ExpectedExit = 0
+                        ExpectedFailureCode = $null
+                    },
+                    [pscustomobject]@{
+                        Name = 'tab-policy-tsv-positive'
+                        MemberPath = 'evidence.tsv'
+                        Text = "key`tvalue`nalpha`tbeta`n"
+                        ExpectedExit = 0
+                        ExpectedFailureCode = $null
+                    },
+                    [pscustomobject]@{
+                        Name = 'tab-policy-markdown-negative'
+                        MemberPath = 'narrative.md'
+                        Text = "narrative`ttext`n"
+                        ExpectedExit = 1
+                        ExpectedFailureCode = 'UNEXPECTED_TAB'
+                    },
+                    [pscustomobject]@{
+                        Name = 'tab-policy-patch-control-negative'
+                        MemberPath = 'control.patch'
+                        Text = [string]::Concat("diff --git a/a b/a`n+", [char]0x000B, "forbidden`n")
+                        ExpectedExit = 1
+                        ExpectedFailureCode = 'FORBIDDEN_CONTROL_CHARACTER'
+                    }
+                )
+                $tabPolicyPassed = $true
+                $tabPolicyOutput = [System.Collections.Generic.List[string]]::new()
+                foreach ($definition in $tabPolicyDefinitions) {
+                    $policyPackage = New-MinimalClassicReviewPackage -Root $temporaryRoot `
+                        -Name $definition.Name -ReadmeText "ClassicReviewReady: true`n" `
+                        -AdditionalPayload @([pscustomobject]@{
+                                Path = $definition.MemberPath
+                                Bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($definition.Text)
+                            })
+                    $policyReportPath = Join-Path $temporaryRoot ($definition.Name + '-result.json')
+                    $policyOutput = @(
+                        & $pwsh -NoLogo -NoProfile -File $CanonicalArtifactValidatorPath `
+                            -ArtifactPath $policyPackage.PackagePath `
+                            -ReadinessRequirement RequireTrue -ReportPath $policyReportPath 2>&1
+                    )
+                    $policyExit = $LASTEXITCODE
+                    $policyResult = Get-Content -LiteralPath $policyReportPath -Raw -Encoding UTF8 |
+                        ConvertFrom-Json -Depth 20 -DateKind String
+                    $failureCodes = @($policyResult.Failures | ForEach-Object { [string]$_.Code })
+                    $expectedFailureObserved = if ($null -eq $definition.ExpectedFailureCode) {
+                        $failureCodes.Count -eq 0
+                    }
+                    else {
+                        [string]$definition.ExpectedFailureCode -cin $failureCodes
+                    }
+                    $policyPassed = (
+                        $policyExit -eq [int]$definition.ExpectedExit -and
+                        $expectedFailureObserved -and
+                        (($policyExit -ne 0) -or (
+                                [string]$policyResult.ControlCharacterResult -ceq 'PASS' -and
+                                [string]$policyResult.ManifestResult -ceq 'PASS' -and
+                                [string]$policyResult.ZipReopenResult -ceq 'PASS' -and
+                                [string]$policyResult.InventoryConsistencyResult -ceq 'PASS'
+                            ))
+                    )
+                    $tabPolicyPassed = $tabPolicyPassed -and $policyPassed
+                    [void]$tabPolicyOutput.Add(
+                        '{0}: passed={1} exit={2} failures={3}' -f @(
+                            $definition.Name,
+                            $policyPassed,
+                            $policyExit,
+                            ($failureCodes -join ',')
+                        )
+                    )
+                    if (-not $policyPassed) {
+                        [void]$tabPolicyOutput.Add(($policyOutput -join [Environment]::NewLine))
+                    }
+                }
+                $actualExit = if (
+                    $firstExit -eq 0 -and $secondExit -eq 0 -and $rebuildChanged -and
+                    $tabPolicyPassed
+                ) {
                     0
                 }
                 else {
                     1
                 }
-                $output = @($firstOutput + $secondOutput + "rebuildChanged=$rebuildChanged")
+                $output = @(
+                    $firstOutput + $secondOutput + "rebuildChanged=$rebuildChanged" +
+                    "tabPolicyPassed=$tabPolicyPassed" + @($tabPolicyOutput)
+                )
             }
             7 {
                 $planPassed = Test-ClassicTransferPlan -RequiredFileCount 3 `

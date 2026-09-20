@@ -396,8 +396,16 @@ platform-gated synthetic result does not satisfy that end-to-end gate.
 
 `scripts/Test-ClassicReviewArtifact.ps1` is the versioned Hosted-CI execution
 mirror of the external canonical Classic artifact validator. Its integration
-baseline is 32719 bytes with SHA-256
-`c6da4524c881d339bdccfde5894277ddc549fae898348e538956302949518c51`.
+baseline is 33112 bytes with SHA-256
+`76859d14b94f4d3c6f57a111dfbeca4082860d56393ea877e8c8263e81fafd36`.
+The validator applies the horizontal-tab rule by file format: U+0009 is
+permitted only in `.patch`, `.diff`, and `.tsv` payloads, where it can be part
+of the byte-exact syntax or data. Narrative and control text such as `.md`,
+`.json`, `.log`, `.ps1`, `.txt`, `.xml`, `.yaml`, and `.csv` remains tab-free,
+and every other forbidden C0/C1 control character remains fail-closed for all
+text extensions. The focused `positive-package-full-rebuild-after-change`
+fixture includes positive `.patch`, `.diff`, and `.tsv` cases plus negative
+Markdown-tab and patch-control-character regressions.
 The mirror is not an independent governance source. The fixture runner resolves
 it relative to its own script by default and still accepts an explicit
 `-CanonicalArtifactValidatorPath`. When the external canonical validator exists

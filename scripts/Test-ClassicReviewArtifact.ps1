@@ -51,6 +51,13 @@ foreach ($Extension in @(
     [void]$TextExtensions.Add($Extension)
 }
 
+$HorizontalTabAllowedExtensions = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase
+)
+foreach ($Extension in @('.diff', '.patch', '.tsv')) {
+    [void]$HorizontalTabAllowedExtensions.Add($Extension)
+}
+
 $SemanticTextExtensions = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::OrdinalIgnoreCase
 )
@@ -254,7 +261,10 @@ function Get-EntryText {
 }
 
 function Test-TextEntry {
-    param([Parameter(Mandatory)]$Entry)
+    param(
+        [Parameter(Mandatory)]$Entry,
+        [Parameter(Mandatory)][string]$Extension
+    )
 
     $Decoded = Get-EntryText -Entry $Entry
     if (-not $Decoded.Success) {
@@ -286,6 +296,9 @@ function Test-TextEntry {
             continue
         }
         if ($CodePoint -eq 9) {
+            if ($script:HorizontalTabAllowedExtensions.Contains($Extension)) {
+                continue
+            }
             Add-Failure -Code 'UNEXPECTED_TAB' -Entry $Entry.Path -Offset $Index `
                 -Detail 'Tab is not allowed in review text.'
             continue
@@ -296,7 +309,6 @@ function Test-TextEntry {
         }
     }
 
-    $Extension = [System.IO.Path]::GetExtension($Entry.Path)
     if (-not $script:SemanticTextExtensions.Contains($Extension)) {
         return
     }
@@ -739,7 +751,7 @@ try {
     foreach ($Entry in $Entries) {
         $Extension = [System.IO.Path]::GetExtension($Entry.Path)
         if ($TextExtensions.Contains($Extension)) {
-            Test-TextEntry -Entry $Entry
+            Test-TextEntry -Entry $Entry -Extension $Extension
         }
     }
 
