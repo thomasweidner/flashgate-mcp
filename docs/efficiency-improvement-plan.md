@@ -259,54 +259,9 @@ Version 1.0 implementation preference:
 
 PowerShell or shell scripts may remain development, installation, smoke, or administrator tooling. They are not runtime dependencies of the FlashGate core/service.
 
-Governance validation follows ADR-016. Reusable orchestration performs cheap
-current-state, toolchain, parser, parameter, Temp, sandbox, and harness
-preflights before expensive matrices. It converges with focused root-cause and
-component checks, completes documentation, and then performs exactly one full
-final run. Progress always means completed selected units, never a pass/fail
-pair, and repeated long runs without numeric progress are instrumentation
-findings.
-
-BL-339 standardizes that workflow, and BL-340 completes it as nine cataloged data profiles and
-one strict request/result contract. The ordered cheap prefix prevents expensive
-work after parser, text/EOL, diff, closed external-input classification,
-toolchain/context, exact source, or canonical selector-resolution failures.
-Task-local generated controllers are exceptional and measured from a declared
-inventory; the normal count is zero because the thin runner composes permanent
-helpers and typed subordinate results. Unknown exceptions or counter drift fail
-closed. Exact PASS/dependency hashes and an eight-component state map allow
-unchanged evidence reuse and selective invalidation rather than prophylactic
-full reruns. Its reusable `IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW` handoff
-profile carries that hash-bound full-completion evidence directly into the first
-independent review without requiring a review artifact that cannot yet exist.
-The same generator supports evidence-only focused review and post-merge closure
-as nine-member empty-delta packages, without artificial patch generation.
-
-The correction handoff uses the same generator in directory-first
-`PreflightOnly` mode. This performs schema, snapshot, patch, scope, finding,
-inventory, and manifest validation once before any productive ZIP open. A
-passing preflight exposes `ReadyToExecute` and preserves the validated staging
-bytes. A separate ZIP-free `FinalPackageContentOnly` directory then validates
-the exact final lifecycle semantics before authorization. This keeps the
-runtime package-attempt counter at zero, eliminates trial ZIP writes and
-in-place package repair, and lets the later one-shot package operation consume
-already validated final-state bytes.
-
-The cheap source gate hashes the complete raw porcelain-v2 status and compares
-expected with actual before expensive work. Exact, case-safe equality between
-scope and file-hash paths prevents partial bindings. Separately protected
-worktrees have independent bindings rather than implicit exclusions.
-
-The canonical workflow metrics are `validationExecutionCount`,
-`infrastructureOrInvocationFailureCount`, `fullMatrixRunCount`,
-`packageWriteAttemptCount`, `generatedTaskControllerFileCount`,
-`generatedTaskControllerLineCount`, and `readOnlyProbeCount`. A completed change
-package permits exactly one full-completion run and one final package write.
-Directory validation precedes ZIP creation so known content errors cost zero
-package-write attempts. The attempt counter becomes one immediately before the
-first write-capable candidate open after target preconditions pass, including a
-failed candidate open. An existing file or directory target fails before that
-attempt; automatic retry is zero.
+Development and validation tooling remains outside the FlashGate runtime. The
+portable contributor and CI commands are defined in `CONTRIBUTING.md` and
+`docs/testing.md`.
 
 ## Conditional reads
 

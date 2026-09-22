@@ -316,79 +316,10 @@ flashgate-mcp --version --verbose
 
 ## Testing and Quality Checks
 
-FlashGate uses a thin
-[change-trigger adapter](Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md)
-and inherits the central Slim Governance security and authorization boundaries.
-Normal development validation is `DIRECTLY_AFFECTED_FIRST`; it keeps product,
-Go, coverage, lint, build, release, metadata, platform, shell and security gates
-without requiring the legacy Generic-Handoff/V3/V4 meta matrices.
-
-```powershell
-& {
-    $workRoot = $env:FLASHGATE_WORK_ROOT
-    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
-    .\scripts\Test-DocumentationConsistency.ps1
-    .\scripts\Test-ShellScripts.ps1
-    .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $workRoot
-}
-```
-
-The remaining governance-fixture discussion in this section is retained only as
-`LEGACY_COMPATIBILITY_ONLY` history. Those scripts are not normal Product-CI
-blockers and receive no new project consumers.
-
-The legacy fixture runner continues to expect 225 result cases. The BL-336
-generic-profile harness adds 85 positive and negative cases without replacing
-or weakening the historical matrix. Its private and undeclared host-path
-negatives use a closed typed factory that materializes seven deterministic
-synthetic path classes only at fixture runtime. Git-evidence regressions also
-prove temporary index/object-database isolation, real-object inventory parity,
-literal metacharacter paths, exact NUL-separated delta inventory, EXCLUDE
-prohibition, component-wise cross-platform object-database paths, and
-fail-closed cleanup. Changes to this helper require the complete generic matrix
-on Windows and native Linux under the project PowerShell version; a
-platform-gated result is not a substitute for that platform's end-to-end path.
-For long local
-runs, `-ProgressPath <new-jsonl-path>` records one deterministic completion
-record per case. `-ResultPath <new-json-path>` atomically persists the terminal
-typed result, including progress count and SHA-256, before normal process exit.
-The runner fails closed on a different full-run count, cleanup failure, or
-repository mutation.
-
-CI and release create their assignment records ephemerally with
-`scripts/New-GovernanceWorkflowRecord.ps1`; no workflow record is maintained as
-a repository artifact. `ClassicReviewReady=true` additionally requires the
-actual external ZIP validator, strict assignment, completion, finding-matrix,
-focused-delta, and report-contract schemas, byte-exact hashes for
-`correction-only.patch` and `current-delta.patch`, and exact
-assignment/report/scope/patch/finding/external-delta parity. A bundled
-correction remains `CORRECTED_PENDING_DELTA`; only a later successful
-independent focused delta review may close its findings. Task-neutral commit
-preparation uses the explicit `GENERIC_COMMIT_PREPARATION` profile and accepts
-an empty real finding set; correction-only artifacts remain confined to
-`FINDING_CORRECTION`. Both profiles require a single manifest-complete package,
-and `commitAuthorized` remains false. The generic contract binds repository,
-baseline, current commit, branch, complete relevant Git status, tracked/staged
-state, mode, length, SHA-256, inclusion decisions, reasons, allowed and excluded
-paths across its typed evidence. Validation resolves the trusted isolated
-worktree directly and requires exact Origin, baseline-object, HEAD, branch, and
-Porcelain-v2 status parity. Every relevant changed or untracked path must occur
-exactly once in the scope inventory; INCLUDE paths equal the patch paths and
-EXCLUDE paths must be absent from the patch. Profile isolation uses discriminators, member
-names, and typed fields rather than narrative tokens. Host paths are checked per
-artifact against exact canonical, documented-example, or synthetic-fixture
-classifications; private or undeclared host paths fail closed.
-
-Scope entries are disjoint by `gitStatus`. Ordinary tracked postimages bind the
-Git worktree mode and current bytes; untracked regular files bind current bytes
-plus an explicit Windows `100644` normalization or the normalized Unix execute
-bits. Tracked deletions bind the baseline blob as a binary-safe preimage and
-assert `postimageAbsent=true`. Tracked renames bind `previousPath` to the
-baseline preimage and `path` to the current postimage. Rename discovery uses a
-temporary alternate index and `--name-status -z --find-renames`, while the real
-Porcelain-v2 status and `staged=false` remain separate mandatory evidence. The
-authoritative binary patch includes both rename sides and is byte-equal to both
-packaged patches.
+FlashGate's public checkout contains the normal product, security, release,
+metadata, platform, shell, and documentation validation gates. Start with the
+directly affected checks and finish with the applicable repository-wide chain
+below. No private development environment is required.
 
 Run the documentation consistency gate with PowerShell 7.6.x (Major 7, Minor 6):
 
@@ -442,28 +373,10 @@ go build -o build/flashgate-mcp.exe ./cmd/server
 ```
 
 Relevant platform, build, test, lint, workflow, filesystem, and security-boundary
-changes require the controlled native Linux validation described in
-[docs/testing.md](docs/testing.md#controlled-native-linux-validation). Windows
-remains the leading development environment; WSL2 receives a one-way test copy
-and never returns source changes.
-
-Invoke the canonical Windows entry point with PowerShell 7.6.x (Major 7, Minor 6):
-
-```powershell
-& {
-    $orchestrator = "C:\Path\To\Codex-Work\Scripts\Invoke-FlashGateLinuxValidation.ps1"
-    $result = & $orchestrator `
-        -RunId "manual-validation-20260724-130500" `
-        -ValidationClass "standard" `
-        -ReportContext "Manual validation after filesystem changes"
-
-    $result | Format-List
-}
-```
-
-When the optional Codex smoke is required, it uses the native WSL installation
-below `/home`, requires the same Codex CLI version as Windows, and keeps the
-Linux configuration and authentication profile separate from Windows.
+changes require the native Linux checks described in
+[Testing](docs/testing.md#native-linux-validation). Run those checks in a native
+Linux checkout; do not treat a Windows-mounted filesystem as native Linux
+evidence.
 
 ### Code Coverage
 
@@ -596,31 +509,9 @@ Each archive has a sibling `.sha256` file and exactly one top-level directory co
 
 Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-and-release-metadata.md), [Artifact verification](docs/artifact-verification.md), and [Manual metadata validation](docs/manual-metadata-validation.md).
 
-BL-248 artifact verification is complete and was merged through PR #25 on
-2026-07-26 at `a30d3ab4958af6c1df5015300817aac1b692fde9`. CI Run 82 and
-Metadata Regression Run 11 succeeded, the final Windows and native Linux
-contract suites passed `201/201` and `206/206`, respectively, and all six
-original findings are closed with no open BL-248 finding. BL-333/BL-334 and
-BL-335 and BL-251 are complete. The canonical orchestrator binds the PowerShell
-7.6 LTS line, the native Linux `standard` gate passes, and the final runspace-free
-wrapper plus atomically persisted child result prove `225/225` governance
-fixtures with zero failures, skips, warnings, timeouts, cleanup errors, or
-repository mutation. At BL-251 closure, the Windows shell harness passed 21/21 cases and obtained
-the bounded child PID directly from the process-start result, so its timeout
-cleanup evidence no longer depended on child-authored PID-file timing. The
-current INF-181 PowerShell 7.6.x shell harness passes 25/25 cases. The PID
-correction passed focused independent delta review with no warnings or
-failures, and `BL-251-REV-005` is closed. The exact commit, remote
-push, Draft PR, Hosted CI, and focused independent review of the documentation
-correction are complete. `PR30-REV-001` is
-`CLOSED_BY_INDEPENDENT_DELTA_REVIEW`. BL-324 is complete: PR #36 merged the
-exact reviewed two-path Dependabot configuration, post-merge CI, Metadata
-Regression, CodeQL, and both initial Dependabot ecosystem runs passed,
-Dependabot Alerts and unpaused Security Updates are enabled, and automatic
-merging remains disabled. BL-340 is complete through PR #42 with `OpenFindingCount=0`; no BL-340
-implementation, review, merge, remote, or local implementation work remains.
-BL-341 remains `Planned` and owns the later cross-mode host-process lifecycle
-runtime implementation.
+Historical project and release milestones remain available in `BACKLOG.md` and
+`CHANGELOG.md`; they do not add private prerequisites to the current public
+build and release process.
 
 ## Basic Usage
 

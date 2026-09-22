@@ -30,7 +30,7 @@ Get-FileHash -Algorithm SHA256 .\build\flashgate-mcp.exe
 Das geprüfte Binary wird danach unter separater Freigabe in einen versionierten Pfad außerhalb des Repositories kopiert, zum Beispiel:
 
 ```text
-C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\spr-44\flashgate-mcp.exe
+C:\Program Files\FlashGate\flashgate-mcp.exe
 ```
 
 Der Binary-Pfad darf nicht innerhalb des freigegebenen Datenroots liegen. Temporäre Builddateien sind nach der Abnahme zu entfernen. Ein geprüftes Release-Binary bleibt die spätere bevorzugte Produktionsform.
@@ -42,7 +42,7 @@ Der Binary-Pfad darf nicht innerhalb des freigegebenen Datenroots liegen. Tempor
 Für die erste Abnahme wird ein kleiner dedizierter Root empfohlen, beispielsweise:
 
 ```text
-C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\FlashGate-ReadOnly-TestRoot
+C:\FlashGateData\ReadOnlyRoot
 ```
 
 Nicht verwenden:
@@ -89,16 +89,16 @@ Lokal bestätigt sind `command`, `args`, Environment, `startup_timeout_sec` und 
 ```toml
 # EXAMPLE ONLY — NOT APPLIED BY SPR-044
 [mcp_servers.flashgate_readonly]
-command = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\spr-44\flashgate-mcp.exe'
+command = 'C:\Program Files\FlashGate\flashgate-mcp.exe'
 args = []
 startup_timeout_sec = 10
 
 # Verify before use with the installed Codex version:
-# cwd = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\Bin\FlashGate\spr-44'
+# cwd = 'C:\Program Files\FlashGate'
 # tool_timeout_sec = 30
 
 [mcp_servers.flashgate_readonly.env]
-MCP_ROOT = 'C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\Codex-Work\FlashGate-ReadOnly-TestRoot'
+MCP_ROOT = 'C:\FlashGateData\ReadOnlyRoot'
 MCP_READ_ONLY = 'true'
 MCP_ALLOW_CWD_ROOT = 'false'
 MCP_ALLOW_HIDDEN_FILES = 'false'

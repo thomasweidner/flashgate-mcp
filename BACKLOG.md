@@ -12,7 +12,7 @@ FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, local directory `fl
 - Keep protocol output on stdout and diagnostics on stderr.
 - Mark target and planned behavior explicitly; do not present it as implemented.
 - Preserve completed tasks with status `Done`.
-- Apply the global change-trigger and registration truth contract through the FlashGate adapter in `Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md`. Reuse completed gates without reopening their owners; claim registration only after a real canonical write and readback.
+- Keep changes bound to their canonical backlog owner, reuse completed product gates without reopening their owners, and register genuinely new work only through an explicit backlog update.
 - Complete the current sprint's ID migration document before merge. After merge, dated migration files are immutable history; any later full renumbering creates a new dated migration file and may add a small migration index.
 
 > Neue Backlogpunkte erhalten die nächste freie BL-Nummer. Bereits vergebene BL-IDs bleiben stabil; fachliche Tabellenposition und ID sind unabhängig.

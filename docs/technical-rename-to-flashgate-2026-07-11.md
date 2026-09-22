@@ -71,7 +71,7 @@ git status --short --branch
 At that time, the local project folder was renamed or moved to:
 
 ```text
-C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\MCP\flashgate-mcp
+<local-workspace>\flashgate-mcp
 ```
 
 After those manual steps, create or use the dedicated Sprint 3.42 feature branch for the separate internal technical rename.
