@@ -187,6 +187,7 @@ $requiredFiles = [string[]]@(
     'docs/codex-read-only-activation.md',
     'docs/documentation-quality-gate.md',
     'docs/efficiency-improvement-plan.md',
+    'docs/planning/README.md',
     'docs/security.md',
     'docs/technical-rename-to-flashgate-2026-07-11.md',
     'docs/testing.md'
@@ -460,12 +461,17 @@ $planningRoot = Join-Path $resolvedRoot 'docs/planning'
 $planningFiles = [object[]]@(
     Get-ChildItem -LiteralPath $planningRoot -File -Recurse -ErrorAction Stop
 )
+$planningIndex = [string]$documents['docs/planning/README.md']
+$planningClassificationValid =
+    $planningIndex.Contains('non-canonical planning/review evidence') -and
+    $planningIndex.Contains('None of these files authorize Git, remote, correction, integration, branch deletion or release actions.')
 Add-Check -Id 'HISTORICAL-NON-OPERATIVE' -Passed (
-    $planningFiles.Count -eq 11 -and
+    $planningClassificationValid -and
     (Test-Path -LiteralPath (Join-Path $resolvedRoot 'CHANGELOG.md') -PathType Leaf)
 ) -Message (
-    'PlanningArtifactCount={0}; CHANGELOG retained; classification=HISTORICAL_NON_OPERATIVE.' -f
-    $planningFiles.Count
+    'PlanningArtifactCount={0}; PlanningIndexClassificationValid={1}; CHANGELOG retained; classification=HISTORICAL_NON_OPERATIVE.' -f
+    $planningFiles.Count,
+    $planningClassificationValid
 )
 
 $failedChecks = [object[]]@($checks | Where-Object { -not $_.passed })
