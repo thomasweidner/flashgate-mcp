@@ -26,7 +26,7 @@ The public project name was established as FlashGate MCP in Sprint 3.41. The Git
 - MCP server implementation name (`serverInfo.name`): `flashgate`
 - Go module: `github.com/thomasweidner/flashgate-mcp`
 - Repository: `thomasweidner/flashgate-mcp`
-- Active local project path: `C:\Voxtronic\MCP\flashgate-mcp`
+- Active local project checkout: the repository root selected by the contributor or build environment
 
 ## Existing clones and GitHub redirects
 
@@ -71,7 +71,7 @@ git status --short --branch
 At that time, the local project folder was renamed or moved to:
 
 ```text
-C:\Users\ThomasW\OneDrive - VOXTRONIC\Desktop\Voxtronic\MCP\flashgate-mcp
+<local-workspace>\flashgate-mcp
 ```
 
 After those manual steps, create or use the dedicated Sprint 3.42 feature branch for the separate internal technical rename.
@@ -93,7 +93,7 @@ After those manual steps, create or use the dedicated Sprint 3.42 feature branch
 
 ## Owner migration amendment - 2026-07-20
 
-Repository ownership was migrated from `blacksheepkhan/flashgate-mcp` to `thomasweidner/flashgate-mcp`. The Go module was correspondingly migrated to `github.com/thomasweidner/flashgate-mcp`, and the active Windows project path is `C:\Voxtronic\MCP\flashgate-mcp`.
+Repository ownership was migrated from `blacksheepkhan/flashgate-mcp` to `thomasweidner/flashgate-mcp`. The Go module was correspondingly migrated to `github.com/thomasweidner/flashgate-mcp`; the active checkout location remains contributor-controlled and is not a product identifier.
 
 The owner migration did not change the binary name, `serverInfo.name`, MCP tool contracts, `MCP_*` environment variables, commit history, pull-request history, or release history. Earlier owner-specific commands and paths in this document remain as historical evidence of the 2026-07-11 rename.
 

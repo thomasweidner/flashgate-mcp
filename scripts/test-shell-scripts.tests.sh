@@ -5,8 +5,8 @@ export LC_ALL=C
 
 mode='normal'
 if (($# > 0)); then
-  if (($# == 1)) && [[ $1 == '--cleanup-negative-probe' ]]; then
-    mode='cleanup-negative-probe'
+  if (($# == 1)) && [[ $1 == '--cleanup-negative-probe' || $1 == '--cleanup-escape-probe' ]]; then
+    mode=${1#--}
   else
     printf '%s\n' \
       'Status: FAIL' \
@@ -23,7 +23,41 @@ fi
 root_path=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 validator="$root_path/scripts/test-shell-scripts.sh"
 script_path="$root_path/scripts/test-shell-scripts.tests.sh"
-test_root=$(mktemp -d '/tmp/BL-251-shell-validation-tests.XXXXXXXX')
+
+fail_preflight() {
+  printf '%s\n' \
+    'Status: FAIL' \
+    'TestCount: 0' \
+    'PassCount: 0' \
+    'Cleanup: PASS' \
+    "Diagnostics: Harness: $1" \
+    'WarningCount: 0' \
+    'FailureCount: 1'
+  exit 2
+}
+
+if [[ ! -v FLASHGATE_WORK_ROOT ]]; then
+  fail_preflight 'FLASHGATE_WORK_ROOT must be explicitly set'
+fi
+if [[ -z $FLASHGATE_WORK_ROOT ]]; then
+  fail_preflight 'FLASHGATE_WORK_ROOT must not be empty'
+fi
+if [[ $FLASHGATE_WORK_ROOT != /* ]]; then
+  fail_preflight 'FLASHGATE_WORK_ROOT must be an absolute path'
+fi
+if [[ ! -d $FLASHGATE_WORK_ROOT || -L $FLASHGATE_WORK_ROOT ]]; then
+  fail_preflight 'FLASHGATE_WORK_ROOT must identify an existing non-symlink directory'
+fi
+if ! work_root=$(cd -P -- "$FLASHGATE_WORK_ROOT" && pwd); then
+  fail_preflight 'FLASHGATE_WORK_ROOT cannot be resolved'
+fi
+if [[ $work_root == "$root_path" || $work_root == "$root_path/"* ]]; then
+  fail_preflight 'FLASHGATE_WORK_ROOT must be outside the repository source tree'
+fi
+
+if ! test_root=$(mktemp -d -- "$work_root/BL-251-shell-validation-tests.XXXXXXXX"); then
+  fail_preflight 'unique scratch directory creation failed'
+fi
 failures=()
 test_count=0
 pass_count=0
@@ -32,7 +66,7 @@ force_cleanup_failure=false
 cleanup() {
   local exit_code=$?
   local cleanup_status='PASS'
-  if [[ -d "$test_root" && ! -L "$test_root" && "$test_root" == /tmp/BL-251-shell-validation-tests.* ]]; then
+  if [[ -d "$test_root" && ! -L "$test_root" && "$test_root" == "$work_root"/BL-251-shell-validation-tests.* ]]; then
     if [[ "$force_cleanup_failure" == true ]]; then
       failures+=("Cleanup: simulated deletion failure for controlled fixture root: $test_root")
       cleanup_status='FAIL'
@@ -67,6 +101,10 @@ trap cleanup EXIT
 
 if [[ "$mode" == 'cleanup-negative-probe' ]]; then
   force_cleanup_failure=true
+  exit 0
+fi
+if [[ "$mode" == 'cleanup-escape-probe' ]]; then
+  test_root=$work_root
   exit 0
 fi
 
@@ -147,7 +185,7 @@ else
   record 'invalid-argument-fails' true
 fi
 
-if cleanup_negative_output=$(/usr/bin/bash "$script_path" --cleanup-negative-probe 2>&1); then
+if cleanup_negative_output=$(FLASHGATE_WORK_ROOT="$work_root" /usr/bin/bash "$script_path" --cleanup-negative-probe 2>&1); then
   record 'cleanup-negative-probe-fails-closed' false "$cleanup_negative_output"
 else
   cleanup_status_count=$(grep -c '^Status:' <<< "$cleanup_negative_output" || true)
@@ -159,6 +197,40 @@ else
       [[ "${cleanup_failure_count:-0}" -gt 0 ]] &&
       printf true || printf false
   )" "$cleanup_negative_output"
+fi
+
+if work_root_unset_output=$(env -u FLASHGATE_WORK_ROOT /usr/bin/bash "$script_path" 2>&1); then
+  record 'work-root-unset-fails' false "$work_root_unset_output"
+else
+  record 'work-root-unset-fails' "$(grep -qx 'Status: FAIL' <<< "$work_root_unset_output" && printf true || printf false)" "$work_root_unset_output"
+fi
+
+if work_root_empty_output=$(FLASHGATE_WORK_ROOT='' /usr/bin/bash "$script_path" 2>&1); then
+  record 'work-root-empty-fails' false "$work_root_empty_output"
+else
+  record 'work-root-empty-fails' "$(grep -qx 'Status: FAIL' <<< "$work_root_empty_output" && printf true || printf false)" "$work_root_empty_output"
+fi
+
+if work_root_relative_output=$(FLASHGATE_WORK_ROOT='relative-work-root' /usr/bin/bash "$script_path" 2>&1); then
+  record 'work-root-relative-fails' false "$work_root_relative_output"
+else
+  record 'work-root-relative-fails' "$(grep -qx 'Status: FAIL' <<< "$work_root_relative_output" && printf true || printf false)" "$work_root_relative_output"
+fi
+
+if work_root_source_output=$(FLASHGATE_WORK_ROOT="$root_path" /usr/bin/bash "$script_path" 2>&1); then
+  record 'work-root-source-tree-fails' false "$work_root_source_output"
+else
+  record 'work-root-source-tree-fails' "$(grep -qx 'Status: FAIL' <<< "$work_root_source_output" && printf true || printf false)" "$work_root_source_output"
+fi
+
+if cleanup_escape_output=$(FLASHGATE_WORK_ROOT="$test_root" /usr/bin/bash "$script_path" --cleanup-escape-probe 2>&1); then
+  record 'cleanup-escape-fails-closed' false "$cleanup_escape_output"
+else
+  record 'cleanup-escape-fails-closed' "$(
+    grep -qx 'Status: FAIL' <<< "$cleanup_escape_output" &&
+      grep -qx 'Cleanup: FAIL' <<< "$cleanup_escape_output" &&
+      printf true || printf false
+  )" "$cleanup_escape_output"
 fi
 
 link_root=$(new_fixture 'link' empty)

@@ -1,15 +1,15 @@
 # Documentation quality gate
 
-This document defines the focused documentation checks for the FlashGate Slim
-Governance project adapter. It supplements `BACKLOG.md`, accepted ADRs, product
-code, tests, Git history, and CI evidence.
+This document defines the public documentation checks for FlashGate. It
+supplements `BACKLOG.md`, accepted ADRs, product code, tests, Git history, and
+CI evidence.
 
 ## Purpose
 
-The gate prevents current project documentation from contradicting product,
-test, release, security, backlog, or Slim Governance adapter state. Historical
-Heavy-Governance material may remain explicitly marked
-`LEGACY_COMPATIBILITY_ONLY`; it is not a normal development blocker.
+The gate prevents current documentation from contradicting product, test,
+release, security, backlog, or repository-boundary state. Historical planning
+and changelog material remains non-operative evidence and does not define a
+current contributor workflow.
 
 ## Command
 
@@ -26,35 +26,30 @@ code when a focused check fails.
 
 The focused gate verifies:
 
-- strict UTF-8 readability and required active project documents;
-- BL-343 registration/completion, BL-337 superseded closure, BL-330 retained
-  project scope, and highest-ID truth;
-- presence of the thin project adapter and `DIRECTLY_AFFECTED_FIRST` policy;
+- strict UTF-8 readability of required public project documents;
+- backlog identifier/status consistency without reopening completed work;
 - active Windows/Linux Go, coverage, lint, build, release, metadata, shell,
-  PowerShell 7.6 LTS-line and security gates;
-- disabled Heavy-Governance orchestration in normal CI and its absence from the
-  active release-preparation path;
-- absence of contributor-local Codex-Work or stale personal benchmark paths in
-  active repository guidance;
-- all ten INF168-REV-007 dispositions recorded by BL-343.
-
-The gate does not run Generic Handoff, Finding Correction, Commit Preparation,
-publication, orchestration, or V3/V4 fixture matrices. Those remain historical
-compatibility assets until a separately authorized consumer cutover.
+  PowerShell 7.6 LTS-line, documentation, and security gates;
+- absence of operational dependencies on private development infrastructure;
+- absence of private host paths from active public guidance;
+- the explicit classification of historical planning and changelog content as
+  non-operative.
 
 ## Manual review
 
-Confirm that documentation still matches the actual product and test behavior,
-that no fachlich relevant FlashGate statement was discarded as meta-governance,
-and that no new product, architecture, dependency, release, credential, remote,
-or destructive decision was introduced.
+Confirm that documentation still matches product and test behavior, links
+resolve, historical text is not presented as a current instruction, and no new
+product, architecture, dependency, release, credential, remote, or destructive
+decision was introduced.
 
 ## CI boundary
 
-Hosted CI consumes only repository files and prepared runner tools. It must not
-read contributor-local `<CodexPersistentRoot>`, personal benchmark paths, or
-task directories. Central governance is validated centrally when it changes.
+Hosted CI consumes only files in the public checkout and standard runner tools.
+It must not read contributor-local workflow files, personal paths, credentials,
+or task directories.
 
-## PowerShell-7.6-LTS-Patchvertrag
+## PowerShell 7.6 LTS patch contract
 
-Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.
+Compatibility requires PowerShell major version 7 and minor version 6. Record
+the observed patch separately; maintain against the latest serviced 7.6 patch
+unless a documented fix establishes a higher minimum.
