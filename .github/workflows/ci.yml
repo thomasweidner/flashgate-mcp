@@ -206,7 +206,10 @@ jobs:
       - name: Validate Bash scripts natively
         if: matrix.os == 'ubuntu-latest'
         shell: bash
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}/flashgate-shell-validation
         run: |
+          mkdir -p -- "$FLASHGATE_WORK_ROOT"
           /usr/bin/bash scripts/test-shell-scripts.sh
           /usr/bin/bash scripts/test-shell-scripts.tests.sh
 

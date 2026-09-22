@@ -716,7 +716,7 @@ other PR metadata changes, merge, rebase, and force-push remain prohibited;
 the persistent catalog keeps general remote actions closed.
 
 The highest assigned backlog identifier is `BL-344`. BL-339, BL-340, BL-342,
-and BL-343 are `Done`; BL-344 is `In Progress`; BL-341 is the distinct `Planned` task.
+BL-343, and BL-344 are `Done`; BL-341 is the distinct `Planned` task.
 BL-333, BL-334, BL-335, and BL-336 remain `Done`.
 
 PR #27 merged at `e42d57d57ea075640c9b123a533057bcac3861b8`.

@@ -115,9 +115,13 @@ also require the deterministic shell gates. On Windows, use PowerShell 7.6.x (Ma
 }
 ```
 
-On native Ubuntu, use the fixed Bash entry point:
+On native Ubuntu, bind an existing caller-controlled work root on the native
+filesystem and use the fixed Bash entry point:
 
 ```bash
+work_root="$HOME/.cache/flashgate-mcp-shell-validation"
+mkdir -p -- "$work_root"
+export FLASHGATE_WORK_ROOT="$work_root"
 /usr/bin/bash scripts/test-shell-scripts.sh
 /usr/bin/bash scripts/test-shell-scripts.tests.sh
 ```

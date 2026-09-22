@@ -72,9 +72,15 @@ change repository status or script bytes:
 }
 ```
 
-The native Ubuntu gate uses only `/usr/bin/bash` and native standard tools:
+The native Ubuntu gate uses only `/usr/bin/bash` and native standard tools.
+Bind an existing caller-controlled directory on the native filesystem before
+running the harness; the harness creates and removes only its unique scratch
+subdirectory below that root:
 
 ```bash
+work_root="$HOME/.cache/flashgate-mcp-shell-validation"
+mkdir -p -- "$work_root"
+export FLASHGATE_WORK_ROOT="$work_root"
 /usr/bin/bash scripts/test-shell-scripts.sh
 /usr/bin/bash scripts/test-shell-scripts.tests.sh
 ```
@@ -131,6 +137,9 @@ Linux filesystem, permission, symlink, signal, or cleanup evidence.
 The portable native sequence is:
 
 ```bash
+work_root="$HOME/.cache/flashgate-mcp-shell-validation"
+mkdir -p -- "$work_root"
+export FLASHGATE_WORK_ROOT="$work_root"
 /usr/bin/bash scripts/test-shell-scripts.sh
 /usr/bin/bash scripts/test-shell-scripts.tests.sh
 test -z "$(gofmt -l cmd internal)"

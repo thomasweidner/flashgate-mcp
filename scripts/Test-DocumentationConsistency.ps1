@@ -205,6 +205,22 @@ $release = [string]$documents['.github/workflows/release-build.yml']
 
 Add-Check -Id 'BACKLOG-BL343' -Passed ($backlog -match '(?m)^\| BL-343 \| Done \|') -Message 'BL-343 remains historical Done work.'
 Add-Check -Id 'BACKLOG-BL344' -Passed ($backlog -match '(?m)^\| BL-344 \| Done \|') -Message 'BL-344 remains historical Done work.'
+$bl344ContradictoryStatusCount = [regex]::Matches(
+    $backlog,
+    '(?i)\bBL-344\s+is\s+`?In Progress`?'
+).Count
+$bl344DoneSummaryCount = [regex]::Matches(
+    $backlog,
+    '(?i)\bBL-344\s+(?:is|are)\s+`?Done`?'
+).Count
+Add-Check -Id 'BACKLOG-BL344-STATUS-PARITY' -Passed (
+    $bl344ContradictoryStatusCount -eq 0 -and
+    $bl344DoneSummaryCount -gt 0
+) -Message (
+    'DoneSummaryCount={0}; ContradictoryStatusCount={1}.' -f
+    $bl344DoneSummaryCount,
+    $bl344ContradictoryStatusCount
+)
 $backlogHighest = Get-BacklogHighestIdentifier -BacklogText $backlog
 $backlogDiagnosticsJson = ConvertTo-Json -InputObject ([string[]]$backlogHighest.Diagnostics) -Compress
 Add-Check -Id 'BACKLOG-HIGHEST' -Passed $backlogHighest.Passed -Message (
@@ -339,6 +355,33 @@ foreach ($path in $operativePaths) {
     }
 }
 
+$technicalRenamePath = 'docs/technical-rename-to-flashgate-2026-07-11.md'
+$technicalRename = [string]$documents[$technicalRenamePath]
+$currentIdentifiersMarker = '## Current identifiers'
+$existingClonesMarker = '## Existing clones and GitHub redirects'
+$ownerAmendmentMarker = '## Owner migration amendment - 2026-07-20'
+$compatibilityMarker = '## Compatibility and scope'
+$currentIdentifiersIndex = $technicalRename.IndexOf($currentIdentifiersMarker, [System.StringComparison]::Ordinal)
+$existingClonesIndex = $technicalRename.IndexOf($existingClonesMarker, [System.StringComparison]::Ordinal)
+$ownerAmendmentIndex = $technicalRename.IndexOf($ownerAmendmentMarker, [System.StringComparison]::Ordinal)
+$compatibilityIndex = $technicalRename.IndexOf($compatibilityMarker, [System.StringComparison]::Ordinal)
+if ($currentIdentifiersIndex -lt 0 -or
+    $existingClonesIndex -le $currentIdentifiersIndex -or
+    $ownerAmendmentIndex -lt 0 -or
+    $compatibilityIndex -le $ownerAmendmentIndex) {
+    Add-Check -Id 'TECHNICAL-RENAME-OPERATIVE-PROJECTION' -Passed $false -Message 'Current technical-rename sections cannot be projected safely.'
+}
+else {
+    $technicalRenameOperativeProjection =
+        $technicalRename.Substring($currentIdentifiersIndex, $existingClonesIndex - $currentIdentifiersIndex) +
+        $technicalRename.Substring($ownerAmendmentIndex, $compatibilityIndex - $ownerAmendmentIndex)
+    $operativeDocuments.Add(
+        'docs/technical-rename-to-flashgate-2026-07-11.md#current-sections',
+        $technicalRenameOperativeProjection
+    )
+    Add-Check -Id 'TECHNICAL-RENAME-OPERATIVE-PROJECTION' -Passed $true -Message 'Only current identifier and owner-amendment sections are operative.'
+}
+
 $catalogMarker = '## Canonical task catalog'
 $catalogIndex = $backlog.IndexOf($catalogMarker, [System.StringComparison]::Ordinal)
 if ($catalogIndex -lt 0) {
@@ -349,18 +392,36 @@ else {
     Add-Check -Id 'BACKLOG-OPERATIVE-PROJECTION' -Passed $true -Message 'Backlog history is separated from the operative preamble.'
 }
 
+$privateHostPathPatterns = [object[]]@(
+    [pscustomobject]@{ id = 'PRIVATE_USER_PATH'; expression = '(?i)C:\\Users\\[^\\\r\n]+' },
+    [pscustomobject]@{ id = 'PRIVATE_VOXTRONIC_PATH'; expression = '(?i)C:\\Voxtronic\\[^\\\r\n]+' },
+    [pscustomobject]@{ id = 'PRIVATE_ONEDRIVE_PATH'; expression = '(?i)OneDrive\s+-\s+VOXTRONIC(?:\\[^\\\r\n]+)?' },
+    [pscustomobject]@{ id = 'PRIVATE_CODEX_WORK_PATH'; expression = '(?i)Codex-Work' }
+)
 $forbiddenPatterns = [object[]]@(
     [pscustomobject]@{ id = 'CODEX_WORK'; expression = 'Codex-Work' },
     [pscustomobject]@{ id = 'CLASSIC_REVIEW'; expression = 'ChatGPT Classic|Classic Review|ClassicReviewReady' },
     [pscustomobject]@{ id = 'FINDING_CORRECTION'; expression = 'FINDING_CORRECTION' },
     [pscustomobject]@{ id = 'INFRASTRUCTURE_REGISTER'; expression = 'INFRASTRUCTURE-WORK-REGISTER' },
     [pscustomobject]@{ id = 'PRIVATE_USER_PATH'; expression = '(?i)C:\\Users\\[^\\\r\n]+' },
-    [pscustomobject]@{ id = 'PRIVATE_WORKSPACE_PATH'; expression = '(?i)C:\\Voxtronic\\Codex-Work|OneDrive\s+-\s+VOXTRONIC' },
+    [pscustomobject]@{ id = 'PRIVATE_VOXTRONIC_PATH'; expression = '(?i)C:\\Voxtronic\\[^\\\r\n]+' },
+    [pscustomobject]@{ id = 'PRIVATE_ONEDRIVE_PATH'; expression = '(?i)OneDrive\s+-\s+VOXTRONIC(?:\\[^\\\r\n]+)?' },
     [pscustomobject]@{ id = 'REMOVED_GOVERNANCE_PATH'; expression = 'Governance/' },
     [pscustomobject]@{ id = 'REMOVED_MOBILE_ROUTER'; expression = 'MOBILE\.md' },
     [pscustomobject]@{ id = 'INTERNAL_TASK_ID'; expression = '\bINF-[0-9]{3}\b' },
     [pscustomobject]@{ id = 'REMOVED_WORKFLOW_SCRIPT'; expression = '(?:New|Invoke|Test)-(?:Generic)?Governance|Test-ClassicReviewArtifact|FindingCorrectionHandoff' }
 )
+
+$privateHostPathFindings = [object[]]@(
+    Get-InternalReferenceFindings -TextByPath $operativeDocuments -Patterns $privateHostPathPatterns
+)
+$privateActiveHostPathCount = 0
+foreach ($finding in $privateHostPathFindings) {
+    $privateActiveHostPathCount += [int]$finding.matchCount
+}
+Add-Check -Id 'BOUNDARY-PRIVATE-ACTIVE-HOST-PATHS' -Passed (
+    $privateActiveHostPathCount -eq 0
+) -Message ('PrivateActiveHostPathCount={0}.' -f $privateActiveHostPathCount)
 
 $operativeFindings = [object[]]@(
     Get-InternalReferenceFindings -TextByPath $operativeDocuments -Patterns $forbiddenPatterns
@@ -424,6 +485,9 @@ $result = [pscustomobject]@{
     historicalClassification                 = 'HISTORICAL_NON_OPERATIVE'
     computedHighestAssignedBacklogIdentifier = $backlogHighest.ComputedHighestAssignedBacklogIdentifier
     declaredHighestAssignedBacklogIdentifier = $backlogHighest.DeclaredHighestAssignedBacklogIdentifier
+    bl344ContradictoryStatusCount             = $bl344ContradictoryStatusCount
+    privateActiveHostPathCount                = $privateActiveHostPathCount
+    privateHostPathFindings                   = [object[]]$privateHostPathFindings
     operativeFindings                        = [object[]]$operativeFindings
     runtimeFindings                          = [object[]]$runtimeFindings
     checks                                   = [object[]]$checks
