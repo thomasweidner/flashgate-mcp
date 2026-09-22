@@ -56,6 +56,24 @@ function Get-StringHash {
     return Get-BytesHash -Bytes $utf8.GetBytes($Value)
 }
 
+function Test-RegexMatrixCase {
+    param(
+        [Parameter(Mandatory)][string[]]$Patterns,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Value,
+        [Parameter(Mandatory)][bool]$Expected
+    )
+    foreach ($pattern in $Patterns) {
+        if ([regex]::IsMatch(
+                $Value,
+                $pattern,
+                [System.Text.RegularExpressions.RegexOptions]::CultureInvariant
+            ) -ne $Expected) {
+            return $false
+        }
+    }
+    return $true
+}
+
 function Read-ReportContract {
     param([Parameter(Mandatory)][string]$LiteralPath)
     $text = [System.IO.File]::ReadAllText($LiteralPath, [System.Text.UTF8Encoding]::new($false, $true))
@@ -988,7 +1006,8 @@ function Convert-ToTwoFindingParityFixture {
     param(
         [Parameter(Mandatory)][string]$Directory,
         [string[]]$FindingIds = @('BL-339-REV-003', 'BL-339-REV-004'),
-        [string[]]$TestIds = @('FCH-PER-FINDING-CONTRACT-A', 'FCH-PER-FINDING-CONTRACT-B')
+        [string[]]$TestIds = @('FCH-PER-FINDING-CONTRACT-A', 'FCH-PER-FINDING-CONTRACT-B'),
+        [switch]$SourceDirectory
     )
 
     if ($FindingIds.Count -ne 2 -or $TestIds.Count -ne 2) {
@@ -1089,11 +1108,78 @@ function Convert-ToTwoFindingParityFixture {
     $report.focusedValidationResult.selected = 2
     $report.focusedValidationResult.passed = 2
     Write-ReportContract (Join-Path $Directory 'report.md') $report
-    Update-PackageMetadata $Directory
+    if (-not $SourceDirectory) { Update-PackageMetadata $Directory }
 }
 
 try {
     $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('flashgate-finding-correction-product-' + [guid]::NewGuid().ToString('N'))
+    $governanceRoot = Join-Path (Split-Path -Parent $PSScriptRoot) 'Governance'
+    $producerTokens = $null
+    $producerErrors = $null
+    $producerAst = [System.Management.Automation.Language.Parser]::ParseFile(
+        (Join-Path $PSScriptRoot 'New-GovernanceHandoff.ps1'),
+        [ref]$producerTokens,
+        [ref]$producerErrors
+    )
+    if (@($producerErrors).Count -ne 0) {
+        throw 'New-GovernanceHandoff.ps1 must parse before its TaskId contract can be tested.'
+    }
+    $producerTaskParameter = @($producerAst.ParamBlock.Parameters | Where-Object {
+            $_.Name.VariablePath.UserPath -ceq 'TaskId'
+        })
+    $producerTaskPatternAttribute = @($producerTaskParameter.Attributes | Where-Object {
+            $_.TypeName.FullName -ceq 'ValidatePattern'
+        })
+    if ($producerTaskParameter.Count -ne 1 -or $producerTaskPatternAttribute.Count -ne 1 -or
+        $producerTaskPatternAttribute[0].PositionalArguments.Count -ne 1) {
+        throw 'New-GovernanceHandoff.ps1 must declare exactly one TaskId ValidatePattern attribute.'
+    }
+    $assignmentSchema = Read-Json (Join-Path $governanceRoot 'finding-correction-assignment.schema.json')
+    $completionSchema = Read-Json (Join-Path $governanceRoot 'finding-correction-completion.schema.json')
+    $reportSchema = Read-Json (Join-Path $governanceRoot 'finding-correction-report-contract.schema.json')
+    $ledgerSchema = Read-Json (Join-Path $governanceRoot 'finding-ledger.schema.json')
+    $correctionMatrixSchema = Read-Json (Join-Path $governanceRoot 'finding-correction-matrix.schema.json')
+    $regressionMatrixSchema = Read-Json (Join-Path $governanceRoot 'finding-regression-matrix.schema.json')
+    $focusedRecordSchema = Read-Json (Join-Path $governanceRoot 'focused-delta-review-record.schema.json')
+    $previousBindingSchema = Read-Json (Join-Path $governanceRoot 'previous-review-binding.schema.json')
+    $taskIdPatterns = @(
+        [string]$producerTaskPatternAttribute[0].PositionalArguments[0].Value,
+        [string]$assignmentSchema.properties.taskId.pattern,
+        [string]$completionSchema.properties.taskId.pattern,
+        [string]$reportSchema.properties.taskId.pattern,
+        [string]$ledgerSchema.properties.taskId.pattern,
+        [string]$previousBindingSchema.properties.taskId.pattern
+    )
+    $findingIdPatterns = @(
+        [string]$assignmentSchema.'$defs'.findingIds.items.pattern,
+        [string]$completionSchema.'$defs'.findingIds.items.pattern,
+        [string]$reportSchema.'$defs'.findingId.pattern,
+        [string]$ledgerSchema.'$defs'.finding.properties.id.pattern,
+        [string]$correctionMatrixSchema.'$defs'.findingId.pattern,
+        [string]$regressionMatrixSchema.'$defs'.findingId.pattern,
+        [string]$focusedRecordSchema.'$defs'.findingId.pattern
+    )
+    foreach ($taskCase in @(
+            [ordered]@{ Id='FCH-TASK-ID-INF-183-ACCEPTED'; Value='INF-183'; Expected=$true },
+            [ordered]@{ Id='FCH-TASK-ID-BL-339-ACCEPTED'; Value='BL-339'; Expected=$true },
+            [ordered]@{ Id='FCH-TASK-ID-CRN-BL-013-ACCEPTED'; Value='CRN-BL-013'; Expected=$true },
+            [ordered]@{ Id='FCH-TASK-ID-LOWERCASE-REJECTED'; Value='inf-183'; Expected=$false },
+            [ordered]@{ Id='FCH-TASK-ID-TRAILING-WHITESPACE-REJECTED'; Value='INF-183 '; Expected=$false }
+        )) {
+        Add-Case $taskCase.Id (Test-RegexMatrixCase -Patterns $taskIdPatterns `
+                -Value $taskCase.Value -Expected $taskCase.Expected)
+    }
+    foreach ($findingCase in @(
+            [ordered]@{ Id='FCH-FINDING-ID-INF127-REV-001-ACCEPTED'; Value='INF127-REV-001'; Expected=$true },
+            [ordered]@{ Id='FCH-FINDING-ID-INF169-REV-001-ACCEPTED'; Value='INF169-REV-001'; Expected=$true },
+            [ordered]@{ Id='FCH-FINDING-ID-BL-339-REV-003-ACCEPTED'; Value='BL-339-REV-003'; Expected=$true },
+            [ordered]@{ Id='FCH-FINDING-ID-BL-340-REV-001-SYNTAX-ACCEPTED'; Value='BL-340-REV-001'; Expected=$true },
+            [ordered]@{ Id='FCH-FINDING-ID-LOWERCASE-REJECTED'; Value='inf127-REV-001'; Expected=$false },
+            [ordered]@{ Id='FCH-FINDING-ID-TRAILING-WHITESPACE-REJECTED'; Value='INF127-REV-001 '; Expected=$false }
+        )) {
+        Add-Case $findingCase.Id (Test-RegexMatrixCase -Patterns $findingIdPatterns `
+                -Value $findingCase.Value -Expected $findingCase.Expected)
+    }
     $repo = Join-Path $fixtureRoot 'repo'
     [void][System.IO.Directory]::CreateDirectory($repo)
     $null = Invoke-GitText $repo @('init','--quiet')
@@ -1191,6 +1277,41 @@ try {
     if (-not $PublicationEvidenceOnly) {
         Add-Case 'FCH-COMMIT-PRODUCT-VALIDATOR-PASS' ($preflightRun.ExitCode -eq 0) $preflightRun.Output
         Add-Case 'FCH-PREFLIGHT-LIFECYCLE-PASS' ((Read-Json (Join-Path $preflight 'completion-report.json')).artifactLifecycleState -ceq 'ZIP_FREE_READY_TO_EXECUTE')
+
+        $infSource = Join-Path $fixtureRoot 'inf-183-source'
+        $infContract = New-SyntheticSource -Directory $infSource -RepositoryRoot $repo `
+            -TaskId 'INF-183' -FindingId 'INF127-REV-001' -BaselineCommit $baseline `
+            -PreviousCommit $previousCommit -PreviousTree $previousTree -CurrentPatch $currentPatchBytes `
+            -CorrectionPatch $correctionPatchBytes -CurrentEntries $currentEntries `
+            -CorrectionEntries $correctionEntries -CurrentTree $currentTree -PreviousMode COMMIT `
+            -HistoricalPackagePath $historicalZip -HistoricalBinding $historicalBinding
+        Convert-ToTwoFindingParityFixture -Directory $infSource `
+            -FindingIds @('INF112-REV-001', 'INF127-REV-001') `
+            -TestIds @('FCH-INF112-CROSS-OWNER', 'FCH-INF127-CROSS-OWNER') `
+            -SourceDirectory
+        $infPreflight = Join-Path $fixtureRoot 'inf-183-preflight'
+        $infPreflightRun = Invoke-Generator $infSource $repo 'INF-183' `
+            $infContract.CurrentPaths $infPreflight Preflight
+        $infCompletion = if ($infPreflightRun.ExitCode -eq 0) {
+            Read-Json (Join-Path $infPreflight 'completion-report.json')
+        }
+        else { $null }
+        Add-Case 'FCH-INF-183-CROSS-OWNER-PREFLIGHT-PASS' (
+            $infPreflightRun.ExitCode -eq 0 -and
+            $null -ne $infCompletion -and
+            [string]$infCompletion.taskId -ceq 'INF-183' -and
+            [int]$infCompletion.packageWriteAttemptCount -eq 0 -and
+            @($infCompletion.findingIds).Count -eq 2 -and
+            'INF112-REV-001' -cin @($infCompletion.findingIds) -and
+            'INF127-REV-001' -cin @($infCompletion.findingIds) -and
+            @(Get-ChildItem -LiteralPath $infPreflight -Filter '*.zip' -File).Count -eq 0
+        ) $infPreflightRun.Output
+
+        $foreignBlSource = Copy-Artifact $preflight 'foreign-bl-finding-source'
+        Set-SingleSourceFindingId -Directory $foreignBlSource -FindingId 'BL-340-REV-001'
+        $foreignBlValidation = Invoke-ProductValidator $foreignBlSource $repo
+        Add-Case 'FCH-BL-FOREIGN-TASK-PREFIX-REJECTED' `
+            ($foreignBlValidation.ExitCode -ne 0) $foreignBlValidation.Output
     }
     $preflightReportContract = Read-ReportContract (Join-Path $preflight 'report.md')
     if (-not $PublicationEvidenceOnly) {

@@ -487,6 +487,40 @@ function Copy-PackageDirectory {
 
 try {
     [void][IO.Directory]::CreateDirectory($temporaryRoot)
+    $genericTaskIdSchemaNames = @(
+        'generic-assignment-record.schema.json',
+        'generic-completion-report.schema.json',
+        'generic-independent-review-evidence.schema.json',
+        'generic-handoff-contract.schema.json',
+        'generic-package-inventory.schema.json',
+        'generic-pre-review-validation-evidence.schema.json',
+        'generic-scope-inventory.schema.json',
+        'generic-report-contract.schema.json',
+        'generic-validation-summary.schema.json'
+    )
+    $genericTaskIdPatterns = @(
+        foreach ($schemaName in $genericTaskIdSchemaNames) {
+            $schemaPath = Join-Path (Join-Path $RepositoryRoot 'Governance') $schemaName
+            $schema = Get-Content -LiteralPath $schemaPath -Raw | ConvertFrom-Json
+            [string]$schema.properties.taskId.pattern
+        }
+    )
+    foreach ($taskIdCase in @(
+            [pscustomobject]@{ Name = 'bl'; Value = 'BL-339'; Expected = $true },
+            [pscustomobject]@{ Name = 'inf'; Value = 'INF-174'; Expected = $true },
+            [pscustomobject]@{ Name = 'crn'; Value = 'CRN-BL-013'; Expected = $true },
+            [pscustomobject]@{ Name = 'malformed'; Value = 'inf-174'; Expected = $false }
+        )) {
+        $caseResults = @(
+            foreach ($pattern in $genericTaskIdPatterns) {
+                [regex]::IsMatch($taskIdCase.Value, $pattern)
+            }
+        )
+        Add-Result -Name ('task-id-grammar-{0}' -f $taskIdCase.Name) `
+            -Passed (-not ($caseResults -contains (-not $taskIdCase.Expected))) `
+            -Evidence ('TaskId={0}; Expected={1}; SchemaCount={2}' -f `
+                $taskIdCase.Value, $taskIdCase.Expected, $genericTaskIdPatterns.Count)
+    }
     $fixture = New-FixtureRepository
     $implementationSource = Join-Path $temporaryRoot 'implementation-source'
     $implementationContract = New-ProfileSource -Path $implementationSource `

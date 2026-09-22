@@ -9,7 +9,7 @@ param(
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')]
     [ValidateSet('COMMIT_PREPARATION_TO_COMMIT_APPROVAL', 'IMPLEMENTATION_TO_INDEPENDENT_FULL_REVIEW', 'EVIDENCE_ONLY_TO_FOCUSED_REVIEW', 'POST_MERGE_TO_DOCUMENTATION_CLOSURE', 'BUNDLED_CORRECTION_TO_FOCUSED_DELTA_REVIEW')][string]$TransitionType,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')]
-    [ValidatePattern('^BL-[0-9]{3}$')][string]$TaskId,
+    [ValidatePattern('^[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*-[0-9]+(?:-[A-Z0-9]+)*$')][string]$TaskId,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')][string]$SourceDirectory,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')][AllowEmptyCollection()][string[]]$AllowedDeltaPath,
     [Parameter(Mandatory, ParameterSetName = 'GenericPackage')][string]$PackagePath,

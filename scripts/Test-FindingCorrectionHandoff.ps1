@@ -653,13 +653,23 @@ function Get-ExpandedScopePaths {
 
 function Test-FindingIdTaskBinding {
     param([Parameter(Mandatory)][string]$TaskId, [Parameter(Mandatory)][string]$FindingId)
-    $reviewIndex = $FindingId.LastIndexOf('-REV-', [System.StringComparison]::Ordinal)
-    if ($reviewIndex -le 0) { return $false }
-    $prefix = $FindingId.Substring(0, $reviewIndex)
-    $components = @([regex]::Matches($prefix, '(?:^|-)(?<task>BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,}))(?=-|$)') | ForEach-Object {
-            $_.Groups['task'].Value
-        })
-    return $TaskId -cin $components
+    $blTaskPattern = '^BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,})$'
+    $blFindingPattern = '^(?<task>BL-(?:00[1-9]|0[1-9][0-9]|[1-9][0-9]{2,}))-REV-0*[1-9][0-9]*$'
+    $infTaskPattern = '^INF-[0-9]{3}$'
+    $infFindingPattern = '^INF[0-9]{3}-REV-[0-9]{3}$'
+
+    if ([regex]::IsMatch($TaskId, $infTaskPattern, [System.Text.RegularExpressions.RegexOptions]::CultureInvariant)) {
+        return [regex]::IsMatch($FindingId, $infFindingPattern, [System.Text.RegularExpressions.RegexOptions]::CultureInvariant)
+    }
+    if (-not [regex]::IsMatch($TaskId, $blTaskPattern, [System.Text.RegularExpressions.RegexOptions]::CultureInvariant)) {
+        return $false
+    }
+    $blFindingMatch = [regex]::Match(
+        $FindingId,
+        $blFindingPattern,
+        [System.Text.RegularExpressions.RegexOptions]::CultureInvariant
+    )
+    return $blFindingMatch.Success -and $TaskId -ceq $blFindingMatch.Groups['task'].Value
 }
 
 function Assert-FindingSetForTask {
