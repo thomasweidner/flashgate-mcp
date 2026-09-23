@@ -13,6 +13,7 @@ FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, local directory `fl
 - Mark target and planned behavior explicitly; do not present it as implemented.
 - Preserve completed tasks with status `Done`.
 - Keep changes bound to their canonical backlog owner, reuse completed product gates without reopening their owners, and register genuinely new work only through an explicit backlog update.
+- For accepted future public tool names, adapter taxonomy, cross-cutting security/efficiency rules, and per-capability implementation detail, [the future tool and adapter plan](docs/planning/future-tool-adapter-plan.md) is the required companion contract. `BACKLOG.md` remains authoritative for task owner, status, and milestone; the planning document supplies the detailed implementation contract and must stay consistent with those owners.
 - Complete the current sprint's ID migration document before merge. After merge, dated migration files are immutable history; any later full renumbering creates a new dated migration file and may add a small migration index.
 
 > Neue Backlogpunkte erhalten die nächste freie BL-Nummer. Bereits vergebene BL-IDs bleiben stabil; fachliche Tabellenposition und ID sind unabhängig.
@@ -58,14 +59,14 @@ The complete legacy mapping is recorded in
 | SPR-047 | Done | BL-189–BL-199 | Resource, latency, payload, catalog, workflow, and baseline benchmarking |
 | SPR-048 | Planned | BL-202–BL-216, BL-218–BL-220 | Remaining MCP contracts, payload/result architecture, catalog budgets, and native-adapter policy |
 | SPR-049 | Planned | BL-084–BL-099, BL-164 | Operations/Job Manager, identity-bound handles, quotas, fairness, and cleanup |
-| SPR-050 | Planned | BL-036–BL-049 | Efficient filesystem listing, reading, batch inspection, MIME/binary handling, and large-result handoff |
+| SPR-050 | Planned | BL-036–BL-049, BL-346 | Efficient filesystem listing, reading, batch inspection, MIME/binary handling, compare/verify, and large-result handoff |
 | SPR-051 | Planned | BL-050–BL-061, BL-063–BL-067 | Targeted edits, conditional writes, bounded filesystem plans, and filesystem integration benchmarks |
 | SPR-052 | Planned | BL-068–BL-080, BL-082 | Filesystem and text search |
-| SPR-053 | Planned | BL-100–BL-111, BL-159–BL-161, BL-171 | Named roots, read-only safe default, capabilities, dynamic tool profiles, and negative authorization tests |
+| SPR-053 | Planned | BL-100–BL-111, BL-159–BL-161, BL-171, BL-352 | Named roots, read-only safe default, root discovery, capabilities, dynamic tool profiles, and negative authorization tests |
 | SPR-054 | Planned | BL-113, BL-129, BL-162, BL-165 | Process architecture, execution identity, and stateful security model |
 | SPR-055 | Planned | BL-114–BL-118 | Process observation |
 | SPR-056 | Planned | BL-119–BL-126, BL-130–BL-135, BL-252–BL-254 | Managed process execution, output cursors, resource control, race tests, and CI jobs |
-| SPR-057 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170 | Typed allowlisted command execution, OS isolation, redaction, and security tests |
+| SPR-057 | Planned | BL-136–BL-149, BL-151–BL-152, BL-163, BL-167–BL-168, BL-170, BL-353 | Typed allowlisted command execution, command discovery, OS isolation, redaction, and security tests |
 | SPR-058 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
 | SPR-059 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
 | SPR-060 | Planned | BL-226–BL-231, BL-341 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, Variant A service-account execution, cross-mode host-process ownership, deterministic shutdown, diagnostics, and orphan prevention |
@@ -76,10 +77,11 @@ Version 1.0 is reached only after `SPR-061` and the release gate in `BL-263`. Th
 | Post-1.0 workstream | Backlog IDs | Direction |
 |---|---|---|
 | Efficiency and user-isolated hosting | BL-217, BL-232, BL-240 | Conditional reads, user-scoped persistent hosts, and Variant B user-worker implementation |
-| Optional accelerators and expanded control | BL-081, BL-083, BL-112, BL-127–BL-128, BL-150, BL-158 | Ripgrep/index, legacy Roots, external PID/input, interactive shell, and network information decision gates |
+| Optional accelerators and expanded control | BL-081, BL-083, BL-112, BL-127–BL-128, BL-150, BL-158, BL-360 | Ripgrep/index, legacy Roots, external PID/input, interactive shell, bounded network observation/probes, and the first-party read-only Git Native Tool adapter |
 | Provider/community ecosystem | BL-169, BL-176, BL-180–BL-188, BL-313 | External provider security, licensing, governance extensions, provider contracts/runtime, and related documentation |
-| Future filesystem capabilities | BL-345–BL-348, BL-351 | Local cloud-placeholder semantics, compare/verify, filesystem watch, archives, and path compression |
-| Future system and agent guidance | BL-349–BL-350 | Allowlisted OS settings and a portable public FlashGate agent skill |
+| Future filesystem and storage capabilities | BL-345, BL-347–BL-348, BL-351, BL-354, BL-359 | Local cloud-placeholder semantics, filesystem watch, archives, content/path compression, encryption state, path security, and extended metadata |
+| Future system and platform capabilities | BL-349, BL-355–BL-358, BL-361–BL-362 | Platform configuration, system logs, service/scheduler control, audit integrity/query, and user-session clipboard/notification capabilities |
+| Future agent guidance | BL-350 | Portable public FlashGate agent skill |
 
 `SPR-044` replaces the former `SPR-041` Codex preparation plan and must use the FlashGate technical names established in `SPR-042` and the cleaned tool names created in `SPR-043`.
 
@@ -144,19 +146,19 @@ available number only and is not an assigned sprint.
 | BL-040 | Planned | Add listing field selection | Return only requested portable fields |
 | BL-041 | Planned | Add line-range reads | Bounded text line windows |
 | BL-042 | Planned | Add byte-range and head/tail reads | Bounded binary-safe offsets and edge semantics |
-| BL-043 | Planned | Expand portable path metadata | Modified time, permissions where portable, type, and size |
+| BL-043 | Planned | Expand portable path metadata | Keep `get_path_info` as the single path-metadata query; add field selection for portable type/size/time/permission facts and leave future storage, cloud availability, identity/link, security, and platform-specific fields to BL-345/351/359 under the detailed future-tool/adapter contract |
 | BL-044 | Planned | Add large-file streaming strategy | Avoid whole-file memory loading and unbounded responses |
 | BL-045 | Planned | Define text, media, and binary read behavior | MIME detection, explicit modes, inline thresholds, bounded encoding, resource-handoff rules, and client-compatible fallbacks |
 | BL-046 | Planned | Add batch `read_files` | Per-item bounded results and partial-failure model |
 | BL-047 | Planned | Add batch `get_paths_info` | Reduce repeated stat/existence round trips |
 | BL-048 | Planned | Add batch hashing and content fingerprints | Bounded algorithms, byte accounting, reusable change identifiers, and job handoff |
-| BL-049 | Planned | Add bounded directory tree | Depth, entry, byte, field, and pagination controls |
+| BL-049 | Planned | Add bounded recursive `list_directory` | Extend `list_directory` with `recursive`, `max_depth`, type/name filters, field selection, deterministic sort, cursor, and page limits; prefer flat root-relative entries and do not add a separate `get_directory_tree` tool |
 | BL-050 | Planned | Add exact targeted file changes | Explicit ranges or match-based edits without model retransmission |
 | BL-051 | Planned | Add expected-match-count checks | Reject ambiguous or stale targeted edits |
 | BL-052 | Planned | Add atomic writes | Same-filesystem replace and deterministic cleanup semantics |
 | BL-053 | Planned | Add conditional write preconditions | Hash, modified-time, and path-type checks |
 | BL-054 | Planned | Add dry-run support | Structured preview for destructive or multi-step changes |
-| BL-055 | Planned | Add append-file support | Explicit bounded append distinct from overwrite |
+| BL-055 | Planned | Add bounded append mode to `write_file` | Implement append through `write_file(mode="append")` with explicit bounds and existing path/capability checks; do not add a separate public `append_file` tool |
 | BL-056 | Planned | Add bounded filesystem plans | Limited known operations; no free-form workflow language |
 | BL-057 | Planned | Enforce plan operation, entry, and byte limits | Preflight and runtime accounting |
 | BL-058 | Planned | Define cross-volume move behavior | Copy/verify/delete, cancellation, and partial-state rules |
@@ -164,11 +166,12 @@ available number only and is not an assigned sprint.
 | BL-060 | Planned | Support directory copy and move | Bounded traversal, jobs, conflicts, and cleanup |
 | BL-061 | Planned | Add directory-size operation | Streaming scan, limits, progress, and jobs |
 | BL-062 | Planned | Add scoped disk-usage operation | Root-scoped capacity and privacy-safe results |
-| BL-063 | Planned | Extend `write_file` safe modes | Create-only, replace-only, and explicit atomic/conditional behavior |
+| BL-063 | Planned | Extend `write_file` safe modes | Canonical modes are `create_only`, `replace_only`, `upsert`, and `append`; retain explicit atomic/conditional behavior and do not add redundant `create_file`, `replace_file`, or `append_file` aliases |
 | BL-064 | Planned | Integrate long filesystem work with jobs | Preserve filesystem domain ownership |
 | BL-065 | Planned | Threat-model bounded filesystem plans | Path races, rollback limits, conflicts, and partial completion |
 | BL-066 | Planned | Add Windows/Linux filesystem MCP integration tests | Exercise real `tools/call` contracts and path behavior |
 | BL-067 | Planned | Create representative filesystem benchmark corpus | Small/large files, deep/wide trees, binary data, and cross-volume cases |
+| BL-346 | Planned | Add bounded `compare_paths` and `verify_paths` | Version 1.0 deterministic comparison/revalidation: file↔file and directory↔directory metadata/hash/content/text comparison plus expected-state verification for existence/type/size/mtime/hash/fingerprint/tree inventory; bounded/paginated/indeterminate results, cheapest safe equality proof first, reuse BL-048/049 primitives, no second hash engine. Detailed contract: `docs/planning/future-tool-adapter-plan.md`. |
 
 ### Search epic
 
@@ -187,7 +190,7 @@ available number only and is not an assigned sprint.
 | BL-078 | Planned | Define binary detection and encoding behavior | Skip/error/explicit modes and reporting |
 | BL-079 | Planned | Add search pagination | Opaque cursors and stable ordering |
 | BL-080 | Planned | Add ignore-file support | Explicit policy and optional gitignore-compatible behavior |
-| BL-081 | Later | Evaluate optional ripgrep adapter | Allowlisted local adapter with version/security checks |
+| BL-081 | Later | Evaluate optional cross-platform ripgrep accelerator | Pure Go remains the normative `search_text` baseline. A Windows/Linux ripgrep Native Tool adapter may accelerate only equivalent semantics after benchmark/security evidence, executable-identity validation, typed no-shell invocation, deterministic-result handling, and rejection of raw CLI/preprocessor/helper-spawning archive-search behavior. |
 | BL-082 | Planned | Provide pure-Go search fallback | Portable baseline without external dependency |
 | BL-083 | Later | Decide on local search index after benchmarks | No index without measured need and privacy/lifecycle design |
 
@@ -229,6 +232,7 @@ available number only and is not an assigned sprint.
 | BL-110 | Planned | Implement dynamic tool registration | Effective profile/capability controls `tools/list` |
 | BL-111 | Planned | Add negative capability and `tools/list` catalog tests | Verify profile-driven tool visibility, dynamic registration, deterministic catalog output, and denial when a tool is absent from the effective catalog; generic server-side authorization bypass tests belong to `BL-160` |
 | BL-112 | Later | Evaluate deprecated MCP Roots only for legacy client compatibility | No architectural dependency; server configuration and explicit root IDs remain authoritative; implement only for a supported legacy client; document deprecation and protocol-version scope |
+| BL-352 | Planned | Add named-root discovery | Add compact `list_roots` and `get_root_info` contracts so agents can discover authorized root IDs, safe labels, effective read/write availability, capabilities and selected limits without deprecated MCP Roots or default absolute-host-path disclosure. Field-selectable results and profile/capability enforcement follow the detailed future-tool/adapter contract. |
 
 ### Process epic
 
@@ -243,7 +247,7 @@ available number only and is not an assigned sprint.
 | BL-119 | Planned | Implement Managed Process Registry | Thread-safe server-started process ownership |
 | BL-120 | Planned | Generate opaque process handles and prevent PID reuse errors | Handles are primary identity; PID is diagnostic only |
 | BL-121 | Planned | Define managed process status | Starting/running/exited/failed/stopped/timed-out states |
-| BL-122 | Planned | Add `start_process` | Managed engine only, with policy checks |
+| BL-122 | Planned | Add `start_process` | Start only server-defined typed `command_id` definitions through the shared Managed Process/Typed Command engine; no second arbitrary exec interface, raw command line, or shell path |
 | BL-123 | Planned | Add `wait_process` | Context, timeout, and final result semantics |
 | BL-124 | Planned | Add `read_process_output` | Cursor/bounded incremental output |
 | BL-125 | Planned | Add separate stdout/stderr ring buffers | Size limits, truncation markers, and cleanup |
@@ -253,7 +257,7 @@ available number only and is not an assigned sprint.
 | BL-129 | Planned | Define process cleanup, restart, and orphan behavior | Shutdown, server crash/restart, TTL, and diagnostics |
 | BL-130 | Planned | Limit managed process count and concurrency | Global and profile budgets |
 | BL-131 | Planned | Enforce process runtime limits | Defaults, maxima, cancellation, and termination |
-| BL-132 | Planned | Define CPU and RAM limit strategy | Windows/Linux capabilities and fallbacks |
+| BL-132 | Planned | Define CPU and RAM enforcement strategy | Distinguish hard enforcement from observed-only/unsupported platform outcomes; policy that requires stronger enforcement than the active backend can prove fails closed instead of silently degrading |
 | BL-133 | Planned | Redact process command lines and environments | Minimize output and audit data |
 | BL-134 | Planned | Implement Windows and Linux process adapters | Equivalent policy outcomes with platform-specific internals |
 | BL-135 | Planned | Add process race, lifecycle, and restart tests | Registry races, PID reuse assumptions, cleanup, and limits |
@@ -263,47 +267,56 @@ available number only and is not an assigned sprint.
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
 | BL-136 | Planned | Create command-execution threat model | Executable substitution, injection, environment, roots, output, isolation |
-| BL-137 | Planned | Add typed command definitions with executable IDs | Resolve IDs server-side to approved absolute paths plus fixed subcommands, allowed flags/value rules, path-argument binding, timeout/output/network policy, and optional binary identity pinning |
+| BL-137 | Planned | Add typed command definitions with executable IDs | Resolve IDs server-side to approved canonical executables plus fixed subcommands, typed flag/value/path rules, working directory, timeout/output/concurrency/network requirements, and policy-selectable executable identity evidence (reparse/path state, stable file identity, hash/version/publisher/signature where available); no raw adapter options |
 | BL-138 | Planned | Enforce no-shell default and typed argument objects | No free shell string; server generates argv only from validated structured fields and rejects response-file, hook, plugin, and configuration injection paths |
 | BL-139 | Planned | Restrict working directories to allowed roots | Named-root process permission integration |
 | BL-140 | Planned | Define timeout defaults and maxima | Server-enforced deadlines |
 | BL-141 | Planned | Limit stdout and stderr separately | Bounded buffers/results and truncation markers |
 | BL-142 | Planned | Define stable command result schema | Exit, output references, timeout, status, and bounded diagnostics |
-| BL-143 | Planned | Implement `run_command` over Managed Process Engine | Synchronous wrapper only |
+| BL-143 | Planned | Implement `run_command` over Managed Process Engine | Synchronous wrapper over the same typed `command_id` Managed Process engine used by `start_process`; no second execution engine |
 | BL-144 | Planned | Add environment allowlist and propagation rules | Minimal explicit environment; no unreviewed inherited hooks, loaders, plugin paths, credentials, or interpreter controls |
 | BL-145 | Planned | Add execution environment and output redaction | Results, diagnostics, and audit events |
-| BL-146 | Planned | Implement Windows execution isolation | Least privilege and documented platform limits |
-| BL-147 | Planned | Implement Linux execution isolation | Least privilege and documented platform limits |
+| BL-146 | Planned | Implement Windows execution isolation | Least privilege plus truthful machine-readable enforcement strength for network/resource/process isolation; required-but-unavailable hard enforcement fails closed |
+| BL-147 | Planned | Implement Linux execution isolation | Least privilege plus truthful machine-readable enforcement strength for network/resource/process isolation; required-but-unavailable hard enforcement fails closed |
 | BL-148 | Planned | Limit parallel command processes | Profile/global resource budgets |
 | BL-149 | Planned | Define least-privilege execution identity | Avoid inherited privileges where practical |
 | BL-150 | Later | Keep interactive shell disabled | Separate interactive/high-risk policy decision and threat model |
-| BL-151 | Planned | Prevent a second execution engine | Registry and policy invariants/tests |
-| BL-152 | Planned | Add Windows/Linux execution security tests | Allowlist, args, roots, env, output, timeout, and isolation |
+| BL-151 | Planned | Prevent a second execution engine | Enforce that `start_process`, `run_command`, and Native Tool adapters reuse the same typed execution/managed-process policy boundaries rather than exposing an arbitrary exec path |
+| BL-152 | Planned | Add Windows/Linux execution security tests | Cover allowlist/typed args, roots, env, output, timeout, executable substitution/identity, injection vectors, enforcement-strength mismatch/downgrade, network policy, and platform isolation |
+| BL-353 | Planned | Add typed-command discovery | Add compact `list_commands` and `get_command_info` contracts for commands authorized by the effective profile/capability context; expose typed argument/limit metadata without default absolute executable-path or adapter-identity disclosure. Detailed contract: `docs/planning/future-tool-adapter-plan.md`. |
 
 ### System information epic
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-153 | Planned | Add `system_info` | Controlled OS, architecture, version, and allowed host facts |
+| BL-153 | Planned | Add `get_system_info` | Controlled, field-selectable OS/architecture/version/allowed host facts using the canonical `get_*` metadata naming rule; default output minimizes host/platform disclosure |
 | BL-154 | Planned | Expose scoped disk usage | Reuse root-scoped operation `BL-062` |
 | BL-155 | Planned | Add filtered environment information | Allowlist and secret exclusion |
-| BL-156 | Planned | Add field selection and redaction | Minimize results and host identifiers |
+| BL-156 | Planned | Add field selection, redaction, and platform-disclosure minimization | Minimize results and host identifiers; portable/default profiles omit unnecessary OS/provider/adapter detail, while platform-sensitive information requires explicit fields/capabilities and diagnostics never become authorization |
 | BL-157 | Planned | Enforce `system.read` capability | Registration and server-side execution checks |
-| BL-158 | Later | Evaluate restricted network information | Separate privacy-sensitive decision gate |
+| BL-158 | Later | Add bounded network observation and probe decision gate | Separate `network.observe`, `network.probe`, and typed-command egress policy. Plan `get_network_info`, `list_network_connections`, `resolve_host`, and `test_tcp_connection` with privacy/SSRF/DNS-rebinding/time/resource controls; no generic HTTP client or mandatory ICMP/ping in core. |
 
 ### Post-Version-1.0 future capability epic
 
-These `Later` owners are accepted future work, not current MCP tools or Version 1.0 release requirements. The shared capability and naming inventory is [the future tool/adapter plan](docs/planning/future-tool-adapter-plan.md); `BL-215` maintains that planning view, while each row below owns its own implementation acceptance boundary.
+These `Later` owners are accepted future work, not current MCP tools or Version 1.0 release requirements. The shared detailed implementation contract is [the future tool/adapter plan](docs/planning/future-tool-adapter-plan.md); `BL-215` keeps its names, adapter taxonomy, security/efficiency rules, and owner/milestone mapping consistent with this backlog. Each row below still owns its implementation acceptance boundary. `BL-346` was promoted to Version 1.0 and is therefore listed in the Filesystem epic instead of this Later-only section.
 
 | ID | Status | Task | Scope and acceptance notes |
 |---|---|---|---|
-| BL-345 | Later | Define cloud-backed and placeholder filesystem semantics | Vendor-neutral local-file model; OneDrive is a Windows validation case, not a dependency. Specify hydrated/dehydrated/offline state, reparse relationship, implicit-hydration policy, read/copy/move/hash consequences, unavailable/offline errors, root confinement, `get_path_info` fields, and native Windows tests before implementation. This is not cloud-hosted FlashGate. |
-| BL-346 | Later | Add bounded file/tree compare and expected-state verify | Own file-to-file and tree-to-tree metadata, hash/content and inventory differences; expected hash, size/type, changed/not-changed, tree parity and optional metadata expectations; deterministic bounded/paginated results. Reuse `BL-048` hashing/fingerprints, `BL-049` tree traversal, and `BL-058` move-verification primitives; no second hash engine. |
-| BL-347 | Later | Add root-confined filesystem watch | Decide the `watch_paths` MCP contract distinct from process observation. Specify read capability, root confinement, opaque principal/profile-bound handle, Operations/Job lifecycle, bounded queue, coalescing, overflow/resync, cancellation, cleanup, service restart semantics, and no unbounded event history. |
-| BL-348 | Later | Add bounded archive inspection, creation, and extraction | Define consistent inspect/list, create and extract names and format adapters; defend against path traversal/zip-slip, symlink/reparse escape, archive bombs, expanded-byte and entry/depth excess, overwrite conflicts, and partial-failure residue. Prefer native Go/OS paths; any external native adapter must satisfy `BL-220` security/benchmark/no-interpreter policy. |
-| BL-349 | Later | Define allowlisted scoped OS-settings reads | Expose only approved semantic namespaces/keys and portable meanings where sound; read-only default, minimal OS detail, field selection/redaction, Windows Registry and Linux sysctl/xattr backends. Exclude a general Registry editor or sysctl browser; any mutation requires a separate later capability, threat-model, and security decision. Reuse `BL-156` redaction and `BL-220` adapter rules. |
-| BL-350 | Later | Publish a portable FlashGate agent skill | Public optional guidance for batch-first calls, fields/ranges/pagination, conditional/fingerprint behavior, redundant stat/read avoidance, large-result resource handoff, capabilities/profiles, annotation-versus-authorization, root-relative paths, sync/jobs, and protocol/feature detection. Reuse `BL-216` server instructions without treating them as a complete portable skill; no private workflow dependency. |
-| BL-351 | Later | Extend path metadata and scoped path compression | Keep `get_path_info` as the query owner. Define portable and platform-specific compression, encryption indicator, sparse and offline/cloud fields with field selection. Decide a scoped `set_path_compression` contract for files/directories and supported inheritance, guarded by explicit write capability and path policy; exclude volume/partition compression management. Reuse `BL-043` base metadata and `BL-345` placeholder semantics. |
+| BL-345 | Later | Define cloud-backed and placeholder filesystem semantics | Vendor-neutral local-file model; OneDrive is a Windows validation case, not a dependency. Separate reparse classification from materialization policy; default content access to `local_only`, bound optional hydration by files/bytes/time, distinguish local/cloud-sync/network backing, add explicit sync-backed-mutation policy, safe `get_path_info` availability fields, indeterminate compare/verify semantics, no watch-triggered hydration, truthful local-write-vs-external-sync results, and a later `set_path_availability` candidate. Windows Cloud Files/CFAPI remains an internal adapter. |
+| BL-347 | Later | Add root-confined filesystem watch | Canonical public family is `start_path_watch`, `read_path_watch_events`, and `stop_path_watch` for a file or directory. Require root/profile/principal-bound opaque handles, TTL, bounded queue, debounce/coalescing, sequence/cursor, overflow/resync, global/per-principal limits, cleanup/restart semantics, no content in events by default, no cloud hydration, and Windows ReadDirectoryChangesW-class/Linux inotify-class adapters. |
+| BL-348 | Later | Add bounded archive inspection, reading, verification, creation, and extraction | Canonical family: `list_archive_formats`, `get_archive_info`, `list_archive_entries`, `read_archive_entry`, `verify_archive`, `create_archive`, `extract_archive`. Use one format-neutral contract with strict root/staging/path/link/special-file/collision/duplicate/entry/depth/expanded-byte/compression-ratio/conflict/partial-failure bounds. Prefer built-in Go/OS paths; optional 7-Zip/libarchive-class Native Tool adapters get no raw options or extra authority and must satisfy BL-220. |
+| BL-349 | Later | Define platform-sensitive configuration reads | Do not invent a generic `get_os_settings` store. Under explicit platform-sensitive capabilities, Windows exposes bounded allowlisted `list_registry_keys`, `list_registry_values`, `get_registry_value`; Linux exposes bounded allowlisted `list_sysctls`, `get_sysctl`. Registry and sysctl remain distinct semantics; xattr belongs to BL-359. Portable semantic settings get a shared domain only where meaning is genuinely equivalent. |
+| BL-350 | Later | Publish a portable FlashGate agent skill | Public optional guidance for batch-first calls, fields/ranges/pagination, compare/verify/fingerprint behavior, redundant stat/read avoidance, large-result resource handoff, capabilities/profiles, annotation-versus-authorization, root-relative paths, sync/jobs, and protocol/feature detection. Reuse `BL-216` server instructions without treating them as a complete portable skill; no private workflow dependency or authorization role. |
+| BL-351 | Later | Extend path storage metadata, compression, and encryption | Keep `get_path_info(fields=["storage"])` as the query owner for compression/encryption/sparse/logical/allocated state. Add scoped `set_path_compression` for files/directories with explicit distinction between directory default/inheritance and recursive mutation, plus separate high-risk `set_path_encryption`; never silently transform one storage state to enable the other. Exclude volume/partition compression or encryption administration. |
+| BL-354 | Later | Add content compression and codec adapters | Keep content compression distinct from archives and transparent path compression. Canonical family: `list_compression_formats`, `compress_file`, `decompress_file`; plan DEFLATE/GZIP/ZLIB/BZIP2/XZ-LZMA/Zstandard/LZ4/Brotli through standard-library-first bounded codec interfaces and optional reviewed typed adapters, with semantic compression presets rather than raw backend flags. |
+| BL-355 | Later | Add platform-sensitive configuration mutation | Separate high-risk write owner from BL-349 reads. Under strict configured allowlists/capabilities/audit, Windows candidates are `create_registry_key`, `set_registry_value`, `delete_registry_value`, `delete_registry_key`; Linux candidate is `set_sysctl`. No general Registry editor, sysctl browser, raw backend arguments, or portable false equivalence. |
+| BL-356 | Later | Add bounded system-log query | Canonical family: `list_system_log_sources`, `query_system_logs`; Windows Event Log and Linux journald are internal adapters. Require time/source/severity/event/field filters, cursor/page limits, compact default messages, redaction, and no raw backend/provider leakage. |
+| BL-357 | Later | Add generic OS-service observation and control | Separate management of other OS services from FlashGate's own host lifecycle. Canonical family: `list_services`, `get_service_info`, `start_service`, `stop_service`, `restart_service`; Windows SCM and Linux systemd are internal adapters, observation/control capabilities are separate, mutations are high-risk and audited. |
+| BL-358 | Later | Add scheduled-job and timer management | Canonical family: `list_scheduled_jobs`, `get_scheduled_job_info`, `create_scheduled_job`, `update_scheduled_job`, `delete_scheduled_job`, `enable_scheduled_job`, `disable_scheduled_job`, `run_scheduled_job`. Windows Task Scheduler and Linux systemd timers are baseline adapters; cron is optional. Persistence/late execution requires explicit high-risk capability, bounded definitions, and audit. |
+| BL-359 | Later | Add path security and extended metadata | Portable `get_path_security` plus high-risk `set_path_security`; Windows ADS family `list/read/write/delete_file_stream`; Linux xattr family `list/read/write/delete_extended_attribute`. Do not pretend ADS and xattr are identical; expose platform-sensitive capabilities only explicitly and preserve root/identity/audit boundaries. |
+| BL-360 | Later | Add first-party read-only Git Native Tool adapter | Canonical local read-only family: `get_git_status`, `get_git_diff`, `list_git_branches`, `list_git_commits`, `get_git_commit`, `get_git_blame`. Repository must be inside an authorized root; reject raw CLI/options, arbitrary `-c`, hooks, pager/external diff, uncontrolled env, and implicit remote/credential activity; bind Git binary identity through BL-137/220. |
+| BL-361 | Later | Add audit integrity and administrative audit query | Extend BL-166 with `get_audit_status`, `query_audit_events`, `verify_audit_integrity` and optional sequence/hash-chain/rotation-link evidence. Keep results bounded/redacted and document hash chaining as tamper evidence/defense in depth, not protection from a fully privileged local attacker. |
+| BL-362 | Later | Add user-session clipboard and notification capabilities | Only through a verified user-session backend, never simulated by a system service account. Canonical family: `list_clipboard_formats`, `read_clipboard`, `write_clipboard`, `clear_clipboard`, `send_desktop_notification`; define payload/size/session/privacy bounds. Broad UI automation remains provider/future-architecture work. |
 
 ### Security epic
 
@@ -316,7 +329,7 @@ These `Later` owners are accepted future work, not current MCP tools or Version 
 | BL-163 | Planned | Define and enforce execution policies | Executables, args, roots, environment, limits, isolation |
 | BL-164 | Planned | Add Operations/Job limit security tests | Queue, concurrency, time, temporary data, cleanup, handles |
 | BL-165 | Planned | Maintain stateful domain threat models | Filesystem, search, processes, execution, FlashGate modules/providers, and MCP protocol extensions |
-| BL-166 | Planned | Define structured audit lifecycle and trace correlation | Bounded redacted decisions/outcomes, immutable event IDs, end-to-end correlation, rotation, retention, disk-full/backpressure behavior, and log-injection protection |
+| BL-166 | Planned | Define structured audit lifecycle and trace correlation | Bounded redacted decisions/outcomes, immutable event IDs, end-to-end correlation, rotation, retention, disk-full/backpressure behavior, and log-injection protection; post-Version-1.0 integrity/query extensions are owned by BL-361 |
 | BL-167 | Planned | Extend secret redaction across new domains | Process, execution, system, jobs, audit, and module/provider outputs |
 | BL-168 | Planned | Validate least-privilege execution | Server and child process permissions |
 | BL-169 | Later | Enforce FlashGate module/provider security boundaries | Post-1.0 provider work may not bypass policies, functional capabilities, roots, limits, audit, execution identity, or adapters |
@@ -343,7 +356,7 @@ These `Later` owners are accepted future work, not current MCP tools or Version 
 | BL-185 | Later | Define module/provider security classification | Post-1.0 risk categories and review requirements |
 | BL-186 | Later | Distinguish public, community, vendor, and internal providers | Post-1.0 distribution and support labels do not change security |
 | BL-187 | Later | Define official versus community provider policy | Post-1.0 trust language, signing/update expectations, and support |
-| BL-188 | Later | Decide FlashGate provider runtime model | Choose among statically linked packages registered at build time, registered in-process providers, or isolated out-of-process providers over local IPC; a Go module is source/versioning only, not a runtime model |
+| BL-188 | Later | Decide FlashGate provider runtime model | Prefer built-in/static reviewed components or isolated out-of-process providers for larger optional systems; do not turn the trusted service into an arbitrary DLL/SO/Go-plugin loader. Any in-process model requires an explicit later security decision, and no provider may bypass roots, capabilities, principal binding, limits, execution identity, audit, or redaction. |
 
 ### Efficiency and MCP contract foundation
 
@@ -363,7 +376,7 @@ These `Later` owners are accepted future work, not current MCP tools or Version 
 | BL-200 | Done | Add MCP `outputSchema` | All eight runtime filesystem tools expose success-only schemas matching catalog `resultSchema` and successful `structuredContent`; no error migration or complete general JSON Schema validation |
 | BL-201 | Done | Add MCP `CallToolResult` foundation and `structuredContent` | All eight successful filesystem tools use one central text-plus-structured wrapper with deterministic parity, strict decoder/wire tests, corrected smokes, and no runtime `outputSchema` |
 | BL-202 | Done | Review MCP tool annotations | Implemented accurate MCP `2025-11-25` discovery annotations for all eight filesystem tools with explicit read-only, destructive, idempotent, and open-world members including `false`; runtime/catalog/wire parity is enforced and annotations remain non-authoritative for registration, profiles, capabilities, path/security checks, execution identity, and authorization. PR #274 merged the exact reviewed implementation as `d005cb5fa30007a51c5e7f8068c6137faf40d3bf`; independent full review and focused `BL-202-REV-001` delta review passed with `OpenFindingCount=0`, PR checks passed 12/12, and post-merge checks passed 11/11. |
-| BL-203 | Planned | Define normalized machine-readable errors | Stable categories without raw OS leakage |
+| BL-203 | Planned | Define normalized machine-readable errors | Stable categories including safe unsupported-capability/content-not-local/indeterminate outcomes where needed, without raw OS/backend/provider leakage; diagnostic detail remains separately gated |
 | BL-204 | Planned | Evaluate official MCP conformance testing and add schema snapshots | Add conformance/schema coverage for every advertised revision; `SPR-046` already provides runtime/catalog output-schema parity and `tools/list` wire coverage, while final `2026-07-28` conformance plus complete input/output snapshots remain required before support is advertised |
 | BL-205 | Planned | Add response-size regression tests | `SPR-046` measures `tools/list` payload impact without setting a persistent budget; success/error regression gates remain planned |
 | BL-206 | Planned | Document local deterministic work principle | Prefer local copy/edit/hash/search over model retransmission |
@@ -375,12 +388,12 @@ These `Later` owners are accepted future work, not current MCP tools or Version 
 | BL-212 | Planned | Validate all input/output schemas as JSON Schema 2020-12 | Complete standard-conformant validation, dialect declarations, deterministic property ordering, snapshots, and protocol-version compatibility |
 | BL-213 | Planned | Define payload-class result contracts and single-transmission rules | Small metadata may retain text/structured parity; heavy text, binary, search, and process payloads appear once with separate compact metadata and bounded compatibility fallback |
 | BL-214 | Planned | Add wire-amplification and useful-byte efficiency metrics | Record response bytes versus useful payload, approximate token cost per useful byte, serialization copies, and hard regression budgets |
-| BL-215 | Planned | Define profile-specific tool-catalog and initialization budgets | Set Version 1.0 limits for tool count, schema bytes/tokens, descriptions, server instructions, and optional profile composition; maintain the future capability/naming inventory in `docs/planning/future-tool-adapter-plan.md` as planning input, with core/MCP/adapter separation and owner/milestone parity, without advertising future tools as implemented |
+| BL-215 | Planned | Define profile-specific tool-catalog and initialization budgets | Set Version 1.0 limits for tool count, schema bytes/tokens, descriptions, server instructions, and optional profile composition; maintain `docs/planning/future-tool-adapter-plan.md` as the required detailed contract for accepted future public names, adapter taxonomy, cross-cutting security/efficiency rules, and owner/milestone parity, without advertising unimplemented tools |
 | BL-216 | Planned | Add compact profile-specific server instructions | Guide clients to batch, paginate, request fields/ranges, use dry-run, avoid redundant stat calls, and resume cursor output within a bounded instruction budget |
 | BL-217 | Later | Add conditional read and not-modified contracts | Post-1.0 content fingerprints/snapshot IDs for files, lists, searches, system facts, and process output to avoid retransmitting unchanged data |
 | BL-218 | Planned | Add opaque large-result and resource-handoff abstraction | Principal-bound `flashgate://` handles, MIME/size/hash metadata, TTL, streaming or paging, negotiated resource links, and bounded inline fallback without host-path leakage |
 | BL-219 | Planned | Define deterministic catalog fingerprints and cache semantics | Stable tool ordering, exact-revision/profile/config fingerprint, invalidation rules, and revision-specific list-result caching. For `2026-07-28`, bind required `ttlMs`/`cacheScope`; default to non-shared/private caching unless the complete result is proven principal/profile-independent. |
-| BL-220 | Planned | Define native OS-adapter selection and no-interpreter gate | Prefer Go standard library, platform Go adapters, and direct OS APIs; external OS programs require no-shell allowlisting plus benchmark/security evidence; interpreter-based adapters are excluded from Version 1.0 |
+| BL-220 | Planned | Define native OS-adapter selection and no-interpreter gate | Prefer Go standard library, platform Go adapters, and direct OS APIs. External native programs use a typed no-shell Native Tool adapter with approved executable identity, minimal environment, bounded resources, no raw CLI passthrough, and benchmark/security evidence; interpreter-based adapters are excluded from Version 1.0. |
 
 **MCP `2026-07-28` planning convergence — 2026-09-19.** The specification is final. Open Mobile PRs #60 (BL-207), #69 (BL-208), and #149 (BL-209) are retained only as prepared implementation/decision inputs that predate this convergence. They are not current support authority and must be freshly rebased/reviewed against `main` and the revised BL-207/208/209 acceptance contracts before any later merge. This planning convergence changes no runtime protocol support and does not introduce an MCP SDK dependency.
 
@@ -731,7 +744,7 @@ packaged final read-only review gate. Ready-for-Review, reviewer requests,
 other PR metadata changes, merge, rebase, and force-push remain prohibited;
 the persistent catalog keeps general remote actions closed.
 
-The highest assigned backlog identifier is `BL-351`. BL-339, BL-340, BL-342,
+The highest assigned backlog identifier is `BL-362`. BL-339, BL-340, BL-342,
 BL-343, and BL-344 are `Done`; BL-341 is the distinct `Planned` task.
 BL-333, BL-334, BL-335, and BL-336 remain `Done`.
 
@@ -760,7 +773,11 @@ three PR27-EXACT findings are closed. BL-333, BL-334, and BL-335 are `Done`.
 - Every service request has both an authenticated caller identity and an effective execution backend. Version 1.0 implements the service-account backend only; the user-worker backend is interface-compatible but post-1.0. In-process impersonation is prohibited.
 - Handles, jobs, caches, result resources, temporary files, cancellation, and audit correlation are bound to principal, profile, root, execution backend, and service generation.
 - Global limits are insufficient for service mode; per-principal quotas and fair scheduling are mandatory.
-- Native Go/OS APIs are preferred. External programs require typed no-shell definitions and evidence; interpreter-based adapters are excluded from Version 1.0.
+- Native Go/OS APIs are preferred. External programs require typed no-shell definitions, approved executable identity, minimal environment, bounded resources, no raw CLI passthrough, and evidence; interpreter-based adapters are excluded from Version 1.0.
+- Public tool names use `verb_object`; `get` means structured state/metadata, `read` means payload/content, `set` means structured-state mutation, and `write` means payload mutation. Adapter or provider names do not become public tool names. The detailed accepted naming/options/adapter contract is `docs/planning/future-tool-adapter-plan.md`.
+- Portable/default profiles minimize OS/provider/adapter fingerprinting; platform-specific Registry/sysctl/ADS/xattr capabilities are opt-in, but FlashGate never invents false semantic equivalence merely to hide the OS.
+- Execution policy must distinguish requested policy from proven enforcement strength; required network/resource/isolation enforcement that the active backend cannot prove fails closed rather than silently degrading.
+- Cloud-backed paths never trigger implicit hydration under the default `local_only` policy, and local success in a sync-backed root never implies external synchronization success.
 - Operations/jobs are optional lifecycle infrastructure; short synchronous operations may run directly and domain logic/ownership stays outside the manager.
 - Benchmarks and threat models must justify separate product binaries, indexes, or external adapters/providers. The same-binary local service IPC accepted by ADR-014 still requires its defined security, compatibility, and benchmark release gates.
 - FlashGate modules/providers and MCP protocol extensions are separate concepts and contracts.
