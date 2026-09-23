@@ -294,6 +294,15 @@ Currently tested:
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
 
+### Filesystem identity, compare, and verification tests
+
+- BL-048 batch hashes/content identities are deterministic for the defined input and never accepted as authorization evidence;
+- `compare_paths` file/file and directory/directory metadata/hash/content/text modes, type mismatch, bounded differences, paging, cheapest-safe-proof behavior, and cloud/local-only indeterminate outcomes;
+- `verify_paths` one/many expected-state records, compact count-only success, bounded mismatch/indeterminate deltas, and manifest-like batch use without workflow-specific semantics;
+- fresh/strong verification re-evaluates the required current metadata/content proof and does not pass solely from reusable cached evidence;
+- current root/profile/capability/principal/path checks run regardless of supplied fingerprint/hash/snapshot identity;
+- no second hashing/tree implementation diverges from BL-048/049 primitives.
+
 ### Payload and catalog tests
 
 - payload-class selection for metadata, structured pages, heavy text, media/binary, and large results;
@@ -398,9 +407,9 @@ request-count, singleton, PID-only, or registry-only termination.
 Before Version 1.0, publish and test the supported MCP revision matrix:
 
 - exact current `2025-11-25` initialization behavior, preserved while that revision is supported;
-- final `2026-07-28` stateless behavior only after implementation, including `server/discover`, per-request metadata, supported-version errors, result typing, server identity metadata, and list cache fields;
+- final `2026-07-28` stateless behavior only after implementation, including `server/discover`, per-request metadata, supported-version errors, result typing, server identity metadata, required cache hints on cacheable list/read results including `resources/read`, and `subscriptions/listen` for opted-in list/resource change notifications;
 - cross-revision STDIO opening/probe/fallback behavior without ambiguous connection-state authority;
-- deterministic exact-revision catalog fingerprint and cache invalidation, including safe `cacheScope`;
+- deterministic exact-revision catalog fingerprint and cache invalidation, including safe `cacheScope`, resource-read invalidation, cross-principal/private-cache isolation, and confirmation that legacy `resources/subscribe` semantics are not used on the `2026-07-28` path;
 - final Tasks Extension mapping without mixing the 2025 experimental lifecycle;
 - extension downgrade/mismatch and missing-required-capability cases;
 - JSON Schema 2020-12 validation;
