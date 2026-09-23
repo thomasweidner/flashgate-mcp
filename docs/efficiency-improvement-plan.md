@@ -204,7 +204,7 @@ Version 1.0 defines:
 - revision-specific list-result cache semantics; on `2026-07-28`, return the required `ttlMs` and `cacheScope` fields and keep `cacheScope` non-shared/private unless the complete result is proven independent of principal/profile-sensitive state;
 - no reuse of a catalog fingerprint across incompatible protocol revisions or security contexts.
 
-This supports client caching without exposing sensitive configuration details. On the `2026-07-28` path, the same cache-hint model also applies to cacheable resource reads when FlashGate exposes MCP resources: `resources/read` carries `ttlMs`/`cacheScope`, and change invalidation is delivered only through a client-opened `subscriptions/listen` stream for the requested notifications. Legacy `resources/subscribe` behavior is not copied into the modern path.
+This supports client caching without exposing sensitive configuration details. On the `2026-07-28` path, the same cache-hint model also applies to cacheable resource reads when FlashGate exposes MCP resources: `resources/read` carries `ttlMs`/`cacheScope`, and change invalidation is delivered only through a client-opened `subscriptions/listen` stream for the requested notifications. `2025-11-25` `resources/subscribe` behavior is not copied into the `2026-07-28` stateless path.
 
 ## Read-only safe default
 

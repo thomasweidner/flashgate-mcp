@@ -409,7 +409,7 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - exact current `2025-11-25` initialization behavior, preserved while that revision is supported;
 - final `2026-07-28` stateless behavior only after implementation, including `server/discover`, per-request metadata, supported-version errors, result typing, server identity metadata, required cache hints on cacheable list/read results including `resources/read`, and `subscriptions/listen` for opted-in list/resource change notifications;
 - cross-revision STDIO opening/probe/fallback behavior without ambiguous connection-state authority;
-- deterministic exact-revision catalog fingerprint and cache invalidation, including safe `cacheScope`, resource-read invalidation, cross-principal/private-cache isolation, and confirmation that legacy `resources/subscribe` semantics are not used on the `2026-07-28` path;
+- deterministic exact-revision catalog fingerprint and cache invalidation, including safe `cacheScope`, resource-read invalidation, cross-principal/private-cache isolation, and confirmation that `2025-11-25` `resources/subscribe` semantics are not used on the `2026-07-28` stateless path;
 - final Tasks Extension mapping without mixing the 2025 experimental lifecycle;
 - extension downgrade/mismatch and missing-required-capability cases;
 - JSON Schema 2020-12 validation;
