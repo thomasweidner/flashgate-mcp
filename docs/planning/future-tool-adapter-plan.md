@@ -276,7 +276,7 @@ Candidate tools:
 - `resolve_host`;
 - `test_tcp_connection`.
 
-There is no generic HTTP client in the core. ICMP/ping is not a baseline requirement unless a later native/security decision justifies it.
+Network probes use explicit policy rather than generic outbound authority. The policy must support bounded host/exact-name or suffix allowlists, port allowlists, and explicit treatment of loopback, private, link-local, multicast, unspecified, and other non-public destination classes. DNS names are resolved under policy and the actual address used for connection is validated again so rebinding or multi-answer resolution cannot bypass destination rules. Timeouts, attempted addresses, returned fields, and diagnostic text stay small and bounded. There is no generic HTTP client in the core. ICMP/ping is not a baseline requirement unless a later native/security decision justifies it.
 
 ## 7. Cloud-backed and placeholder paths — `BL-345`
 
@@ -334,6 +334,8 @@ Provider-neutral semantic states may include `always_local`, `automatic`, and `o
 - sync-origin classification is emitted only when FlashGate can actually prove it;
 - provider identity remains diagnostic/admin data by default.
 
+When explicitly requested through `get_path_info(fields=["availability"])`, normalized fields may include `content_state`, `pin_state`, `in_sync`, `on_disk_size`, `validated_size`, `modified_not_synced_size`, `recall_on_open`, and `recall_on_data_access` where the platform can determine them reliably. Unsupported/unknown values remain explicit rather than inferred. Provider name/version, raw reparse tags, native identifiers, and adapter details remain diagnostic/admin data by default.
+
 Windows Cloud Files/CFAPI is an internal Platform Adapter for this domain.
 
 ## 8. Filesystem watch — `BL-347`
@@ -372,6 +374,19 @@ Archive is a format-neutral domain with the public family:
 - `extract_archive`
 
 A format advertises the operations it actually supports; FlashGate does not assume every format can be created and extracted.
+
+Candidate format coverage is capability-based rather than a promise that every backend implements every item:
+
+- ZIP/ZIP64 — inspect/list/read/verify/create/extract where the selected built-in/adapter path supports it;
+- TAR — inspect/list/read/verify/create/extract;
+- TAR.GZ/TGZ and TAR.BZ2 — composed archive+compression support where available;
+- TAR.XZ and TAR.ZST — optional codec/Native Tool adapter support;
+- 7z — optional adapter, operation set advertised at runtime;
+- RAR — primarily inspect/list/read/verify/extract; creation is not assumed;
+- CPIO — optional adapter when justified;
+- ISO and WIM — inspection/read-only candidates only when a safe bounded implementation is justified.
+
+`list_archive_formats` reports the actual operation matrix for the active build/profile/adapters; unsupported operations are never guessed from a filename extension.
 
 Security requirements for **every** archive backend:
 
@@ -420,7 +435,7 @@ Go standard-library support is used first. Optional codec/native adapters are al
 
 ### 10.2 Transparent path compression/encryption — `BL-351`
 
-Query state through `get_path_info(fields=["storage"])`; there is no separate `get_path_storage_info`.
+Query state through `get_path_info(fields=["storage"])`; there is no separate `get_path_storage_info`. Where reliably supported, normalized requested storage fields may include compression supported/enabled/inherited-default, encryption supported/enabled/inherited-default, sparse state, logical size, and allocated/physical size. Unknown/unsupported fields are explicit and do not fabricate cross-filesystem equivalence.
 
 Canonical mutation:
 
@@ -551,6 +566,14 @@ The repository must be within an authorized Named Root. The adapter must disable
 
 `BL-166` remains the Version 1.0 owner for bounded structured audit events, immutable event/correlation IDs, rotation, retention, disk-full/backpressure behavior, redaction, and log-injection protection.
 
+The optional integrity mode is explicit:
+
+```text
+audit_integrity = none | hash_chain
+```
+
+`none` preserves the base audit lifecycle without chain evidence. `hash_chain` adds the integrity evidence described below without changing authorization or making the audit store immutable.
+
 Post-Version-1.0 candidates:
 
 - `get_audit_status`
@@ -659,7 +682,7 @@ This inventory is a planning contract, not a current-runtime claim.
 - `read_process_output`
 - `stop_process`
 - later `write_process_input`
-- later high-risk external-process control name to be settled by its owner
+- later high-risk `stop_external_process` candidate under `BL-127`
 
 ### Typed execution
 
