@@ -65,7 +65,7 @@ Every request carries an authenticated caller principal separately from its effe
 
 ### Filesystem
 
-Required bounded capabilities include metadata, pages, ranges, text/media/binary reads, batches, hashes/fingerprints, trees, targeted edits, atomic/conditional writes, dry-run, append, bounded plans, cross-volume semantics, directory copy/move/size, and job handoff.
+Required bounded capabilities include metadata, pages, ranges, text/media/binary reads, batches, hashes/content identities/fingerprints, trees, deterministic file/tree comparison, batch expected-state verification with compact mismatch/indeterminate deltas and explicit fresh/strong proof, targeted edits, atomic/conditional writes, dry-run, append, bounded plans, cross-volume semantics, directory copy/move/size, and job handoff. Content identities are evidence for equality/change reasoning and never authorization tokens.
 
 ### Search
 
@@ -111,7 +111,7 @@ Version 1.0 shall:
 - expose only profile-authorized tools;
 - budget tool count, catalog bytes/tokens, and initialization instructions;
 - keep tool ordering and fingerprints deterministic;
-- use ranges, pages, batches, field selection, cursors, and jobs to avoid repeated/unbounded transfer;
+- use ranges, pages, batches, field selection, cursors, compact expected-state verification, and jobs to avoid repeated/unbounded transfer;
 - transmit payload-heavy content once;
 - separate compact metadata from text/binary/process/search payload;
 - provide bounded opaque result/resource handoff;
@@ -128,6 +128,7 @@ Implementation order is Go standard library, platform-specific Go adapter, direc
 ## Protocol requirements
 
 - protocol/extension negotiation is explicit;
+- the `2026-07-28` adapter implements its cacheable list/read `ttlMs`/`cacheScope` semantics, including `resources/read` where resources are exposed, and its `subscriptions/listen` change-notification model without treating legacy subscription behavior as interchangeable;
 - advertised revisions are implemented and tested;
 - tool schemas use the selected JSON Schema requirements and deterministic snapshots;
 - result representation follows payload classes;
