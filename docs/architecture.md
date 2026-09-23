@@ -177,7 +177,7 @@ Go components in this repository reuse the core directly. Future MCPs built on F
 
 ### Filesystem
 
-Owns files, directories, metadata, ranged reads, text/media/binary classification, writes, edits, copying, moving, deletion, hashing, fingerprints, directory size, and bounded plans.
+Owns files, directories, metadata, ranged reads, text/media/binary classification, writes, edits, copying, moving, deletion, hashing, fingerprints, directory size, and bounded plans. Accepted post-Version-1.0 work adds local placeholder state, file/tree compare and expected-state verify, filesystem event watch, archive operations, and scoped path compression. These remain independent `Later` owners (`BL-345`–`BL-348`, `BL-351`) and are not current runtime behavior. Shared hashing/tree primitives and Operations/Job lifecycle are reused without transferring filesystem business ownership.
 
 ### Search
 
@@ -195,7 +195,7 @@ Execution does not expose a general shell. A command definition can fix subcomma
 
 ### System information
 
-Owns only explicitly released OS/architecture/resource facts, scoped disk use, filtered environment fields, and redaction. Network information remains post-Version 1.0.
+Owns only explicitly released OS/architecture/resource facts, scoped disk use, filtered environment fields, and redaction. Network information remains post-Version 1.0. `BL-349` separately owns future allowlisted semantic OS-settings reads with platform backends; a general Registry/sysctl editor or settings mutation is outside that read contract.
 
 ### Operations and jobs
 
@@ -403,6 +403,8 @@ Version 1.0 implementation priority:
 5. no interpreter-based runtime adapter.
 
 PowerShell and shell scripts may be development, installation, validation, or administrator tooling. They are not normal FlashGate runtime dependencies.
+
+The [future tool and adapter plan](planning/future-tool-adapter-plan.md) is a planning inventory under `BL-215`. Its candidate MCP names stay in the adapter, core operations stay in the owning domain, and Windows/Linux or archive-format details stay in platform adapters. The optional public agent skill (`BL-350`) is guidance, not a runtime dependency.
 
 ## Runtime and deployment model
 
