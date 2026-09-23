@@ -256,6 +256,7 @@ Startup preflight completes before any tool Registry, Router or MCP server is cr
 Version 1.0 security work includes:
 
 - named roots and safe read-only default profile;
+- BL-346 file/tree compare and batch expected-state verification, including traversal/resource bounds, content-identity non-authorization, and fresh/strong proof semantics;
 - server-side capability enforcement and negative tests;
 - payload-class and large-result security;
 - Operations/Job Manager quotas and identity-bound state;
@@ -267,7 +268,7 @@ Version 1.0 security work includes:
 - audit lifecycle and end-to-end correlation;
 - supply-chain and release evidence.
 
-Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, conditional read cache semantics, optional accelerators, and any external provider ecosystem. The future filesystem/system owners `BL-345`–`BL-349` and `BL-351` require separate threat models and negative tests before implementation: placeholder hydration/offline and reparse escapes; comparison traversal and resource exhaustion; watch queue overflow, owner binding and restart; archive traversal, link escape, expansion bombs and partial cleanup; allowlisted settings disclosure; and compression mutation authorization/inheritance. The portable agent skill `BL-350` may explain these controls but grants none of them.
+Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, BL-217 conditional-read/cache semantics, optional accelerators, and any external provider ecosystem. Future owners `BL-345`, `BL-347`–`BL-349`, and `BL-351` require separate threat models and negative tests before implementation: placeholder hydration/offline and reparse escapes; watch queue overflow, owner binding and restart; archive traversal, link escape, expansion bombs and partial cleanup; allowlisted settings disclosure; and compression mutation authorization/inheritance. BL-217 additionally requires cross-principal/profile/root/backend cache-partition tests, stale/invalidation races, current-authorization rechecks, hash-as-capability negatives, and proof that fresh/strong requests do not accept cached evidence when current state is required. The portable agent skill `BL-350` may explain these controls but grants none of them.
 
 ## Accepted Target Security Architecture
 
@@ -336,6 +337,8 @@ This applies to:
 - temporary data;
 - cancellation rights;
 - authorization-sensitive caches.
+
+A content fingerprint, snapshot ID, cache key, or not-modified token is never authorization evidence. Cache lookup or identity equality can optimize work only after the current request has passed its normal principal/profile/root/capability/path checks. Fresh/strong verification must re-evaluate the proof required by its contract instead of substituting cached state.
 
 Resource control combines:
 
@@ -479,7 +482,7 @@ Version 1.0 protocol security includes:
 - `2026-07-28` per-request protocol/capability validation with no connection-history authority;
 - mandatory `server/discover` support without treating discovery or self-reported `clientInfo` as identity/authorization evidence;
 - fail-closed unsupported-version, malformed-`_meta`, missing-required-capability, and revision-mismatch behavior;
-- exact-revision catalog/cache invalidation, with non-shared/private `cacheScope` unless sharing safety is proven;
+- exact-revision catalog/cache invalidation, with non-shared/private `cacheScope` unless sharing safety is proven; for `2026-07-28`, this also covers cacheable `resources/read` and `subscriptions/listen`-delivered invalidation without reviving legacy `resources/subscribe` semantics;
 - final Tasks Extension mapping without mixing the 2025 experimental lifecycle;
 - JSON Schema 2020-12 validation;
 - capability downgrade/mismatch tests;
