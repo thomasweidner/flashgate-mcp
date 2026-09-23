@@ -14,7 +14,7 @@ It exposes secure filesystem operations to MCP-compatible clients through JSON-R
 
 The project currently implements the core MCP server loop, JSON-RPC routing and request validation, tool discovery, tool execution, MCP-conformant `CallToolResult` wrapping, filesystem abstraction, root-confined path handling, read-only tool gating, canonical build identity, native Windows/Linux metadata, deterministic release archives, reproducible resource/latency/payload benchmarks, tests, and documentation.
 
-The current implemented scope is filesystem operations. Version 1.0 plans bounded search, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, and optional local system-service deployment. These remain planned work.
+The current implemented scope is filesystem operations. Version 1.0 plans bounded search, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, reusable content fingerprints with bounded file/tree compare and expected-state verification, and optional local system-service deployment. These remain planned work.
 
 Implemented tools:
 
@@ -44,6 +44,7 @@ move_path
 - Measurable CPU, RAM, startup, latency, response-size, and token efficiency
 - Local deterministic operations instead of transferring file content through the model
 - Payload-heavy content transferred once with bounded result/resource handling
+- Reusable content identities and compact verification before unnecessary retransmission
 - Safe read-only profile as the Version 1.0 default when no higher-risk profile is selected
 - Separate caller authorization and effective service execution identity
 - No interpreter runtime for normal Windows/Linux operation
@@ -79,7 +80,7 @@ shutdown coordinator, secret-safe instance/exit diagnostics, and the strict
 runtime implementation and BL-241 its integrated Windows/Linux validation.
 ## Open-Source, Modules, and Protocol Extensions
 
-FlashGate MCP is developed as a general, vendor-neutral open-source project. The core must not require Voxtronic paths, internal systems, proprietary dependencies, organization secrets, or company-specific permissions.
+FlashGate MCP is developed as a general, vendor-neutral open-source project. The core, public contracts, documentation, and optional agent guidance must not require Voxtronic paths, INF work items, consumer-specific `AGENTS.md` rules, Codex-Work conventions, private control planes, proprietary dependencies, organization secrets, company-specific permissions, or a particular agent product. Consumer-specific governance may compose FlashGate capabilities externally, but it is never a FlashGate runtime or authorization dependency.
 
 Public, community, vendor, organization-internal, and Voxtronic-specific FlashGate modules/providers are post-Version-1.0 work. No module/provider contract or runtime model is part of the initial stable release, and future providers may not bypass central security or execution-identity controls.
 
