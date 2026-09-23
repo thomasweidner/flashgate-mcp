@@ -176,7 +176,11 @@ The following work is accepted but must not delay Version 1.0:
 - external PID control;
 - process input writing;
 - interactive shell support;
-- privacy-sensitive network information.
+- privacy-sensitive network information;
+- vendor-neutral local cloud/placeholder semantics, file/tree compare and verify, filesystem watch, and bounded archives (`BL-345`–`BL-348`);
+- allowlisted OS-settings reads, a portable FlashGate agent skill, and scoped path compression (`BL-349`–`BL-351`).
+
+These `Later` owners do not enlarge the Version 1.0 release gate. Their candidate tool names and core/adapter boundaries are recorded in the [future tool and adapter plan](planning/future-tool-adapter-plan.md).
 
 ### Provider and community ecosystem
 

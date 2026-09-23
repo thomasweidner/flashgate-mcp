@@ -15,6 +15,8 @@ copy_path
 move_path
 ```
 
+Future names in the [tool and adapter plan](planning/future-tool-adapter-plan.md) are candidates, not current registry entries. Use `get` for metadata/state and `read` for content; `get_path_info` remains the single path-metadata query. Keep `list_directory` rather than adding `get_directory`/`get_directories` aliases. Compare must cover files and trees; `watch_paths` denotes filesystem events and must not collide with process observation. Archive inspect/create/extract names remain verb-consistent. Reject ambiguous names such as `get_access_context`.
+
 The registry determines deterministic exposure order. `tools/list` uses each implementation's single `Definition()` value for name, title, description, input schema, and output schema. MCP names remain in the adapter layer; the filesystem core keeps domain-oriented Go names such as `List`, `Stat`, and `Mkdir`.
 
 ## Arguments

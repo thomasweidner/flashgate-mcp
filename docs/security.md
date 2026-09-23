@@ -267,7 +267,7 @@ Version 1.0 security work includes:
 - audit lifecycle and end-to-end correlation;
 - supply-chain and release evidence.
 
-Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, conditional read cache semantics, optional accelerators, and any external provider ecosystem.
+Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, conditional read cache semantics, optional accelerators, and any external provider ecosystem. The future filesystem/system owners `BL-345`–`BL-349` and `BL-351` require separate threat models and negative tests before implementation: placeholder hydration/offline and reparse escapes; comparison traversal and resource exhaustion; watch queue overflow, owner binding and restart; archive traversal, link escape, expansion bombs and partial cleanup; allowlisted settings disclosure; and compression mutation authorization/inheritance. The portable agent skill `BL-350` may explain these controls but grants none of them.
 
 ## Accepted Target Security Architecture
 

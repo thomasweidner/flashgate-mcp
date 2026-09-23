@@ -65,7 +65,11 @@ Accepted post-Version-1.0 work includes:
 - legacy MCP Roots compatibility only for demonstrated client need;
 - external PID control, process input, and interactive-shell decision gates;
 - restricted network information;
-- external FlashGate provider/community ecosystem.
+- external FlashGate provider/community ecosystem;
+- local cloud/placeholder semantics, bounded compare/verify, filesystem watch, and archives (`BL-345`–`BL-348`);
+- allowlisted OS-settings reads, a portable public agent skill, and scoped path compression (`BL-349`–`BL-351`).
+
+The [future tool and adapter plan](planning/future-tool-adapter-plan.md) records candidate names, domain/core/MCP/OS-adapter ownership, risk, execution form, platform, and milestone. `BL-215` maintains that catalog planning input; it does not promote future tools into the Version 1.0 release.
 
 No post-Version-1.0 item may be pulled into Version 1.0 without an explicit backlog/milestone change and corresponding risk, resource, and documentation review.
 

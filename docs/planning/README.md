@@ -18,6 +18,8 @@ These dated artifacts preserve the Mobile/Vacation preparation and Classic revie
 9. `classic-independent-review-batch-04-2026-09-17.md` — completed read-only Classic independent review of BL-223/224/225 plus Operations/Job BL-094 and Managed Process BL-129 lifecycle contracts/owners, including a new Classic session-binding finding; no fixes were performed in the review.
 10. `classic-independent-review-batch-05-2026-09-17.md` — completed read-only Classic independent review of Linux/Windows local IPC transports, runtime configuration/discovery, backend-neutral execution identity and the Variant-A service-account backend, including new bounded-cancellation/stale-probe findings; no fixes were performed in the review.
 
+[Future tool and adapter plan](future-tool-adapter-plan.md) is the current public capability/naming inventory maintained under `BL-215`; `BACKLOG.md` remains authoritative for owners and status. The dated entries above remain historical evidence.
+
 ## Interpretation
 
 - During vacation, these files may support Mobile/Cloud preparation.
