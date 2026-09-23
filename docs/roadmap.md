@@ -15,7 +15,7 @@ FlashGate MCP is the binding project name. The current implementation is a nativ
 | Architecture and identity | `SPR-041` | FlashGate identity, ADR baseline, authoritative backlog consolidation |
 | Technical transition | `SPR-042`–`SPR-044` | Technical rename, pre-1.0 filesystem contract cleanup, read-only client preparation |
 | Efficiency and shared runtime | `SPR-045`–`SPR-049` | Payload/result architecture, explicit MCP revision matrix (`2025-11-25` initialization path plus final `2026-07-28` stateless path), tool/token/cache budgets, native adapter policy, Operations/Job Manager, quotas, identity-bound state |
-| Filesystem and search | `SPR-050`–`SPR-052` | Efficient inspection, MIME/binary/large-result handling, safe edits/plans, bounded search |
+| Filesystem and search | `SPR-050`–`SPR-052` | Efficient inspection, hashes/content identities, bounded file/tree compare and expected-state verification, MIME/binary/large-result handling, safe edits/plans, bounded search |
 | Policy model | `SPR-053` | Named roots, read-only safe default, capabilities, profiles, dynamic tool registration, negative authorization tests |
 | Process and execution | `SPR-054`–`SPR-057` | Threat models, observation, managed processes, typed allowlisted commands, OS isolation, cursor output |
 | System information | `SPR-058` | Scoped and redacted host information |
@@ -66,7 +66,7 @@ Accepted post-Version-1.0 work includes:
 - external PID control, process input, and interactive-shell decision gates;
 - restricted network information;
 - external FlashGate provider/community ecosystem;
-- local cloud/placeholder semantics, bounded compare/verify, filesystem watch, and archives (`BL-345`–`BL-348`);
+- local cloud/placeholder semantics, filesystem watch, and archives (`BL-345`, `BL-347`–`BL-348`);
 - allowlisted OS-settings reads, a portable public agent skill, and scoped path compression (`BL-349`–`BL-351`).
 
 The [future tool and adapter plan](planning/future-tool-adapter-plan.md) records candidate names, domain/core/MCP/OS-adapter ownership, risk, execution form, platform, and milestone. `BL-215` maintains that catalog planning input; it does not promote future tools into the Version 1.0 release.
