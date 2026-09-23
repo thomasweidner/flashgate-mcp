@@ -73,7 +73,8 @@ Version 1.0 includes the planned bounded implementations for:
 - typed allowlisted command execution without a general shell;
 - explicitly scoped and redacted system information;
 - named roots, capability profiles, risk policies, and dynamic tool registration;
-- Operations/Job Manager support for bounded long-running work.
+- Operations/Job Manager support for bounded long-running work;
+- reusable content fingerprints plus bounded file/tree comparison and batch expected-state verification (`BL-048`, `BL-346`).
 
 ### Safe defaults
 
@@ -177,7 +178,7 @@ The following work is accepted but must not delay Version 1.0:
 - process input writing;
 - interactive shell support;
 - privacy-sensitive network information;
-- vendor-neutral local cloud/placeholder semantics, file/tree compare and verify, filesystem watch, and bounded archives (`BL-345`–`BL-348`);
+- vendor-neutral local cloud/placeholder semantics, filesystem watch, and bounded archives (`BL-345`, `BL-347`–`BL-348`);
 - allowlisted OS-settings reads, a portable FlashGate agent skill, and scoped path compression (`BL-349`–`BL-351`).
 
 These `Later` owners do not enlarge the Version 1.0 release gate. Their candidate tool names and core/adapter boundaries are recorded in the [future tool and adapter plan](planning/future-tool-adapter-plan.md).
