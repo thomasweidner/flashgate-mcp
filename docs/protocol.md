@@ -79,6 +79,8 @@ For the `2026-07-28` stateless path:
 - implement `server/discover` as required by the revision, while allowing clients to invoke ordinary RPCs without a prior discovery call;
 - return `UnsupportedProtocolVersion` for unsupported requested revisions with the exact supported revision set;
 - stamp server identity in result `_meta` as defined by the revision;
+- emit the revision-required `ttlMs`/`cacheScope` on cacheable list/read results, including `resources/read` when resources are exposed;
+- deliver opted-in tool/prompt/resource list-change and `resources/updated` notifications only through a client-opened `subscriptions/listen` stream on this revision; legacy `resources/subscribe`/unsolicited notification behavior remains confined to the older path;
 - negotiate only explicitly supported extensions.
 
 The adapter derives the active profile/capability tool catalog, compact server instructions, exact-revision catalog fingerprint, and cache invalidation inputs from current server state. None of these artifacts grants authorization.
@@ -99,7 +101,7 @@ schema version
 relevant configuration
 ```
 
-The catalog fingerprint changes whenever that tuple changes. On the `2026-07-28` path, list results also carry the revision-required `ttlMs` and `cacheScope`; FlashGate plans non-shared/private caching unless the complete result is proven independent of principal/profile-sensitive state. Tool annotations and cacheability aid clients but do not authorize operations.
+The catalog fingerprint changes whenever that tuple changes. On the `2026-07-28` path, cacheable list/read results carry the revision-required `ttlMs` and `cacheScope`; this includes `resources/read` for any exposed FlashGate resource. FlashGate plans non-shared/private caching unless the complete result is proven independent of principal/profile-sensitive state. Change notifications can invalidate cacheable state through the negotiated `subscriptions/listen` stream, but cache hints, notifications, annotations, and client cache contents aid efficiency only and never authorize operations.
 
 ## Tool result classes
 
@@ -125,7 +127,7 @@ flashgate://operation/<opaque-id>/result
 flashgate://process/<opaque-id>/stdout
 ```
 
-The exact URI and MCP resource mapping are finalized by the relevant contract task. Reading a resource repeats authorization and state-binding checks. Inline thresholds, TTL, paging, deletion, and client fallback are explicit. Large binary data is not Base64-embedded by default.
+The exact URI and MCP resource mapping are finalized by the relevant contract task. Reading a resource repeats authorization and state-binding checks. Inline thresholds, TTL, paging, deletion, and client fallback are explicit. On `2026-07-28`, any cacheable `resources/read` result carries the revision cache hints and any `resources/updated` delivery uses `subscriptions/listen`; an old `resources/subscribe` contract is not silently reused on the modern path. Large binary data is not Base64-embedded by default.
 
 ## Errors
 
