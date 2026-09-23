@@ -153,6 +153,12 @@ Every expensive operation defines server maxima for the dimensions it can amplif
 
 Watch handles, process handles, jobs, cursors, result resources, caches, and other state are bound to the applicable caller principal, profile, root, execution backend, service generation, protocol context, and expiry. A service restart invalidates stale generation-bound state.
 
+### 4.6 Content identity, cache, and consumer independence
+
+Content hashes/fingerprints/snapshot identifiers are evidence about observed state, not bearer capabilities. Every externally visible read/verify/conditional result still passes current authorization and root/path policy. Optional server-side identity/content caches are bounded, context-partitioned, safely invalidated, and semantically transparent when absent; a request for fresh/strong proof cannot be satisfied solely by a reusable cached proof when its contract requires current state to be re-evaluated.
+
+Public FlashGate contracts and guidance remain consumer-independent. They do not depend on Voxtronic/INF task identifiers, consumer `AGENTS.md`, Codex-Work or task/handoff conventions, private control planes, or a particular agent product. A consumer may layer its own workflow/manifest policy over generic FlashGate primitives without transferring that policy into the product.
+
 ## 5. Version 1.0 filesystem and discovery corrections
 
 ### 5.1 Named-root discovery — `BL-352`
@@ -233,7 +239,9 @@ The implementation uses the cheapest safe equality proof first and reuses the ca
 - entry count;
 - selected metadata expectations.
 
-Default results remain compact (`verified`, checked count, mismatch count, indeterminate count). Mismatch details are bounded and returned only as needed/requested. A statement that something "changed" requires a supplied or server-owned baseline; absence of a baseline is not inferred as change.
+The input may contain one or many expected-state records so a caller can verify a manifest-like path set in one bounded request. This is generic path verification, not a chat/task/handoff-specific API. Default results remain compact (`verified`, checked count, mismatch count, indeterminate count). Mismatch details are bounded and returned only as needed/requested. A statement that something "changed" requires a supplied or server-owned baseline; absence of a baseline is not inferred as change.
+
+An explicit fresh/strong verification mode re-evaluates the current metadata and, where required by the requested proof, current content/hash evidence instead of accepting a reusable cached result as the proof. Ordinary `auto` verification may reuse safe lower-cost evidence when the semantics remain equivalent. Content identities never authorize access.
 
 For cloud/local-only content, `unknown`/`indeterminate` must not be silently converted to `different` when equality cannot be proven without forbidden hydration.
 
@@ -596,7 +604,13 @@ Clipboard/notification permissions, payload types, size limits, and session iden
 
 ## 19. Portable public agent skill — `BL-350`
 
-The optional public FlashGate skill teaches portable use of the released contracts without private governance dependencies. It should cover batch-first calls, ranges/fields/pages, fingerprints/verify, avoiding redundant metadata calls, resource handles, roots/profiles/capabilities, annotation-vs-authorization, synchronous/jobs behavior, and protocol/feature discovery. It never becomes an authorization mechanism or a replacement for concise server instructions.
+Publish exactly one canonical optional FlashGate skill rather than separate cache/file/search/process skills. The skill has a small always-loaded decision core and progressively loaded capability references, for example filesystem, identity-and-verification, search, process/execution, platform-storage, and efficiency recipes. This grouping is an authoring/layout choice, not a new public API taxonomy.
+
+The core teaches portable strategy: prefer batch calls over repeated scalars; request only needed fields/ranges/pages; verify known identities before rereading unchanged payload; use conditional/not-modified retrieval only when the active server advertises it; use resource handles for large results; understand roots/profiles/capabilities and annotation-vs-authorization; distinguish synchronous work from jobs; and perform protocol/feature discovery with graceful fallback.
+
+The skill explains how to choose tools but does not duplicate their schemas or become the API authority. It reuses `BL-216` compact server instructions without treating them as the full skill. It never becomes an authorization mechanism.
+
+The skill and its examples are consumer-independent: no Voxtronic/INF task IDs, no required consumer `AGENTS.md`, no Codex-Work paths, no private task/handoff conventions, no assumption of ChatGPT/Codex or another specific agent product, and no private governance as a prerequisite. Consumer-specific policies may compose FlashGate externally.
 
 ## 20. Public tool inventory by target
 

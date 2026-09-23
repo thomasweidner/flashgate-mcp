@@ -204,7 +204,7 @@ Version 1.0 defines:
 - revision-specific list-result cache semantics; on `2026-07-28`, return the required `ttlMs` and `cacheScope` fields and keep `cacheScope` non-shared/private unless the complete result is proven independent of principal/profile-sensitive state;
 - no reuse of a catalog fingerprint across incompatible protocol revisions or security contexts.
 
-This supports client caching without exposing sensitive configuration details.
+This supports client caching without exposing sensitive configuration details. On the `2026-07-28` path, the same cache-hint model also applies to cacheable resource reads when FlashGate exposes MCP resources: `resources/read` carries `ttlMs`/`cacheScope`, and change invalidation is delivered only through a client-opened `subscriptions/listen` stream for the requested notifications. Legacy `resources/subscribe` behavior is not copied into the modern path.
 
 ## Read-only safe default
 
@@ -263,19 +263,33 @@ Development and validation tooling remains outside the FlashGate runtime. The
 portable contributor and CI commands are defined in `CONTRIBUTING.md` and
 `docs/testing.md`.
 
-## Conditional reads
+## Content identity, verification, and conditional retrieval
 
-Conditional read/not-modified behavior is accepted post-Version 1.0 because it is an optimization rather than a functional prerequisite.
+Version 1.0 `BL-048` supplies reusable content identities/fingerprints and `BL-346` consumes them for compact batch expected-state verification. A fingerprint identifies observed content/state for equality/change reasoning; it is never an access token and never bypasses current root/profile/capability/principal/path checks.
 
-The later design may use content hashes or snapshot IDs for:
+`verify_paths` can verify one or more expected-state records in one bounded call. The default response reports compact checked/mismatch/indeterminate counts and only the requested bounded mismatch details. This is the portable primitive for any consumer that already holds a manifest-like set of path+identity expectations; FlashGate does not add chat-, handoff-, task-, or workflow-specific verification APIs.
 
-- file ranges;
+A caller-requested fresh/strong verification re-evaluates the current metadata/content evidence required by the request. Reusable identity evidence or an internal cache may accelerate ordinary work, but a cached proof must not silently satisfy a request whose contract requires current bytes/state to be rechecked.
+
+Conditional read/not-modified behavior remains accepted post-Version 1.0 under `BL-217` because it is an optimization rather than a functional prerequisite. The later design may accept content identities or snapshot IDs for:
+
+- full files and file ranges;
 - directory pages;
 - search results;
 - process output;
 - system information.
 
-The Version 1.0 hashing and fingerprint foundation must not block this later addition.
+When the supplied identity still matches, FlashGate may return compact `not_modified` metadata and omit the payload. When it does not match, the current bounded payload/result is returned under the normal contract.
+
+Any server-side identity/content cache is optional and semantically transparent when disabled. Cache entries are bounded and partitioned by the applicable principal/profile/root/execution-backend/service-generation/protocol context and expiry; current authorization is always re-evaluated before a cached result can influence an externally visible response. Knowing a content hash never grants access. A fresh/strong request bypasses reusable proof as required by its contract.
+
+Efficiency validation should record physical-read/hash work, cache/identity reuse, payload bytes returned, and payload bytes avoided so the optimization is measurable without exposing private cache keys or implementation details.
+
+## Portable agent guidance
+
+Post-Version-1.0 `BL-350` publishes one optional FlashGate skill, not separate competing file/cache/search/process skills. Its small core teaches selection strategy—batch before scalar repetition, fields/ranges/pages before broad retrieval, verify-before-reread, conditional retrieval when supported, and resource handoff for large results—while progressive capability references hold filesystem, verification, search, process/execution, platform-storage, and recipe detail. Tool schemas remain the API authority and are not copied into the skill.
+
+The skill detects released protocol/features and degrades to older supported behavior when an optimization is unavailable. It has no dependency on private governance, consumer `AGENTS.md`, task/handoff conventions, local organization paths, or a particular agent/orchestrator product, and it never grants authorization.
 
 ## Cross-project benchmark
 

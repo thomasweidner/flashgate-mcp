@@ -177,7 +177,7 @@ Go components in this repository reuse the core directly. Future MCPs built on F
 
 ### Filesystem
 
-Owns files, directories, metadata, ranged reads, text/media/binary classification, writes, edits, copying, moving, deletion, hashing, fingerprints, directory size, and bounded plans. Accepted post-Version-1.0 work adds local placeholder state, file/tree compare and expected-state verify, filesystem event watch, archive operations, and scoped path compression. These remain independent `Later` owners (`BL-345`–`BL-348`, `BL-351`) and are not current runtime behavior. Shared hashing/tree primitives and Operations/Job lifecycle are reused without transferring filesystem business ownership.
+Owns files, directories, metadata, ranged reads, text/media/binary classification, writes, edits, copying, moving, deletion, hashing, fingerprints/content identities, directory size, bounded plans, and Version 1.0 deterministic file/tree comparison plus batch expected-state verification through `BL-346`. BL-346 reuses the `BL-048` hashing/fingerprint and `BL-049` bounded-tree primitives and adds no second hash engine. Accepted post-Version-1.0 work adds local placeholder state (`BL-345`), filesystem event watch (`BL-347`), archive operations (`BL-348`), and scoped path compression (`BL-351`). Shared hashing/tree primitives and Operations/Job lifecycle are reused without transferring filesystem business ownership.
 
 ### Search
 
@@ -388,7 +388,9 @@ The server must avoid unnecessary parse/serialize/copy cycles across proxy/servi
 
 Efficiency mechanisms include pagination, filtering, sorting, field selection, ranges, batching, bounded trees, targeted edits, dry-run, atomic/conditional writes, output cursors, and compact profile-specific server instructions.
 
-Conditional read/not-modified contracts are post-Version 1.0; Version 1.0 fingerprints and handles must keep them feasible.
+Version 1.0 fingerprints/content identities are compact integrity/change evidence, not authorization tokens. `verify_paths` accepts one or more expected-state records and normally returns compact checked/mismatch/indeterminate counts plus bounded requested deltas. When a caller explicitly requires a fresh/strong proof, the filesystem domain re-evaluates the current required metadata/content evidence rather than satisfying that proof solely from a reusable cached result.
+
+Conditional read/not-modified contracts remain post-Version 1.0 under `BL-217`. They may accept a prior content identity/snapshot and omit unchanged payload, but every call still repeats current principal/profile/root/capability/path checks. An internal identity/content cache is an optional bounded implementation optimization: it is scoped to the relevant execution context, safely invalidated, semantically transparent when disabled, and never turns knowledge of a hash into access.
 
 See [Efficiency Improvement Plan](efficiency-improvement-plan.md).
 
@@ -404,7 +406,7 @@ Version 1.0 implementation priority:
 
 PowerShell and shell scripts may be development, installation, validation, or administrator tooling. They are not normal FlashGate runtime dependencies.
 
-The [future tool and adapter plan](planning/future-tool-adapter-plan.md) is a planning inventory under `BL-215`. Its candidate MCP names stay in the adapter, core operations stay in the owning domain, and Windows/Linux or archive-format details stay in platform adapters. The optional public agent skill (`BL-350`) is guidance, not a runtime dependency.
+The [future tool and adapter plan](planning/future-tool-adapter-plan.md) is a planning inventory under `BL-215`. Its candidate MCP names stay in the adapter, core operations stay in the owning domain, and Windows/Linux or archive-format details stay in platform adapters. The optional public agent skill (`BL-350`) is one portable guidance surface with a small strategy core and progressively loaded capability references; it is not a runtime dependency, does not duplicate tool schemas, and cannot become an authorization mechanism.
 
 ## Runtime and deployment model
 
@@ -529,7 +531,7 @@ See [Build and release metadata](build-and-release-metadata.md) and [File and pr
 
 ## Open-source, providers, and protocol extensions
 
-The Version 1.0 core remains vendor neutral and cannot depend on Voxtronic paths, secrets, product permissions, proprietary dependencies, or internal infrastructure.
+The Version 1.0 core and all public FlashGate contracts remain vendor/consumer neutral and cannot depend on Voxtronic/INF work items, consumer `AGENTS.md`, Codex-Work/task/handoff conventions, private control planes, a particular agent product, private paths or secrets, product-specific permissions, proprietary dependencies, or other internal infrastructure. Consumer-specific governance may use FlashGate above this boundary but has no normative product authority; historical private-development references are provenance only.
 
 External FlashGate providers/modules are post-Version 1.0. Their future origin or support label never weakens central identity, capability, root, limit, audit, and adapter controls.
 
