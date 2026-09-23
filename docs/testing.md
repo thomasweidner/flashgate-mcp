@@ -294,6 +294,17 @@ Currently tested:
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
 
+### Process CI matrix
+
+The `Process lifecycle` CI job runs the repository's Go test packages without
+cached results on both `windows-latest` and `ubuntu-latest`. The job deliberately
+reuses package-owned process observation and managed lifecycle tests instead of
+copying their cases into workflow scripts. Because it uses the repository-wide
+`./...` package pattern, process packages are covered automatically as their
+Mobile branches integrate. Until those packages are integrated, the dedicated
+job proves the cross-platform orchestration itself; native process and lifecycle
+evidence remains part of Windows/local finalization.
+
 ### Payload and catalog tests
 
 - payload-class selection for metadata, structured pages, heavy text, media/binary, and large results;
