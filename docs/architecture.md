@@ -307,7 +307,7 @@ The target uses multiple named roots and model-visible root IDs plus relative pa
 
 For Version 1.0 system services, supported backend is `service-account`. A reserved `user-worker` selection fails closed until post-Version-1.0 implementation. Tool calls cannot choose the backend.
 
-Deprecated MCP Roots is not authoritative. Optional legacy support is post-Version 1.0 and can never override server configuration.
+Deprecated MCP Roots is not authoritative. Optional compatibility for a demonstrated supported `2025-11-25` client need is post-Version 1.0 and can never override server configuration.
 
 ## Hybrid execution identity
 
@@ -555,7 +555,7 @@ Near-term sequence:
 - per-user worker implementation;
 - persistent user-scoped hosts;
 - ripgrep/index accelerators;
-- legacy MCP Roots compatibility;
+- deprecated MCP Roots compatibility for a demonstrated supported `2025-11-25` client need;
 - external PID/input and interactive shell decisions;
 - network information;
 - provider ecosystem.

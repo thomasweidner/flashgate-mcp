@@ -80,7 +80,7 @@ For the `2026-07-28` stateless path:
 - return `UnsupportedProtocolVersion` for unsupported requested revisions with the exact supported revision set;
 - stamp server identity in result `_meta` as defined by the revision;
 - emit the revision-required `ttlMs`/`cacheScope` on cacheable list/read results, including `resources/read` when resources are exposed;
-- deliver opted-in tool/prompt/resource list-change and `resources/updated` notifications only through a client-opened `subscriptions/listen` stream on this revision; legacy `resources/subscribe`/unsolicited notification behavior remains confined to the older path;
+- deliver opted-in tool/prompt/resource list-change and `resources/updated` notifications only through a client-opened `subscriptions/listen` stream on this revision; `resources/subscribe`/unsolicited-notification compatibility behavior remains confined to the `2025-11-25` initialization path;
 - negotiate only explicitly supported extensions.
 
 The adapter derives the active profile/capability tool catalog, compact server instructions, exact-revision catalog fingerprint, and cache invalidation inputs from current server state. None of these artifacts grants authorization.
@@ -127,7 +127,7 @@ flashgate://operation/<opaque-id>/result
 flashgate://process/<opaque-id>/stdout
 ```
 
-The exact URI and MCP resource mapping are finalized by the relevant contract task. Reading a resource repeats authorization and state-binding checks. Inline thresholds, TTL, paging, deletion, and client fallback are explicit. On `2026-07-28`, any cacheable `resources/read` result carries the revision cache hints and any `resources/updated` delivery uses `subscriptions/listen`; an old `resources/subscribe` contract is not silently reused on the modern path. Large binary data is not Base64-embedded by default.
+The exact URI and MCP resource mapping are finalized by the relevant contract task. Reading a resource repeats authorization and state-binding checks. Inline thresholds, TTL, paging, deletion, and client fallback are explicit. On `2026-07-28`, any cacheable `resources/read` result carries the revision cache hints and any `resources/updated` delivery uses `subscriptions/listen`; a `2025-11-25` `resources/subscribe` contract is not silently reused on the `2026-07-28` stateless path. Large binary data is not Base64-embedded by default.
 
 ## Errors
 

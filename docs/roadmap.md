@@ -62,7 +62,7 @@ Accepted post-Version-1.0 work includes:
 - Linux user service and Windows per-user persistent host;
 - conditional read/not-modified optimization;
 - optional ripgrep adapter and search index;
-- legacy MCP Roots compatibility only for demonstrated client need;
+- deprecated MCP Roots compatibility only for a demonstrated supported `2025-11-25` client need;
 - external PID control, process input, and interactive-shell decision gates;
 - restricted network information;
 - external FlashGate provider/community ecosystem;

@@ -482,7 +482,7 @@ Version 1.0 protocol security includes:
 - `2026-07-28` per-request protocol/capability validation with no connection-history authority;
 - mandatory `server/discover` support without treating discovery or self-reported `clientInfo` as identity/authorization evidence;
 - fail-closed unsupported-version, malformed-`_meta`, missing-required-capability, and revision-mismatch behavior;
-- exact-revision catalog/cache invalidation, with non-shared/private `cacheScope` unless sharing safety is proven; for `2026-07-28`, this also covers cacheable `resources/read` and `subscriptions/listen`-delivered invalidation without reviving legacy `resources/subscribe` semantics;
+- exact-revision catalog/cache invalidation, with non-shared/private `cacheScope` unless sharing safety is proven; for `2026-07-28`, this also covers cacheable `resources/read` and `subscriptions/listen`-delivered invalidation without applying `2025-11-25` `resources/subscribe` semantics to the `2026-07-28` path;
 - final Tasks Extension mapping without mixing the 2025 experimental lifecycle;
 - JSON Schema 2020-12 validation;
 - capability downgrade/mismatch tests;

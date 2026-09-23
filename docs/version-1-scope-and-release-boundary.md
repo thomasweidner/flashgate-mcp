@@ -173,7 +173,7 @@ The following work is accepted but must not delay Version 1.0:
 
 - ripgrep adapter;
 - persistent local search index;
-- legacy MCP Roots compatibility;
+- deprecated MCP Roots compatibility for a demonstrated supported `2025-11-25` client need;
 - external PID control;
 - process input writing;
 - interactive shell support;
