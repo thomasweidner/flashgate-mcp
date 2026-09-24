@@ -35,7 +35,7 @@ Executable allowlisting, argument separation, root-confined working directories,
 
 ## Implementation Guidance
 
-Threat-model observation and execution separately. Implement registry identity and cleanup before control tools. Test PID reuse assumptions, races, timeouts, redaction, and platform isolation.
+Threat-model observation and execution separately. The normative command boundary, threats, controls, failure behavior, validation, and residual risks are defined in the [Command Execution Threat Model](../command-execution-threat-model.md). Implement registry identity and cleanup before control tools. Test PID reuse assumptions, races, timeouts, redaction, and platform isolation.
 
 ## Decision Gates
 
