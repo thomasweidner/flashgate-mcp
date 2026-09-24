@@ -173,10 +173,7 @@ function Get-InternalReferenceFindings {
     return [object[]]$findings
 }
 
-$requiredFiles = [string[]]@(
-    '.github/workflows/ci.yml',
-    '.github/workflows/metadata-regression.yml',
-    '.github/workflows/release-build.yml',
+$publicAuthorityPaths = [string[]]@(
     'AGENTS.md',
     'BACKLOG.md',
     'CHANGELOG.md',
@@ -185,13 +182,28 @@ $requiredFiles = [string[]]@(
     'benchmarks/README.md',
     'docs/architecture.md',
     'docs/codex-read-only-activation.md',
+    'docs/development/code-coverage.md',
     'docs/documentation-quality-gate.md',
     'docs/efficiency-improvement-plan.md',
     'docs/planning/README.md',
+    'docs/planning/future-tool-adapter-plan.md',
+    'docs/project-identity.md',
+    'docs/protocol.md',
+    'docs/roadmap.md',
     'docs/security.md',
-    'docs/technical-rename-to-flashgate-2026-07-11.md',
-    'docs/testing.md'
+    'docs/specification.md',
+    'docs/testing.md',
+    'docs/tool-conventions.md',
+    'docs/tools.md',
+    'docs/version-1-scope-and-release-boundary.md'
 )
+$supportingPaths = [string[]]@(
+    '.github/workflows/ci.yml',
+    '.github/workflows/metadata-regression.yml',
+    '.github/workflows/release-build.yml',
+    'docs/technical-rename-to-flashgate-2026-07-11.md'
+)
+$requiredFiles = [string[]]@($publicAuthorityPaths + $supportingPaths)
 
 foreach ($relativePath in $requiredFiles) {
     $text = Read-StrictUtf8 -RelativePath $relativePath
@@ -231,6 +243,63 @@ Add-Check -Id 'BACKLOG-HIGHEST' -Passed $backlogHighest.Passed -Message (
     $backlogDiagnosticsJson
 )
 
+$expectedMilestones = [object[]]@(
+    [pscustomobject]@{ id = 'BL-217'; status = 'Later' },
+    [pscustomobject]@{ id = 'BL-345'; status = 'Later' },
+    [pscustomobject]@{ id = 'BL-346'; status = 'Planned' },
+    [pscustomobject]@{ id = 'BL-350'; status = 'Later' },
+    [pscustomobject]@{ id = 'BL-351'; status = 'Later' },
+    [pscustomobject]@{ id = 'BL-352'; status = 'Planned' },
+    [pscustomobject]@{ id = 'BL-353'; status = 'Planned' }
+)
+$milestoneErrors = [System.Collections.Generic.List[string]]::new()
+foreach ($item in $expectedMilestones) {
+    $rowPattern = '(?m)^\| {0} \| {1} \|' -f $item.id, $item.status
+    if (-not [regex]::IsMatch($backlog, $rowPattern)) {
+        $milestoneErrors.Add('{0}:{1}' -f $item.id, $item.status)
+    }
+}
+Add-Check -Id 'BACKLOG-MILESTONE-PARITY' -Passed ($milestoneErrors.Count -eq 0) -Message (
+    'MissingExpectedRows={0}.' -f (ConvertTo-Json -InputObject ([string[]]$milestoneErrors) -Compress)
+)
+
+$readme = [string]$documents['README.md']
+$architecture = [string]$documents['docs/architecture.md']
+$identity = [string]$documents['docs/project-identity.md']
+$protocol = [string]$documents['docs/protocol.md']
+$scope = [string]$documents['docs/version-1-scope-and-release-boundary.md']
+Add-Check -Id 'CURRENT-AND-V1-SCOPE-PARITY' -Passed (
+    $readme.Contains('Today it provides secure, root-confined filesystem access') -and
+    $readme.Contains('Version 1.0 extends that foundation') -and
+    $architecture.Contains('Its current implementation provides root-confined filesystem access') -and
+    $identity.Contains('Today it provides secure, root-confined filesystem access') -and
+    $scope.Contains('This is a release target, not a claim that `2026-07-28` is implemented today.')
+) -Message 'Current filesystem implementation and Version 1.0 targets agree across public authorities.'
+Add-Check -Id 'MCP-REVISION-PARITY' -Passed (
+    $readme.Contains('The implemented protocol remains MCP `2025-11-25`') -and
+    $architecture.Contains('Current implementation remains only `2025-11-25`') -and
+    $protocol.Contains('advertises MCP revision `2025-11-25`') -and
+    $scope.Contains('The implemented revision remains `2025-11-25`') -and
+    $scope.Contains('The final `2026-07-28` specification is now an accepted Version 1.0 implementation target')
+) -Message 'Current MCP runtime and later Version 1.0 revision target remain distinct.'
+
+$storagePlan = [string]$documents['docs/planning/future-tool-adapter-plan.md']
+$storageNames = [string[]]@(
+    'compression_supported', 'compression_enabled', 'compression_inherited_default',
+    'encryption_supported', 'encryption_enabled', 'encryption_inherited_default'
+)
+$storageTermsAgree = $true
+foreach ($name in $storageNames) {
+    if (-not $backlog.Contains($name) -or -not $storagePlan.Contains($name)) {
+        $storageTermsAgree = $false
+    }
+}
+Add-Check -Id 'STORAGE-PLANNING-TERMINOLOGY' -Passed (
+    $storageTermsAgree -and
+    $backlog.Contains('An inherited default describes directory/child behavior, not the enabled state of the current path.') -and
+    $storagePlan.Contains('An inherited default describes directory/child behavior, not the enabled state of the current path.')
+) -Message 'Planned storage names and inherited-default semantics agree.'
+
 Add-Check -Id 'CI-PRODUCT-GATES' -Passed (
     $ci.Contains('go vet ./...') -and
     $ci.Contains('Test-GoCoverage.ps1') -and
@@ -249,103 +318,18 @@ Add-Check -Id 'RELEASE-TECHNICAL' -Passed (
     $release.Contains('Test-ReleaseArtifact.ps1')
 ) -Message 'Technical release validation remains active.'
 
-$expectedDeletedPaths = [string[]]@(
-    'Governance/assignment-governance-record.schema.json',
-    'Governance/change-trigger-catalog.json',
-    'Governance/CHANGE-TRIGGER-REVIEW-AND-BACKLOG-STANDARD.md',
-    'Governance/CLOUD-CODEX-GOVERNANCE.md',
-    'Governance/completion-report.schema.json',
-    'Governance/finding-correction-assignment.schema.json',
-    'Governance/finding-correction-completion.schema.json',
-    'Governance/finding-correction-matrix.schema.json',
-    'Governance/finding-correction-report-contract.schema.json',
-    'Governance/finding-ledger.schema.json',
-    'Governance/finding-regression-matrix.schema.json',
-    'Governance/FINDING-REMEDIATION-AND-REVIEW-MODE-STANDARD.md',
-    'Governance/focused-delta-review-record.schema.json',
-    'Governance/generic-assignment-record.schema.json',
-    'Governance/generic-completion-report.schema.json',
-    'Governance/generic-handoff-contract.schema.json',
-    'Governance/generic-independent-review-evidence.schema.json',
-    'Governance/generic-package-inventory.schema.json',
-    'Governance/generic-pre-review-validation-evidence.schema.json',
-    'Governance/generic-report-contract.schema.json',
-    'Governance/generic-scope-inventory.schema.json',
-    'Governance/generic-validation-summary.schema.json',
-    'Governance/governance-case-metadata.json',
-    'Governance/governance-case-metadata.schema.json',
-    'Governance/governance-handoff-contract.schema.json',
-    'Governance/governance-report-contract.schema.json',
-    'Governance/governance-validation-request.schema.json',
-    'Governance/governance-validation-result.schema.json',
-    'Governance/HANDOFF-ARTIFACT-AND-CLASSIC-READINESS-STANDARD.md',
-    'Governance/MOBILE-CLOUD-HANDOFF.md',
-    'Governance/previous-review-binding.schema.json',
-    'Governance/publication-regression-evidence.schema.json',
-    'Governance/publication-regression-expected-execution-input-binding.schema.json',
-    'Governance/publication-regression-matrix-catalog.json',
-    'Governance/publication-regression-matrix-catalog.schema.json',
-    'Governance/publication-regression-result-v1.schema.json',
-    'Governance/publication-regression-result.schema.json',
-    'MOBILE.md',
-    'docs/adr/016-governance-fixture-harness-execution-architecture.md',
-    'scripts/GenericGovernanceGitEvidence.ps1',
-    'scripts/GovernanceCaseSelection.psm1',
-    'scripts/GovernanceHandoffPublication.psm1',
-    'scripts/GovernanceValidationOrchestration.psm1',
-    'scripts/Invoke-GenericGovernanceHandoffGeneratorChild.ps1',
-    'scripts/Invoke-GovernanceValidation.ps1',
-    'scripts/New-GovernanceHandoff.ps1',
-    'scripts/New-GovernanceWorkflowRecord.ps1',
-    'scripts/Test-ClassicReviewArtifact.ps1',
-    'scripts/Test-FindingCorrectionHandoff.ps1',
-    'scripts/Test-FindingCorrectionHandoffFixtures.ps1',
-    'scripts/Test-GenericGovernanceHandoff.ps1',
-    'scripts/Test-GenericGovernanceHandoffFixtures.ps1',
-    'scripts/Test-GovernanceCaseSelectionFixtures.ps1',
-    'scripts/Test-GovernanceConsistency.ps1',
-    'scripts/Test-GovernanceConsistencyFixtures.ps1',
-    'scripts/Test-GovernanceHandoffPublicationFixtures.ps1',
-    'scripts/Test-GovernanceHostedCiPortabilityFixtures.ps1',
-    'scripts/Test-GovernanceValidationOrchestration.ps1',
-    'scripts/Test-ImplementationReviewHandoffFixtures.ps1',
-    'scripts/testdata/Capture-GenericGovernanceHandoffGeneratorBinding.ps1',
-    'scripts/testdata/Invoke-GovernanceHandoffCandidateDrift.ps1',
-    'scripts/testdata/Invoke-GovernanceHandoffPublicationFixtureChild.ps1',
-    'scripts/testdata/Invoke-GovernancePublicationInputDrift.ps1'
-)
-
-$duplicateDeletedPaths = [string[]]@(
-    $expectedDeletedPaths |
-        Group-Object -CaseSensitive |
-        Where-Object { $_.Count -gt 1 } |
-        ForEach-Object { $_.Name }
-)
-$deletedPathsStillPresent = [string[]]@(
-    $expectedDeletedPaths |
+$obsoleteTopLevelPaths = [string[]]@('Governance', 'MOBILE.md')
+$obsoletePresent = [string[]]@(
+    $obsoleteTopLevelPaths |
         Where-Object { Test-Path -LiteralPath (Join-Path $resolvedRoot $_) }
 )
-Add-Check -Id 'BOUNDARY-DELETE-INVENTORY' -Passed (
-    $expectedDeletedPaths.Count -eq 63 -and
-    $duplicateDeletedPaths.Count -eq 0
-) -Message ('ExpectedDeleted={0}; Duplicates={1}.' -f $expectedDeletedPaths.Count, $duplicateDeletedPaths.Count)
-Add-Check -Id 'BOUNDARY-DELETED-PATHS-ABSENT' -Passed (
-    $deletedPathsStillPresent.Count -eq 0
-) -Message ('StillPresent={0}.' -f (ConvertTo-Json -InputObject ([string[]]$deletedPathsStillPresent) -Compress))
+Add-Check -Id 'BOUNDARY-OBSOLETE-TOP-LEVEL' -Passed ($obsoletePresent.Count -eq 0) -Message (
+    'Present={0}.' -f (ConvertTo-Json -InputObject ([string[]]$obsoletePresent) -Compress)
+)
 
 $operativePaths = [string[]]@(
-    '.github/workflows/ci.yml',
-    '.github/workflows/metadata-regression.yml',
-    '.github/workflows/release-build.yml',
-    'AGENTS.md',
-    'CONTRIBUTING.md',
-    'README.md',
-    'docs/architecture.md',
-    'docs/codex-read-only-activation.md',
-    'docs/documentation-quality-gate.md',
-    'docs/efficiency-improvement-plan.md',
-    'docs/security.md',
-    'docs/testing.md'
+    $publicAuthorityPaths |
+        Where-Object { $_ -cne 'docs/planning/README.md' }
 )
 $operativeDocuments = [System.Collections.Generic.Dictionary[string, string]]::new(
     [System.StringComparer]::Ordinal
@@ -355,6 +339,18 @@ foreach ($path in $operativePaths) {
         $operativeDocuments.Add($path, $documents[$path])
     }
 }
+$publicAuthorityMissing = [string[]]@(
+    $publicAuthorityPaths | Where-Object { -not $documents.ContainsKey($_) }
+)
+Add-Check -Id 'PUBLIC-AUTHORITY-COVERAGE' -Passed (
+    $publicAuthorityMissing.Count -eq 0 -and
+    $operativeDocuments.Count -eq ($publicAuthorityPaths.Count - 1)
+) -Message (
+    'Authorities={0}; ActiveWholeDocuments={1}; HistoricalIndex=docs/planning/README.md; Missing={2}.' -f
+    $publicAuthorityPaths.Count,
+    $operativeDocuments.Count,
+    (ConvertTo-Json -InputObject ([string[]]$publicAuthorityMissing) -Compress)
+)
 
 $technicalRenamePath = 'docs/technical-rename-to-flashgate-2026-07-11.md'
 $technicalRename = [string]$documents[$technicalRenamePath]
@@ -383,34 +379,47 @@ else {
     Add-Check -Id 'TECHNICAL-RENAME-OPERATIVE-PROJECTION' -Passed $true -Message 'Only current identifier and owner-amendment sections are operative.'
 }
 
-$catalogMarker = '## Canonical task catalog'
-$catalogIndex = $backlog.IndexOf($catalogMarker, [System.StringComparison]::Ordinal)
-if ($catalogIndex -lt 0) {
-    Add-Check -Id 'BACKLOG-OPERATIVE-PROJECTION' -Passed $false -Message 'Canonical task catalog marker is missing.'
+# The complete canonical task catalog is current public authority, including Done rows.
+$operativeDocuments['BACKLOG.md'] = $backlog
+
+# This dated index points to non-operative migration and review provenance.
+# Only its current public capability-plan link is active project guidance.
+$planningIndex = [string]$documents['docs/planning/README.md']
+$planningCurrentMarker = '[Future tool and adapter plan](future-tool-adapter-plan.md)'
+$planningCurrentStart = $planningIndex.IndexOf(
+    $planningCurrentMarker,
+    [System.StringComparison]::Ordinal
+)
+$planningCurrentEnd = $planningIndex.IndexOf(
+    '## Interpretation',
+    [System.StringComparison]::Ordinal
+)
+if ($planningCurrentStart -lt 0 -or $planningCurrentEnd -le $planningCurrentStart) {
+    Add-Check -Id 'HISTORICAL-INDEX-PROJECTION' -Passed $false -Message 'Planning index current link cannot be projected.'
 }
 else {
-    $operativeDocuments.Add('BACKLOG.md#operative-preamble', $backlog.Substring(0, $catalogIndex))
-    Add-Check -Id 'BACKLOG-OPERATIVE-PROJECTION' -Passed $true -Message 'Backlog history is separated from the operative preamble.'
+    $operativeDocuments.Add(
+        'docs/planning/README.md#current-public-link',
+        $planningIndex.Substring(
+            $planningCurrentStart,
+            $planningCurrentEnd - $planningCurrentStart
+        )
+    )
+    Add-Check -Id 'HISTORICAL-INDEX-PROJECTION' -Passed $true -Message 'Dated planning/review entries remain non-operative; current public link is scanned.'
 }
 
 $privateHostPathPatterns = [object[]]@(
     [pscustomobject]@{ id = 'PRIVATE_USER_PATH'; expression = '(?i)C:\\Users\\[^\\\r\n]+' },
-    [pscustomobject]@{ id = 'PRIVATE_VOXTRONIC_PATH'; expression = '(?i)C:\\Voxtronic\\[^\\\r\n]+' },
-    [pscustomobject]@{ id = 'PRIVATE_ONEDRIVE_PATH'; expression = '(?i)OneDrive\s+-\s+VOXTRONIC(?:\\[^\\\r\n]+)?' },
-    [pscustomobject]@{ id = 'PRIVATE_CODEX_WORK_PATH'; expression = '(?i)Codex-Work' }
+    [pscustomobject]@{ id = 'PRIVATE_WORK_ROOT'; expression = '(?i)Codex-Work|<CodexTempRoot>' },
+    [pscustomobject]@{ id = 'PRIVATE_SYNC_PATH'; expression = '(?i)OneDrive\s+-\s+VOXTRONIC(?:\\[^\\\r\n]+)?' }
 )
 $forbiddenPatterns = [object[]]@(
-    [pscustomobject]@{ id = 'CODEX_WORK'; expression = 'Codex-Work' },
-    [pscustomobject]@{ id = 'CLASSIC_REVIEW'; expression = 'ChatGPT Classic|Classic Review|ClassicReviewReady' },
-    [pscustomobject]@{ id = 'FINDING_CORRECTION'; expression = 'FINDING_CORRECTION' },
-    [pscustomobject]@{ id = 'INFRASTRUCTURE_REGISTER'; expression = 'INFRASTRUCTURE-WORK-REGISTER' },
-    [pscustomobject]@{ id = 'PRIVATE_USER_PATH'; expression = '(?i)C:\\Users\\[^\\\r\n]+' },
-    [pscustomobject]@{ id = 'PRIVATE_VOXTRONIC_PATH'; expression = '(?i)C:\\Voxtronic\\[^\\\r\n]+' },
-    [pscustomobject]@{ id = 'PRIVATE_ONEDRIVE_PATH'; expression = '(?i)OneDrive\s+-\s+VOXTRONIC(?:\\[^\\\r\n]+)?' },
-    [pscustomobject]@{ id = 'REMOVED_GOVERNANCE_PATH'; expression = 'Governance/' },
-    [pscustomobject]@{ id = 'REMOVED_MOBILE_ROUTER'; expression = 'MOBILE\.md' },
-    [pscustomobject]@{ id = 'INTERNAL_TASK_ID'; expression = '\bINF-[0-9]{3}\b' },
-    [pscustomobject]@{ id = 'REMOVED_WORKFLOW_SCRIPT'; expression = '(?:New|Invoke|Test)-(?:Generic)?Governance|Test-ClassicReviewArtifact|FindingCorrectionHandoff' }
+    $privateHostPathPatterns + [object[]]@(
+        [pscustomobject]@{ id = 'INTERNAL_TASK_ID'; expression = '(?i)\bINF-?[0-9]{3}(?:-[A-Z0-9]+)?\b' },
+        [pscustomobject]@{ id = 'RETIRED_WORKFLOW_PATH'; expression = '(?-i:Governance[/\\])|(?i:MOBILE\.md|(?:New|Invoke|Test)-(?:Generic)?Governance|Test-ClassicReviewArtifact|FindingCorrectionHandoff|FINDING_CORRECTION)' },
+        [pscustomobject]@{ id = 'PRIVATE_REVIEW_WORKFLOW'; expression = '(?i)ChatGPT Classic|Classic Review|ClassicReviewReady|Classic independent review' },
+        [pscustomobject]@{ id = 'PRIVATE_CONTROL_PLANE_DEPENDENCY'; expression = '(?i)\b(?:requires?|depends?\s+on)\s+(?:access\s+to\s+)?(?:a\s+|the\s+)?(?:private|internal)\s+(?:development\s+)?control[- ]plane\b' }
+    )
 )
 
 $privateHostPathFindings = [object[]]@(
@@ -461,9 +470,9 @@ $planningRoot = Join-Path $resolvedRoot 'docs/planning'
 $planningFiles = [object[]]@(
     Get-ChildItem -LiteralPath $planningRoot -File -Recurse -ErrorAction Stop
 )
-$planningIndex = [string]$documents['docs/planning/README.md']
 $planningClassificationValid =
     $planningIndex.Contains('non-canonical planning/review evidence') -and
+    $planningIndex.Contains('historical evidence') -and
     $planningIndex.Contains('None of these files authorize Git, remote, correction, integration, branch deletion or release actions.')
 Add-Check -Id 'HISTORICAL-NON-OPERATIVE' -Passed (
     $planningClassificationValid -and
@@ -481,8 +490,6 @@ $result = [pscustomobject]@{
     checkCount                               = $checks.Count
     passedCount                              = $checks.Count - $failedChecks.Count
     failureCount                             = $failedChecks.Count
-    deletedInternalPathCount                 = $expectedDeletedPaths.Count
-    deletedInternalPathsExistAfter           = $deletedPathsStillPresent.Count -ne 0
     operativeInternalReferenceCount          = $operativeFindings.Count
     buildDependencyOnInternalInfrastructure  = $operativeFindings.Count -ne 0
     runtimeDependencyOnInternalInfrastructure = $runtimeFindings.Count -ne 0

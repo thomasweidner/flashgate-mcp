@@ -1,6 +1,6 @@
 # FlashGate MCP Architecture
 
-FlashGate MCP is a fast, secure, resource-efficient, local-first MCP server for controlled filesystem, process, command, and operating-system operations.
+FlashGate MCP is a resource-efficient, cross-platform MCP server for controlled local host operations. Its current implementation provides root-confined filesystem access; Version 1.0 targets bounded search, managed processes, typed command execution, and system information.
 
 ## Project identity
 
@@ -531,7 +531,7 @@ See [Build and release metadata](build-and-release-metadata.md) and [File and pr
 
 ## Open-source, providers, and protocol extensions
 
-The Version 1.0 core and all public FlashGate contracts remain vendor/consumer neutral and cannot depend on Voxtronic/INF work items, consumer `AGENTS.md`, Codex-Work/task/handoff conventions, private control planes, a particular agent product, private paths or secrets, product-specific permissions, proprietary dependencies, or other internal infrastructure. Consumer-specific governance may use FlashGate above this boundary but has no normative product authority; historical private-development references are provenance only.
+The Version 1.0 core and all public FlashGate contracts remain vendor and consumer neutral. They have no organization-specific infrastructure, private control-plane, machine-local workflow, proprietary credential or permission, or particular agent-product prerequisite. Consumer policies may use FlashGate above this boundary but have no product authorization role; historical development provenance is non-operative.
 
 External FlashGate providers/modules are post-Version 1.0. Their future origin or support label never weakens central identity, capability, root, limit, audit, and adapter controls.
 

@@ -132,6 +132,6 @@ Also run affected Windows/Linux smoke, race, schema, response-size, security, se
 
 Keep changes focused and reviewable. Do not combine unrelated cleanup with a functional task. Commits, pushes, pull requests, merges, branch deletion, or remote changes require the applicable project authorization. Never commit secrets, private host paths, local credentials, generated benchmark corpora, or unreviewed release keys.
 
-## PowerShell-7.6-LTS-Patchvertrag
+## PowerShell 7.6 LTS patch contract
 
-Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.
+Compatibility requires PowerShell major version 7 and minor version 6. `ObservedPowerShellVersion` records the actual patch. `MinimumPowerShellVersion` is `null` unless a specific fix establishes and justifies a minimum patch. `ServicingTarget=LatestServicedPatchWithin7.6` is the maintenance target. Exact patch, path, or hash bindings are allowed only for historical evidence, bug reproduction, installer/download/SBOM/supply-chain provenance, or a documented minimum-patch fix; each exception must be explicitly classified.

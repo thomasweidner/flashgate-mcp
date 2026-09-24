@@ -1,23 +1,28 @@
 # Codex read-only activation preparation
 
-Diese Anleitung bereitet eine spätere Aktivierung vor. `SPR-044` aktiviert FlashGate nicht automatisch in Codex.
+This guide prepares a later FlashGate activation. `SPR-044` did not activate
+FlashGate in Codex. None of the examples on this page has been applied to a
+real Codex, Claude Desktop, or other client configuration.
 
-Die reale Aktivierung darf erst nach Review, Commit, Pull Request, Merge und Post-Merge-Prüfung erfolgen und benötigt eine separate Bestätigung. Die Beispiele auf dieser Seite wurden nicht auf eine reale Codex-, Claude-Desktop- oder andere Clientkonfiguration angewendet.
+Activate only after review, commit, pull request, merge, and post-merge checks,
+with a separate approval for the client configuration change.
 
-## 1. Voraussetzungen
+## 1. Prerequisites
 
-- ein gemergter und geprüfter FlashGate-Commit;
-- ein reproduzierbar gebautes Windows- oder Linux-Binary;
-- ein kleiner, ausdrücklich freigegebener absoluter Root;
-- erfolgreiche Default-, Read-only-, Negative- und Startup-Negativ-Smokes, deren positive Antworten `CallToolResult.content[]` und `structuredContent` validieren;
-- Backup der bestehenden Clientkonfiguration;
-- dokumentierter Rollback.
+- A merged and verified FlashGate commit.
+- A reproducibly built Windows or Linux binary.
+- A small, explicitly approved absolute root.
+- Passing default, read-only, negative, and startup-negative smoke tests whose
+  positive responses validate `CallToolResult.content[]` and `structuredContent`.
+- A backup of the existing client configuration.
+- A documented rollback.
 
-Die erste Aktivierung verwendet kein `go run` und keinen automatischen Build beim MCP-Start.
+The first activation uses neither `go run` nor an automatic build at MCP startup.
 
-## 2. Binary bauen und prüfen
+## 2. Build and verify the binary
 
-Das erste Aktivierungsbinary wird vom exakten gemergten `main`-Commit mit `-trimpath` gebaut. Vor einer späteren Konfigurationsänderung sind mindestens zu prüfen:
+Build the first activation binary with `-trimpath` from the exact merged `main`
+commit. Before any later configuration change, verify at least:
 
 ```powershell
 git rev-parse HEAD
@@ -27,46 +32,50 @@ go build -trimpath -o build\flashgate-mcp.exe ./cmd/server
 Get-FileHash -Algorithm SHA256 .\build\flashgate-mcp.exe
 ```
 
-Das geprüfte Binary wird danach unter separater Freigabe in einen versionierten Pfad außerhalb des Repositories kopiert, zum Beispiel:
+With separate approval, copy the verified binary to a versioned path outside
+the repository, for example:
 
 ```text
 C:\Program Files\FlashGate\flashgate-mcp.exe
 ```
 
-Der Binary-Pfad darf nicht innerhalb des freigegebenen Datenroots liegen. Temporäre Builddateien sind nach der Abnahme zu entfernen. Ein geprüftes Release-Binary bleibt die spätere bevorzugte Produktionsform.
+The binary path must be outside the approved data root. Remove temporary
+build files after acceptance. A verified release binary is preferred for later
+production use.
 
-## 3. Sicheren Root wählen
+## 3. Choose a safe root
 
-`MCP_ROOT` ist verpflichtend. Der produktive Root muss absolut, vorhanden, zugreifbar und ein Verzeichnis sein.
-
-Für die erste Abnahme wird ein kleiner dedizierter Root empfohlen, beispielsweise:
+`MCP_ROOT` is required. The production root must be an absolute, existing,
+accessible directory. Use a small dedicated root for first acceptance, for
+example:
 
 ```text
 C:\FlashGateData\ReadOnlyRoot
 ```
 
-Nicht verwenden:
+Do not use:
 
-- ein gesamtes Laufwerk;
-- das Home-Verzeichnis;
-- den gesamten Voxtronic- oder OneDrive-Baum;
-- einen relativen Root;
-- `.` ohne ausdrücklichen Development-Opt-in;
-- einen Binary- oder Buildordner als Datenroot.
+- An entire drive or home directory.
+- An entire synchronized storage tree, such as OneDrive.
+- A relative root or `.` without explicit development opt-in.
+- A binary or build directory as the data root.
 
-Ein OneDrive-Root muss lokal verfügbar sein und die Hidden-, UNC-, Symlink-, Junction- und Reparse-Policy bestehen.
+A synchronized storage root must be locally available and pass hidden-file,
+UNC, symlink, junction, and reparse policy checks.
 
-## 4. Verbindliches Read-only-Profil
+## 4. Required read-only profile
 
-Für Codex muss ausdrücklich gesetzt werden:
+Set this explicitly for the first Codex activation:
 
 ```text
 MCP_READ_ONLY=true
 ```
 
-Fehlt die Variable, bleibt das normale Default-Profil mit acht Tools aktiv. Das ist beabsichtigt, aber für die erste Codex-Aktivierung nicht zulässig.
+Without it, the normal default profile exposes eight tools. That remains the
+current implementation behavior and is unsuitable for the first read-only
+Codex activation.
 
-Zusätzliche sichere Werte:
+Additional safe settings:
 
 ```text
 MCP_ALLOW_CWD_ROOT=false
@@ -76,15 +85,18 @@ MCP_FOLLOW_SYMLINKS=false
 MCP_DEBUG=false
 ```
 
-Das Read-only-Profil exponiert exakt in dieser Reihenfolge:
+The read-only profile exposes exactly these tools in this order:
 
 1. `list_directory`
 2. `read_file`
 3. `get_path_info`
 
-## 5. Windows-Codex-Beispiel – nicht automatisch anwenden
+## 5. Windows Codex example — do not apply automatically
 
-Lokal bestätigt sind `command`, `args`, Environment, `startup_timeout_sec` und `codex mcp add`. Die manuelle `cwd`-Syntax und `tool_timeout_sec` waren während `SPR-044` nicht abschließend lokal bestätigt und müssen unmittelbar vor einer realen Aktivierung gegen die dann installierte Codex-Version geprüft werden.
+`command`, `args`, environment values, `startup_timeout_sec`, and
+`codex mcp add` were verified locally during `SPR-044`. The manual `cwd` syntax
+and `tool_timeout_sec` were not conclusively verified then; check both against
+the installed Codex version immediately before actual activation.
 
 ```toml
 # EXAMPLE ONLY — NOT APPLIED BY SPR-044
@@ -107,24 +119,30 @@ MCP_FOLLOW_SYMLINKS = 'false'
 MCP_DEBUG = 'false'
 ```
 
-`codex mcp add` ist lokal als Mechanismus bestätigt. Es wird in `SPR-044` ausdrücklich nicht ausgeführt. Vor einer späteren Nutzung sind Backup, exakter Name, Umgebungswerte, Timeouts und resultierender Konfigurationsdiff zu prüfen.
+`codex mcp add` is a verified mechanism, but `SPR-044` did not run it. Before
+later use, check the backup, exact entry name, environment, timeouts, and
+resulting configuration diff.
 
-## 6. Linux- und spätere WSL-Perspektive
+## 6. Linux and possible later WSL use
 
-Ein Linux-Binary benötigt Execute-Berechtigung und einen absoluten Linux-Root:
+A Linux binary needs execute permission and an absolute Linux root:
 
 ```text
-/opt/flashgate/spr-44/flashgate-mcp
+/opt/flashgate/current/flashgate-mcp
 /home/example/flashgate-readonly-root
 ```
 
-Pfade mit Leerzeichen müssen als einzelne Konfigurationswerte übergeben werden. Symlinks bleiben standardmäßig deaktiviert. WSL2 wird in `SPR-044` nicht installiert und ist keine Voraussetzung. Eine spätere WSL-Aktivierung benötigt eigene Pfad-, Berechtigungs-, Binary- und Rollbackprüfung; Windows- und WSL-Pfade dürfen nicht stillschweigend gemischt werden.
+Pass paths with spaces as single configuration values. Symlinks remain
+disabled by default. WSL2 was not installed by `SPR-044` and is not a
+prerequisite. Any later WSL activation needs its own path, permission, binary,
+and rollback checks; Windows and WSL paths must not be mixed implicitly.
 
-## 7. Claude Desktop und allgemeines STDIO-Beispiel
+## 7. Claude Desktop and general STDIO examples
 
-Diese Beispiele sind ebenfalls nur Vorbereitung. Die aktuelle Syntax des jeweiligen Clients muss vor Anwendung geprüft werden.
+These examples are preparation only. Verify the client's current syntax
+before applying one.
 
-Claude-Desktop-orientiertes Windows-Beispiel:
+Claude Desktop oriented Windows example:
 
 ```json
 {
@@ -145,13 +163,13 @@ Claude-Desktop-orientiertes Windows-Beispiel:
 }
 ```
 
-Claude-Desktop-orientiertes Linux-Beispiel:
+Claude Desktop oriented Linux example:
 
 ```json
 {
   "mcpServers": {
     "flashgate_readonly": {
-      "command": "/opt/flashgate/spr-44/flashgate-mcp",
+      "command": "/opt/flashgate/current/flashgate-mcp",
       "args": [],
       "env": {
         "MCP_ROOT": "/home/example/flashgate-readonly-root",
@@ -166,7 +184,7 @@ Claude-Desktop-orientiertes Linux-Beispiel:
 }
 ```
 
-Allgemeiner lokaler STDIO-Vertrag:
+General local STDIO contract:
 
 ```text
 transport = stdio
@@ -177,24 +195,26 @@ environment.MCP_READ_ONLY = true
 environment.MCP_ALLOW_CWD_ROOT = false
 ```
 
-Kein Beispiel enthält Tokens, Passwörter oder Authentifizierungswerte.
+No example contains tokens, passwords, or authentication values.
 
-## 8. Aktivierungs- und Abnahmetests
+## 8. Activation and acceptance tests
 
-Nach einer später separat bestätigten Aktivierung:
+After a separately approved activation:
 
-1. Vor jeder Konfigurationsänderung den direkten STDIO-Preflight mit einem strikten `CallToolResult`-Decoder ausführen; gültiges JSON und Fachfelder allein reichen nicht.
-2. MCP-Erkennung und `serverInfo.name=flashgate` prüfen.
-3. Exakt drei Tools in der dokumentierten Reihenfolge prüfen.
-4. Root und Unterverzeichnis listen.
-5. normale, Leerzeichen- und Unicode-Dateien lesen.
-6. Datei-, Verzeichnis- und Missing-Metadaten prüfen.
-7. Traversal und absolute Outside-Root-Pfade ablehnen.
-8. alle Write- und Legacy-Namen negativ prüfen.
-9. stdout auf ausschließlich JSON-RPC prüfen.
-10. stderr auf sichere Kategorien und fehlende Hostpfade prüfen.
-11. Root und Repository auf neue Dateien prüfen.
-Write-Namen:
+1. Before changing configuration, run a direct STDIO preflight with a strict
+   `CallToolResult` decoder; valid JSON and domain fields alone are insufficient.
+2. Check MCP discovery and `serverInfo.name=flashgate`.
+3. Check exactly three tools in the documented order.
+4. List the root and a subdirectory.
+5. Read ordinary files and files with spaces or Unicode names.
+6. Check file, directory, and missing-path metadata.
+7. Confirm that traversal and absolute paths outside the root are denied.
+8. Negatively test every write and removed legacy tool name.
+9. Confirm that stdout contains only JSON-RPC.
+10. Check stderr for safe categories and absence of host paths.
+11. Check the root and repository for new files.
+
+Write tool names:
 
 ```text
 write_file
@@ -204,7 +224,7 @@ copy_path
 move_path
 ```
 
-Legacy-Namen:
+Removed legacy names:
 
 ```text
 list_files
@@ -214,60 +234,70 @@ mkdir
 rename_path
 ```
 
-Alle zehn Namen müssen denselben generischen Invalid-Params-Vertrag liefern.
+All ten names must return the same generic Invalid params contract.
 
-## 9. Nicht-technische Read-only-Validierung
+## 9. Read-only validation without a Go workflow
 
-Für Prüfer ohne Go-Workflow:
+For reviewers who do not use Go tooling:
 
-1. Binary-Herkunft, Pfad, `--version` und SHA-256 mit dem Freigabeprotokoll vergleichen.
-2. Rootpfad auf den kleinen genehmigten Ordner begrenzen.
-3. `MCP_READ_ONLY=true` und `MCP_ALLOW_CWD_ROOT=false` sichtbar bestätigen.
-4. bereitgestellte PowerShell- oder Bash-Smokes ausführen.
-5. Ergebnislisten auf exakt drei Tools prüfen.
-6. einen Write-Versuch nur über die Negativtests ausführen und generischen Fehler erwarten.
-7. Root vor/nach dem Test vergleichen.
-8. Rollbackfähigkeit bestätigen.
+1. Compare binary origin, path, `--version`, and SHA-256 with the approval record.
+2. Limit the root to the approved small directory.
+3. Confirm `MCP_READ_ONLY=true` and `MCP_ALLOW_CWD_ROOT=false` visibly.
+4. Run the provided PowerShell or Bash smoke tests.
+5. Confirm the result lists contain exactly three tools.
+6. Run a write attempt only through the negative tests and expect a generic error.
+7. Compare the root before and after testing.
+8. Confirm rollback capability.
 
-Ein Prüfer muss weder `go run` noch einen Build bei jedem Clientstart ausführen.
+This review does not require `go run` or a build at every client startup.
 
-## 10. Sichere Startup-Kategorien und Troubleshooting
+## 10. Safe startup categories and troubleshooting
 
-| Kategorie | Bedeutung | Sichere Reaktion |
-| --- | --- | --- |
-| `missing_root` | `MCP_ROOT` fehlt | expliziten absoluten Root konfigurieren |
-| `invalid_root` | leer, Whitespace, relativ oder nicht erlaubtes `.` | Rootwert korrigieren; kein implizites CWD verwenden |
-| `root_not_found` | Root existiert nicht | Pfad und lokale Verfügbarkeit prüfen |
-| `root_not_directory` | Root ist eine Datei | vorhandenes Verzeichnis wählen |
-| `root_not_allowed` | Permission oder bestehende Rootpolicy lehnt ab | Policy und Rootwahl prüfen, keine Policy umgehen |
-| `invalid_profile` | ungültiges `MCP_READ_ONLY` | gültigen booleschen Wert setzen; für Codex `true` |
-| `invalid_development_option` | ungültiges `MCP_ALLOW_CWD_ROOT` | exakt `true` oder `false` kleingeschrieben verwenden |
-| `startup_failed` | unerwarteter Bootstrapfehler | sichere Logs/Umgebung prüfen und Aktivierung zurückrollen |
+| Category | Meaning | Safe response |
+|---|---|---|
+| `missing_root` | `MCP_ROOT` is absent | Configure an explicit absolute root. |
+| `invalid_root` | Empty, whitespace, relative, or disallowed `.` | Correct the root; do not use implicit CWD. |
+| `root_not_found` | The root does not exist | Check path and local availability. |
+| `root_not_directory` | The root is a file | Choose an existing directory. |
+| `root_not_allowed` | Permission or root policy rejects it | Check policy and root choice; do not bypass policy. |
+| `invalid_profile` | Invalid `MCP_READ_ONLY` | Set a valid Boolean value; use `true` for Codex. |
+| `invalid_development_option` | Invalid `MCP_ALLOW_CWD_ROOT` | Use exactly lowercase `true` or `false`. |
+| `startup_failed` | Unexpected bootstrap failure | Check safe logs and environment, then roll back. |
 
-Startupfehler verwenden Exitcode 3 für erwartbare Konfigurations-/Rootfehler und Exitcode 1 für unerwartete Fehler. stdout bleibt leer; stderr enthält keine rohen OS-Fehler oder absoluten Rootpfade.
+Expected configuration/root failures use exit code 3; unexpected failures use
+exit code 1. Stdout stays empty, and stderr contains neither raw OS errors nor
+absolute root paths.
 
-## 11. Backup und Rollback
+## 11. Backup and rollback
 
-Vor einer späteren Änderung:
+Before a later change:
 
-1. Codex-/Clientkonfiguration timestamped sichern.
-2. vorhandene MCP-Einträge und Version dokumentieren.
-3. sicherstellen, dass das Backup keine ungeschützten Secrets in Reports kopiert.
+1. Make a timestamped backup of the client configuration.
+2. Record existing MCP entries and versions.
+3. Keep unprotected secrets out of reports and backups.
 
 Rollback:
 
-1. FlashGate-Eintrag mit der vom Client unterstützten Methode deaktivieren oder entfernen beziehungsweise das geprüfte Backup wiederherstellen.
-2. Keine anderen MCP-Blöcke verändern.
-3. Client vollständig neu starten.
-4. MCP-Liste prüfen; FlashGate darf nicht aktiv sein.
-5. prüfen, dass kein `flashgate-mcp`-Prozess verbleibt.
-6. Root und Repository auf Artefakte prüfen.
-7. Binary nur nach separater Freigabe entfernen.
+1. Disable or remove the FlashGate entry using the client's supported method,
+   or restore the verified backup.
+2. Leave other MCP entries unchanged.
+3. Restart the client completely.
+4. Confirm FlashGate is absent from the active MCP list.
+5. Confirm no `flashgate-mcp` process remains.
+6. Check the root and repository for artifacts.
+7. Remove the binary only with separate approval.
 
-`SPR-044` führt weder `codex mcp add` noch `codex mcp remove` aus und verändert keine reale `config.toml` oder Auth-Datei.
+`SPR-044` ran neither `codex mcp add` nor `codex mcp remove` and changed no
+real `config.toml` or authentication file.
 
-## 12. CallToolResult- und Canary-Gate
+## 12. CallToolResult and canary gate
 
-Der erste Codex-Canary wurde nach gültigem JSON-RPC-Preflight aktiviert, scheiterte aber im echten Client mit `Unexpected response type`, weil erfolgreiche Fachobjekte ungewrappt waren. `SPR-045` korrigiert den Serververtrag, reaktiviert den Canary jedoch nicht.
+The first Codex canary passed a JSON-RPC preflight but failed in the real
+client with `Unexpected response type` because successful domain objects were
+unwrapped. `SPR-045` corrected the server contract but did not reactivate the
+canary.
 
-Eine Reaktivierung ist erst nach Review, Commit, PR, vollständig grüner Windows-/Ubuntu-CI, Merge, Post-Merge-Gates, neuem versioniertem Binary, strengem direkten Preflight, separater Benutzerfreigabe, vollständigem Codex-Neustart und erfolgreicher Wiederholung des modellgestützten End-to-End-Tests zulässig. Der bestehende Canary bleibt bis dahin deaktiviert.
+Reactivate only after review, commit, PR, passing Windows/Ubuntu CI, merge,
+post-merge gates, a new versioned binary, strict direct preflight, separate
+user approval, a complete Codex restart, and a successful repeat of the
+model-assisted end-to-end test. The existing canary remains disabled until then.
