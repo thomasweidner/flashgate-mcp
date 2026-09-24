@@ -16,6 +16,11 @@ The project currently implements the core MCP server loop, JSON-RPC routing and 
 
 The current implemented scope is filesystem operations. Version 1.0 plans bounded search, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, reusable content fingerprints with bounded file/tree compare and expected-state verification, and optional local system-service deployment. These remain planned work.
 
+For deployment and troubleshooting, see the
+[installation and operation guide](docs/installation-and-operation.md). It
+separates the currently supported portable direct-STDIO path from planned
+proxy, automatic-discovery, and system-service commands.
+
 Implemented tools:
 
 ```text
