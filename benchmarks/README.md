@@ -148,6 +148,7 @@ identity fields.
 `budgets.json` separates deterministic hard contracts from noisy soft review limits:
 
 - Hard: complete and exact tool-profile/workflow measurement sets, tool/schema counts, wire/result byte maxima, reference workflow calls/counters, and all six selected-result allocation/payload records loaded from `budgets.json`.
+- Hard-failure diagnostics for missing or unknown measurement and budget keys use lexical key order, so identical invalid inputs produce the same ordered message list across processes.
 - Soft: startup p95, workflow p95, idle/peak working set, and CPU time.
 
 The versioned-artifact gate does not trust embedded `budget_evaluation`. It strictly
