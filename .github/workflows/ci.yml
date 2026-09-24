@@ -308,3 +308,20 @@ jobs:
 
       - name: Run golangci-lint
         run: golangci-lint run
+
+  benchmark-baseline-comparison:
+    name: Compare versioned benchmark baselines
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Compare Windows and Linux benchmark baselines
+        run: go test ./internal/benchmark -run '^TestCompleteVersionedPlatformBaselines$' -count=1

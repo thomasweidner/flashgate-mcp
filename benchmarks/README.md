@@ -172,7 +172,14 @@ a supported race platform; for the current Windows host, missing CGO/GCC is an
 infrastructure limitation and does not justify relaxing allocation budgets. Native
 Linux `go test -race ./...` remains required.
 
-A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. `SPR-047` does not add the full process benchmark to CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
+A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. `SPR-047` does not add the full process benchmark to CI; full process benchmark execution remains BL-249.
+
+The repository CI has a dedicated `benchmark-baseline-comparison` job for the
+checked-in Windows and Linux baselines. It runs the deterministic complete
+platform comparison without collecting new timing or resource samples. The gate
+therefore rejects invalid or missing artifacts, hard-budget failures, and
+cross-platform deterministic drift while preserving soft-budget findings as
+review-only host-sensitive evidence.
 
 ## Version 1.0 benchmark expansion
 
