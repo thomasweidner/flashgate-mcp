@@ -4,6 +4,12 @@ FlashGate MCP is designed as a secure-by-default local host-operations MCP serve
 
 Filesystem access is security-sensitive because MCP clients may request operations on local files. For this reason, all filesystem operations are restricted to a configured sandbox root.
 
+The term *sandbox* means layered FlashGate policy and root confinement, not a
+claim of complete operating-system isolation. The normative
+[sandbox-boundary and residual-risk disclosure](sandbox-boundaries-and-residual-risk.md)
+separates current controls, target controls, host responsibilities, and the
+native evidence required for platform isolation claims.
+
 ## Core Security Principles
 
 ### Sandbox Root
