@@ -22,12 +22,18 @@ $warningCount = 0
 $failureCount = 1
 $exitCode = 1
 $totalCoverage = $null
+$coveredStatements = $null
+$totalStatements = $null
 $errorMessage = $null
 $coverageProfile = $null
 $textReport = $null
 $htmlReport = $null
 $testLog = $null
 $summaryJson = $null
+$packageInventory = $null
+$productPackageCount = 0
+$productRoot = './cmd/server'
+$coverageScope = 'server-module-dependency-closure'
 
 function Resolve-OutputPath {
     [CmdletBinding()]
@@ -76,23 +82,77 @@ try {
     $htmlReport = Join-Path $platformOutputRoot 'coverage.html'
     $testLog = Join-Path $platformOutputRoot 'test.log'
     $summaryJson = Join-Path $platformOutputRoot 'summary.json'
+    $packageInventory = Join-Path $platformOutputRoot 'product-packages.txt'
 
     foreach ($file in @(
         $coverageProfile,
         $textReport,
         $htmlReport,
         $testLog,
-        $summaryJson
+        $summaryJson,
+        $packageInventory
     )) {
         if ([IO.File]::Exists($file)) {
             [IO.File]::Delete($file)
         }
     }
 
+    $moduleOutput = @(& go list -m -f '{{.Path}}' 2>&1)
+    $moduleExitCode = $LASTEXITCODE
+    if ($moduleExitCode -ne 0 -or $moduleOutput.Count -ne 1) {
+        $tail = Get-OutputTail -Output $moduleOutput
+        throw "go list -m konnte das aktuelle Modul nicht eindeutig ermitteln (Exitcode $moduleExitCode).$([Environment]::NewLine)$tail"
+    }
+
+    $modulePath = $moduleOutput[0].ToString().Trim()
+    if ([string]::IsNullOrWhiteSpace($modulePath)) {
+        throw 'go list -m lieferte einen leeren Modulpfad.'
+    }
+
+    $dependencyOutput = @(& go list -deps -f '{{if .Module}}{{.ImportPath}}|{{.Module.Path}}{{end}}' $productRoot 2>&1)
+    $dependencyExitCode = $LASTEXITCODE
+    if ($dependencyExitCode -ne 0) {
+        $tail = Get-OutputTail -Output $dependencyOutput
+        throw "go list -deps ist mit Exitcode $dependencyExitCode fehlgeschlagen.$([Environment]::NewLine)$tail"
+    }
+
+    $productPackages = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($entry in $dependencyOutput) {
+        $line = $entry.ToString().Trim()
+        if (-not $line) {
+            continue
+        }
+
+        $parts = $line.Split('|')
+        if ($parts.Count -ne 2 -or -not $parts[0] -or -not $parts[1]) {
+            throw "Unerwarteter go-list-Dependency-Eintrag: $line"
+        }
+
+        if ($parts[1] -eq $modulePath) {
+            if ($parts[0] -ne $modulePath -and
+                -not $parts[0].StartsWith("$modulePath/", [StringComparison]::Ordinal)) {
+                throw "Fremdes Package im Produktmodul: $line"
+            }
+            [void]$productPackages.Add($parts[0])
+        }
+    }
+
+    $serverPackage = "$modulePath/cmd/server"
+    if ($productPackages.Count -eq 0 -or -not $productPackages.Contains($serverPackage)) {
+        throw 'Der Produktgraph ist leer oder enthält ./cmd/server nicht.'
+    }
+
+    [string[]]$sortedPackages = [string[]]::new($productPackages.Count)
+    $productPackages.CopyTo($sortedPackages)
+    [Array]::Sort($sortedPackages, [StringComparer]::Ordinal)
+    $productPackageCount = $sortedPackages.Count
+    [IO.File]::WriteAllLines($packageInventory, $sortedPackages, [Text.UTF8Encoding]::new($false))
+
+    $coveragePackages = $sortedPackages -join ','
     $testOutput = @(
         & go test `
             -covermode=atomic `
-            -coverpkg=./... `
+            "-coverpkg=$coveragePackages" `
             "-coverprofile=$coverageProfile" `
             ./... 2>&1
     )
@@ -151,10 +211,66 @@ try {
         throw "Die Gesamt-Coverage konnte nicht geparst werden: $totalLine"
     }
 
-    $totalCoverage = [double]::Parse(
+    $reportedCoverage = [double]::Parse(
         $coverageMatch.Groups['coverage'].Value,
         [Globalization.CultureInfo]::InvariantCulture
     )
+
+    # A repository-wide test run repeats instrumented product blocks in the
+    # profile for each test package. Count each source block once, as cover does,
+    # and use the unrounded ratio for the hard minimum.
+    $coverageBlocks = [Collections.Generic.Dictionary[string, long[]]]::new([StringComparer]::Ordinal)
+    foreach ($line in [IO.File]::ReadLines($coverageProfile)) {
+        if ($line -eq 'mode: atomic') {
+            continue
+        }
+
+        $blockMatch = [regex]::Match(
+            $line,
+            '^(?<file>.+/[^/]+\.go):(?<range>\d+\.\d+,\d+\.\d+)\s+(?<statements>\d+)\s+(?<count>\d+)$'
+        )
+        if (-not $blockMatch.Success) {
+            throw "Unerwarteter Coverage-Profil-Eintrag: $line"
+        }
+
+        $file = $blockMatch.Groups['file'].Value
+        $package = $file.Substring(0, $file.LastIndexOf('/'))
+        if (-not $productPackages.Contains($package)) {
+            throw "Fremdes Package im Coverage-Profil: $package"
+        }
+
+        $key = "$file`:$($blockMatch.Groups['range'].Value)"
+        $statements = [long]::Parse($blockMatch.Groups['statements'].Value)
+        $count = [long]::Parse($blockMatch.Groups['count'].Value)
+        if ($coverageBlocks.ContainsKey($key)) {
+            if ($coverageBlocks[$key][0] -ne $statements) {
+                throw "Widersprüchliche Statement-Anzahl im Coverage-Profil: $key"
+            }
+            if ($count -gt 0) {
+                $coverageBlocks[$key][1] = 1
+            }
+        }
+        else {
+            $coverageBlocks.Add($key, [long[]]@($statements, [long]($count -gt 0)))
+        }
+    }
+
+    [long]$totalStatements = 0
+    [long]$coveredStatements = 0
+    foreach ($block in $coverageBlocks.Values) {
+        $totalStatements += $block[0]
+        if ($block[1] -gt 0) {
+            $coveredStatements += $block[0]
+        }
+    }
+    if ($totalStatements -eq 0) {
+        throw 'Das Coverage-Profil enthält keine Produkt-Statements.'
+    }
+
+    $totalCoverage = 100.0 * $coveredStatements / $totalStatements
+    if ([Math]::Abs($totalCoverage - $reportedCoverage) -gt 0.051) {
+        throw "Coverage-Profil und go tool cover widersprechen sich: $totalCoverage / $reportedCoverage"
+    }
 
     $htmlOutput = @(
         & go tool cover "-html=$coverageProfile" "-o=$htmlReport" 2>&1
@@ -203,7 +319,13 @@ finally {
         $summary = [ordered]@{
             status = $status
             platform = $PlatformName
+            coverage_scope = $coverageScope
+            product_root = $productRoot
+            product_package_count = $productPackageCount
+            product_package_inventory = $packageInventory
             total_coverage_percent = $totalCoverage
+            covered_statements = $coveredStatements
+            total_statements = $totalStatements
             minimum_coverage_percent = $MinimumCoverage
             coverage_profile = $coverageProfile
             text_report = $textReport

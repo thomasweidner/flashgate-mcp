@@ -381,26 +381,26 @@ evidence.
 
 ### Code Coverage
 
-FlashGate enforces separate repository-wide Go statement-coverage gates for Windows and Linux. The current minimum values are:
+FlashGate enforces separate production-server Go statement-coverage gates for Windows and Linux. The current minimum values are:
 
 | Platform | Minimum |
 |---|---:|
-| Windows | 71.4% |
-| Linux | 70.6% |
+| Windows | 90.0% |
+| Linux | 90.0% |
 
 Run the Windows coverage gate with PowerShell 7.6.x (Major 7, Minor 6):
 
 ```powershell
-.\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 71.4
+.\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 90.0
 ```
 
 Run the Linux gate with PowerShell 7 on the native Linux validation environment:
 
 ```bash
-pwsh -NoLogo -NoProfile -File ./scripts/Test-GoCoverage.ps1 -PlatformName linux -MinimumCoverage 70.6
+pwsh -NoLogo -NoProfile -File ./scripts/Test-GoCoverage.ps1 -PlatformName linux -MinimumCoverage 90.0
 ```
 
-Each run writes `coverage.out`, `coverage.txt`, `coverage.html`, `test.log`, and `summary.json` below `build/coverage/<platform>/`. GitHub Actions uploads separate Windows and Linux artifacts for 14 days.
+Each run writes `coverage.out`, `coverage.txt`, `coverage.html`, `test.log`, `product-packages.txt`, and `summary.json` below `build/coverage/<platform>/`. GitHub Actions uploads separate Windows and Linux artifacts for 14 days.
 
 The technically authoritative thresholds are maintained in `.github/workflows/ci.yml`. Windows and Linux values are evaluated independently and must not be averaged. Detailed operation and baseline-maintenance rules are documented in [docs/development/code-coverage.md](docs/development/code-coverage.md).
 
