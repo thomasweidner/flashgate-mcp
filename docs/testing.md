@@ -295,6 +295,10 @@ Version 1.0 adds a separate `2026-07-28` compatibility matrix rather than mutati
 
 ### Benchmarks
 
+Use the [benchmark method and baseline guide](benchmark-method-and-baselines.md)
+to distinguish in-process measurements, end-to-end workflows, diagnostic runs,
+committed platform artifacts, and authoritative baseline evidence.
+
 `SPR-047` benchmarks performance-sensitive operations including:
 
 - directory listing

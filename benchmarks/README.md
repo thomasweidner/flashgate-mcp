@@ -2,6 +2,10 @@
 
 `SPR-047` provides one reproducible benchmark system with three layers. It extends the existing `tools/call` serialization fixtures instead of creating a competing serialization suite.
 
+For a concise explanation of how to interpret the method, committed platform
+artifacts, hard and soft budgets, diagnostic runs, and historical evidence, see
+the [benchmark method and baseline guide](../docs/benchmark-method-and-baselines.md).
+
 ## Layers
 
 1. In-process Go benchmarks measure direct `tools/call` handler work, result construction, JSON serialization, allocations, result bytes, response bytes, and `tools/list` wire output for read-only and default profiles.
