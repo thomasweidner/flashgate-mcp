@@ -104,6 +104,23 @@ func TestStrictArtifactValidatorRejectsSecurityRelevantMutations(t *testing.T) {
 			},
 		},
 		{
+			name: "both platform artifacts omit the same useful output", wantArtifact: "baseline.windows-amd64.json", wantCause: "budget failure",
+			mutate: func(windows, linux *[]byte) {
+				mutation := func(result *Result) {
+					for index := range result.Workflows {
+						if result.Workflows[index].Name == "read_file_small" {
+							result.Workflows[index].ReadBytes = MetricSummary{Samples: result.Repetitions}
+						}
+					}
+					if err := applyBudgetEvaluation(budgetPath, result); err != nil {
+						t.Fatal(err)
+					}
+				}
+				*windows = mutateResultArtifact(t, *windows, mutation)
+				*linux = mutateResultArtifact(t, *linux, mutation)
+			},
+		},
+		{
 			name: "unknown top-level field", wantArtifact: "baseline.windows-amd64.json", wantCause: "$.unexpected_top_level: unknown field",
 			mutate: func(windows, _ *[]byte) {
 				*windows = mutateJSONObject(t, *windows, func(object map[string]any) {

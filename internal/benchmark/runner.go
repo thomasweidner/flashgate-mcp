@@ -141,6 +141,9 @@ func Run(ctx context.Context, options Options) (Result, error) {
 			if err != nil {
 				return Result{}, fmt.Errorf("workflow %s repetition %d: %w", workflow.name, index+1, err)
 			}
+			if err := validateWorkflowUsefulOutput(workflow, sample.counters); err != nil {
+				return Result{}, fmt.Errorf("workflow %s repetition %d useful output: %w", workflow.name, index+1, err)
+			}
 			samples = append(samples, sample)
 			allSamples = append(allSamples, sample)
 		}

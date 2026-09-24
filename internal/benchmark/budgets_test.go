@@ -109,6 +109,48 @@ func TestEvaluateBudgetsSeparatesHardAndSoft(t *testing.T) {
 	}
 }
 
+func TestEvaluateBudgetsRejectsMissingUsefulOutput(t *testing.T) {
+	budgetPath := filepath.Join("..", "..", "benchmarks", "budgets.json")
+	tests := []struct {
+		name     string
+		workflow string
+		mutate   func(*WorkflowMeasurement)
+		want     string
+	}{
+		{"reduced read bytes", "read_file_small", func(measurement *WorkflowMeasurement) {
+			measurement.ReadBytes = MetricSummary{Samples: 1, Min: 25, P50: 25, P95: 25, Max: 25}
+		}, "read_bytes useful output range=25..25, want exact 26"},
+		{"absent entries", "list_directory_small", func(measurement *WorkflowMeasurement) { measurement.Entries = MetricSummary{Samples: 1} }, "entries useful output range=0..0, want exact 3"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := completeBudgetTestResult()
+			for index := range result.Workflows {
+				if result.Workflows[index].Name == tc.workflow {
+					tc.mutate(&result.Workflows[index])
+				}
+			}
+			evaluation, err := EvaluateBudgets(budgetPath, result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if evaluation.HardFailures != 1 || !strings.Contains(strings.Join(evaluation.Messages, "\n"), tc.want) {
+				t.Fatalf("evaluation=%+v, want one hard failure containing %q", evaluation, tc.want)
+			}
+		})
+	}
+}
+
+func TestValidateWorkflowUsefulOutput(t *testing.T) {
+	workflow := workflowDefinition{name: "read", expectedReadBytes: exactCounter(26), expectedEntries: exactCounter(3)}
+	if err := validateWorkflowUsefulOutput(workflow, Counters{ReadBytes: 26, Entries: 3}); err != nil {
+		t.Fatalf("exact useful output rejected: %v", err)
+	}
+	if err := validateWorkflowUsefulOutput(workflow, Counters{ReadBytes: 25, Entries: 3}); err == nil || !strings.Contains(err.Error(), "read_bytes=25") {
+		t.Fatalf("reduced useful output error=%v", err)
+	}
+}
+
 func completeBudgetTestResult() Result {
 	toolsList := []ToolsListMeasurement{
 		{Profile: "read_only", ToolCount: 3, SchemaCount: 3, RequestBytes: 59, ResponseBytes: 1, ResultBytes: 1, ApproxTokensBytes4: 1},
@@ -141,6 +183,13 @@ func completeBudgetTestResult() Result {
 			ExitStatuses:       map[string]int{"0": 1},
 			StderrWarnings:     []string{},
 		})
+		measurement := &workflows[len(workflows)-1]
+		if definition.expectedReadBytes != nil {
+			measurement.ReadBytes = MetricSummary{Samples: 1, Min: *definition.expectedReadBytes, P50: *definition.expectedReadBytes, P95: *definition.expectedReadBytes, Max: *definition.expectedReadBytes}
+		}
+		if definition.expectedEntries != nil {
+			measurement.Entries = MetricSummary{Samples: 1, Min: *definition.expectedEntries, P50: *definition.expectedEntries, P95: *definition.expectedEntries, Max: *definition.expectedEntries}
+		}
 	}
 	return Result{
 		ToolsList: toolsList,
