@@ -31,6 +31,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Planned Version 1.0 named-root discovery, command discovery, bounded search, managed processes, typed command execution, system information, safe capability profiles, payload-efficient results, and service-account-root operation.
 - Documented future Platform Adapter and Native Tool Adapter boundaries, cloud/placeholder storage behavior, transparent path compression/encryption, content compression, extended metadata, and one optional portable FlashGate agent skill.
 - Kept cloud/placeholder storage, conditional retrieval, transparent path compression/encryption, and the portable agent skill post-Version-1.0.
+- Planned one canonical product-version source under BL-245 so feature merges carry their SemVer change in the same product change, and planned BL-260 migration from the current platform coverage gates to at least 90% production-code statement coverage with a 95% project target; documented post-merge closure of superseded PRs and safe obsolete-branch cleanup without deleting historical merged PR records.
 
 ### Fixed
 
