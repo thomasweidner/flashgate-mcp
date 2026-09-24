@@ -297,11 +297,15 @@ jobs:
       - name: Write release summary
         shell: bash
         run: |
+          archive="flashgate-mcp_${RELEASE_VERSION}_${{ matrix.platform }}_${{ matrix.public_arch }}.${{ matrix.archive_extension }}"
           echo "## Validated release artifact" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- Version: \`$RELEASE_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Platform: \`${{ matrix.platform }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Architecture: \`${{ matrix.public_arch }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Archive: \`$archive\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Checksum: \`$archive.sha256\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Workflow artifact: \`flashgate-mcp-${RELEASE_VERSION}-${{ matrix.platform }}-${{ matrix.public_arch }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Source time: \`$RELEASE_SOURCE_TIME\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Reproducibility gate: \`PASS\`" >> "$GITHUB_STEP_SUMMARY"
