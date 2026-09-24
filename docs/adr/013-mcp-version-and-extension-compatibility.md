@@ -52,6 +52,7 @@ Extension negotiation is not authorization. Tasks and every supported revision p
 - Map internal states to official Task states deliberately; do not leak unrestricted internal diagnostics.
 - Return synchronous results when supported and appropriate until Tasks compatibility is decided.
 - For clients without a required extension, define a bounded synchronous or explicit capability-error fallback rather than an ad hoc job-tool surface.
+- Use the [BL-211 fallback decision packet](../mcp-tasks-fallback-decision.md) to bind the owner choice, evidence, and validation before implementing that fallback.
 - Validate all future input/output schemas as JSON Schema 2020-12 and evaluate official MCP conformance tooling.
 
 ## Decision Gates
