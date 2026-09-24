@@ -38,6 +38,38 @@ Controlled builds resolve these values once:
 
 Release builds fail closed unless the exact version tag is checked out and the working tree is clean. Local validation builds may be dirty and report `Modified: true`.
 
+## Product versioning policy
+
+FlashGate uses Semantic Versioning for product identity. The current
+implementation still derives release versions from an exact `v<SemVer>` tag,
+accepts an explicit SemVer for controlled validation builds, and reports
+`0.0.0-dev` for ordinary development builds. `BL-245` owns the remaining
+Version 1.0 work to establish one canonical repository product-version source
+and bind it to build metadata, release tags, artifacts, and release notes.
+
+Once that canonical source is implemented, a functional merge and its version
+change are one atomic product change rather than separate follow-up work:
+
+- before Version 1.0, a new externally observable capability, tool, protocol
+  behavior, or other user-visible function increments the SemVer minor component
+  and resets patch to zero;
+- before Version 1.0, a compatible product bug fix increments patch;
+- a deliberate breaking pre-1.0 product change uses a new minor version and the
+  required changelog/migration documentation;
+- from Version 1.0 onward, normal SemVer major/minor/patch rules apply;
+- documentation-only, test-only, planning-only, and behavior-neutral refactoring
+  changes do not require a product-version increment.
+
+The canonical version source must be the single editable product-version
+authority. Build scripts, CLI output, Windows `VERSIONINFO`, Linux metadata,
+embedded manifests, archive names, checksums, and release validation consume
+that value rather than maintaining independent manual versions. A release tag
+`v<VERSION>` must exactly match the canonical product version. Until `BL-245`
+implements this source, the existing tag/explicit-build mechanism remains
+authoritative and no repository version bump is claimed merely by editing
+documentation.
+
+
 SemVer and `SOURCE_DATE_EPOCH` use one versioned fixture contract in
 `internal/version/testdata/build-input-validation-fixtures.json`. Numeric
 prerelease identifiers with leading zeroes and version components above

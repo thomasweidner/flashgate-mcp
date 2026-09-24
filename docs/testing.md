@@ -54,6 +54,47 @@ Run tests with coverage:
 go test -cover ./...
 ```
 
+### Product code coverage policy
+
+FlashGate treats coverage as direct product-quality evidence. Coverage does not
+replace semantic assertions, security negatives, boundary tests, race tests,
+integration tests, or platform-specific validation; a line being executed does
+not prove that its behavior is correct.
+
+The Version 1.0 target owned by `BL-260` is:
+
+- **hard merge gate:** at least **90.0% statement coverage** for FlashGate
+  production code on each supported CI platform;
+- **project target:** at least **95.0% statement coverage**;
+- **bounded core logic:** pursue **100%** where practical and meaningful rather
+  than adding artificial tests solely to inflate the percentage;
+- every new or changed product behavior carries focused positive, negative, and
+  boundary tests as applicable and may not reduce coverage below the active
+  gate.
+
+Product coverage is defined over the FlashGate module packages transitively
+linked into the production server command `./cmd/server`. `BL-260` must derive
+that package set deterministically from the Go dependency graph and keep
+development-only commands, vendored code, generated artifacts, and test helpers
+out of the product-coverage denominator. The ordinary `go test ./...` suite
+continues to cover the repository outside that product percentage.
+
+The existing CI implementation currently enforces the lower platform-specific
+thresholds stored in `.github/workflows/ci.yml` (71.4% Windows and 70.6% Linux).
+Those values remain the truthful active gates until product tests are expanded
+and `BL-260` raises the measured coverage and the CI threshold together. The
+90% requirement must not be claimed as active before that migration passes.
+After activation, the hard threshold must not be lowered merely to make a
+change pass; a deliberate policy change requires an explicit product-quality
+decision and documentation update.
+
+Coverage reports remain platform-specific artifacts so Windows- and Linux-only
+production paths cannot hide behind one blended number. Security-sensitive code
+still requires explicit tests for authorization, confinement, disclosure,
+limits, cancellation, cleanup, and race behavior even at 100% statement
+coverage.
+
+
 ### Shell script validation
 
 BL-251 validates the complete repository shell-entry-point inventory rather
