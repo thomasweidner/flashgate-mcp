@@ -14,7 +14,7 @@ FlashGate MCP is the binding project name. The current implementation is a nativ
 |---|---|---|
 | Architecture and identity | `SPR-041` | FlashGate identity, ADR baseline, authoritative backlog consolidation |
 | Technical transition | `SPR-042`–`SPR-044` | Technical rename, pre-1.0 filesystem contract cleanup, read-only client preparation |
-| Efficiency and shared runtime | `SPR-045`–`SPR-049` | Payload/result architecture, explicit MCP revision matrix (`2025-11-25` initialization path plus final `2026-07-28` stateless path), tool/token/cache budgets, native adapter policy, Operations/Job Manager, quotas, identity-bound state |
+| Efficiency, quality/version foundations, and shared runtime | `SPR-045`–`SPR-049` | Production-code coverage gate and canonical product versioning at the start of SPR-048, then payload/result architecture, explicit MCP revision matrix (`2025-11-25` initialization path plus final `2026-07-28` stateless path), tool/token/cache budgets, native adapter policy, Operations/Job Manager, quotas, identity-bound state |
 | Filesystem and search | `SPR-050`–`SPR-052` | Efficient inspection, hashes/content identities, bounded file/tree compare and expected-state verification, MIME/binary/large-result handling, safe edits/plans, bounded search |
 | Policy model | `SPR-053` | Named roots, read-only safe default, capabilities, profiles, dynamic tool registration, negative authorization tests |
 | Process and execution | `SPR-054`–`SPR-057` | Threat models, observation, managed processes, typed allowlisted commands, OS isolation, cursor output |
@@ -22,6 +22,16 @@ FlashGate MCP is the binding project name. The current implementation is a nativ
 | Service architecture | `SPR-059` | Multi-mode/IPC contracts, hybrid execution identity, Variant A design, Variant B interfaces, audit lifecycle |
 | Native system services | `SPR-060` | Named Pipe/Unix socket, proxy/auto, Windows SCM, Linux systemd, service-account root backend |
 | Version 1.0 release gate | `SPR-061` | Multi-client/security validation, CI, cross-project benchmarks, supply-chain evidence, governance, documentation, packaging, rollback |
+
+### SPR-048 quality and version prerequisites
+
+Before additional functional work in `SPR-048`, the canonical order is
+`BL-260 -> BL-245 -> BL-203`. BL-260 establishes the production-server
+coverage scope and activates the documented hard coverage gate only after real
+coverage reaches it. BL-245 then establishes the canonical product-version
+source so later functional merges carry their required SemVer change. BL-203 is
+the first following functional owner. This sequencing decision moves BL-260 and
+BL-245 forward from SPR-061; it does not implement any of the three tasks.
 
 ### MCP revision migration sequence (`SPR-048`)
 

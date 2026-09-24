@@ -13,6 +13,14 @@
 
 Version 1.0 is reached after `SPR-061` only when `BL-263` passes.
 
+Before further functional implementation in `SPR-048`, Version 1.0 planning
+requires the prerequisite chain `BL-260 -> BL-245 -> BL-203`. BL-260 and
+BL-245 are therefore assigned to SPR-048 rather than SPR-061: product-code
+coverage is established first, canonical product versioning second, and BL-203
+is the first following functional owner. This sequencing change does not mark
+any of those tasks implemented and does not alter the final SPR-061/BL-263
+release gate.
+
 ## Version 1.0 product objective
 
 Version 1.0 is a native, local-first, resource-efficient Windows/Linux MCP server that performs controlled host operations without requiring Python, PHP, Node.js, Java, or another interpreter runtime.

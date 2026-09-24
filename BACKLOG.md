@@ -57,7 +57,7 @@ The complete legacy mapping is recorded in
 | SPR-045 | Done | BL-201 | MCP `CallToolResult` foundation and `structuredContent` |
 | SPR-046 | Done | BL-200 | MCP runtime `outputSchema` integration and parity |
 | SPR-047 | Done | BL-189–BL-199 | Resource, latency, payload, catalog, workflow, and baseline benchmarking |
-| SPR-048 | Planned | BL-202–BL-216, BL-218–BL-220 | Remaining MCP contracts, payload/result architecture, catalog budgets, and native-adapter policy |
+| SPR-048 | Planned | BL-202–BL-216, BL-218–BL-220, BL-245, BL-260 | Product quality/version foundations followed by remaining MCP contracts, payload/result architecture, catalog budgets, and native-adapter policy |
 | SPR-049 | Planned | BL-084–BL-099, BL-164 | Operations/Job Manager, identity-bound handles, quotas, fairness, and cleanup |
 | SPR-050 | Planned | BL-036–BL-049, BL-346 | Efficient filesystem listing, reading, batch inspection, MIME/binary handling, compare/verify, and large-result handoff |
 | SPR-051 | Planned | BL-050–BL-061, BL-063–BL-067 | Targeted edits, conditional writes, bounded filesystem plans, and filesystem integration benchmarks |
@@ -70,7 +70,9 @@ The complete legacy mapping is recorded in
 | SPR-058 | Planned | BL-062, BL-153–BL-157 | Scoped and redacted system information |
 | SPR-059 | Planned | BL-221–BL-225, BL-233–BL-239, BL-166 | Multi-mode architecture, IPC/configuration contracts, hybrid execution-identity backend design, audit lifecycle, and Variant A security |
 | SPR-060 | Planned | BL-226–BL-231, BL-341 | Named Pipe/Unix socket transports, proxy/auto modes, Windows SCM service, Linux systemd service, Variant A service-account execution, cross-mode host-process ownership, deterministic shutdown, diagnostics, and orphan prevention |
-| SPR-061 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-251, BL-255–BL-263, BL-305–BL-312, BL-314–BL-340, BL-342–BL-344 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, slim project-governance convergence, and task-bound validation scratch routing |
+| SPR-061 | Planned | BL-172–BL-173, BL-177–BL-179, BL-241–BL-244, BL-246–BL-251, BL-255–BL-259, BL-261–BL-263, BL-305–BL-312, BL-314–BL-340, BL-342–BL-344 | Version 1.0 validation, packaging, cross-project benchmarks, supply-chain evidence, governance, documentation, Dependabot maintenance, PR #15/#16/#21 review follow-up, reference-bound legacy Temp cleanup, slim project-governance convergence, and task-bound validation scratch routing |
+
+**SPR-048 quality/version prerequisite order — 2026-09-24.** Before further functional implementation in `SPR-048`, execute `BL-260 -> BL-245 -> BL-203` in that order. `BL-260` first establishes the production-server coverage scope, raises real product coverage, and activates the documented hard coverage gate; `BL-245` then establishes the canonical product-version source so subsequent functional merges carry their required version change; `BL-203` is the first following functional owner. This is a sprint-assignment and sequencing change only: it does not implement BL-260, BL-245, or BL-203, and it does not change their acceptance scope.
 
 Version 1.0 is reached only after `SPR-061` and the release gate in `BL-263`. The following accepted work is intentionally post-Version 1.0 and has no committed implementation sprint before that release:
 
@@ -397,7 +399,7 @@ These `Later` owners are accepted future work, not current MCP tools or Version 
 
 **MCP `2026-07-28` planning convergence — 2026-09-19.** The specification is final. Open Mobile PRs #60 (BL-207), #69 (BL-208), and #149 (BL-209) are retained only as prepared implementation/decision inputs that predate this convergence. They are not current support authority and must be freshly rebased/reviewed against `main` and the revised BL-207/208/209 acceptance contracts before any later merge. This planning convergence changes no runtime protocol support and does not introduce an MCP SDK dependency.
 
-**Authoritative MCP revision implementation order and support gate.** Within `SPR-048`, execute the MCP revision work in this dependency order so a later implementation chat can proceed from `BACKLOG.md` without relying on historical chat context:
+**Authoritative MCP revision implementation order and support gate.** After the sprint-wide prerequisite chain `BL-260 -> BL-245 -> BL-203` has completed, execute the MCP revision work within `SPR-048` in this dependency order so a later implementation chat can proceed from `BACKLOG.md` without relying on historical chat context:
 
 1. **BL-207** — define the exact supported-revision matrix and revision-dispatch contract while continuing to advertise only revisions already implemented and validated.
 2. **BL-208** — implement the `2026-07-28` stateless adapter path, including per-request metadata, `server/discover`, unsupported-version/result/cache semantics, subscriptions, and exact extension negotiation without weakening the `2025-11-25` initialization path.
