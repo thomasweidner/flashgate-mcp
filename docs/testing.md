@@ -72,21 +72,20 @@ The Version 1.0 target owned by `BL-260` is:
   boundary tests as applicable and may not reduce coverage below the active
   gate.
 
-Product coverage is defined over the FlashGate module packages transitively
-linked into the production server command `./cmd/server`. `BL-260` must derive
-that package set deterministically from the Go dependency graph and keep
-development-only commands, vendored code, generated artifacts, and test helpers
-out of the product-coverage denominator. The ordinary `go test ./...` suite
-continues to cover the repository outside that product percentage.
+`scripts/Test-GoCoverage.ps1` obtains the current module path from `go list -m`
+and the active platform's transitive `./cmd/server` graph from `go list -deps`.
+It sorts and deduplicates the module-owned packages, writes
+`product-packages.txt`, and instruments exactly that package set with
+`-covermode=atomic`. Development-only commands, vendored code, generated
+artifacts, and test helpers stay outside the product denominator; the ordinary
+`go test ./...` suite still executes repository tests broadly. The runner checks
+the hard minimum against the unrounded statement ratio from unique profile
+blocks, including when several test packages exercise the same product block.
 
-The existing CI implementation currently enforces the lower platform-specific
-thresholds stored in `.github/workflows/ci.yml` (71.4% Windows and 70.6% Linux).
-Those values remain the truthful active gates until product tests are expanded
-and `BL-260` raises the measured coverage and the CI threshold together. The
-90% requirement must not be claimed as active before that migration passes.
-After activation, the hard threshold must not be lowered merely to make a
-change pass; a deliberate policy change requires an explicit product-quality
-decision and documentation update.
+The active `.github/workflows/ci.yml` minimum is **90.0% on Windows and 90.0%
+on Linux**. The hard threshold must not be lowered merely to make a change
+pass; a deliberate policy change requires an explicit product-quality decision
+and documentation update.
 
 Coverage reports remain platform-specific artifacts so Windows- and Linux-only
 production paths cannot hide behind one blended number. Security-sensitive code

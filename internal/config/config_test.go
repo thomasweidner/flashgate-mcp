@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -320,6 +321,38 @@ func TestValidateRejectsNegativeMaxFileSize(t *testing.T) {
 	err := cfg.Validate()
 	if err == nil {
 		t.Fatal("expected error for negative max file size")
+	}
+}
+
+func TestValidateRejectsNonpositiveResourceLimits(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		change  func(*Config, int64)
+		message string
+	}{
+		{"write bytes", func(c *Config, value int64) { c.filesystem.maxWriteBytes = value }, "maximum write size must be greater than zero"},
+		{"list entries", func(c *Config, value int64) { c.filesystem.maxListEntries = int(value) }, "maximum list entries must be greater than zero"},
+		{"copy bytes", func(c *Config, value int64) { c.filesystem.maxCopyBytes = value }, "maximum copy size must be greater than zero"},
+		{"delete entries", func(c *Config, value int64) { c.filesystem.maxDeleteEntries = int(value) }, "maximum delete entries must be greater than zero"},
+		{"message bytes", func(c *Config, value int64) { c.server.maxMessageBytes = value }, "maximum JSON-RPC message size must be greater than zero"},
+		{"argument bytes", func(c *Config, value int64) { c.server.maxArgumentBytes = value }, "maximum tool argument size must be greater than zero"},
+		{"response bytes", func(c *Config, value int64) { c.server.maxResponseBytes = value }, "maximum JSON-RPC response size must be greater than zero"},
+	}
+
+	for _, test := range tests {
+		for _, value := range []int64{0, -1} {
+			t.Run(fmt.Sprintf("%s/%d", test.name, value), func(t *testing.T) {
+				t.Parallel()
+				cfg := DefaultConfig()
+				cfg.filesystem.rootPath = t.TempDir()
+				test.change(&cfg, value)
+				if err := cfg.Validate(); err == nil || err.Error() != test.message {
+					t.Fatalf("Validate() error = %v, want %q", err, test.message)
+				}
+			})
+		}
 	}
 }
 

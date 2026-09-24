@@ -19,6 +19,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Changed
 
+- Switched coverage to the deterministic production-server package graph and raised the separate Windows/Linux hard gates to 90.0%, with an exact unrounded threshold check and package inventories.
 - Converged public documentation and the documentation gate around current filesystem capabilities, Version 1.0 targets, portable contributor guidance, and durable repository-boundary checks.
 - Kept the current MCP runtime at `2025-11-25`; Version 1.0 planning targets a separate `2026-07-28` path without advertising it before implementation and compatibility tests.
 - Maintained the eight-tool filesystem baseline: `list_directory`, `read_file`, `get_path_info`, `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path`.
@@ -31,7 +32,7 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Planned Version 1.0 named-root discovery, command discovery, bounded search, managed processes, typed command execution, system information, safe capability profiles, payload-efficient results, and service-account-root operation.
 - Documented future Platform Adapter and Native Tool Adapter boundaries, cloud/placeholder storage behavior, transparent path compression/encryption, content compression, extended metadata, and one optional portable FlashGate agent skill.
 - Kept cloud/placeholder storage, conditional retrieval, transparent path compression/encryption, and the portable agent skill post-Version-1.0.
-- Planned one canonical product-version source under BL-245 so feature merges carry their SemVer change in the same product change, and planned BL-260 migration from the current platform coverage gates to at least 90% production-code statement coverage with a 95% project target; documented post-merge closure of superseded PRs and safe obsolete-branch cleanup without deleting historical merged PR records.
+- Planned one canonical product-version source under BL-245 so feature merges carry their SemVer change in the same product change; documented post-merge closure of superseded PRs and safe obsolete-branch cleanup without deleting historical merged PR records.
 - Moved BL-260 and BL-245 from the final release-gate sprint to the start of SPR-048 and bound the prerequisite order `BL-260 -> BL-245 -> BL-203`, so product-code coverage and canonical versioning are established before further functional implementation.
 
 ### Fixed

@@ -154,17 +154,13 @@ boundary, race, or integration tests. Every product-code change must add or
 update tests for the changed behavior and must not reduce coverage below the
 active CI gate.
 
-`BL-260` owns migration to a production-code coverage contract: at least
-90.0% statement coverage as the hard merge gate on each supported CI platform,
-a project target of at least 95.0%, and 100% where practical for bounded core
-logic. The measured product scope is the FlashGate module package closure
-actually linked into `./cmd/server`; development-only commands, vendored code,
-generated artifacts, and test helpers are not allowed to distort product
-coverage. Ordinary tests for the complete repository remain required.
-
-The current lower Windows/Linux thresholds in `.github/workflows/ci.yml`
-remain the active enforced values until `BL-260` raises real product coverage
-and the gate together. Do not document the 90% target as already enforced.
+The active hard merge gate is at least 90.0% product statement coverage on
+each supported CI platform. The project target is at least 95.0%; pursue 100%
+where practical for bounded core logic. `scripts/Test-GoCoverage.ps1` derives
+the FlashGate module package closure imported by `./cmd/server` on the active
+platform and records it in `product-packages.txt`. Development-only commands,
+vendored code, generated artifacts, and test helpers do not distort the product
+denominator. Ordinary tests for the complete repository remain required.
 
 
 ## Git and review

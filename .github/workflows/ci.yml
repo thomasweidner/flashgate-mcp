@@ -107,10 +107,10 @@ jobs:
         include:
           - os: windows-latest
             platform: windows
-            minimum_coverage: "71.4"
+            minimum_coverage: "90.0"
           - os: ubuntu-latest
             platform: linux
-            minimum_coverage: "70.6"
+            minimum_coverage: "90.0"
 
     steps:
       - name: Checkout
