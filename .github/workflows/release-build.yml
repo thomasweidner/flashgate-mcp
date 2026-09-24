@@ -5,11 +5,6 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: Semantic release version without leading v
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -29,6 +24,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - name: Validate focused project documentation
         shell: pwsh
         run: |
@@ -37,23 +38,26 @@ jobs:
       - name: Resolve and validate release values
         id: release
         shell: bash
-        env:
-          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
           set -Eeuo pipefail
 
+          source scripts/build-input-validation.sh
+          flashgate_read_repository_version "$PWD"
+          version="$FLASHGATE_REPOSITORY_VERSION"
+          expected_tag="v$version"
+
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            version="${GITHUB_REF_NAME#v}"
-          else
-            version="$REQUESTED_VERSION"
+            [[ "$GITHUB_REF_NAME" == "$expected_tag" ]]
           fi
 
-          source scripts/build-input-validation.sh
-          flashgate_validate_semver "$version"
+          mkdir -p build/audit
+          go -C . run -mod=vendor ./cmd/releaseaudit source \
+            --root "$PWD" --release \
+            --report build/audit/release-source.json \
+            --notes-output build/audit/release-notes.md
 
-          exact_tag="$(git describe --tags --exact-match HEAD)"
-          [[ "$exact_tag" == "v$version" ]]
-          [[ -z "$(git status --porcelain=v1 --untracked-files=normal)" ]]
+          git tag --points-at HEAD | grep -Fxq -- "$expected_tag"
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
 
           source_epoch="$(git show -s --format=%ct HEAD)"
           flashgate_validate_source_date_epoch "$source_epoch"
@@ -62,6 +66,16 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "source_epoch=$source_epoch" >> "$GITHUB_OUTPUT"
           echo "source_time=$source_time" >> "$GITHUB_OUTPUT"
+
+      - name: Upload generated release notes and source audit
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-source-${{ steps.release.outputs.version }}
+          path: |
+            build/audit/release-source.json
+            build/audit/release-notes.md
+          if-no-files-found: error
+          retention-days: 30
 
   build:
     name: ${{ matrix.platform }} ${{ matrix.public_arch }}
@@ -116,11 +130,15 @@ jobs:
       - name: Validate shared build-input fixtures
         if: matrix.platform == 'windows'
         shell: pwsh
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
         run: ./scripts/Test-BuildInputValidation.ps1
 
       - name: Validate shared build-input fixtures
         if: matrix.platform == 'linux'
         shell: bash
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
         run: bash scripts/test-build-input-validation.sh
 
       - name: Create Windows release artifact (build 1)

@@ -56,6 +56,8 @@ jobs:
 
       - name: Validate shared build-input fixtures
         shell: pwsh
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
         run: ./scripts/Test-BuildInputValidation.ps1
 
       - name: Build Windows binary with metadata (build 1)
@@ -189,6 +191,8 @@ jobs:
 
       - name: Validate shared build-input fixtures
         shell: bash
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
         run: bash scripts/test-build-input-validation.sh
 
       - name: Build Linux binary with metadata (build 1)

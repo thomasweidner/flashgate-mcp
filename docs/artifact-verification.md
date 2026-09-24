@@ -7,15 +7,17 @@ product-metadata source.
 
 ## Canonical expectation sources
 
-The authoritative product constants and embedded build identity live in
-`internal/version`. Controlled build inputs are validated by
+The root `VERSION` file supplies the canonical controlled product version;
+`internal/version` owns the runtime identity model and development defaults.
+Controlled build inputs are validated by
 `scripts/Build-InputValidation.ps1` and
 `scripts/build-input-validation.sh`. The Windows resource generator, embedded
 manifest verifier, icon verifier, release builders, and archive audit consume
 those values instead of a separately maintained expected-metadata document.
 
-Release validation uses the requested SemVer plus the source commit and source
-time resolved by the controlled build or workflow. Public `x64` maps to Go
+Release validation uses `VERSION`, its exact `v<VERSION>` tag, the clean source
+commit, and source time resolved by the controlled build or workflow. A passed
+release version can only assert equality with `VERSION`. Public `x64` maps to Go
 `amd64`; public `arm64` maps to Go `arm64`.
 
 ## Verification layers

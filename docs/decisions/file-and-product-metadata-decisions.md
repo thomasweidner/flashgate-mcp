@@ -92,14 +92,21 @@ Der MCP-Implementierungsname `flashgate` und der Binary-Name
 
 ### Kanonische Versionsquelle
 
-- Release-Versionen stammen aus einem Git-Tag.
-- Release-Tags verwenden das Format `vMAJOR.MINOR.PATCH`.
+- Die Root-Datei `VERSION` ist die einzige editierbare kanonische
+  Repository-Produktversionsquelle. Sie enthält genau einen SemVer-Wert ohne `v`.
+- Release-Tags verwenden das Format `v<VERSION>` und müssen exakt auf dem
+  gebauten Commit liegen; sie belegen Parität, liefern aber keine Produktversion.
 - Prerelease-Tags dürfen einen SemVer-Suffix enthalten, zum Beispiel
   `v0.5.0-rc.1`.
 - Das führende `v` gehört zum Git-Tag, aber nicht zur eingebetteten
   Produktversion.
-- Außerhalb eines Release-Tags wird die Entwicklungsproduktversion
-  `0.0.0-dev` verwendet.
+- Gewöhnliche unkontrollierte Builds verwenden unabhängig vom Tag
+  `0.0.0-dev`; kontrollierte Builds verwenden `VERSION`.
+- Explizite SemVer-Overrides sind ausschließlich kontrollierte
+  Metadaten-/Regressionstestinputs und bei Release höchstens eine
+  Expected-Value-Assertion gegen `VERSION`.
+- `CHANGELOG.md` ist die einzige manuell gepflegte narrative
+  Release-Notes-Quelle; Release Notes werden daraus abgeleitet.
 - Manuell frei eingegebene Releaseversionswerte sind nicht die
   kanonische Quelle.
 
@@ -392,7 +399,7 @@ Go target: windows/arm64
 - Linux x64 Stable
 - Windows ARM64 Preview
 - Linux ARM64 Preview
-- Entwicklungsbuild ohne Release-Tag
+- Unkontrollierter Entwicklungsbuild mit `0.0.0-dev`
 - Stable- und Prerelease-SemVer
 - Clean und Dirty Working Tree
 - Windows-Dateiversionsabbildung

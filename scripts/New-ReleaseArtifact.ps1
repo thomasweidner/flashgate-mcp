@@ -88,8 +88,9 @@ function Invoke-ProcessRequired {
 
     if ($ProcessExitCode -ne 0) {
         throw (
-            "$FilePath $($Arguments -join ' ') failed with exit code " +
-            "${ProcessExitCode}: $StandardError $StandardOutput"
+            '{0} {1} failed with exit code {2}: {3} {4}' -f
+            $FilePath, ($Arguments -join ' '), $ProcessExitCode,
+            $StandardError, $StandardOutput
         )
     }
 
@@ -134,6 +135,12 @@ try {
 
     . $InputValidationScript
     $null = Get-FlashGateSemanticVersion -Value $Version
+    if ($Release) {
+        $RepositoryVersion = Get-FlashGateRepositoryVersion -RootPath $RootPath
+        if ($Version -cne $RepositoryVersion) {
+            throw "Release version assertion '$Version' differs from VERSION '$RepositoryVersion'."
+        }
+    }
 
     foreach ($RequiredFile in $RequiredFiles) {
         $RequiredPath = Join-Path $RootPath $RequiredFile

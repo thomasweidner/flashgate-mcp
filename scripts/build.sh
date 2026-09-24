@@ -172,26 +172,25 @@ mapfile -t existing_resources < <(
 ((${#existing_resources[@]} == 0)) ||
     fail "refusing to build with pre-existing Windows resource files: ${existing_resources[*]}"
 
-exact_tag=""
-if exact_tag_output="$(git -C "$root_path" describe --tags --exact-match HEAD 2>/dev/null)"; then
-    exact_tag="$exact_tag_output"
-fi
-
+flashgate_read_repository_version "$root_path" ||
+    fail "invalid or missing repository VERSION"
+repository_version="$FLASHGATE_REPOSITORY_VERSION"
 if [[ -z "$version" ]]; then
-    if [[ "$exact_tag" =~ ^v(.+)$ ]]; then
-        version="${BASH_REMATCH[1]}"
-    else
-        version="0.0.0-dev"
-    fi
+    version="$repository_version"
 fi
 
 flashgate_validate_semver "$version" || fail "invalid semantic version: $version"
 file_version="$FLASHGATE_FILE_VERSION"
 
 if [[ "$release" == true ]]; then
-    expected_tag="v$version"
-    [[ "$exact_tag" == "$expected_tag" ]] ||
-        fail "release builds require exact tag '$expected_tag'; current exact tag is '$exact_tag'"
+    [[ "$version" == "$repository_version" ]] ||
+        fail "release version assertion differs from repository VERSION"
+    expected_tag="v$repository_version"
+    git -C "$root_path" tag --points-at HEAD | grep -Fxq -- "$expected_tag" ||
+        fail "release builds require exact tag '$expected_tag' on HEAD"
+    go -C "$root_path" run -mod=vendor ./cmd/releaseaudit source \
+        --root "$root_path" --release >/dev/null ||
+        fail "release notes source validation failed"
 fi
 
 commit="$(git -C "$root_path" rev-parse HEAD)"
@@ -206,7 +205,7 @@ else
     source_time="$(date -u -d "$commit_time" '+%Y-%m-%dT%H:%M:%SZ')"
 fi
 
-if [[ -n "$(git -C "$root_path" status --porcelain=v1 --untracked-files=normal)" ]]; then
+if [[ -n "$(git -C "$root_path" status --porcelain=v1 --untracked-files=all)" ]]; then
     modified="true"
 fi
 
