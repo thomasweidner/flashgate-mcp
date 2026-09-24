@@ -12,7 +12,7 @@ The architecture must permit reuse and optional local FlashGate modules/provider
 
 Keep one repository and one primary binary initially. Use packages, interfaces, and capabilities for separation. Local Go consumers reuse the core directly. IPC is introduced only for justified process isolation or cross-language integration.
 
-FlashGate modules/providers may later be public standard, community, vendor-specific, organization-internal, or Voxtronic-specific. Possible metadata includes name, version, vendor, declared capabilities, tools, configuration schema, security classification, platform requirements, and dependencies. No identifier syntax is selected.
+FlashGate modules/providers may later be public standard, community, vendor-specific, or organization-internal. Possible metadata includes name, version, vendor, declared capabilities, tools, configuration schema, security classification, platform requirements, and dependencies. No identifier syntax is selected.
 
 Sprint 3.41 neither selects nor implements a FlashGate module/provider runtime model.
 

@@ -16,7 +16,7 @@ The project is a vendor-neutral open-source MCP server for controlled local file
 
 The current repository, module, binary, and MCP server implementation name (`serverInfo.name`) remain `fileserver-mcp` until Sprint 3.42. Target identifiers are repository and binary `flashgate-mcp`, implementation name `flashgate`, and module `github.com/blacksheepkhan/flashgate-mcp`.
 
-The core must not require Voxtronic-specific paths, tool names, proprietary dependencies, product permissions, secrets, internal URLs, or infrastructure values.
+The core must not require organization-specific paths, tool names, proprietary dependencies, product permissions, secrets, internal URLs, or infrastructure values.
 
 ## Rationale
 
@@ -27,7 +27,7 @@ A public name can be adopted without mixing high-risk mechanical renames into th
 - Documentation must explain the temporary dual-name state.
 - Technical identifiers remain unchanged in Sprint 3.41.
 - After Sprint 3.42, the old identifier remains only in migration and history.
-- Public, community, vendor, internal, and Voxtronic-specific FlashGate modules/providers may be considered without changing core neutrality.
+- Public, community, vendor, and organization-internal FlashGate modules/providers may be considered without changing core neutrality.
 
 ## Security Impact
 

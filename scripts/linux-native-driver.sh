@@ -345,7 +345,7 @@ fi
 
 strings "$x64_a" >"$logs_dir/linux-x64-strings.log"
 if grep -E -i \
-    'C:\\Users\\ThomasW|/mnt/c/Users/ThomasW|OneDrive - VOXTRONIC' \
+    'C:\\Users\\ThomasW|/mnt/c/Users/ThomasW|OneDrive - ' \
     "$logs_dir/linux-x64-strings.log" >"$logs_dir/path-leak-findings.log"; then
     printf 'local Windows path or user data found in Linux binary strings\n' >&2
     exit 1
@@ -435,7 +435,7 @@ leak_arguments=(
     --forbidden "$host_name"
     --forbidden 'C:\Users\ThomasW'
     --forbidden '/mnt/c/Users/ThomasW'
-    --forbidden 'OneDrive - VOXTRONIC'
+    --forbidden 'OneDrive - '
 )
 go -C "$repo_dir" run -mod=vendor ./cmd/releaseaudit scan \
     --artifact "$linux_x64_archive" \

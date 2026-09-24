@@ -411,7 +411,7 @@ else {
 $privateHostPathPatterns = [object[]]@(
     [pscustomobject]@{ id = 'PRIVATE_USER_PATH'; expression = '(?i)C:\\Users\\[^\\\r\n]+' },
     [pscustomobject]@{ id = 'PRIVATE_WORK_ROOT'; expression = '(?i)Codex-Work|<CodexTempRoot>' },
-    [pscustomobject]@{ id = 'PRIVATE_SYNC_PATH'; expression = '(?i)OneDrive\s+-\s+VOXTRONIC(?:\\[^\\\r\n]+)?' }
+    [pscustomobject]@{ id = 'PRIVATE_SYNC_PATH'; expression = '(?i)OneDrive\s+-\s+[^\\/\r\n]+(?:\\[^\\\r\n]+)?' }
 )
 $forbiddenPatterns = [object[]]@(
     $privateHostPathPatterns + [object[]]@(
