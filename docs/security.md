@@ -134,6 +134,15 @@ The standard cross-platform API remains path-based: a concurrent writer could ex
 
 Directory copy is currently unsupported by design.
 
+### Bounded Filesystem Plans
+
+The Version 1.0 security contract for planned multi-step filesystem work is
+defined in [Bounded Filesystem Plans: Threat Model](bounded-filesystem-plans-threat-model.md).
+Plans are closed, typed, server-bounded sequences rather than transactions or a
+workflow language. They must revalidate policy and path identity before each
+step, report partial completion truthfully, and never promise general rollback.
+The plan executor is not implemented yet.
+
 ## Symlinks
 
 `SPR-036` rejects symlink-based escapes where an existing path, or the nearest existing parent for a create target, resolves outside the configured root.

@@ -13,6 +13,12 @@ temporary evidence require an explicit caller-provided work root through
 `FLASHGATE_WORK_ROOT`; the root must be outside the source tree and satisfy the
 path constraints documented by the invoked script.
 
+Future bounded filesystem plan tests must satisfy the permanent negative,
+race, limit, cancellation, partial-completion, dry-run, and platform gates in
+the [bounded filesystem plan threat model](bounded-filesystem-plans-threat-model.md).
+That contract is test guidance for the planned implementation, not evidence
+that a plan tool currently exists.
+
 ## Test Commands
 
 Run all tests:
