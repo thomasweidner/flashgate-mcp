@@ -26,14 +26,16 @@ code when a focused check fails.
 
 The focused gate verifies:
 
-- strict UTF-8 readability of required public project documents;
-- backlog identifier/status consistency without reopening completed work;
+- strict UTF-8 readability and coverage of current public authorities;
+- canonical backlog identifier and status consistency;
+- current product, architecture, release, and documentation gate consistency;
 - active Windows/Linux Go, coverage, lint, build, release, metadata, shell,
   PowerShell 7.6 LTS-line, documentation, and security gates;
-- absence of operational dependencies on private development infrastructure;
-- absence of private host paths from active public guidance;
-- the explicit classification of historical planning and changelog content as
-  non-operative.
+- a self-contained public checkout with no private development-control-plane
+  dependency, private host paths, machine-local workflow roots, or internal
+  infrastructure task/workflow identifiers in active guidance;
+- historical migration and provenance material classified separately as
+  non-operative, without treating a past deletion inventory as product logic.
 
 ## Manual review
 

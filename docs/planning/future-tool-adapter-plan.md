@@ -157,7 +157,7 @@ Watch handles, process handles, jobs, cursors, result resources, caches, and oth
 
 Content hashes/fingerprints/snapshot identifiers are evidence about observed state, not bearer capabilities. Every externally visible read/verify/conditional result still passes current authorization and root/path policy. Optional server-side identity/content caches are bounded, context-partitioned, safely invalidated, and semantically transparent when absent; a request for fresh/strong proof cannot be satisfied solely by a reusable cached proof when its contract requires current state to be re-evaluated.
 
-Public FlashGate contracts and guidance remain consumer-independent. They do not depend on Voxtronic/INF task identifiers, consumer `AGENTS.md`, Codex-Work or task/handoff conventions, private control planes, or a particular agent product. A consumer may layer its own workflow/manifest policy over generic FlashGate primitives without transferring that policy into the product.
+Public FlashGate contracts and guidance remain consumer-independent. They have no organization-specific task or infrastructure, private control-plane, machine-local workflow, or particular agent-product prerequisite. A consumer may layer its own workflow or manifest policy over generic FlashGate primitives without transferring that policy into the product.
 
 ## 5. Version 1.0 filesystem and discovery corrections
 
@@ -179,7 +179,7 @@ Default fields are compact and may include root ID, safe label, read/write avail
 Field groups may include:
 
 - portable basics: exists, type, name, size, modified time, portable permission summary;
-- `storage`: compression supported/enabled/default, encryption supported/enabled/default, sparse state, logical/allocated size where reliable;
+- `storage`: `compression_supported`, `compression_enabled`, `compression_inherited_default`, `encryption_supported`, `encryption_enabled`, `encryption_inherited_default`, sparse state, logical/allocated size where reliable;
 - `availability`: cloud-backed/placeholder state, local/partial/online-only state, pin state, in-sync state, safe provider-independent byte counters;
 - `identity`: bounded stable file identity where policy permits;
 - `link`: symlink/reparse classification without unnecessary target/host disclosure;
@@ -443,7 +443,7 @@ Go standard-library support is used first. Optional codec/native adapters are al
 
 ### 10.2 Transparent path compression/encryption — `BL-351`
 
-Query state through `get_path_info(fields=["storage"])`; there is no separate `get_path_storage_info`. Where reliably supported, normalized requested storage fields may include compression supported/enabled/inherited-default, encryption supported/enabled/inherited-default, sparse state, logical size, and allocated/physical size. Unknown/unsupported fields are explicit and do not fabricate cross-filesystem equivalence.
+Query state through `get_path_info(fields=["storage"])`; there is no separate `get_path_storage_info`. Where reliably supported, normalized requested storage fields may include `compression_supported`, `compression_enabled`, `compression_inherited_default`, `encryption_supported`, `encryption_enabled`, `encryption_inherited_default`, sparse state, logical size, and allocated/physical size. An inherited default describes directory/child behavior, not the enabled state of the current path. Unknown/unsupported fields are explicit and do not fabricate cross-filesystem equivalence.
 
 Canonical mutation:
 
@@ -610,7 +610,7 @@ The core teaches portable strategy: prefer batch calls over repeated scalars; re
 
 The skill explains how to choose tools but does not duplicate their schemas or become the API authority. It reuses `BL-216` compact server instructions without treating them as the full skill. It never becomes an authorization mechanism.
 
-The skill and its examples are consumer-independent: no Voxtronic/INF task IDs, no required consumer `AGENTS.md`, no Codex-Work paths, no private task/handoff conventions, no assumption of ChatGPT/Codex or another specific agent product, and no private governance as a prerequisite. Consumer-specific policies may compose FlashGate externally.
+The skill and its examples are consumer-independent: no organization-specific identifiers or paths, private workflow or control-plane prerequisites, or assumed agent product. Consumer policies may compose FlashGate externally; the skill grants no authorization.
 
 ## 20. Public tool inventory by target
 

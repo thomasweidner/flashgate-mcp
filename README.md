@@ -2,13 +2,13 @@
 
 **Fast, secure and local-first host operations for MCP.**
 
-FlashGate MCP is a resource-efficient cross-platform Model Context Protocol server for controlled filesystem, process, and operating-system operations. Deterministic work runs locally to minimize CPU, memory, latency, response size, model round trips, and token use.
+FlashGate MCP is a resource-efficient, cross-platform MCP server for controlled local host operations. Today it provides secure, root-confined filesystem access; Version 1.0 extends that foundation to bounded search, managed processes, typed command execution, and system information. Deterministic work stays local to reduce latency, payload size, model round trips, and token use.
 
 FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, Go module
 `github.com/thomasweidner/flashgate-mcp`, binary `flashgate-mcp`, and MCP server
 implementation name (`serverInfo.name`) `flashgate`.
 
-It exposes secure filesystem operations to MCP-compatible clients through JSON-RPC over STDIO. The server is designed for predictable behavior, low operational overhead, clear security boundaries, and maintainable enterprise-style code.
+It exposes secure filesystem operations to MCP-compatible clients through JSON-RPC over STDIO. The server is designed for predictable behavior, low operational overhead, clear security boundaries, and maintainable, auditable code.
 
 ## Status
 
@@ -80,9 +80,9 @@ shutdown coordinator, secret-safe instance/exit diagnostics, and the strict
 runtime implementation and BL-241 its integrated Windows/Linux validation.
 ## Open-Source, Modules, and Protocol Extensions
 
-FlashGate MCP is developed as a general, vendor-neutral open-source project. The core, public contracts, documentation, and optional agent guidance must not require Voxtronic paths, INF work items, consumer-specific `AGENTS.md` rules, Codex-Work conventions, private control planes, proprietary dependencies, organization secrets, company-specific permissions, or a particular agent product. Consumer-specific governance may compose FlashGate capabilities externally, but it is never a FlashGate runtime or authorization dependency.
+FlashGate MCP is a general, vendor-neutral open-source project. Its core, public contracts, documentation, and optional agent guidance have no organization-specific infrastructure, private control-plane, machine-local workflow, proprietary credential or permission, or particular agent-product prerequisite. Consumer policies may compose FlashGate capabilities externally without becoming runtime or authorization dependencies.
 
-Public, community, vendor, organization-internal, and Voxtronic-specific FlashGate modules/providers are post-Version-1.0 work. No module/provider contract or runtime model is part of the initial stable release, and future providers may not bypass central security or execution-identity controls.
+Optional FlashGate modules/providers from public, community, vendor, or organization-internal sources are post-Version-1.0 work. No module/provider contract or runtime model is part of the initial stable release, and future providers may not bypass central security or execution-identity controls.
 
 MCP protocol extensions are separate negotiated wire-protocol features. The implemented protocol remains MCP `2025-11-25`. Version 1.0 targets explicit support for the final `2026-07-28` revision alongside the `2025-11-25` initialization path, but no revision is advertised until its adapter path and compatibility tests are implemented. FlashGate names protocol paths by exact revision so future revisions remain explicit. The project keeps its own Go MCP adapter; official MCP SDKs/specification artifacts are interoperability references, not a new runtime dependency. Deprecated MCP Roots is not the basis of FlashGate named roots.
 
@@ -283,7 +283,7 @@ docs/
 
 ## Requirements
 
-- Go 1.26 or newer
+- Go version required by `go.mod` (currently Go 1.26.4 or newer)
 
 ## Building
 
@@ -666,6 +666,6 @@ This project is licensed under the GNU General Public License v3.0.
 
 See `LICENSE` for details.
 
-## PowerShell-7.6-LTS-Patchvertrag
+## PowerShell 7.6 LTS patch contract
 
-Der allgemeine Kompatibilitäts-Gate prüft `Major=7` und `Minor=6`. `ObservedPowerShellVersion` hält den tatsächlich verwendeten Patch fest; `MinimumPowerShellVersion` ist nur bei einem konkret belegten Fix zulässig und sonst `null`. `ServicingTarget=LatestServicedPatchWithin7.6` gilt für Wartung, ohne einen Patch als generelle Kompatibilitätsgrenze zu verwenden. Exakte Patch-, Pfad- oder Hashbindungen sind ausschließlich für historische Evidenz, Bug-Reproduktion, Installer-/Download-/SBOM-/Supply-Chain-Provenienz oder einen belegten Mindestpatch zulässig und müssen als Ausnahme klassifiziert werden.
+Compatibility requires PowerShell major version 7 and minor version 6. `ObservedPowerShellVersion` records the actual patch. `MinimumPowerShellVersion` is `null` unless a specific fix establishes and justifies a minimum patch. `ServicingTarget=LatestServicedPatchWithin7.6` is the maintenance target. Exact patch, path, or hash bindings are allowed only for historical evidence, bug reproduction, installer/download/SBOM/supply-chain provenance, or a documented minimum-patch fix; each exception must be explicitly classified.

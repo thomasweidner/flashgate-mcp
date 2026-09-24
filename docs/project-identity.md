@@ -6,7 +6,7 @@ The binding public project name is **FlashGate MCP**.
 
 Tagline: **Fast, secure and local-first host operations for MCP.**
 
-Working description: FlashGate MCP is a fast, secure, resource-efficient, local-first MCP server for controlled filesystem, process, and operating-system operations.
+Working description: FlashGate MCP is a resource-efficient, cross-platform MCP server for controlled local host operations. Today it provides secure, root-confined filesystem access; Version 1.0 targets bounded search, managed processes, typed command execution, and system information.
 
 ## Meaning
 
@@ -23,9 +23,9 @@ Unrestricted host access, free-form remote shell behavior, implicit network expo
 
 ## Open-source direction
 
-The project is intended to be a general, vendor-neutral open-source project. Its core has no mandatory Voxtronic-specific paths, tools, proprietary systems, permissions, secrets, or infrastructure values.
+FlashGate is a general, vendor-neutral open-source project. Its core has no organization-specific infrastructure, private control-plane, machine-local workflow, proprietary credential or permission, or particular agent-product prerequisite.
 
-Public, community, vendor, organization-internal, and Voxtronic-specific **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. `SPR-041` defines no module/provider contract, identifier syntax, or runtime model.
+Public, community, vendor, and organization-internal **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. `SPR-041` defines no module/provider contract, identifier syntax, or runtime model.
 
 An **MCP protocol extension** is a separate negotiated addition to the MCP wire protocol and follows the official vendor-prefix/slash identifier contract, for example `io.modelcontextprotocol/tasks`. FlashGate modules/providers do not automatically define or implement MCP protocol extensions.
 
