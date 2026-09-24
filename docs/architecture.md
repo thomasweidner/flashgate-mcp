@@ -183,6 +183,8 @@ Owns files, directories, metadata, ranged reads, text/media/binary classificatio
 
 Owns root-scoped path/name/metadata/content search, include/exclude rules, bounded recursion, pagination, context, and optional later accelerators.
 
+The [search model and threat model](search-model-and-threat-model.md) defines the Version 1.0 request, traversal, ordering, budget, trust-boundary, and fail-closed security contract. Search remains behind the central filesystem policy boundary and has a mandatory pure-Go baseline.
+
 ### Process
 
 Owns observation, details, trees, managed process instances, opaque handles, status, stdout/stderr cursors, stop/wait, and lifecycle.
