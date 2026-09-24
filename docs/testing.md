@@ -247,6 +247,8 @@ Focused contract tests compare runtime tool definitions with `docs/mcp-tool-cata
 
 The `tools/list` JSON-RPC wire test checks schema and annotation exposure for both profiles, requires all four annotation members in the real wire object, verifies the exact annotation values, and records deterministic UTF-8 JSONL response/result sizes. The current BL-202 measurements are 2446/2411 bytes for read-only and 6492/6457 bytes for default (response/result). The test and `benchmarks/budgets.json` pin them as deterministic contract values; no timing, CPU, RAM, or performance baseline is recalibrated.
 
+The filesystem `tools/call` wire suite enforces UTF-8 response-size regression budgets for representative successful list, read, metadata, absence, and move results. It also caps the complete JSON-RPC error response for unknown, profile-gated, legacy, invalid-argument, and path-policy failures. These fixture-sized ceilings are regression guards rather than production payload limits; runtime limits remain configuration-controlled, and larger bounded result classes require their own representative fixtures and budgets.
+
 ### MCP Compatibility Testing
 
 The implemented protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, pre-`CallToolResult` unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the unchanged error contract. The decoder intentionally validates the exact FlashGate-emitted `2025-11-25` subset (one text block, required object `structuredContent`, optional boolean `isError`, no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
