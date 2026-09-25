@@ -129,7 +129,13 @@ Version 1.0                 post-Version 1.0
              OS platform adapter
 ```
 
-The exact Go interfaces remain implementation details, but the separation must support:
+The backend-neutral boundary is implemented in `internal/executionidentity`.
+It keeps authenticated callers immutable, omits backend selection from caller
+requests, requires policy authorization before backend lookup, and passes the
+complete execution binding through a narrow backend to an OS adapter. The
+current-process and service-account implementations deliberately execute under
+the process's existing identity; they do not impersonate. The exact Go
+interfaces remain internal implementation details, but the separation supports:
 
 - backend registration by stable internal ID;
 - startup validation of configured roots;
@@ -138,6 +144,11 @@ The exact Go interfaces remain implementation details, but the separation must s
 - normalized safe errors;
 - identity-bound handles, result resources, temporary paths, and audit records;
 - no domain or MCP contract changes when Variant B is later added.
+
+The reserved `user-worker` backend and unknown or duplicate backend IDs fail
+closed during registration or dispatch. Native service-account setup, root ACL
+validation, transport-derived peer authentication, and platform adapters remain
+owned by their dedicated implementation and Windows/Linux validation tasks.
 
 ## Variant A — service-account roots
 
