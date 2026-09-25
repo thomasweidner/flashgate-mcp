@@ -225,6 +225,11 @@ jobs:
         shell: pwsh
         run: ./scripts/Test-GoCoverage.ps1 -PlatformName '${{ matrix.platform }}' -MinimumCoverage ${{ matrix.minimum_coverage }}
 
+      - name: Test stateful components with the race detector
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: bash scripts/test-go-race.sh
+
       - name: Upload coverage report
         if: ${{ always() && !cancelled() }}
         uses: actions/upload-artifact@v7
