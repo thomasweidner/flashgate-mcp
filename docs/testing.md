@@ -375,6 +375,8 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Typed command tests
 
+- global and effective-profile command concurrency limits, fail-closed unknown
+  profiles, non-blocking overload rejection, and race-safe idempotent release;
 - executable ID resolves only to approved absolute binary;
 - fixed subcommand and allowed flags/value rules;
 - path arguments remain under allowed roots;
