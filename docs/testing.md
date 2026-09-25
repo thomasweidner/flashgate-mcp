@@ -13,6 +13,14 @@ temporary evidence require an explicit caller-provided work root through
 `FLASHGATE_WORK_ROOT`; the root must be outside the source tree and satisfy the
 path constraints documented by the invoked script.
 
+Build-input tests validate root `VERSION` as strict single-line SemVer in
+PowerShell, Bash, and Go. `cmd/releaseaudit source` validates the changelog and
+requires a dated, nonempty `## [<VERSION>] - YYYY-MM-DD` section in release
+mode. The release workflow regression rejects job-level permission overrides,
+free manual versions, tag-derived versions, and missing source gates. A release
+requires `v<VERSION>` on HEAD and a clean tree; ordinary direct `go build`
+retains `0.0.0-dev` and Windows file version `0.0.0.0`.
+
 ## Test Commands
 
 Run all tests:

@@ -7,6 +7,8 @@ Most file and product metadata checks are automated. This document defines the r
 ## Windows Explorer property sheet
 
 Use an x64 validation or release binary produced by the controlled build path.
+For a release, compare its version with root `VERSION` and the exact
+`v<VERSION>` tag; an explicit fixture version is only for metadata validation.
 
 1. Open the directory containing `flashgate-mcp.exe`.
 2. Open **Properties**.

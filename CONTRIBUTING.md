@@ -75,20 +75,21 @@ Payload-heavy content must not be duplicated merely for convenience. Optional ac
 ## Product versioning
 
 A merge that adds a new externally observable FlashGate product capability, tool,
-protocol behavior, or other user-visible function must carry the corresponding
-product-version change once the canonical repository version source defined by
-`BL-245` is implemented. Before Version 1.0, new product capability increments
+protocol behavior, or other user-visible function must update the root `VERSION`
+in the same merge. Before Version 1.0, new product capability increments
 the SemVer minor component and resets patch to zero; a compatible product bug fix
 increments patch. A deliberate breaking pre-1.0 product change uses a new minor
 version together with the required changelog and migration notes. After Version
 1.0, normal SemVer major/minor/patch rules apply.
 
 Documentation-only, test-only, planning-only, and behavior-neutral refactoring
-changes do not require a product-version increment. Version numbers must come
-from one canonical source; do not maintain competing manual version values.
-Until `BL-245` completes that source, the current tag/explicit-build version
-mechanism remains authoritative and no repository version bump is falsely
-claimed.
+changes do not require a product-version increment. Root `VERSION` is the one
+editable product-version source. `CHANGELOG.md` is the narrative release-notes
+source; keep `[Unreleased]` until a release is prepared. A release requires an
+entry headed `## [<VERSION>] - YYYY-MM-DD`, nonempty notes, the exact
+`v<VERSION>` tag on the built commit, and a clean working tree. A tag is parity
+evidence, not the product-version source. Ordinary direct `go build` remains
+`0.0.0-dev`; explicit build versions are for metadata validation fixtures.
 
 
 ## Documentation changes

@@ -84,7 +84,7 @@ func (values *stringList) Set(value string) error {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: releaseaudit inventory|compare|scan|scan-file")
+		fmt.Fprintln(os.Stderr, "usage: releaseaudit inventory|compare|scan|scan-file|source")
 		os.Exit(2)
 	}
 
@@ -98,6 +98,8 @@ func main() {
 		err = runScan(os.Args[2:])
 	case "scan-file":
 		err = runScanFile(os.Args[2:])
+	case "source":
+		err = runSource(os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q", os.Args[1])
 	}

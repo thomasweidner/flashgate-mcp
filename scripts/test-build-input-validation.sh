@@ -7,7 +7,60 @@ fixture_path="$root_path/internal/version/testdata/build-input-validation-fixtur
 # shellcheck source=build-input-validation.sh
 source "$root_path/scripts/build-input-validation.sh"
 
+[[ -n "${FLASHGATE_WORK_ROOT:-}" && -d "$FLASHGATE_WORK_ROOT" ]] || {
+    printf 'FLASHGATE_WORK_ROOT must name an existing work directory\n' >&2
+    exit 1
+}
+version_fixture_root="$(mktemp -d -- "$FLASHGATE_WORK_ROOT/flashgate-version.XXXXXXXX")"
+cleanup_version_fixture() {
+    rm -f -- "$version_fixture_root/VERSION"
+    rmdir -- "$version_fixture_root"
+}
+trap cleanup_version_fixture EXIT
+
 errors=()
+if flashgate_read_repository_version "$version_fixture_root"; then
+    errors+=("missing repository VERSION passed")
+fi
+valid_versions=('0.1.0' $'0.1.0\n' '1.2.3-rc.1')
+invalid_versions=(
+    '' $' 0.1.0\n' $'\xEF\xBB\xBF0.1.0\n' $'v0.1.0\n'
+    $'0.1.0\n1.0.0\n' $'0.1.0\r\n' $'0.1.0\r' $'0.1.0 \n' $'1.2\n'
+    $'65536.0.0\n' $'1.2.3-rc.01\n'
+)
+for value in "${valid_versions[@]}"; do
+    printf '%s' "$value" > "$version_fixture_root/VERSION"
+    if ! flashgate_read_repository_version "$version_fixture_root"; then
+        errors+=("valid repository VERSION failed")
+    fi
+done
+for index in "${!invalid_versions[@]}"; do
+    value="${invalid_versions[index]}"
+    if [[ "$index" == 5 ]]; then
+        python3 -c 'import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(b"0.1.0\r\n")' \
+            "$version_fixture_root/VERSION"
+    elif [[ "$index" == 6 ]]; then
+        python3 -c 'import pathlib,sys; pathlib.Path(sys.argv[1]).write_bytes(b"0.1.0\r")' \
+            "$version_fixture_root/VERSION"
+    else
+        printf '%s' "$value" > "$version_fixture_root/VERSION"
+    fi
+    if flashgate_read_repository_version "$version_fixture_root"; then
+        printf -v displayed_value '%q' "$value"
+        byte_hex="$(od -An -tx1 "$version_fixture_root/VERSION")"
+        errors+=("invalid repository VERSION index $index passed: $displayed_value bytes=$byte_hex")
+    fi
+done
+# Escaped payloads stay NUL-free in Bash variables; printf writes the bytes.
+invalid_version_bytes=(
+    '\0' '0.1.0\0' '0.1\0.0' '0.1.0\0\n' '\0.1.0\n'
+)
+for encoded in "${invalid_version_bytes[@]}"; do
+    printf '%b' "$encoded" > "$version_fixture_root/VERSION"
+    if flashgate_read_repository_version "$version_fixture_root"; then
+        errors+=("NUL repository VERSION passed: $encoded")
+    fi
+done
 fixture_stream_complete=false
 while IFS= read -r -d '' kind; do
     if ! IFS= read -r -d '' value ||

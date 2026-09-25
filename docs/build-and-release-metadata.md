@@ -26,7 +26,7 @@ Controlled builds resolve these values once:
 
 | Value | Source |
 |---|---|
-| Product version | exact `v<SemVer>` Git tag for releases, including any approved prerelease suffix; explicit SemVer for validation; `0.0.0-dev` for development |
+| Product version | root `VERSION` for controlled builds and releases; explicit SemVer only for metadata validation fixtures; `0.0.0-dev` for uncontrolled development builds |
 | Windows file version | `MAJOR.MINOR.PATCH.0` |
 | Commit | full 40-character Git revision |
 | Source time | `SOURCE_DATE_EPOCH`, otherwise Git commit time |
@@ -36,19 +36,20 @@ Controlled builds resolve these values once:
 | Platform | public `windows/x64`, `windows/arm64`, `linux/x64`, or `linux/arm64` |
 | Go target | internal `GOOS/GOARCH`, such as `windows/amd64` |
 
-Release builds fail closed unless the exact version tag is checked out and the working tree is clean. Local validation builds may be dirty and report `Modified: true`.
+Release builds fail closed unless `v<VERSION>` tags the built commit, the working
+tree is clean, and `CHANGELOG.md` has dated, nonempty notes for `VERSION`.
+Local validation builds may be dirty and report `Modified: true`.
 
 ## Product versioning policy
 
-FlashGate uses Semantic Versioning for product identity. The current
-implementation still derives release versions from an exact `v<SemVer>` tag,
-accepts an explicit SemVer for controlled validation builds, and reports
-`0.0.0-dev` for ordinary development builds. `BL-245` owns the remaining
-Version 1.0 work to establish one canonical repository product-version source
-and bind it to build metadata, release tags, artifacts, and release notes.
+FlashGate uses Semantic Versioning for product identity. Root `VERSION` is the
+only editable product-version source. It begins at `0.1.0`; this seed is not a
+release announcement. Controlled builds use this value unless a metadata test
+passes an explicit SemVer fixture. Uncontrolled direct `go build` continues to
+report `0.0.0-dev` and Windows file version `0.0.0.0`. The release tag is an
+exact parity proof, never a source of the product version.
 
-Once that canonical source is implemented, a functional merge and its version
-change are one atomic product change rather than separate follow-up work:
+A functional merge and its `VERSION` change are one product change:
 
 - before Version 1.0, a new externally observable capability, tool, protocol
   behavior, or other user-visible function increments the SemVer minor component
@@ -60,14 +61,15 @@ change are one atomic product change rather than separate follow-up work:
 - documentation-only, test-only, planning-only, and behavior-neutral refactoring
   changes do not require a product-version increment.
 
-The canonical version source must be the single editable product-version
-authority. Build scripts, CLI output, Windows `VERSIONINFO`, Linux metadata,
-embedded manifests, archive names, checksums, and release validation consume
-that value rather than maintaining independent manual versions. A release tag
-`v<VERSION>` must exactly match the canonical product version. Until `BL-245`
-implements this source, the existing tag/explicit-build mechanism remains
-authoritative and no repository version bump is claimed merely by editing
-documentation.
+Build scripts, CLI output, Windows `VERSIONINFO`, Linux metadata, embedded
+manifests, archive names, checksums, and release validation consume `VERSION`.
+At release, any passed version must equal `VERSION`; the built commit must have
+the exact `v<VERSION>` tag, and its tree must be clean. `CHANGELOG.md` is the
+only manually maintained narrative release-notes source. `cmd/releaseaudit
+source --root . --release` validates its dated `## [<VERSION>] - YYYY-MM-DD`
+section and may generate notes and a typed JSON report. No generated notes are
+added to binary archives. CI does not infer version bumps from diffs; the
+same-merge rule is a contributor and review contract.
 
 
 SemVer and `SOURCE_DATE_EPOCH` use one versioned fixture contract in
@@ -184,7 +186,10 @@ Linux cross-build from Windows:
 bash scripts/build.sh   --goos linux   --goarch amd64   --version 1.2.3   --output build/linux_x64/flashgate-mcp
 ```
 
-Direct `go build` remains valid for development, but controlled scripts are required when release-grade metadata and validation are expected.
+Omit `-Version` or `--version` in these scripts to use root `VERSION`.
+The explicit `1.2.3` examples above are fixture-style metadata validation
+overrides, not a competing product-version source. Direct `go build` remains
+valid for development; controlled scripts provide release-grade metadata.
 
 ## Release artifacts
 

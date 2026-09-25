@@ -495,7 +495,14 @@ Versioned baselines are recorded only from clean isolated checkouts of the same 
 
 ## Release Builds
 
-Release tags use `v<SemVer>`. The leading `v` belongs to the Git tag but is not embedded in product versions or artifact names. Release mode requires the exact tag and a clean tree; local integration validation may use an explicit SemVer and records `Modified: true`.
+Root `VERSION` is the single editable product SemVer source. Controlled builds
+use it for CLI, native metadata, build manifests, and artifact names. Ordinary
+direct `go build` reports `0.0.0-dev` and Windows file version `0.0.0.0`.
+Explicit SemVer overrides are for metadata validation fixtures. Release mode
+requires a clean tree, an exact `v<VERSION>` tag on the built commit, and a
+dated, nonempty `CHANGELOG.md` section for `VERSION`. The changelog is the
+single narrative release-notes source; generated notes are derived from it.
+The `0.1.0` seed in `VERSION` does not represent a published release.
 
 The tag-gated `.github/workflows/release-build.yml` workflow builds and validates:
 
@@ -574,22 +581,17 @@ The binary also supports a dedicated version mode:
 .\build\flashgate-mcp.exe --version
 ```
 
-A local development build without embedded release metadata prints default values:
+A direct development build without controlled linker values prints:
 
 ```text
-flashgate-mcp
-version: dev
-commit: unknown
-date: unknown
+flashgate-mcp 0.0.0-dev
 ```
 
-Release builds embed the version label, Git commit SHA, and UTC build date:
+Controlled builds report the effective SemVer in compact output. Verbose output
+also reports the numeric file version, Git commit SHA, and UTC source time:
 
 ```text
-flashgate-mcp
-version: v0.1.0-test
-commit: d9342ef1f1c4ebf03c2716f11d10b7fdb8dd316a
-date: 2026-07-05T20:02:54Z
+flashgate-mcp 0.1.0
 ```
 
 The `--version` mode is intended for diagnostics and artifact traceability. Normal MCP operation still communicates exclusively through JSON-RPC over STDIO.

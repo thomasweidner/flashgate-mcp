@@ -1,5 +1,40 @@
 $script:FlashGateMaximumSourceDateEpoch = [int64]253402300799
 
+function Get-FlashGateRepositoryVersion {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $RootPath
+    )
+
+    $VersionPath = Join-Path $RootPath 'VERSION'
+    if (-not (Test-Path -LiteralPath $VersionPath -PathType Leaf)) {
+        throw "Repository VERSION file not found: $VersionPath"
+    }
+    $Attributes = [IO.File]::GetAttributes($VersionPath)
+    if (($Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw 'Repository VERSION must be a regular file, not a link.'
+    }
+    $Bytes = [IO.File]::ReadAllBytes($VersionPath)
+    if ($Bytes.Length -eq 0 -or $Bytes.Length -gt 128) {
+        throw 'Repository VERSION must contain one bounded SemVer value.'
+    }
+    if ($Bytes.Length -ge 3 -and $Bytes[0] -eq 0xEF -and
+        $Bytes[1] -eq 0xBB -and $Bytes[2] -eq 0xBF) {
+        throw 'Repository VERSION must not have a UTF-8 BOM.'
+    }
+    $Utf8 = [Text.UTF8Encoding]::new($false, $true)
+    $Text = $Utf8.GetString($Bytes)
+    if ($Text.EndsWith("`n", [StringComparison]::Ordinal)) {
+        $Text = $Text.Substring(0, $Text.Length - 1)
+    }
+    if ($Text.Contains("`n") -or $Text.Contains("`r")) {
+        throw 'Repository VERSION must contain exactly one line with LF ending.'
+    }
+    $null = Get-FlashGateSemanticVersion -Value $Text
+    return $Text
+}
+
 function Get-FlashGateSemanticVersion {
     [CmdletBinding()]
     param(

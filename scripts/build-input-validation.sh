@@ -6,6 +6,33 @@ FLASHGATE_SEMVER_MINOR=""
 FLASHGATE_SEMVER_PATCH=""
 FLASHGATE_FILE_VERSION=""
 FLASHGATE_SOURCE_DATE_EPOCH=""
+FLASHGATE_REPOSITORY_VERSION=""
+
+flashgate_read_repository_version() {
+    local LC_ALL=C
+    local root_path="$1"
+    local version_path="$root_path/VERSION"
+    local value
+    local byte_count
+    local byte_hex
+    [[ -f "$version_path" && ! -L "$version_path" ]] || return 1
+    byte_count="$(wc -c < "$version_path")" || return 1
+    ((byte_count > 0 && byte_count <= 128)) || return 1
+    byte_hex="$(od -An -tx1 "$version_path")" || return 1
+    # Inspect hex bytes before read: Bash variables cannot retain NUL bytes.
+    [[ ! " $byte_hex " =~ [[:space:]](00|0d)[[:space:]] ]] || return 1
+    IFS= read -r value < "$version_path" || :
+    # A single extra byte is allowed only when its actual final byte is LF.
+    if ((byte_count != ${#value} && byte_count != ${#value} + 1)); then
+        return 1
+    fi
+    if ((byte_count == ${#value} + 1)) &&
+        [[ ! "$byte_hex" =~ (^|[[:space:]])0a$ ]]; then
+        return 1
+    fi
+    flashgate_validate_semver "$value" || return 1
+    FLASHGATE_REPOSITORY_VERSION="$value"
+}
 
 flashgate_decimal_le() {
     local value="$1"

@@ -107,29 +107,27 @@ function Resolve-Version {
         [string] $RequestedVersion
     )
 
-    $ExactTag = $null
-    $TagOutput = @(& git -C $RootPath describe --tags --exact-match HEAD 2>$null)
-    if ($LASTEXITCODE -eq 0) {
-        $ExactTag = ($TagOutput | Out-String).Trim()
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($RequestedVersion)) {
+    $RepositoryVersion = Get-FlashGateRepositoryVersion -RootPath $RootPath
+    $Resolved = $RepositoryVersion
+    if (-not [string]::IsNullOrEmpty($RequestedVersion)) {
         $Resolved = $RequestedVersion
-    }
-    elseif ($ExactTag -match '^v(.+)$') {
-        $Resolved = $Matches[1]
-    }
-    else {
-        $Resolved = '0.0.0-dev'
     }
 
     $null = Get-FlashGateSemanticVersion -Value $Resolved
 
     if ($Release) {
-        $ExpectedTag = "v$Resolved"
-        if ($ExactTag -ne $ExpectedTag) {
-            throw "Release builds require exact tag '$ExpectedTag'; current exact tag is '$ExactTag'."
+        if ($Resolved -cne $RepositoryVersion) {
+            throw "Release version assertion '$Resolved' differs from VERSION '$RepositoryVersion'."
         }
+        $ExpectedTag = "v$RepositoryVersion"
+        $Tags = @(Invoke-GitRequired -Arguments @('tag', '--points-at', 'HEAD'))
+        if ($ExpectedTag -cnotin $Tags) {
+            throw "Release builds require exact tag '$ExpectedTag' on HEAD."
+        }
+        $null = Invoke-GoRequired -Arguments @(
+            'run', '-mod=vendor', './cmd/releaseaudit', 'source',
+            '--root', $RootPath, '--release'
+        )
     }
 
     return $Resolved
@@ -193,7 +191,7 @@ try {
     }
 
     $StatusLines = @(
-        Invoke-GitRequired -Arguments @('status', '--porcelain=v1', '--untracked-files=normal')
+        Invoke-GitRequired -Arguments @('status', '--porcelain=v1', '--untracked-files=all')
     )
     $Modified = $StatusLines.Count -gt 0
 

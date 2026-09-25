@@ -94,6 +94,12 @@ done
 # shellcheck source=build-input-validation.sh
 source "$validation_script"
 flashgate_validate_semver "$version" || fail "invalid semantic version: $version"
+if [[ "$release" == true ]]; then
+    flashgate_read_repository_version "$root_path" ||
+        fail "invalid or missing repository VERSION"
+    [[ "$version" == "$FLASHGATE_REPOSITORY_VERSION" ]] ||
+        fail "release version assertion differs from repository VERSION"
+fi
 [[ "$goarch" == "amd64" || "$goarch" == "arm64" ]] || fail "unsupported GOARCH: $goarch"
 [[ -n "$output_directory" ]] || fail "--output-directory is required"
 
