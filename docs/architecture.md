@@ -393,6 +393,9 @@ Version 1.0 fingerprints/content identities are compact integrity/change evidenc
 Conditional read/not-modified contracts remain post-Version 1.0 under `BL-217`. They may accept a prior content identity/snapshot and omit unchanged payload, but every call still repeats current principal/profile/root/capability/path checks. An internal identity/content cache is an optional bounded implementation optimization: it is scoped to the relevant execution context, safely invalidated, semantically transparent when disabled, and never turns knowledge of a hash into access.
 
 See [Efficiency Improvement Plan](efficiency-improvement-plan.md).
+See also [Local deterministic work principle](local-deterministic-work.md) for
+the operation-selection rule and the boundary between server-side mechanics
+and client/model decisions.
 
 ## Native OS adapter policy
 
