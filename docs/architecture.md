@@ -179,6 +179,13 @@ Go components in this repository reuse the core directly. Future MCPs built on F
 
 Owns files, directories, metadata, ranged reads, text/media/binary classification, writes, edits, copying, moving, deletion, hashing, fingerprints/content identities, directory size, bounded plans, and Version 1.0 deterministic file/tree comparison plus batch expected-state verification through `BL-346`. BL-346 reuses the `BL-048` hashing/fingerprint and `BL-049` bounded-tree primitives and adds no second hash engine. Accepted post-Version-1.0 work adds local placeholder state (`BL-345`), filesystem event watch (`BL-347`), archive operations (`BL-348`), and scoped path compression (`BL-351`). Shared hashing/tree primitives and Operations/Job lifecycle are reused without transferring filesystem business ownership.
 
+The directory-size core operation performs a cancellable streaming walk with
+fixed entry and aggregate-byte ceilings. It does not follow denied links or
+expose host paths, and its optional monotonic progress callback lets the future
+Operations/Job adapter report progress without moving filesystem business logic
+into the job manager. MCP exposure and asynchronous job orchestration remain
+separate adapter work.
+
 ### Search
 
 Owns root-scoped path/name/metadata/content search, include/exclude rules, bounded recursion, pagination, context, and optional later accelerators.

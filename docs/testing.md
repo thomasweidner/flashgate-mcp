@@ -50,6 +50,12 @@ Run tests for a specific package:
 go test ./internal/fs
 ```
 
+Filesystem directory-size tests cover aggregate byte/file/directory counts,
+hidden-entry policy, monotonic progress snapshots, cancellation, path-type
+rejection, and both entry and byte ceiling failures. Native Windows reparse
+behavior remains part of Windows finalization rather than inferred from Linux
+symlink behavior.
+
 Run focused MCP protocol tests:
 
 ```bash
