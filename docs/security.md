@@ -397,6 +397,14 @@ The server constructs argv. Standard profiles do not accept a free shell string,
 
 Interactive shell and process input remain post-Version 1.0.
 
+Typed-command children use the effective identity of the selected execution
+backend: the existing FlashGate process identity in direct STDIO mode and the
+dedicated restricted service account in Version 1.0 service mode. Requests
+cannot choose an account, supply credentials, request elevation, or cause a
+fallback to a more privileged identity. Required isolation or identity setup
+failure denies the launch. The complete least-privilege and native-validation
+contract is defined in [Command Execution Identity](command-execution-identity.md).
+
 ### Native OS and interpreter boundary
 
 Normal Version 1.0 runtime prefers:
