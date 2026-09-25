@@ -20,6 +20,13 @@ commit, and source time resolved by the controlled build or workflow. A passed
 release version can only assert equality with `VERSION`. Public `x64` maps to Go
 `amd64`; public `arm64` maps to Go `arm64`.
 
+For every validated release archive, `cmd/releaseevidence` additionally
+verifies the sibling checksum and emits a Go module inventory, SPDX 2.3 JSON
+SBOM, and in-toto/SLSA provenance statement. The evidence binds the archive
+digest to the source commit and canonical release inputs. It is uploaded with
+the archive but remains explicitly unsigned until a separately approved
+signing provider and credential policy exist.
+
 ## Verification layers
 
 | Layer | Canonical implementation | Contract |
