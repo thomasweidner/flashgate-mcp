@@ -375,6 +375,10 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Typed command tests
 
+- execution redaction removes bare sensitive environment values and explicit
+  application secrets before output, diagnostic, or audit release;
+- environment evidence preserves names but never values and does not mutate
+  the policy-owned source map;
 - executable ID resolves only to approved absolute binary;
 - fixed subcommand and allowed flags/value rules;
 - path arguments remain under allowed roots;

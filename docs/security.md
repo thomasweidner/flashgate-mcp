@@ -377,6 +377,16 @@ Default control is limited to server-managed processes. External PID control is 
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
 
+Execution redaction is value-aware as well as pattern-based. Sensitive values
+from explicitly constructed command environments, plus application-specific
+secrets supplied by the command policy, are replaced before stdout, stderr,
+diagnostic, or audit text can be released. Environment evidence retains names
+only and replaces every value. The redactor is immutable after construction so
+one policy-bound instance can be applied consistently to concurrent output
+streams. Wiring it into the future Managed Process Engine remains part of that
+engine's integration; command implementations must not create an unredacted
+alternate result, diagnostic, or audit path.
+
 ### Typed command execution boundary
 
 Version 1.0 command execution uses server-defined command IDs. A definition fixes or constrains:
