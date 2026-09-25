@@ -406,6 +406,13 @@ Variant B worker tests are post-Version 1.0 and require a separate implementatio
 
 ### BL-241 additive multi-client and host-process lifecycle matrix
 
+The [CLI mode and host lifecycle contract](cli-mode-lifecycle-contract.md)
+requires table-driven coverage of accepted and rejected invocation forms,
+mode-to-role binding, stable management exit categories, no implicit elevation
+or state transition, MCP STDOUT purity, and clean-versus-incomplete shutdown.
+These contract checks supplement rather than replace the native lifecycle
+matrix below.
+
 BL-241 retains its independent pre-existing multi-client, lifecycle,
 compatibility, and denial contract. The following cases remain separately
 required and discoverable:
