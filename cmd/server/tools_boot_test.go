@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 )
 
@@ -120,6 +121,17 @@ func TestCapabilitiesFromReadOnly(t *testing.T) {
 
 	if !capabilitiesFromReadOnly(false).filesystemWrite {
 		t.Fatal("expected filesystem writes to be enabled outside read-only mode")
+	}
+}
+
+func TestCapabilitiesFromProfile(t *testing.T) {
+	t.Parallel()
+
+	if capabilitiesFromProfile(config.ProfileSafeRead).filesystemWrite {
+		t.Fatal("expected safe-read profile to disable filesystem writes")
+	}
+	if !capabilitiesFromProfile(config.ProfileFilesystemWrite).filesystemWrite {
+		t.Fatal("expected filesystem-write profile to enable filesystem writes")
 	}
 }
 

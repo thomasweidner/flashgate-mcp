@@ -82,7 +82,7 @@ func runWithIO(
 	toolRegistry := dependencies.newToolRegistry(
 		filesystem,
 		cfg.Filesystem().MaxFileSize(),
-		capabilitiesFromReadOnly(cfg.Filesystem().ReadOnly()),
+		capabilitiesFromProfile(cfg.Profile()),
 	)
 	if toolRegistry == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)

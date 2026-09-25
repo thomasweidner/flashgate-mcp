@@ -248,6 +248,8 @@ jobs:
       - name: JSON-RPC smoke test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
+        env:
+          MCP_PROFILE: "filesystem-write"
         run: bash scripts/smoke-jsonrpc.sh
 
       - name: JSON-RPC smoke test (Ubuntu read-only)
@@ -270,6 +272,8 @@ jobs:
       - name: JSON-RPC smoke test (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
+        env:
+          MCP_PROFILE: "filesystem-write"
         run: .\scripts\smoke-jsonrpc.ps1
 
       - name: JSON-RPC smoke test (Windows read-only)

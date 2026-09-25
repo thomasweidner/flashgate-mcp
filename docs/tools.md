@@ -1,6 +1,7 @@
 # Filesystem MCP tools
 
-FlashGate MCP exposes eight filesystem tools in the default profile, in this exact order:
+FlashGate MCP exposes eight filesystem tools in the explicitly activated
+`filesystem-write` profile, in this exact order:
 
 ```text
 list_directory
@@ -13,7 +14,17 @@ copy_path
 move_path
 ```
 
-The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
+The default `safe-read` profile exposes only `list_directory`, `read_file`, and
+`get_path_info`. Write-capable tools are not registered, and calls to
+unavailable or unknown names return generic JSON-RPC Invalid params.
+
+`MCP_PROFILE` accepts `safe-read` and `filesystem-write`. A valid root with no
+profile selects `safe-read`; write access therefore always needs explicit
+activation. `MCP_RISK_POLICY` defaults to `standard` and accepts explicit,
+comma-separated `high-risk`, `destructive`, and `interactive` classifications.
+Risk classifications are additional policy conditions and never grant tool
+capabilities. The compatibility switch `MCP_READ_ONLY` remains supported; if
+both switches are present they must select the same effective profile.
 
 For later Codex activation, `MCP_READ_ONLY=true` must be explicit and `MCP_ROOT` must be an absolute preflighted directory. See [Codex read-only activation preparation](codex-read-only-activation.md). `SPR-044` does not activate a client.
 
@@ -37,7 +48,12 @@ The result examples below are domain objects. Every successful `tools/call` plac
 
 The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: three schemas
+in `safe-read` and eight in `filesystem-write`. Each schema describes only the
+successful domain object in `structuredContent`; it does not describe the outer
+`CallToolResult.content[]`. Runtime schemas are deeply matched to catalog
+`resultSchema` by a contract test. Tool failures retain the existing safe
+JSON-RPC contract until BL-203.
 
 The same current MCP `2025-11-25` definitions expose all four annotation members explicitly:
 

@@ -71,7 +71,8 @@ All client paths are relative to the configured root. Results may echo the publi
 
 ## Capability gating
 
-The default profile exposes all eight baseline tools. The read-only profile exposes exactly:
+The explicitly activated `filesystem-write` profile exposes all eight baseline
+tools. The default `safe-read` profile exposes exactly:
 
 ```text
 list_directory
@@ -81,7 +82,11 @@ get_path_info
 
 `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path` are write-gated and absent from the read-only registry.
 
-Client activation must set `MCP_READ_ONLY=true` explicitly; the missing-variable default remains the eight-tool profile. The read-only and negative STDIO smokes require identical generic Invalid params responses for every write-gated and removed legacy name.
+Client activation may retain `MCP_READ_ONLY=true` for compatibility. New
+configuration uses `MCP_PROFILE`; a missing profile defaults to `safe-read`,
+and `filesystem-write` must be explicit. If both variables are set, conflicting
+values fail closed. The read-only and negative STDIO smokes require identical
+generic Invalid params responses for every write-gated and removed legacy name.
 
 ## Errors
 

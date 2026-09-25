@@ -61,7 +61,9 @@ Usage:
 
 Environment:
   MCP_ROOT             Required absolute root directory exposed to MCP clients
-  MCP_READ_ONLY        Set to true to expose only read-only filesystem tools
+  MCP_PROFILE          safe-read (default) or filesystem-write
+  MCP_RISK_POLICY      Comma-separated risk classifications (default: standard)
+  MCP_READ_ONLY        Legacy compatibility switch; must agree with MCP_PROFILE
   MCP_ALLOW_CWD_ROOT   Development only: set to true with MCP_ROOT=.
 `
 }

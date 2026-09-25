@@ -53,7 +53,12 @@ move_path
 
 “Gate” means a server-enforced boundary: policies, capabilities, roots, limits, path and process validation, redaction, and audit events control access below the MCP adapter. Tool annotations and tool visibility are not authorization.
 
-The current implementation enforces one configured root, optional read-only registration, path policies, hard limits, and redacted diagnostics. The Version 1.0 target adds multiple named roots and capability-based profiles while retaining server-side checks as authoritative. With valid roots but no explicit profile, the target default is safe read-only; write, process, and command capabilities require explicit activation.
+The current implementation enforces one configured root, a safe read-only
+default, explicit filesystem-write activation, path policies, hard limits, and
+redacted diagnostics. The Version 1.0 target adds multiple named roots and
+additional capability-based profiles while retaining server-side checks as
+authoritative. Write, process, and command capabilities require explicit
+activation.
 
 ## Target Domains and Runtime
 
@@ -166,17 +171,18 @@ All limit values must be positive integers.
 
 `MCP_DEBUG=true` enables minimal diagnostics on stderr. Diagnostics are redacted for common credentials, tokens, private-key markers, connection strings, and host paths. Normal MCP operation still writes only JSON-RPC protocol messages to stdout. No persistent logfiles are created.
 
-### Read-only mode
+### Capability profile
 
-`SPR-035` adds read-only enforcement for MCP tool discovery and direct tool calls.
+The default `safe-read` profile applies when `MCP_ROOT` is valid and no profile
+is selected. It can also be selected explicitly.
 
-Enable read-only mode with:
+Select it with:
 
 ```text
-MCP_READ_ONLY=true
+MCP_PROFILE=safe-read
 ```
 
-When read-only mode is enabled, only these tools are registered and returned by `tools/list`:
+Only these tools are registered and returned by `tools/list`:
 
 ```text
 list_directory
@@ -184,7 +190,12 @@ read_file
 get_path_info
 ```
 
-Write-capable tools are not registered in read-only mode, so direct `tools/call` requests for `write_file`, `create_directory`, `delete_path`, `copy_path`, or `move_path` are rejected with a generic Invalid params error without revealing whether the tool exists in another mode.
+Write-capable tools are not registered in `safe-read`, so direct `tools/call`
+requests for `write_file`, `create_directory`, `delete_path`, `copy_path`, or
+`move_path` are rejected with a generic Invalid params error without revealing
+whether the tool exists in another mode. Set `MCP_PROFILE=filesystem-write` to
+activate them. `MCP_READ_ONLY` remains a compatibility switch and must agree
+when used together with `MCP_PROFILE`.
 
 ## Tool Documentation
 
@@ -531,11 +542,16 @@ $env:MCP_ROOT = "C:\Path\To\Allowed\Root"
 
 The value must be an explicit absolute directory. For development only, `MCP_ROOT=.` additionally requires `MCP_ALLOW_CWD_ROOT=true`; client activation examples do not use that opt-in.
 
-For read-only operation:
+With no explicit profile, FlashGate starts in the safe read-only profile. To
+activate filesystem writes explicitly:
 
 ```powershell
-$env:MCP_READ_ONLY = "true"
+$env:MCP_PROFILE = "filesystem-write"
 ```
+
+`MCP_READ_ONLY=true` remains available as a compatibility spelling for the
+safe profile. `MCP_RISK_POLICY` defaults to `standard`; elevated risk
+classifications are explicit policy conditions and do not grant capabilities.
 
 Run the server:
 
@@ -571,7 +587,9 @@ Usage:
 
 Environment:
   MCP_ROOT             Required absolute root directory exposed to MCP clients
-  MCP_READ_ONLY        Set to true to expose only read-only filesystem tools
+  MCP_PROFILE          safe-read (default) or filesystem-write
+  MCP_RISK_POLICY      Comma-separated risk classifications (default: standard)
+  MCP_READ_ONLY        Legacy compatibility switch; must agree with MCP_PROFILE
   MCP_ALLOW_CWD_ROOT   Development only: set to true with MCP_ROOT=.
 ```
 
