@@ -450,7 +450,15 @@ per active client transport; further processes must be explicitly classified
 as workers or managed children. Ambiguous live-owner/live-transport cases are
 `SUSPECTED_STALE` and the test must prove no heuristic age, idle, CPU,
 request-count, singleton, PID-only, or registry-only termination.
+
 ### Protocol compatibility tests
+
+The [local IPC protocol contract](local-ipc-protocol.md) requires focused
+framing and strict-handshake tests plus real Named Pipe and Unix Domain Socket
+coverage for identity, limits, correlation, cancellation, disconnect,
+generation invalidation, compatibility mismatch, upgrade/rollback, and the
+optional negotiated lease. Native transport evidence cannot be replaced by an
+in-memory fake.
 
 Before Version 1.0, publish and test the supported MCP revision matrix:
 

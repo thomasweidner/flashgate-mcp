@@ -149,6 +149,11 @@ Transport/host adapters own:
 - endpoint setup and teardown;
 - OS peer identity extraction.
 
+The local adapter boundary uses the bounded, versioned
+[local IPC protocol contract](local-ipc-protocol.md). The handshake negotiates
+protocol and features but never supplies authoritative caller identity or
+weakens application policy.
+
 The application layer owns:
 
 - principal mapping;
@@ -565,6 +570,7 @@ Remote transport, product splitting, interpreter-based core operation, or unrest
 ## Related documents
 
 - [Version 1.0 scope](version-1-scope-and-release-boundary.md)
+- [Local IPC protocol contract](local-ipc-protocol.md)
 - [Roadmap](roadmap.md)
 - [Security model](security.md)
 - [Efficiency improvement plan](efficiency-improvement-plan.md)
