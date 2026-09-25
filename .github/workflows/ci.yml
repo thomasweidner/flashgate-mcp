@@ -221,6 +221,9 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Enforce payload and response-efficiency budgets
+        run: go test ./internal/mcp/tools -run '^TestCallToolResultSerialization(PayloadSizes|Budgets|AllocationBudgets)$' -count=1
+
       - name: Test with coverage
         shell: pwsh
         run: ./scripts/Test-GoCoverage.ps1 -PlatformName '${{ matrix.platform }}' -MinimumCoverage ${{ matrix.minimum_coverage }}
