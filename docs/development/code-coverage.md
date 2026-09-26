@@ -14,7 +14,6 @@ The following repository files are authoritative:
 - `scripts/Test-GoCoverage.ps1` runs tests, creates reports, evaluates the minimum, and writes a machine-readable summary.
 - This document explains operation and maintenance but does not override the workflow values.
 
-The initial dual-OS gates were merged through PR #18 in commit `a23b7a6b542e6cc3af77e881c8970f9b02821b79`.
 
 ## Current Gates
 
@@ -67,13 +66,13 @@ Run from the repository root with PowerShell 7.6.x (Major 7, Minor 6):
 
 ### Linux
 
-Run from the native Linux checkout with PowerShell 7:
+Run from the native Linux checkout with PowerShell 7.6.x:
 
 ```bash
 pwsh -NoLogo -NoProfile -File ./scripts/Test-GoCoverage.ps1 -PlatformName linux -MinimumCoverage 90.0
 ```
 
-Linux validation must follow the project policy: native Linux filesystem paths, no productive development in WSL2, and no bidirectional synchronization.
+Linux validation uses a native Linux filesystem as described in [testing](../testing.md#native-linux-validation). Do not treat a Windows-mounted checkout as native validation or synchronize an active validation tree bidirectionally.
 
 ## Generated Outputs
 

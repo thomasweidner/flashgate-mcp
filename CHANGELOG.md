@@ -20,6 +20,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Changed
 
+- Standardized public documentation in English with stable topic-based filenames, consolidated client and migration guidance, and separated historical execution reports from product documentation.
+
 - Switched coverage to the deterministic production-server package graph and raised the separate Windows/Linux hard gates to 90.0%, with an exact unrounded threshold check and package inventories.
 - Converged public documentation and the documentation gate around current filesystem capabilities, Version 1.0 targets, portable contributor guidance, and durable repository-boundary checks.
 - Kept the current MCP runtime at `2025-11-25`; Version 1.0 planning targets a separate `2026-07-28` path without advertising it before implementation and compatibility tests.

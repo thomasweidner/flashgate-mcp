@@ -133,7 +133,7 @@ Path validation uses two stages:
 
 Individual tools do not bypass the filesystem abstraction and do not call host filesystem APIs directly. This keeps path validation centralized and testable.
 
-`SPR-037` adds deny-by-default policy enforcement for hidden paths, UNC paths, symlinks, and Windows reparse points:
+FlashGate enforces deny-by-default policy for hidden paths, UNC paths, symlinks, and Windows reparse points:
 
 ```text
 MCP_ALLOW_HIDDEN_FILES=false
@@ -149,7 +149,7 @@ Security and path denials are mapped to generic invalid-path tool errors without
 
 ### Limits and diagnostics
 
-`SPR-039` adds conservative hard limits:
+FlashGate applies conservative hard limits:
 
 | Environment variable | Default | Purpose |
 |---|---:|---|
@@ -168,7 +168,7 @@ All limit values must be positive integers.
 
 ### Read-only mode
 
-`SPR-035` adds read-only enforcement for MCP tool discovery and direct tool calls.
+FlashGate enforces read-only policy for MCP tool discovery and direct tool calls.
 
 Enable read-only mode with:
 
@@ -206,11 +206,15 @@ A machine-readable MCP tool catalog is available at:
 docs/mcp-tool-catalog.json
 ```
 
-Preparation for a later, separately approved Codex read-only activation is documented in [docs/codex-read-only-activation.md](docs/codex-read-only-activation.md). `SPR-044` does not modify Codex configuration or register FlashGate as an MCP server.
+See [client setup](docs/client-setup.md) for an explicit read-only root, client acceptance, troubleshooting, and rollback. Apply client configuration changes only with the operator's authorization.
 
 The catalog contains tool names, descriptions, input schemas, domain `resultSchema` values, the central `CallToolResult` envelope description, and common error behavior. Runtime output schemas are exposed for the current tools. Version 1.0 also adds profile-specific catalog/instruction budgets, deterministic ordering, and catalog fingerprints.
 
-## Project Planning
+## Documentation and planning
+
+The [documentation index](docs/README.md) separates user guidance, reference,
+architecture decisions, contributor checks, and accepted future plans.
+
 
 Planned work is tracked in:
 
@@ -220,7 +224,7 @@ BACKLOG.md
 
 The backlog is the authoritative planning document for upcoming filesystem, process, command execution, system information, security, CI, release, and documentation work.
 
-Project history is tracked in:
+Narrative release notes are maintained only in:
 
 ```text
 CHANGELOG.md
@@ -231,16 +235,15 @@ CHANGELOG.md
 Architecture and security references:
 
 - [Architecture](docs/architecture.md)
-- [Version 1.0 scope and release boundary](docs/version-1-scope-and-release-boundary.md)
-- [Efficiency improvement plan](docs/efficiency-improvement-plan.md)
+- [Version 1.0 scope and release boundary](docs/planning/release-scope.md)
+- [Efficiency improvement plan](docs/planning/efficiency.md)
 - [Execution identity backends](docs/execution-identity-backends.md)
-- [Native runtime and service plan](docs/native-multi-mode-runtime-and-service-plan.md)
-- [Comparative MCP review](docs/comparative-mcp-review-2026-07-17.md)
+- [Native runtime and service plan](docs/planning/runtime-modes.md)
 - [Security model](docs/security.md)
 - [Code coverage](docs/development/code-coverage.md)
 - [Protocol and local transport](docs/protocol.md)
 - [Version 1.0 product and technical specification](docs/specification.md)
-- [Architecture decisions](docs/adr/)
+- [Architecture decisions](docs/adr/README.md)
 - [Authoritative backlog](BACKLOG.md)
 - [High-level roadmap](docs/roadmap.md)
 - [Project identity](docs/project-identity.md)
@@ -306,7 +309,7 @@ On Windows, the common build command is:
 go build -o build/flashgate-mcp.exe ./cmd/server
 ```
 
-Direct `go build` is intended for development. Controlled metadata and release builds use `scripts/build.ps1` or `scripts/build.sh`; see [Build and release metadata](docs/build-and-release-metadata.md).
+Direct `go build` is intended for development. Controlled metadata and release builds use `scripts/build.ps1` or `scripts/build.sh`; see [Build and release metadata](docs/build-metadata.md).
 
 Version identity is available without starting the MCP STDIO loop:
 
@@ -464,7 +467,7 @@ The smoke scripts create per-run JSONL request and response files under `build/`
 
 ## Resource, Latency, and Payload Benchmarks
 
-`SPR-047` adds a versioned local benchmark system for process startup, end-to-end workflow latency, idle and peak working set, process CPU time, Go allocations, request/result/response sizes, filesystem counters, `tools/list` size, MCP call counts, and a coarse byte-based token orientation.
+The versioned local benchmark system measures process startup, end-to-end workflow latency, idle and peak working set, process CPU time, Go allocations, request/result/response sizes, filesystem counters, `tools/list` size, MCP call counts, and a coarse byte-based token orientation.
 
 Run the standard Windows benchmark after normal validation:
 
@@ -515,7 +518,7 @@ flashgate-mcp_<version>_linux_arm64.tar.gz
 
 Each archive has a sibling `.sha256` file and exactly one top-level directory containing the platform binary, `LICENSE`, `README.md`, and `THIRD-PARTY-NOTICES.md`. Windows artifacts carry `VERSIONINFO`, an embedded machine-readable build manifest, and the canonical FlashGate icon; Linux artifacts carry matching CLI, embedded-manifest, Go/VCS, ELF architecture, and Go build-ID metadata. Before upload, every matrix path builds independently twice, validates metadata and exact archive contents, compares binary, archive, checksum-file, and inventory identities, and performs a machine-readable host/credential leak scan.
 
-Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-and-release-metadata.md), [Artifact verification](docs/artifact-verification.md), and [Manual metadata validation](docs/manual-metadata-validation.md).
+Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-metadata.md), [Artifact verification](docs/artifact-verification.md), and [Manual metadata validation](docs/metadata-validation.md).
 
 Historical project and release milestones remain available in `BACKLOG.md` and
 `CHANGELOG.md`; they do not add private prerequisites to the current public

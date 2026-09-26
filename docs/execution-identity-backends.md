@@ -329,9 +329,9 @@ Post-Version-1.0 Variant B tests additionally cover worker identity, session/tok
 
 ## Related documents
 
-- [ADR-015](adr/015-hybrid-service-execution-identity.md)
-- [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
+- [ADR-015](adr/execution-identity.md)
+- [Native runtime and service plan](planning/runtime-modes.md)
 - [Security model](security.md)
 - [Architecture](architecture.md)
-- [Version 1.0 scope](version-1-scope-and-release-boundary.md)
+- [Version 1.0 scope](planning/release-scope.md)
 - [Authoritative backlog](../BACKLOG.md)

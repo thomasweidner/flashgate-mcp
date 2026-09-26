@@ -25,7 +25,7 @@ Unrestricted host access, free-form remote shell behavior, implicit network expo
 
 FlashGate is a general, vendor-neutral open-source project. Its core has no organization-specific infrastructure, private control-plane, machine-local workflow, proprietary credential or permission, or particular agent-product prerequisite.
 
-Public, community, vendor, and organization-internal **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. `SPR-041` defines no module/provider contract, identifier syntax, or runtime model.
+Public, community, vendor, and organization-internal **FlashGate modules/providers** may be considered later as optional local project extensions. Provider origin never changes the central security boundary. The current product defines no module/provider contract, identifier syntax, or runtime model.
 
 An **MCP protocol extension** is a separate negotiated addition to the MCP wire protocol and follows the official vendor-prefix/slash identifier contract, for example `io.modelcontextprotocol/tasks`. FlashGate modules/providers do not automatically define or implement MCP protocol extensions.
 

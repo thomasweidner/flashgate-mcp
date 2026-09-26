@@ -20,7 +20,7 @@ development environment.
 
 FlashGate is a native, local-first MCP server optimized for low latency, low token use, low RAM/CPU consumption, and strict server-side security. Contributions must preserve those objectives and must not silently introduce an interpreter, remote listener, broad shell, unbounded operation, or security bypass.
 
-`BACKLOG.md` is the authoritative implementation plan. `docs/version-1-scope-and-release-boundary.md` defines which accepted work is required before Version 1.0 and which work is deliberately deferred.
+`BACKLOG.md` is the authoritative implementation plan. `docs/planning/release-scope.md` defines which accepted work is required before Version 1.0 and which work is deliberately deferred.
 
 ## Before changing code or contracts
 
@@ -107,7 +107,18 @@ Review and update all affected documents, including as applicable:
 - `docs/testing.md` and `benchmarks/README.md`;
 - the relevant ADR and migration document.
 
-Do not rewrite historical migration documents. Add a new dated migration when canonical IDs or released contracts change.
+Write all maintained documentation in English and follow
+[the documentation style](docs/documentation-style.md). Use stable, lower-case
+hyphenated topic names, with only the documented conventional-name exceptions.
+Assigned backlog and decision IDs remain stable; do not renumber them or create
+internal ID-migration reports in the public documentation tree.
+
+Preserve externally useful compatibility instructions in
+[the migration guide](docs/migration.md). Keep personal work logs, review runs,
+and temporary integration queues outside the public tree. Before retiring a
+report, preserve its original evidence outside the tree and move every still
+valid requirement or open task to its canonical public owner. Removing a
+report never closes a finding.
 
 Run `scripts/Test-DocumentationConsistency.ps1` for documentation changes and complete the manual checklist in [docs/documentation-quality-gate.md](docs/documentation-quality-gate.md). The automated gate does not replace validation of implementation and status claims against code, CI, reports, and Git history.
 

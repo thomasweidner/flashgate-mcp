@@ -173,20 +173,25 @@ function Get-InternalReferenceFindings {
     return [object[]]$findings
 }
 
-$publicAuthorityPaths = [string[]]@(
+$requiredPublicPaths = [string[]]@(
     'AGENTS.md',
+    'docs/README.md',
+    'docs/adr/README.md',
+    'docs/adr/product-metadata.md',
+    'docs/documentation-style.md',
+    'docs/migration.md',
     'BACKLOG.md',
     'CHANGELOG.md',
     'CONTRIBUTING.md',
     'README.md',
     'benchmarks/README.md',
     'docs/architecture.md',
-    'docs/codex-read-only-activation.md',
+    'docs/client-setup.md',
     'docs/development/code-coverage.md',
     'docs/documentation-quality-gate.md',
-    'docs/efficiency-improvement-plan.md',
+    'docs/planning/efficiency.md',
     'docs/planning/README.md',
-    'docs/planning/future-tool-adapter-plan.md',
+    'docs/planning/tool-adapters.md',
     'docs/project-identity.md',
     'docs/protocol.md',
     'docs/roadmap.md',
@@ -195,13 +200,46 @@ $publicAuthorityPaths = [string[]]@(
     'docs/testing.md',
     'docs/tool-conventions.md',
     'docs/tools.md',
-    'docs/version-1-scope-and-release-boundary.md'
+    'docs/planning/release-scope.md'
 )
 $supportingPaths = [string[]]@(
     '.github/workflows/ci.yml',
     '.github/workflows/metadata-regression.yml',
-    '.github/workflows/release-build.yml',
-    'docs/technical-rename-to-flashgate-2026-07-11.md'
+    '.github/workflows/release-build.yml'
+)
+# The native, standard-library-only checker inventories every maintained
+# Markdown file, including nonignored new files. The explicit required list
+# prevents deletion of a canonical document from shrinking the acceptance set.
+$documentationRules = $null
+$documentationRulePaths = [string[]]@()
+$priorNativePreference = $PSNativeCommandUseErrorActionPreference
+$priorGoToolchain = $env:GOTOOLCHAIN
+try {
+    $PSNativeCommandUseErrorActionPreference = $false
+    $env:GOTOOLCHAIN = 'local'
+    $ruleOutput = @(& go -C $resolvedRoot run ./cmd/doccheck -root $resolvedRoot)
+    $ruleExitCode = $LASTEXITCODE
+    $documentationRules = ($ruleOutput -join [Environment]::NewLine) | ConvertFrom-Json -ErrorAction Stop
+    if ($documentationRules.schemaVersion -ne 1 -or
+        $documentationRules.documentCount -le 0 -or
+        @($documentationRules.documentPaths).Count -ne $documentationRules.documentCount) {
+        throw 'Documentation checker returned an invalid inventory contract.'
+    }
+    $documentationRulePaths = [string[]]@($documentationRules.documentPaths)
+    Add-Check -Id 'DOCUMENTATION-RULES' -Passed (
+        $ruleExitCode -eq 0 -and $documentationRules.status -ceq 'PASS' -and
+        @($documentationRules.findings).Count -eq 0
+    ) -Message (ConvertTo-Json -InputObject $documentationRules -Depth 6 -Compress)
+}
+catch {
+    Add-Check -Id 'DOCUMENTATION-RULES' -Passed $false -Message $_.Exception.Message
+}
+finally {
+    $PSNativeCommandUseErrorActionPreference = $priorNativePreference
+    $env:GOTOOLCHAIN = $priorGoToolchain
+}
+$publicAuthorityPaths = [string[]]@(
+    @($requiredPublicPaths + $documentationRulePaths) | Sort-Object -Unique -CaseSensitive
 )
 $requiredFiles = [string[]]@($publicAuthorityPaths + $supportingPaths)
 
@@ -267,7 +305,7 @@ $readme = [string]$documents['README.md']
 $architecture = [string]$documents['docs/architecture.md']
 $identity = [string]$documents['docs/project-identity.md']
 $protocol = [string]$documents['docs/protocol.md']
-$scope = [string]$documents['docs/version-1-scope-and-release-boundary.md']
+$scope = [string]$documents['docs/planning/release-scope.md']
 Add-Check -Id 'CURRENT-AND-V1-SCOPE-PARITY' -Passed (
     $readme.Contains('Today it provides secure, root-confined filesystem access') -and
     $readme.Contains('Version 1.0 extends that foundation') -and
@@ -283,7 +321,7 @@ Add-Check -Id 'MCP-REVISION-PARITY' -Passed (
     $scope.Contains('The final `2026-07-28` specification is now an accepted Version 1.0 implementation target')
 ) -Message 'Current MCP runtime and later Version 1.0 revision target remain distinct.'
 
-$storagePlan = [string]$documents['docs/planning/future-tool-adapter-plan.md']
+$storagePlan = [string]$documents['docs/planning/tool-adapters.md']
 $storageNames = [string[]]@(
     'compression_supported', 'compression_enabled', 'compression_inherited_default',
     'encryption_supported', 'encryption_enabled', 'encryption_inherited_default'
@@ -327,10 +365,7 @@ Add-Check -Id 'BOUNDARY-OBSOLETE-TOP-LEVEL' -Passed ($obsoletePresent.Count -eq 
     'Present={0}.' -f (ConvertTo-Json -InputObject ([string[]]$obsoletePresent) -Compress)
 )
 
-$operativePaths = [string[]]@(
-    $publicAuthorityPaths |
-        Where-Object { $_ -cne 'docs/planning/README.md' }
-)
+$operativePaths = $publicAuthorityPaths
 $operativeDocuments = [System.Collections.Generic.Dictionary[string, string]]::new(
     [System.StringComparer]::Ordinal
 )
@@ -344,69 +379,18 @@ $publicAuthorityMissing = [string[]]@(
 )
 Add-Check -Id 'PUBLIC-AUTHORITY-COVERAGE' -Passed (
     $publicAuthorityMissing.Count -eq 0 -and
-    $operativeDocuments.Count -eq ($publicAuthorityPaths.Count - 1)
+    $operativeDocuments.Count -eq $publicAuthorityPaths.Count
 ) -Message (
-    'Authorities={0}; ActiveWholeDocuments={1}; HistoricalIndex=docs/planning/README.md; Missing={2}.' -f
+    'Authorities={0}; ActiveWholeDocuments={1}; Missing={2}.' -f
     $publicAuthorityPaths.Count,
     $operativeDocuments.Count,
     (ConvertTo-Json -InputObject ([string[]]$publicAuthorityMissing) -Compress)
 )
 
-$technicalRenamePath = 'docs/technical-rename-to-flashgate-2026-07-11.md'
-$technicalRename = [string]$documents[$technicalRenamePath]
-$currentIdentifiersMarker = '## Current identifiers'
-$existingClonesMarker = '## Existing clones and GitHub redirects'
-$ownerAmendmentMarker = '## Owner migration amendment - 2026-07-20'
-$compatibilityMarker = '## Compatibility and scope'
-$currentIdentifiersIndex = $technicalRename.IndexOf($currentIdentifiersMarker, [System.StringComparison]::Ordinal)
-$existingClonesIndex = $technicalRename.IndexOf($existingClonesMarker, [System.StringComparison]::Ordinal)
-$ownerAmendmentIndex = $technicalRename.IndexOf($ownerAmendmentMarker, [System.StringComparison]::Ordinal)
-$compatibilityIndex = $technicalRename.IndexOf($compatibilityMarker, [System.StringComparison]::Ordinal)
-if ($currentIdentifiersIndex -lt 0 -or
-    $existingClonesIndex -le $currentIdentifiersIndex -or
-    $ownerAmendmentIndex -lt 0 -or
-    $compatibilityIndex -le $ownerAmendmentIndex) {
-    Add-Check -Id 'TECHNICAL-RENAME-OPERATIVE-PROJECTION' -Passed $false -Message 'Current technical-rename sections cannot be projected safely.'
-}
-else {
-    $technicalRenameOperativeProjection =
-        $technicalRename.Substring($currentIdentifiersIndex, $existingClonesIndex - $currentIdentifiersIndex) +
-        $technicalRename.Substring($ownerAmendmentIndex, $compatibilityIndex - $ownerAmendmentIndex)
-    $operativeDocuments.Add(
-        'docs/technical-rename-to-flashgate-2026-07-11.md#current-sections',
-        $technicalRenameOperativeProjection
-    )
-    Add-Check -Id 'TECHNICAL-RENAME-OPERATIVE-PROJECTION' -Passed $true -Message 'Only current identifier and owner-amendment sections are operative.'
-}
-
-# The complete canonical task catalog is current public authority, including Done rows.
+# All remaining documentation is active public guidance. Historical execution
+# reports were removed after their applicable contracts were consolidated.
 $operativeDocuments['BACKLOG.md'] = $backlog
-
-# This dated index points to non-operative migration and review provenance.
-# Only its current public capability-plan link is active project guidance.
 $planningIndex = [string]$documents['docs/planning/README.md']
-$planningCurrentMarker = '[Future tool and adapter plan](future-tool-adapter-plan.md)'
-$planningCurrentStart = $planningIndex.IndexOf(
-    $planningCurrentMarker,
-    [System.StringComparison]::Ordinal
-)
-$planningCurrentEnd = $planningIndex.IndexOf(
-    '## Interpretation',
-    [System.StringComparison]::Ordinal
-)
-if ($planningCurrentStart -lt 0 -or $planningCurrentEnd -le $planningCurrentStart) {
-    Add-Check -Id 'HISTORICAL-INDEX-PROJECTION' -Passed $false -Message 'Planning index current link cannot be projected.'
-}
-else {
-    $operativeDocuments.Add(
-        'docs/planning/README.md#current-public-link',
-        $planningIndex.Substring(
-            $planningCurrentStart,
-            $planningCurrentEnd - $planningCurrentStart
-        )
-    )
-    Add-Check -Id 'HISTORICAL-INDEX-PROJECTION' -Passed $true -Message 'Dated planning/review entries remain non-operative; current public link is scanned.'
-}
 
 $privateHostPathPatterns = [object[]]@(
     [pscustomobject]@{ id = 'PRIVATE_USER_PATH'; expression = '(?i)C:\\Users\\[^\\\r\n]+' },
@@ -466,26 +450,20 @@ Add-Check -Id 'BOUNDARY-RUNTIME-DEPENDENCY' -Passed ($runtimeFindings.Count -eq 
     'RuntimeInternalReferenceCount={0}.' -f $runtimeFindings.Count
 )
 
-$planningRoot = Join-Path $resolvedRoot 'docs/planning'
-$planningFiles = [object[]]@(
-    Get-ChildItem -LiteralPath $planningRoot -File -Recurse -ErrorAction Stop
-)
-$planningClassificationValid =
-    $planningIndex.Contains('non-canonical planning/review evidence') -and
-    $planningIndex.Contains('historical evidence') -and
-    $planningIndex.Contains('None of these files authorize Git, remote, correction, integration, branch deletion or release actions.')
-Add-Check -Id 'HISTORICAL-NON-OPERATIVE' -Passed (
-    $planningClassificationValid -and
+$documentationStyle = [string]$documents['docs/documentation-style.md']
+$evidenceBoundaryValid =
+    $documentationStyle.Contains('Removing a report does not resolve its findings.') -and
+    $documentationStyle.Contains('outside the public tree before removal.') -and
+    $planningIndex.Contains('BACKLOG.md') -and
+    $planningIndex.Contains('tool-adapters.md')
+Add-Check -Id 'DOCUMENTATION-EVIDENCE-BOUNDARY' -Passed (
+    $evidenceBoundaryValid -and
     (Test-Path -LiteralPath (Join-Path $resolvedRoot 'CHANGELOG.md') -PathType Leaf)
-) -Message (
-    'PlanningArtifactCount={0}; PlanningIndexClassificationValid={1}; CHANGELOG retained; classification=HISTORICAL_NON_OPERATIVE.' -f
-    $planningFiles.Count,
-    $planningClassificationValid
-)
+) -Message 'Public product contracts and CHANGELOG remain; personal execution evidence is external.'
 
 $failedChecks = [object[]]@($checks | Where-Object { -not $_.passed })
 $result = [pscustomobject]@{
-    schemaVersion                            = 2
+    schemaVersion                            = 3
     status                                   = if ($failedChecks.Count -eq 0) { 'PASS' } else { 'FAIL' }
     checkCount                               = $checks.Count
     passedCount                              = $checks.Count - $failedChecks.Count
@@ -495,7 +473,8 @@ $result = [pscustomobject]@{
     runtimeDependencyOnInternalInfrastructure = $runtimeFindings.Count -ne 0
     releaseDependencyOnInternalInfrastructure = $operativeFindings.Count -ne 0
     contributorDependencyOnInternalInfrastructure = $operativeFindings.Count -ne 0
-    historicalClassification                 = 'HISTORICAL_NON_OPERATIVE'
+    historicalClassification                 = 'EXTERNAL_EXECUTION_EVIDENCE'
+    documentationRules                       = $documentationRules
     computedHighestAssignedBacklogIdentifier = $backlogHighest.ComputedHighestAssignedBacklogIdentifier
     declaredHighestAssignedBacklogIdentifier = $backlogHighest.DeclaredHighestAssignedBacklogIdentifier
     bl344ContradictoryStatusCount             = $bl344ContradictoryStatusCount

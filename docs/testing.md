@@ -36,8 +36,8 @@ go test -race ./...
 ```
 
 The authoritative race gate runs on a platform with a supported race toolchain.
-The current Windows host has no CGO/GCC race toolchain, so Windows race is reported
-as an infrastructure limitation rather than worked around. Native Linux
+When a Windows host lacks a supported CGO/GCC race toolchain, report that
+limitation explicitly rather than substituting a non-race run. Native Linux
 `go test -race ./...` is required. Functional serialization, payload, fixture, and
 budget-contract tests remain active under race; only the `testing.AllocsPerRun`
 budget assertion is skipped because race instrumentation changes allocation
@@ -143,7 +143,7 @@ The bounded-process result records the PID immediately after a successful
 process start. Its timeout regression validates the positive direct PID,
 exit code 124, confirmed tree termination, absence of that concrete process,
 and the case where timeout occurs before an optional child-authored PID file.
-The PowerShell matrix currently passes 25/25 cases. The Bash cleanup-negative
+The PowerShell matrix covers both positive and negative cases. The Bash cleanup-negative
 probe uses only its task-local fixture root and requires `Status: FAIL`,
 `Cleanup: FAIL`, a nonzero failure count, a nonzero exit code, and exactly one
 terminal status block. CI
@@ -303,7 +303,7 @@ Version 1.0 adds a separate `2026-07-28` compatibility matrix rather than mutati
 
 ### Benchmarks
 
-`SPR-047` benchmarks performance-sensitive operations including:
+The benchmark suite covers performance-sensitive operations including:
 
 - directory listing
 - file reading
@@ -509,9 +509,9 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - atomic rollback documentation and smoke procedure.
 
 The controlled commands and expected fields are documented in [Build and
-release metadata](build-and-release-metadata.md), [Artifact
+release metadata](build-metadata.md), [Artifact
 verification](artifact-verification.md), and [Manual metadata
-validation](manual-metadata-validation.md). Native Linux validation verifies a
+validation](metadata-validation.md). Native Linux validation verifies a
 manifest-bound Git inventory in a new controlled extraction directory before
 copying it into an ext4 clone under `/home`; Windows-mounted paths are
 orchestration inputs only and are never the native build directory.
@@ -520,7 +520,7 @@ orchestration inputs only and are never the native build directory.
 
 The Version 1.0 benchmark compares pinned FlashGate, official Node.js filesystem, selected native Rust filesystem, and selected Go filesystem MCP versions on the same host and corpus. The report must separate feature/security differences from measured performance and must not claim results for unmeasured operations.
 
-See [Efficiency Improvement Plan](efficiency-improvement-plan.md), [Execution Identity Backends](execution-identity-backends.md), and [Version 1.0 Scope](version-1-scope-and-release-boundary.md).
+See [Efficiency Improvement Plan](planning/efficiency.md), [Execution Identity Backends](execution-identity-backends.md), and [Version 1.0 Scope](planning/release-scope.md).
 
 <!-- FLASHGATE_PERFORMANCE_WORKSPACE_POLICY_START -->
 ## Authoritative benchmark workspace gate
@@ -560,3 +560,22 @@ the two-phase attempt; no wrapper-side shortcut or time override is permitted.
 ## PowerShell 7.6 LTS patch contract
 
 Compatibility requires PowerShell major version 7 and minor version 6. `ObservedPowerShellVersion` records the actual patch. `MinimumPowerShellVersion` is `null` unless a specific fix establishes and justifies a minimum patch. `ServicingTarget=LatestServicedPatchWithin7.6` is the maintenance target. Exact patch, path, or hash bindings are allowed only for historical evidence, bug reproduction, installer/download/SBOM/supply-chain provenance, or a documented minimum-patch fix; each exception must be explicitly classified.
+
+## Documentation regression
+
+Run the focused standard-library-only documentation checker before the full
+applicable quality chain:
+
+```bash
+go test ./cmd/doccheck
+go run ./cmd/doccheck
+```
+
+Run `scripts/Test-DocumentationConsistency.ps1` under PowerShell 7.6.x with the
+installed Go toolchain from `go.mod`. It adds the canonical document, backlog,
+CI, and public-boundary checks. No current public document is excluded merely
+because it is an ADR or planning material. Language findings still require
+editorial review. See [the documentation quality gate](documentation-quality-gate.md).
+
+The development checker is not imported by `cmd/server` and does not expand
+the product-coverage denominator. The full repository tests still include it.

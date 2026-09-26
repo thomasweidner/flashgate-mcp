@@ -90,6 +90,12 @@ jobs:
             $actualHash = $null
           }
 
+      - name: Set up Go for documentation checks
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
       - name: Validate PowerShell and Bash scripts on Windows
         shell: pwsh
         run: |
@@ -217,6 +223,9 @@ jobs:
         run: |
           go fmt ./...
           git diff --exit-code
+
+      - name: Validate documentation inventory, names, language, and links
+        run: go run ./cmd/doccheck
 
       - name: Vet
         run: go vet ./...

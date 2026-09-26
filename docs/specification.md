@@ -178,10 +178,10 @@ Release is accepted only when all `Planned` tasks are complete or explicitly wai
 ## Related documents
 
 - [Authoritative backlog](../BACKLOG.md)
-- [Version 1.0 scope](version-1-scope-and-release-boundary.md)
+- [Version 1.0 scope](planning/release-scope.md)
 - [Architecture](architecture.md)
 - [Security](security.md)
 - [Protocol](protocol.md)
-- [Efficiency plan](efficiency-improvement-plan.md)
+- [Efficiency plan](planning/efficiency.md)
 - [Execution identity backends](execution-identity-backends.md)
 - [Testing](testing.md)

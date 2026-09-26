@@ -41,7 +41,7 @@ FlashGate is not a remote-shell replacement, web-hosting service, cloud agent, o
 - `Later` tasks are accepted post-Version-1.0 work;
 - Version 1.0 release requires the explicit gate in `BL-263`.
 
-See [Version 1.0 Scope and Release Boundary](version-1-scope-and-release-boundary.md).
+See [Version 1.0 Scope and Release Boundary](planning/release-scope.md).
 
 ## Current state
 
@@ -392,7 +392,7 @@ Version 1.0 fingerprints/content identities are compact integrity/change evidenc
 
 Conditional read/not-modified contracts remain post-Version 1.0 under `BL-217`. They may accept a prior content identity/snapshot and omit unchanged payload, but every call still repeats current principal/profile/root/capability/path checks. An internal identity/content cache is an optional bounded implementation optimization: it is scoped to the relevant execution context, safely invalidated, semantically transparent when disabled, and never turns knowledge of a hash into access.
 
-See [Efficiency Improvement Plan](efficiency-improvement-plan.md).
+See [Efficiency Improvement Plan](planning/efficiency.md).
 
 ## Native OS adapter policy
 
@@ -406,7 +406,7 @@ Version 1.0 implementation priority:
 
 PowerShell and shell scripts may be development, installation, validation, or administrator tooling. They are not normal FlashGate runtime dependencies.
 
-The [future tool and adapter plan](planning/future-tool-adapter-plan.md) is a planning inventory under `BL-215`. Its candidate MCP names stay in the adapter, core operations stay in the owning domain, and Windows/Linux or archive-format details stay in platform adapters. The optional public agent skill (`BL-350`) is one portable guidance surface with a small strategy core and progressively loaded capability references; it is not a runtime dependency, does not duplicate tool schemas, and cannot become an authorization mechanism.
+The [future tool and adapter plan](planning/tool-adapters.md) is a planning inventory under `BL-215`. Its candidate MCP names stay in the adapter, core operations stay in the owning domain, and Windows/Linux or archive-format details stay in platform adapters. The optional public agent skill (`BL-350`) is one portable guidance surface with a small strategy core and progressively loaded capability references; it is not a runtime dependency, does not duplicate tool schemas, and cannot become an authorization mechanism.
 
 ## Runtime and deployment model
 
@@ -474,7 +474,7 @@ age, idle/CPU/request-count heuristics, or singleton assumptions never
 authorize termination. Ambiguous live-owner/live-transport cases remain
 `SUSPECTED_STALE` and are not automatically killed.
 
-See [ADR-017](adr/017-host-process-ownership-and-lifecycle.md) for the
+See [ADR-017](adr/host-lifecycle.md) for the
 normative contract and BL-341 in [BACKLOG.md](../BACKLOG.md) for the later
 technical implementation.
 ## Audit and trace architecture
@@ -527,7 +527,7 @@ dependencies. Deterministic ZIP or TAR.GZ construction, exact-content/type
 verification, checksums, two-build comparison, and leak checks are build-time
 concerns and add no runtime interpreter dependency.
 
-See [Build and release metadata](build-and-release-metadata.md) and [File and product metadata decisions](decisions/file-and-product-metadata-decisions.md).
+See [Build and release metadata](build-metadata.md) and [File and product metadata decisions](adr/product-metadata.md).
 
 ## Open-source, providers, and protocol extensions
 
@@ -564,11 +564,11 @@ Remote transport, product splitting, interpreter-based core operation, or unrest
 
 ## Related documents
 
-- [Version 1.0 scope](version-1-scope-and-release-boundary.md)
+- [Version 1.0 scope](planning/release-scope.md)
 - [Roadmap](roadmap.md)
 - [Security model](security.md)
-- [Efficiency improvement plan](efficiency-improvement-plan.md)
+- [Efficiency improvement plan](planning/efficiency.md)
 - [Execution identity backends](execution-identity-backends.md)
-- [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
-- [ADR directory](adr/)
-- [ADR-017: Host process ownership and lifecycle](adr/017-host-process-ownership-and-lifecycle.md)
+- [Native runtime and service plan](planning/runtime-modes.md)
+- [ADR directory](adr)
+- [ADR-017: Host process ownership and lifecycle](adr/host-lifecycle.md)
