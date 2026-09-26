@@ -14,6 +14,14 @@ Before a material change, inspect the current repository state and read:
 
 Do not infer unavailable files or project state from memory.
 
+## Documentation
+
+Use English for all maintained documentation. Follow
+[the documentation style](docs/documentation-style.md) for stable topic names,
+source ownership, links, and the separation of product guidance from personal
+execution reports. Preserve live product requirements and backlog ownership
+before retiring a document.
+
 ## Working rules
 
 - Keep changes inside one coherent, reviewable acceptance boundary.

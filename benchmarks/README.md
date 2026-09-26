@@ -1,6 +1,6 @@
 # FlashGate MCP benchmarks
 
-`SPR-047` provides one reproducible benchmark system with three layers. It extends the existing `tools/call` serialization fixtures instead of creating a competing serialization suite.
+FlashGate provides one reproducible benchmark system with three layers. It extends the existing `tools/call` serialization fixtures instead of creating a competing serialization suite.
 
 ## Layers
 
@@ -85,12 +85,12 @@ Idle working set is sampled immediately after `initialize`. Peak working set and
 - `response_bytes`: complete UTF-8 JSON-RPC response including its JSONL newline.
 - `result_bytes`: only the serialized JSON value in the JSON-RPC `result` member.
 - `read_bytes`: content bytes successfully returned by `read_file`.
-- `written_bytes`: content bytes successfully written or copied; all `SPR-047` read-only reference workflows correctly report zero.
-- `scanned_bytes`: bytes actually inspected for search, hashing, classification, or comparable content analysis. All `SPR-047` read-only workflows report zero; ordinary `read_file` return bytes are not scans.
+- `written_bytes`: content bytes successfully written or copied; all current read-only reference workflows correctly report zero.
+- `scanned_bytes`: bytes actually inspected for search, hashing, classification, or comparable content analysis. All current read-only workflows report zero; ordinary `read_file` return bytes are not scans.
 - `entries`: directory entries actually returned by successful reference calls.
 - `calls`: `tools/call` requests actually executed successfully. `initialize` and `tools/list` are not counted.
 
-These benchmark counters are runner-side measurements only. `SPR-047` does not add them to public MCP tool results.
+These benchmark counters are runner-side measurements only. They are not added to public MCP tool results.
 
 Workflow request byte counts include the initialization request and the 55-byte `notifications/initialized` JSONL notification. The notification has no response and never increments `calls`. The separate `tools_list_measurements` entries contain only the `tools/list` request and response.
 
@@ -168,15 +168,15 @@ Payload and allocation contracts are both validated in ordinary tests. Under rac
 instrumentation the functional serialization, payload, fixture, and budget-contract
 checks still run, while only the `testing.AllocsPerRun` assertion is skipped because
 the race detector changes allocation behavior. The authoritative race gate runs on
-a supported race platform; for the current Windows host, missing CGO/GCC is an
+a supported race platform; on a Windows host without supported CGO/GCC, that absence is an
 infrastructure limitation and does not justify relaxing allocation budgets. Native
 Linux `go test -race ./...` remains required.
 
-A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. `SPR-047` does not add the full process benchmark to CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
+A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. The full process benchmark is not currently run in CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
 
 ## Version 1.0 benchmark expansion
 
-`SPR-047` baselines are created only after the corrected implementation commit is clean. They are not retroactively rewritten when Version 1.0 contracts change.
+Versioned baselines are created only from a clean implementation commit. They are not retroactively rewritten when Version 1.0 contracts change.
 
 Version 1.0 extends the benchmark system with the following measurements:
 
@@ -242,3 +242,20 @@ measured phase has ended.
 Native Linux measurements continue to use the distribution's native ext4
 filesystem under `/home`, never a Windows-mounted path such as `/mnt`.
 <!-- FLASHGATE_PERFORMANCE_WORKSPACE_POLICY_END -->
+
+## Interpreting result-envelope comparisons
+
+The serialization suite compares the historical direct-domain result,
+text-only MCP content, and the implemented text-plus-structured envelope.
+The historical direct form is a comparison fixture, not a valid client
+compatibility fallback. Small results can have high relative wrapper overhead;
+large duplicated JSON payloads amplify wire bytes. Protocol correctness and
+client compatibility remain hard constraints even when a smaller fixture is
+faster.
+
+Do not promote timings or allocation observations from a single historical
+machine into a current performance claim. Compare the exact fixture, variant,
+request/result/response byte definitions, toolchain, platform, and source
+identity. Versioned JSON baselines and budgets, not an individual review report,
+are the current machine-readable inputs. Planned payload classes must reduce
+heavy duplication without silently changing the implemented result contract.

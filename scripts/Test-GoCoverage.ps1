@@ -64,7 +64,7 @@ function Get-OutputTail {
 
     $lines = @($Output | ForEach-Object { $_.ToString() })
     if ($lines.Count -eq 0) {
-        return '<keine Ausgabe>'
+        return '<no output>'
     }
 
     return (($lines | Select-Object -Last $LineCount) -join [Environment]::NewLine)
@@ -101,7 +101,7 @@ try {
     $moduleExitCode = $LASTEXITCODE
     if ($moduleExitCode -ne 0 -or $moduleOutput.Count -ne 1) {
         $tail = Get-OutputTail -Output $moduleOutput
-        throw "go list -m konnte das aktuelle Modul nicht eindeutig ermitteln (Exitcode $moduleExitCode).$([Environment]::NewLine)$tail"
+        throw "go list -m could not identify the current module unambiguously (exit code $moduleExitCode).$([Environment]::NewLine)$tail"
     }
 
     $modulePath = $moduleOutput[0].ToString().Trim()
@@ -113,7 +113,7 @@ try {
     $dependencyExitCode = $LASTEXITCODE
     if ($dependencyExitCode -ne 0) {
         $tail = Get-OutputTail -Output $dependencyOutput
-        throw "go list -deps ist mit Exitcode $dependencyExitCode fehlgeschlagen.$([Environment]::NewLine)$tail"
+        throw "go list -deps failed with exit code $dependencyExitCode.$([Environment]::NewLine)$tail"
     }
 
     $productPackages = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -139,7 +139,7 @@ try {
 
     $serverPackage = "$modulePath/cmd/server"
     if ($productPackages.Count -eq 0 -or -not $productPackages.Contains($serverPackage)) {
-        throw 'Der Produktgraph ist leer oder enthält ./cmd/server nicht.'
+        throw 'The product graph is empty or does not contain ./cmd/server.'
     }
 
     [string[]]$sortedPackages = [string[]]::new($productPackages.Count)
@@ -167,7 +167,7 @@ try {
 
     if ($testExitCode -ne 0) {
         $tail = Get-OutputTail -Output $testOutput
-        throw "go test ist mit Exitcode $testExitCode fehlgeschlagen.$([Environment]::NewLine)$tail"
+        throw "go test failed with exit code $testExitCode.$([Environment]::NewLine)$tail"
     }
 
     $coverageOutput = @(
@@ -177,7 +177,7 @@ try {
 
     if ($coverageExitCode -ne 0) {
         $tail = Get-OutputTail -Output $coverageOutput
-        throw "go tool cover -func ist mit Exitcode $coverageExitCode fehlgeschlagen.$([Environment]::NewLine)$tail"
+        throw "go tool cover -func failed with exit code $coverageExitCode.$([Environment]::NewLine)$tail"
     }
 
     $coverageText = (
@@ -199,7 +199,7 @@ try {
         Select-Object -Last 1
 
     if (-not $totalLine) {
-        throw 'Die Gesamt-Coverage konnte nicht aus go tool cover ermittelt werden.'
+        throw 'Total coverage could not be determined from go tool cover.'
     }
 
     $coverageMatch = [regex]::Match(
@@ -208,7 +208,7 @@ try {
     )
 
     if (-not $coverageMatch.Success) {
-        throw "Die Gesamt-Coverage konnte nicht geparst werden: $totalLine"
+        throw "Total coverage could not be parsed: $totalLine"
     }
 
     $reportedCoverage = [double]::Parse(
@@ -244,7 +244,7 @@ try {
         $count = [long]::Parse($blockMatch.Groups['count'].Value)
         if ($coverageBlocks.ContainsKey($key)) {
             if ($coverageBlocks[$key][0] -ne $statements) {
-                throw "Widersprüchliche Statement-Anzahl im Coverage-Profil: $key"
+                throw "Inconsistent statement count in the coverage profile: $key"
             }
             if ($count -gt 0) {
                 $coverageBlocks[$key][1] = 1
@@ -264,12 +264,12 @@ try {
         }
     }
     if ($totalStatements -eq 0) {
-        throw 'Das Coverage-Profil enthält keine Produkt-Statements.'
+        throw 'The coverage profile contains no product statements.'
     }
 
     $totalCoverage = 100.0 * $coveredStatements / $totalStatements
     if ([Math]::Abs($totalCoverage - $reportedCoverage) -gt 0.051) {
-        throw "Coverage-Profil und go tool cover widersprechen sich: $totalCoverage / $reportedCoverage"
+        throw "Coverage profile and go tool cover disagree: $totalCoverage / $reportedCoverage"
     }
 
     $htmlOutput = @(
@@ -279,17 +279,17 @@ try {
 
     if ($htmlExitCode -ne 0) {
         $tail = Get-OutputTail -Output $htmlOutput
-        throw "go tool cover -html ist mit Exitcode $htmlExitCode fehlgeschlagen.$([Environment]::NewLine)$tail"
+        throw "go tool cover -html failed with exit code $htmlExitCode.$([Environment]::NewLine)$tail"
     }
 
     if ($env:GITHUB_STEP_SUMMARY) {
         $summaryMarkdown = @"
 ## Go Code Coverage — $PlatformName
 
-| Kennzahl | Wert |
+| Metric | Value |
 |---|---:|
 | Gesamt-Coverage | $($totalCoverage.ToString('0.0', [Globalization.CultureInfo]::InvariantCulture)) % |
-| Mindestwert | $($MinimumCoverage.ToString('0.0', [Globalization.CultureInfo]::InvariantCulture)) % |
+| Minimum | $($MinimumCoverage.ToString('0.0', [Globalization.CultureInfo]::InvariantCulture)) % |
 "@
 
         [IO.File]::AppendAllText(
@@ -301,7 +301,7 @@ try {
 
     if ($totalCoverage -lt $MinimumCoverage) {
         throw (
-            'Coverage {0:0.0} % unterschreitet den Mindestwert {1:0.0} %.' -f
+            'Coverage {0:0.0} % is below the minimum {1:0.0} %.' -f
             $totalCoverage,
             $MinimumCoverage
         )
@@ -348,10 +348,10 @@ finally {
             $exitCode = 1
 
             if ($errorMessage) {
-                $errorMessage += " Summary konnte nicht geschrieben werden: $summaryWriteError"
+                $errorMessage += " Summary could not be written: $summaryWriteError"
             }
             else {
-                $errorMessage = "Summary konnte nicht geschrieben werden: $summaryWriteError"
+                $errorMessage = "Summary could not be written: $summaryWriteError"
             }
         }
     }
@@ -370,10 +370,10 @@ finally {
         WarningCount    = $warningCount
         FailureCount    = $failureCount
         NextAction      = if ($status -eq 'PASS') {
-            'Baseline dokumentieren und den plattformspezifischen Mindestwert festlegen.'
+            'Document the baseline and define the platform-specific minimum.'
         }
         else {
-            'Fehler beheben und den Coverage-Lauf erneut ausführen.'
+            'Correct the errors and repeat the coverage run.'
         }
         Error           = $errorMessage
     } | Format-List

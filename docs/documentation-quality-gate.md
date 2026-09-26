@@ -1,57 +1,102 @@
 # Documentation quality gate
 
-This document defines the public documentation checks for FlashGate. It
-supplements `BACKLOG.md`, accepted ADRs, product code, tests, Git history, and
-CI evidence.
+This gate checks the public FlashGate checkout. It supplements `BACKLOG.md`,
+accepted decisions, product code, tests, and release evidence; it does not
+replace editorial or semantic review.
 
-## Purpose
+## Run the gate
 
-The gate prevents current documentation from contradicting product, test,
-release, security, backlog, or repository-boundary state. Historical planning
-and changelog material remains non-operative evidence and does not define a
-current contributor workflow.
-
-## Command
-
-Use PowerShell 7.6.x (Major 7, Minor 6):
+Use the Go toolchain declared in `go.mod`, Git, and PowerShell 7.6.x:
 
 ```powershell
-& pwsh -NoLogo -NoProfile -File .\scripts\Test-DocumentationConsistency.ps1
+& {
+    & ./scripts/Test-DocumentationConsistency.ps1
+    if ($LASTEXITCODE -ne 0) { throw 'Documentation consistency failed.' }
+}
 ```
 
-The script is read-only. It emits one JSON result and returns a nonzero exit
-code when a focused check fails.
+The native inventory, naming, prose-candidate, and link checker can also run
+independently on Windows or Linux:
 
-## Automated checks
+```bash
+go run ./cmd/doccheck
+go test ./cmd/doccheck
+```
 
-The focused gate verifies:
+Both commands emit or test deterministic results. The checker emits one JSON
+report and exits nonzero on a finding; the composite PowerShell gate adds the
+product/backlog/security/CI consistency checks. Source files are not changed.
+Normal Go compilation may use the caller's build cache and temporary directory.
+The PowerShell gate uses the installed toolchain and does not install one.
 
-- strict UTF-8 readability and coverage of current public authorities;
-- canonical backlog identifier and status consistency;
-- current product, architecture, release, and documentation gate consistency;
-- active Windows/Linux Go, coverage, lint, build, release, metadata, shell,
-  PowerShell 7.6 LTS-line, documentation, and security gates;
-- a self-contained public checkout with no private development-control-plane
-  dependency, private host paths, machine-local workflow roots, or internal
-  infrastructure task/workflow identifiers in active guidance;
-- historical migration and provenance material classified separately as
-  non-operative, without treating a past deletion inventory as product logic.
+## Coverage and rules
 
-## Manual review
+Follow [documentation style](documentation-style.md). The inventory comes from
+Git's tracked files plus nonignored new files, not a fixed documentation list.
+Deleted files are absent from the candidate inventory. The composite gate also
+requires the canonical public entry points, so deleting an authority cannot
+silently shrink the required set.
 
-Confirm that documentation still matches product and test behavior, links
-resolve, historical text is not presented as a current instruction, and no new
-product, architecture, dependency, release, credential, remote, or destructive
-decision was introduced.
+All first-party Markdown files are inspected, including ADRs, planning,
+metadata decisions, and documentation outside `docs/`. Vendored upstream
+Markdown is counted separately and left unchanged. Ignored generated files
+are not source documentation. The checker requires regular readable UTF-8
+files without NUL bytes, safe repository-relative paths, at most 4 MiB per
+file and 32 MiB in total, and a bounded Git inventory.
 
-## CI boundary
+The automated rules cover:
 
-Hosted CI consumes only files in the public checkout and standard runner tools.
-It must not read contributor-local workflow files, personal paths, credentials,
-or task directories.
+- stable lower-kebab-case topic filenames and the explicit conventional names;
+- no dated, PR-, sprint-, mobile-, or execution-review filenames;
+- suspicious non-English prose and comments in fenced examples;
+- relative inline and reference links, target path spelling and case, and
+  Markdown heading or explicit HTML-anchor destinations;
+- complete public-document coverage, stable backlog IDs and status parity;
+- current versus planned product/protocol behavior and release boundaries;
+- existing Windows/Linux build, coverage, lint, metadata, shell, documentation,
+  release, and security gates;
+- no private host paths, task infrastructure, or private control-plane
+  dependencies in public guidance or implementation sources.
 
-## PowerShell 7.6 LTS patch contract
+Link validation is local: it does not contact external sites or claim that an
+external URL is live. Repository-root escapes and absolute local links fail.
+Code examples are not rendered links. Heading fragments are checked against
+ATX/setext headings, duplicate-heading suffixes, and explicit HTML anchors.
 
-Compatibility requires PowerShell major version 7 and minor version 6. Record
-the observed patch separately; maintain against the latest serviced 7.6 patch
-unless a documented fix establishes a higher minimum.
+## Editorial review
+
+The language rule is a heuristic vocabulary scan, not language identification
+or proof of complete English prose. Inspect every maintained document and
+review each finding; do not merely remove a matching word. Preserve intentional
+Unicode examples, API identifiers, proper names, licenses, and third-party
+attribution. Code payloads are not translated to satisfy a prose rule.
+
+Confirm current implementation claims against source and tests. Keep accepted
+future contracts explicitly separate from available features. Verify moved
+path references in scripts, CI, plain code spans, and generators as well as
+rendered Markdown links. Unchanged release/security/compatibility requirements
+must not be weakened to pass the checker.
+
+Retain original execution evidence outside the public tree before retiring a
+historical report. Consolidate applicable contracts and retain unresolved work
+under its existing owner. Removing a report never resolves its findings.
+`CHANGELOG.md` remains the narrative release-notes source.
+
+## Regression and CI boundary
+
+`cmd/doccheck` is a development command using only Go's standard library; the
+product server does not import it. Its fixtures cover filename exceptions,
+Unicode and prose boundaries, malformed text, symlinks, missing/duplicate
+anchors, reference links, case mismatches, path escapes, ignored/vendor files,
+and failed Git inventory. The normal full Go tests include these regressions.
+
+CI runs the checker on Windows and Ubuntu and runs the composite gate on the
+exact PR head. Changes to PowerShell or CI additionally require the shell gates
+in [testing](testing.md). Public CI consumes only checkout files and standard
+runner tools, never personal paths, credentials, or contributor-local reports.
+
+## PowerShell compatibility
+
+Compatibility requires PowerShell major 7 and minor 6. Record the observed
+patch separately and maintain against the latest serviced 7.6 patch unless a
+documented fix establishes a higher minimum.

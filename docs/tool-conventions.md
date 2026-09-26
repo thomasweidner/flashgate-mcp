@@ -2,7 +2,7 @@
 
 ## Naming and exposure
 
-Tool names use stable lower-case snake case and describe the user-visible operation. The `SPR-043` baseline is:
+Tool names use stable lower-case snake case and describe the user-visible operation. The implemented baseline is:
 
 ```text
 list_directory
@@ -15,7 +15,7 @@ copy_path
 move_path
 ```
 
-Future names in the [tool and adapter plan](planning/future-tool-adapter-plan.md) are candidates, not current registry entries. Use `get` for metadata/state and `read` for content; `get_path_info` remains the single path-metadata query. Keep `list_directory` rather than adding `get_directory`/`get_directories` aliases. Compare must cover files and trees; `watch_paths` denotes filesystem events and must not collide with process observation. Archive inspect/create/extract names remain verb-consistent. Reject ambiguous names such as `get_access_context`.
+Future names in the [tool and adapter plan](planning/tool-adapters.md) are candidates, not current registry entries. Use `get` for metadata/state and `read` for content; `get_path_info` remains the single path-metadata query. Keep `list_directory` rather than adding `get_directory`/`get_directories` aliases. Compare must cover files and trees; `watch_paths` denotes filesystem events and must not collide with process observation. Archive inspect/create/extract names remain verb-consistent. Reject ambiguous names such as `get_access_context`.
 
 The registry determines deterministic exposure order. `tools/list` uses each implementation's single `Definition()` value for name, title, description, input schema, and output schema. MCP names remain in the adapter layer; the filesystem core keeps domain-oriented Go names such as `List`, `Stat`, and `Mkdir`.
 
@@ -97,7 +97,7 @@ Internal classification uses `not_found`, `already_exists`, `access_denied`, `in
 
 ## Compatibility
 
-FlashGate MCP is pre-1.0 and was not productively deployed when `SPR-043` cleaned the contract. Removed names have no alias or deprecation layer. Clients must update their calls and discovery expectations as described in the dated migration.
+FlashGate MCP is pre-1.0. Removed early tool names have no alias or deprecation layer. Clients must update calls and discovery expectations using the [migration guide](migration.md#tool-names).
 
 ## Version 1.0 planned conventions
 

@@ -74,41 +74,19 @@ cases assert both runtime and help skip states and marker absence. Child
 cleanup requires an explicit `READY` marker and confirms process exit plus the
 continued absence of the delayed survivor marker.
 
-## Current review state
+## Acceptance evidence
 
-BL-248 is `Done`. Its one independent Full Review and the required focused
-Delta Reviews are complete. All six original Full-Review findings are closed;
-`BL-248-REV-004` is `CLOSED`, and no BL-248 finding remains open. The final
-Windows verifier-process contract suite passed `201/201`, the native Linux
-suite passed `206/206`, and the independent focused review of the final
-six-file correction returned `PASS`. CI Run 82 and Metadata Regression Run 11
-both completed with `success`.
+Validate each applicable binary and archive against the current build identity.
+Record native execution separately from cross-build and static inspection; a
+cross-built ARM64 binary is not evidence of native ARM64 validation. Keep
+run-specific results and independent review records as external evidence, not
+as a second current task queue in this document.
 
-The completed acceptance evidence proves:
-
-1. native Windows x64 metadata, version, and help validation;
-2. Windows ARM64 cross-build and static PE/resource/manifest/icon validation;
-3. native Linux x64 ELF, provenance, version, and help validation;
-4. Linux ARM64 cross-build and static ELF/provenance validation;
-5. exact ZIP and TAR.GZ inventory and checksums;
-6. two-build reproducibility and leak gates;
-7. focused negative cases for Windows, Linux, and archive inputs;
-8. bounded execution, architecture, timeout, output-limit, cleanup, parser,
-   shell syntax, targeted test, documentation, and diff gates.
-
-Generated binaries, archives, extracted trees, and local verification reports
-remain ignored validation output. They are not repository source.
-
-PR #25 was merged on 2026-07-26 at
-`a30d3ab4958af6c1df5015300817aac1b692fde9`. The final post-merge chain is
-complete: review and CI correction passed, the pull request was merged,
-durable evidence was preserved with a verified manifest and ZIP inventory,
-and the local preparation workspace was removed only after that evidence
-passed validation. BL-333/BL-334 are the next functional queue step; BL-251
-and BL-324 remain not begun.
+Generated binaries, archives, extracted trees, and validation reports are not
+repository source. The authoritative task status remains in `BACKLOG.md`.
 
 ## Related documentation
 
-- [Build and release metadata](build-and-release-metadata.md)
-- [Manual metadata validation](manual-metadata-validation.md)
+- [Build and release metadata](build-metadata.md)
+- [Manual metadata validation](metadata-validation.md)
 - [Testing](testing.md)

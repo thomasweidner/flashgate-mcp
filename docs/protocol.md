@@ -191,9 +191,9 @@ The supported protocol/extension matrix is a released artifact. A specification 
 ## Related documents
 
 - [Architecture](architecture.md)
-- [Version 1.0 scope](version-1-scope-and-release-boundary.md)
-- [Efficiency plan](efficiency-improvement-plan.md)
-- [Runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
+- [Version 1.0 scope](planning/release-scope.md)
+- [Efficiency plan](planning/efficiency.md)
+- [Runtime and service plan](planning/runtime-modes.md)
 - [Execution identity backends](execution-identity-backends.md)
-- [ADR-013](adr/013-mcp-version-and-extension-compatibility.md)
-- [ADR-014](adr/014-native-multi-mode-runtime-and-local-service-deployment.md)
+- [ADR-013](adr/mcp-compatibility.md)
+- [ADR-014](adr/runtime-modes.md)

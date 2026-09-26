@@ -62,7 +62,7 @@ Version 1.0 requires:
 - direct/proxy/service and cross-project efficiency benchmarks;
 - checksums, SBOM, provenance, signing plan, rollback, and complete documentation.
 
-See [Version 1.0 Scope and Release Boundary](version-1-scope-and-release-boundary.md).
+See [Version 1.0 Scope and Release Boundary](planning/release-scope.md).
 
 ## Post-Version-1.0 direction
 
@@ -79,7 +79,7 @@ Accepted post-Version-1.0 work includes:
 - local cloud/placeholder semantics, filesystem watch, and archives (`BL-345`, `BL-347`–`BL-348`);
 - allowlisted OS-settings reads, a portable public agent skill, and scoped path compression (`BL-349`–`BL-351`).
 
-The [future tool and adapter plan](planning/future-tool-adapter-plan.md) records candidate names, domain/core/MCP/OS-adapter ownership, risk, execution form, platform, and milestone. `BL-215` maintains that catalog planning input; it does not promote future tools into the Version 1.0 release.
+The [future tool and adapter plan](planning/tool-adapters.md) records candidate names, domain/core/MCP/OS-adapter ownership, risk, execution form, platform, and milestone. `BL-215` maintains that catalog planning input; it does not promote future tools into the Version 1.0 release.
 
 No post-Version-1.0 item may be pulled into Version 1.0 without an explicit backlog/milestone change and corresponding risk, resource, and documentation review.
 
@@ -87,7 +87,7 @@ No post-Version-1.0 item may be pulled into Version 1.0 without an explicit back
 
 - [Architecture](architecture.md)
 - [Security model](security.md)
-- [Efficiency improvement plan](efficiency-improvement-plan.md)
+- [Efficiency improvement plan](planning/efficiency.md)
 - [Execution identity backends](execution-identity-backends.md)
-- [Native runtime and service plan](native-multi-mode-runtime-and-service-plan.md)
+- [Native runtime and service plan](planning/runtime-modes.md)
 - [Authoritative backlog](../BACKLOG.md)
