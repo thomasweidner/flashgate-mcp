@@ -19,6 +19,64 @@ FlashGate optimizes for fast responses, low model-token use, low RAM, low CPU, a
 9. Preserve server-side authorization regardless of tool visibility or annotations.
 10. Defer optional acceleration until benchmarks prove value.
 
+## Local deterministic work principle
+
+Prefer deterministic local work over unnecessary model retransmission when
+an applicable typed, bounded tool contract exists. Use local execution when:
+
+- an existing or explicitly planned contract precisely describes the work;
+- explicit inputs and authorized local state determine the operation;
+- it avoids sending complete content through the client or model;
+- the server can bound inputs, processed data, and results; and
+- the operation preserves its applicable security and policy boundaries.
+
+A planned contract is a design target, not an available tool. Without a
+suitable reviewed contract, this principle implies no new feature, free-form
+workflow, shell expression, arbitrary transformation, or implicit policy
+decision. Semantic and creative decisions remain with the calling client or
+model; FlashGate performs only the deterministic mechanics defined by its
+reviewed tool contract.
+
+### Examples and implementation status
+
+- **CURRENTLY_IMPLEMENTED:** use file-only `copy_path` or same-volume
+  `move_path` for a file or directory when its existing contract meets the
+  goal, rather than reading content, retransmitting it, and writing it back.
+  Preserve the existing root, path, overwrite, and operation limits.
+- **ACCEPTED_VERSION_1_TARGET:** precise edits and conditional writes apply
+  explicit changes with the planned preconditions instead of retransmitting
+  a complete file; server-side hashing and fingerprints return compact
+  identities instead of full content solely for external hashing; bounded
+  search returns the requested matches instead of transferring an entire
+  tree for client-side search. These operations are not implemented today.
+- **ACCEPTED_VERSION_1_TARGET:** request only necessary ranges, pages, fields,
+  batches, or cursor increments and return compact results under the
+  applicable contract. These planned selectors and result mechanisms are
+  not available merely because this principle recommends them.
+
+### Client guidance and boundaries
+
+When a suitable typed local operation is available, send selectors rather
+than complete content, supply only required replacement or mutation data,
+use available preconditions, and request only the fields, ranges, pages, or
+batches needed. Do not rebuild that server operation through unnecessary
+Read-to-Model-to-Write calls. Use only options the implemented contract
+actually supports; planned hash or edit preconditions are not current inputs.
+
+This is an efficiency and architecture rule, not authorization. Current
+root/path validation, read-only registration, overwrite rules, and hard limits
+remain in force. General profiles/capabilities, audit lifecycle,
+Operations/Jobs, and their additional security controls remain planned;
+this principle does not claim those checks already run. Tool visibility,
+annotations, a previous hash, client instructions, and the desire to reduce
+retransmission grant no additional authority.
+
+Successful filesystem calls currently retain text-plus-`structuredContent`
+parity. The Version 1.0 single-transmission rule for heavy payloads remains
+the accepted target owned by BL-213 in the
+[payload-class result architecture](#payload-class-result-architecture).
+This principle changes no runtime, wire, result, error, or security contract.
+
 ## Adopted improvements from comparative review
 
 ### Partial and batch operations
