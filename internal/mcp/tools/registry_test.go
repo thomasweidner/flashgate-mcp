@@ -125,7 +125,7 @@ type testTool struct {
 	description string
 	inputSchema any
 	result      any
-	err         *protocol.Error
+	err         error
 	called      int
 	arguments   json.RawMessage
 }
@@ -155,7 +155,7 @@ func (t *testTool) Definition() protocol.Tool {
 	}
 }
 
-func (t *testTool) Execute(_ context.Context, arguments json.RawMessage) (any, *protocol.Error) {
+func (t *testTool) Execute(_ context.Context, arguments json.RawMessage) (any, error) {
 	t.called++
 	t.arguments = append(json.RawMessage(nil), arguments...)
 

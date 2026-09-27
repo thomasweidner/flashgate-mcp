@@ -85,15 +85,13 @@ Client activation must set `MCP_READ_ONLY=true` explicitly; the missing-variable
 
 ## Errors
 
-The adapter retains the existing JSON-RPC architecture:
-
-- parse error `-32700`;
-- invalid request `-32600`;
-- method not found `-32601`;
-- expected argument, path, policy, and filesystem contract failures `-32602`;
-- unexpected I/O failures `-32603`.
-
-Internal classification uses `not_found`, `already_exists`, `access_denied`, `invalid_path`, `unsupported_path_type`, `unsupported_operation`, `limit_exceeded`, and `io_error`. Messages are safe and generic. Stable wire-level error objects are deferred.
+Expected argument and domain failures of registered tools use the
+[machine-readable tool-error contract](tools.md#machine-readable-tool-errors).
+The adapter uses a separate typed execution error and central result
+constructor. The filesystem core remains MCP-independent. Error results omit
+`structuredContent`; success `outputSchema` never describes failures.
+Request failures and unavailable names remain JSON-RPC errors; unclassified
+I/O and internal causes become generic Internal error.
 
 ## Compatibility
 

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
-	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestReadFileToolDefinition(t *testing.T) {
@@ -147,7 +146,7 @@ func TestReadFileToolRejectsNonPositiveMaxBytes(t *testing.T) {
 		_, rpcErr := NewReadFileTool(newFakeFileSystem(), 4096).Execute(
 			context.Background(), json.RawMessage(`{"path":"README.md","maxBytes":`+maxBytes+`}`),
 		)
-		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 			t.Fatalf("expected invalid params for maxBytes=%s, got %#v", maxBytes, rpcErr)
 		}
 	}
@@ -170,12 +169,12 @@ func TestReadFileToolMapsLimitExceeded(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "limit_exceeded" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 
-	if rpcErr.Message != "filesystem error: limit exceeded" {
-		t.Fatalf("expected limit message, got %q", rpcErr.Message)
+	if rpcErr.Error() != "filesystem error: limit exceeded" {
+		t.Fatalf("expected limit message, got %q", rpcErr.Error())
 	}
 }
 
@@ -198,8 +197,8 @@ func TestReadFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -222,8 +221,8 @@ func TestReadFileToolReturnsInvalidParamsForMissingPath(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -248,7 +247,7 @@ func TestReadFileToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "unsupported_path_type" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }

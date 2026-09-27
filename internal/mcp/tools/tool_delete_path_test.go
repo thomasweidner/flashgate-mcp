@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
-	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestDeletePathToolDefinition(t *testing.T) {
@@ -131,8 +130,8 @@ func TestDeletePathToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -155,8 +154,8 @@ func TestDeletePathToolReturnsInvalidParamsForMissingPath(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -181,8 +180,8 @@ func TestDeletePathToolReturnsInvalidParamsForDirectoryNotEmpty(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "unsupported_path_type" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -207,7 +206,7 @@ func TestDeletePathToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "unsupported_path_type" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }

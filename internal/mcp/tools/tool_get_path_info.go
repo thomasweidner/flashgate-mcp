@@ -34,10 +34,10 @@ func (t *GetPathInfoTool) InputSchema() any {
 func (t *GetPathInfoTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()), Annotations: filesystemToolAnnotations(t.Name())}
 }
-func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
+func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
 	var arguments getPathInfoArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil || !isNonBlank(arguments.Path) {
-		return nil, invalidParamsError()
+		return nil, invalidArgumentsError()
 	}
 
 	metadata, err := t.filesystem.Stat(arguments.Path)

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
-	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestWriteFileToolDefinition(t *testing.T) {
@@ -177,8 +176,8 @@ func TestWriteFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -201,8 +200,8 @@ func TestWriteFileToolReturnsInvalidParamsForMissingPath(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -227,8 +226,8 @@ func TestWriteFileToolReturnsInvalidParamsForFileExists(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "already_exists" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -253,7 +252,7 @@ func TestWriteFileToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "unsupported_path_type" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }

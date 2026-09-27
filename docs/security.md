@@ -198,7 +198,7 @@ Notifications do not receive JSON-RPC responses. `notifications/initialized` is 
 
 Unexpected handler panics are contained at the request boundary and returned as generic Internal error responses when the request requires a response.
 
-Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Existing safe JSON-RPC error classification remains unchanged; BL-203 owns a later complete `isError=true` migration.
+Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Expected failures of registered tools cross a separate typed adapter boundary into `isError:true` results containing only safe `category` and `message` text JSON; `structuredContent` is omitted. Unavailable tools retain generic Invalid params; unclassified I/O and internal failures return generic Internal error. No raw causes are serialized.
 
 ## Limits and Redaction
 
@@ -215,7 +215,7 @@ FlashGate applies configurable hard limits for protocol input, tool arguments, f
 | `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries for recursive `delete_path`. |
 | `MCP_MAX_RESPONSE_BYTES` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
 
-Limit violations use generic client-visible messages. Filesystem limit denials are mapped to Invalid params with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
+Limit violations use generic client-visible messages. Filesystem limit denials from registered tools use category `limit_exceeded` in MCP error results with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
 
 `MCP_DEBUG=true` enables minimal stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
 

@@ -137,11 +137,12 @@ Genuine missing-path metadata remains successful in both representations.
 
 Runtime `outputSchema` is implemented for all eight tools. The catalog's
 `resultSchema` describes the same domain result, not the entire JSON-RPC or
-MCP wrapper. The complete normalized `isError:true` tool-error migration is
-still owned by `BL-203`; it is not claimed by this documentation cleanup.
-Current expected tool and argument failures use JSON-RPC Invalid params
-(`-32602`), while unexpected I/O uses Internal error (`-32603`) with safe,
-normalized messages.
+MCP wrapper. Version 0.2.0 moves expected failures of registered tools from JSON-RPC
+Invalid params into MCP `result` with `isError:true`. Decode the text JSON
+`category` and `message`; error results omit `structuredContent`. Request-level
+errors and unavailable names remain JSON-RPC errors. Unexpected failures return
+generic Internal error. Success schemas, envelopes, and missing metadata stay
+unchanged. See the [error contract](tools.md#machine-readable-tool-errors).
 
 Validate envelope shape, semantic parity, missing-path behavior, discovery,
 and negative cases through the supported Windows/Linux smoke tests and the

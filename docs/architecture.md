@@ -61,6 +61,11 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 
 Current successful filesystem tool results are wrapped as one compact JSON text block plus the same object in `structuredContent`. This is the implemented contract, not the final Version 1.0 payload-heavy result architecture. Version 1.0 plans payload classes so large text, binary, search, and process output is transferred once.
 
+Expected registered-tool failures use a typed MCP adapter error and central
+`isError:true` result wrapper without `structuredContent`. Request and registry
+failures remain JSON-RPC; unknown internal causes are contained as generic
+Internal error. The filesystem core retains no MCP dependency.
+
 Current dependency path:
 
 ```text

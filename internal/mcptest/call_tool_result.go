@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 )
 
 // DecodedCallToolResult is the validated semantic form of a CallToolResult.
@@ -19,8 +20,8 @@ type DecodedCallToolResult struct {
 }
 
 // DecodeCallToolResult validates the exact CallToolResult subset emitted by
-// FlashGate SPR-045. It is not a generic MCP decoder: it requires one text
-// block plus structuredContent and rejects optional fields such as _meta.
+// FlashGate. Success requires text/structured parity; expected errors require
+// isError:true and no structuredContent. Optional fields such as _meta are rejected.
 func DecodeCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
 	if !isJSONObject(raw) {
 		return DecodedCallToolResult{}, errors.New("call tool result must be an object")
@@ -70,6 +71,25 @@ func DecodeCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
 		}
 	}
 
+	isError := false
+	if raw, present := fields["isError"]; present {
+		if string(raw) != "true" && string(raw) != "false" {
+			return DecodedCallToolResult{}, errors.New("isError must be a boolean")
+		}
+		isError = string(raw) == "true"
+	}
+	if isError {
+		if _, present := fields["structuredContent"]; present {
+			return DecodedCallToolResult{}, errors.New("tool errors must omit structuredContent")
+		}
+		payload := textContent.(map[string]any)
+		category, categoryOK := payload["category"].(string)
+		message, messageOK := payload["message"].(string)
+		if len(payload) != 2 || !categoryOK || !messageOK || strings.TrimSpace(category) == "" || strings.TrimSpace(message) == "" {
+			return DecodedCallToolResult{}, errors.New("tool error requires category and message only")
+		}
+		return DecodedCallToolResult{TextContent: textContent, IsError: true}, nil
+	}
 	structuredRaw, ok := fields["structuredContent"]
 	if !ok {
 		return DecodedCallToolResult{}, errors.New("structuredContent is required")

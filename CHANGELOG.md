@@ -6,6 +6,10 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ## [Unreleased]
 
+### Changed
+
+- Version 0.2.0: expected registered filesystem-tool failures now return MCP `isError:true` with compact `category`/`message` text JSON and no `structuredContent`. Request errors and unavailable tools remain JSON-RPC; unexpected failures use generic Internal error. Success output schemas and results are unchanged.
+
 ### Added
 
 - Established root `VERSION` as the sole editable product SemVer source (`0.1.0` seed), with exact release-tag parity and generated notes audited from this changelog. This entry does not mark `0.1.0` as released.

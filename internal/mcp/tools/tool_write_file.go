@@ -74,14 +74,14 @@ func (t *WriteFileTool) Definition() protocol.Tool {
 }
 
 // Execute writes the requested file.
-func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
+func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
 	var arguments writeFileArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
 		return nil, rpcErr
 	}
 
 	if !isNonBlank(arguments.Path) {
-		return nil, invalidParamsError()
+		return nil, invalidArgumentsError()
 	}
 
 	content := []byte(arguments.Content)

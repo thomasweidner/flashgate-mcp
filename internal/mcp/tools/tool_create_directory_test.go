@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
-	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestCreateDirectoryDefinition(t *testing.T) {
@@ -33,7 +32,7 @@ func TestCreateDirectoryReportsCreatedState(t *testing.T) {
 func TestCreateDirectoryRejectsInvalidArguments(t *testing.T) {
 	for _, raw := range []string{`{}`, `{"path":""}`, `{"path":" "}`, `{"path":"a","extra":1}`} {
 		_, rpcErr := NewCreateDirectoryTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
-		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 		}
 	}
@@ -43,7 +42,7 @@ func TestCreateDirectoryMapsFilesystemError(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.mkdirErr = fs.ErrPathIsNotDirectory
 	result, rpcErr := NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"file"}`))
-	if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+	if result != nil || rpcErr == nil || errorCategory(rpcErr) != "unsupported_path_type" {
 		t.Fatalf("expected Invalid params, result=%#v error=%#v", result, rpcErr)
 	}
 }

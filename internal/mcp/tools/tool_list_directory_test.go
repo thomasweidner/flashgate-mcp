@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
-	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
@@ -41,7 +40,7 @@ func TestListDirectoryDefaultsOnlyMissingPath(t *testing.T) {
 func TestListDirectoryRejectsInvalidArguments(t *testing.T) {
 	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"unknown":true}`, `{} {}`} {
 		_, rpcErr := NewListDirectoryTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
-		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 		}
 	}
@@ -52,7 +51,7 @@ func TestListDirectoryMapsFileAndSecurityErrors(t *testing.T) {
 		fake := newFakeFileSystem()
 		fake.err = testErr
 		_, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"docs"}`))
-		if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		if rpcErr == nil || errorCategory(rpcErr) != classifyFilesystemError(testErr) {
 			t.Fatalf("expected Invalid params for %v, got %#v", testErr, rpcErr)
 		}
 	}
@@ -68,10 +67,10 @@ func TestListDirectoryRedactsAllPolicyDenials(t *testing.T) {
 		security.ErrReparsePointDenied,
 	} {
 		rpcErr := mapFilesystemError(fmt.Errorf("%w: %s", testErr, hostPath))
-		if rpcErr.Code != protocol.ErrInvalidParams || rpcErr.Message != "filesystem error: invalid path" {
+		if errorCategory(rpcErr) != "invalid_path" || rpcErr.Error() != "filesystem error: invalid path" {
 			t.Fatalf("unexpected policy mapping for %v: %#v", testErr, rpcErr)
 		}
-		if strings.Contains(rpcErr.Message, hostPath) {
+		if strings.Contains(rpcErr.Error(), hostPath) {
 			t.Fatalf("host path leaked for %v", testErr)
 		}
 	}

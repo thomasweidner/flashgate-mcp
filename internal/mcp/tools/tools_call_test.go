@@ -219,32 +219,23 @@ func TestCallHandlerTreatsMissingAndNullArgumentsAsEmptyObject(t *testing.T) {
 }
 
 func TestCallHandlerReturnsToolError(t *testing.T) {
-	t.Parallel()
-
-	expectedErr := &protocol.Error{
-		Code:    protocol.ErrInvalidParams,
-		Message: "invalid path",
-	}
-
 	registry := NewRegistry()
-	registry.Register(&testTool{
-		name: "test_tool",
-		err:  expectedErr,
-	})
-
-	handler := NewCallHandler(registry)
-
-	result, rpcErr := handler.Handle(
-		handlers.Context{},
-		json.RawMessage(`{"name":"test_tool","arguments":{"path":"../outside"}}`),
-	)
-
-	if result != nil {
-		t.Fatalf("expected nil result, got %#v", result)
+	registry.Register(&testTool{name: "test_tool", err: &toolExecutionError{category: categoryInvalidPath, message: "invalid path"}})
+	result, rpcErr := NewCallHandler(registry).Handle(handlers.Context{}, json.RawMessage(`{"name":"test_tool","arguments":{}}`))
+	if rpcErr != nil {
+		t.Fatalf("unexpected JSON-RPC error: %v", rpcErr)
 	}
-
-	if rpcErr != expectedErr {
-		t.Fatal("expected tool error to be returned unchanged")
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := mcptest.DecodeCallToolResult(encoded)
+	if err != nil || !decoded.IsError || decoded.HasStructuredContent {
+		t.Fatalf("invalid error result: %s %v", encoded, err)
+	}
+	payload := decoded.TextContent.(map[string]any)
+	if payload["category"] != "invalid_path" || payload["message"] != "invalid path" {
+		t.Fatalf("unexpected payload: %s", encoded)
 	}
 }
 

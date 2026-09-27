@@ -33,10 +33,10 @@ func (t *CreateDirectoryTool) InputSchema() any {
 func (t *CreateDirectoryTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()), Annotations: filesystemToolAnnotations(t.Name())}
 }
-func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
+func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
 	var arguments createDirectoryArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil || !isNonBlank(arguments.Path) {
-		return nil, invalidParamsError()
+		return nil, invalidArgumentsError()
 	}
 
 	created, err := t.filesystem.Mkdir(arguments.Path)

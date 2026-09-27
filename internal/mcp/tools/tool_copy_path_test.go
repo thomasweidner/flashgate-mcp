@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
-	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestCopyPathToolDefinition(t *testing.T) {
@@ -136,8 +135,8 @@ func TestCopyPathToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -160,8 +159,8 @@ func TestCopyPathToolReturnsInvalidParamsForMissingSource(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -184,8 +183,8 @@ func TestCopyPathToolReturnsInvalidParamsForMissingTarget(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "invalid_arguments" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -210,8 +209,8 @@ func TestCopyPathToolReturnsInvalidParamsForTargetExists(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "already_exists" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
 
@@ -236,7 +235,7 @@ func TestCopyPathToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		t.Fatal("expected rpc error")
 	}
 
-	if rpcErr.Code != protocol.ErrInvalidParams {
-		t.Fatalf("expected ErrInvalidParams, got %d", rpcErr.Code)
+	if errorCategory(rpcErr) != "unsupported_path_type" {
+		t.Fatalf("expected ErrInvalidParams, got %s", errorCategory(rpcErr))
 	}
 }
