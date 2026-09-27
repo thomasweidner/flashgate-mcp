@@ -17,7 +17,7 @@ The current server:
 - returns successful filesystem results as one compact JSON text block plus the same object in `structuredContent`;
 - exposes successful `outputSchema` definitions for the current eight tools;
 - exposes explicit `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` annotations for every current tool;
-- retains safe generic JSON-RPC errors for current tool failures.
+- returns expected registered-tool failures as `isError:true` results with one compact JSON text block containing only `category` and `message`, and no `structuredContent`; request failures, unavailable names, and internal failures remain JSON-RPC errors. See the [error contract](tools.md#machine-readable-tool-errors).
 
 The implemented `2025-11-25` annotation values are:
 

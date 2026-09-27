@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
-
-	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestAllToolsRejectMalformedUnknownTrailingAndWrongTypes(t *testing.T) {
@@ -27,7 +25,7 @@ func TestAllToolsRejectMalformedUnknownTrailingAndWrongTypes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			for _, raw := range []string{`{`, `[]`, `{"unknown":true}`, `{} {}`, `{"path":1,"source":1,"target":1}`} {
 				_, rpcErr := test.tool.Execute(context.Background(), json.RawMessage(raw))
-				if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+				if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 					t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 				}
 			}
@@ -56,7 +54,7 @@ func TestRequiredPathsRejectMissingEmptyAndWhitespace(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			for _, raw := range []string{test.missing, test.empty, test.blank} {
 				_, rpcErr := test.tool.Execute(context.Background(), json.RawMessage(raw))
-				if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+				if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 					t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 				}
 			}
@@ -84,7 +82,7 @@ func TestAllToolsRejectExplicitNullFields(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			for _, raw := range test.raw {
 				_, rpcErr := test.tool.Execute(context.Background(), json.RawMessage(raw))
-				if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+				if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 					t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
 				}
 			}

@@ -134,8 +134,6 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 		{"unknown tool", defaultRegistry, `{"name":"unknown_tool","arguments":{}}`, "invalid params"},
 		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "invalid params"},
 		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "invalid params"},
-		{"invalid arguments", defaultRegistry, `{"name":"get_path_info","arguments":{}}`, "invalid params"},
-		{"PathGuard traversal", defaultRegistry, `{"name":"read_file","arguments":{"path":"..\\outside.txt"}}`, "filesystem error: invalid path"},
 	}
 
 	for _, tc := range tests {
@@ -171,4 +169,30 @@ func runCallToolWireRequest(t *testing.T, registry *tools.Registry, params strin
 		t.Fatalf("invalid response envelope: %s", raw)
 	}
 	return response, raw
+}
+
+func TestFilesystemExpectedToolErrorWireContract(t *testing.T) {
+	root := t.TempDir()
+	filesystem, err := fs.NewLocalFileSystem(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	for _, tc := range []struct{ params, category string }{
+		{`{"name":"get_path_info","arguments":{}}`, "invalid_arguments"},
+		{`{"name":"read_file","arguments":{"path":"../outside.txt"}}`, "invalid_path"},
+	} {
+		response, raw := runCallToolWireRequest(t, registry, tc.params)
+		if response.Error != nil || len(response.Result) == 0 {
+			t.Fatalf("expected result only: %s", raw)
+		}
+		decoded, err := mcptest.DecodeCallToolResult(response.Result)
+		if err != nil || !decoded.IsError || decoded.HasStructuredContent {
+			t.Fatalf("invalid error wire shape: %s %v", raw, err)
+		}
+		payload := decoded.TextContent.(map[string]any)
+		if payload["category"] != tc.category || strings.Contains(raw, root) {
+			t.Fatalf("unsafe category result: %s", raw)
+		}
+	}
 }

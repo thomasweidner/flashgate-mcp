@@ -34,6 +34,7 @@ cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"stat_path","arguments":{}}}
 {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"exists_path","arguments":{}}}
 {"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"mkdir","arguments":{}}}
+{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"../outside.txt"}}}
 JSONRPC
 
 "${BINARY_PATH}" < "${REQUEST_PATH}" > "${RESPONSE_PATH}"
@@ -47,13 +48,13 @@ response_path = sys.argv[1]
 with open(response_path, "r", encoding="utf-8") as handle:
     responses = [json.loads(line) for line in handle if line.strip()]
 
-if len(responses) != 8:
-    raise SystemExit(f"Expected 8 JSON-RPC responses, got {len(responses)}. Response file: {response_path}")
+if len(responses) != 9:
+    raise SystemExit(f"Expected 9 JSON-RPC responses, got {len(responses)}. Response file: {response_path}")
 
 parse_error = responses[0]
 method_not_found = responses[1]
 invalid_params = responses[2]
-removed_tools = responses[3:]
+removed_tools = responses[3:8]
 
 if parse_error.get("id") is not None:
     raise SystemExit(f"Expected parse error id null, got {parse_error.get('id')}")
@@ -92,5 +93,19 @@ for removed_tool in removed_tools:
     if removed_tool.get("error", {}).get("message") != "invalid params":
         raise SystemExit("Expected generic Invalid params message for removed tool")
 
+tool_error = responses[8]
+result = tool_error.get("result", {})
+if "error" in tool_error or result.get("isError") is not True or "structuredContent" in result:
+    raise SystemExit("Expected an MCP error result without structuredContent")
+if set(result) != {"content", "isError"} or len(result.get("content", [])) != 1:
+    raise SystemExit("Unexpected MCP error result fields or block count")
+block = result["content"][0]
+payload = json.loads(block["text"])
+if block.get("type") != "text" or payload != {"category": "invalid_path", "message": "filesystem error: invalid path"}:
+    raise SystemExit("Unexpected safe path-error payload")
+if block["text"] != json.dumps(payload, separators=(",", ":")):
+    raise SystemExit("Tool-error text must be compact deterministic JSON")
+if __import__("os").environ["MCP_ROOT"] in json.dumps(tool_error):
+    raise SystemExit("Root path leaked")
 print("Negative JSON-RPC smoke test passed.")
 PY

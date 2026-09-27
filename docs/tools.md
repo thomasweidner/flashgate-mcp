@@ -37,7 +37,7 @@ The result examples below are domain objects. Every successful `tools/call` plac
 
 The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Tool failures retain the existing safe JSON-RPC contract until BL-203.
+`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Expected tool failures use the separate machine-readable error contract below.
 
 The same current MCP `2025-11-25` definitions expose all four annotation members explicitly:
 
@@ -207,13 +207,34 @@ Files and directories may be renamed or moved on the same volume. Cross-volume m
 
 The source and target identities are revalidated immediately before the operating-system rename, and existing files are replaced through `os.Rename` without a separate target deletion. The remaining race is limited to a concurrent change at the already authorized target path after final revalidation; the path-based cross-platform API cannot condition replacement on the previously observed file identity. Such a race cannot trigger a directory-removal fallback, and this behavior is narrower than the previous explicit remove-then-rename sequence.
 
-## Errors
+## Machine-readable tool errors
 
-Parse, invalid-request, and method errors use the standard JSON-RPC codes. Expected argument, path, policy, not-found, already-exists, path-type, unsupported-operation, and limit failures use `-32602`. Unexpected I/O failures use `-32603`. Error messages are normalized and do not expose absolute host paths or raw operating-system details.
+Registered tools return expected argument and domain failures as MCP
+`CallToolResult` with `isError:true`, exactly one text block, and no
+`structuredContent`. Text is compact deterministic JSON containing only
+`category` and a safe `message`, for example:
 
-Runtime `outputSchema` and `structuredContent` cover successful calls only. Stable machine-readable MCP tool-error payloads remain separate work.
+```json
+{"content":[{"type":"text","text":"{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}"}],"isError":true}
+```
 
-The previous pre-1.0 contract and required client changes are documented in [filesystem tool contract cleanup](migration.md).
+Active categories are `invalid_arguments`, `invalid_path`, `not_found`,
+`already_exists`, `access_denied`, `unsupported_path_type`,
+`unsupported_operation`, and `limit_exceeded`. The future vocabulary reserves
+`unsupported_capability`, `content_not_local`, `indeterminate`, `canceled`,
+and `deadline_exceeded`; their domain functions are not implemented.
+
+Malformed requests and outer `tools/call` params remain JSON-RPC errors.
+Unknown, removed, and profile-hidden tool names share generic Invalid params
+(`-32602`, `invalid params`). After registry resolution, expected failures use
+the MCP result above. Unclassified I/O, internal, panic, and serialization
+failures use generic JSON-RPC Internal error (`-32603`, `internal error`).
+No public `io_error`, raw OS cause, host root, provider identity, or diagnostic
+fields are included. Error responses contain either a JSON-RPC `error` or an
+MCP `result`, never both. No `_meta` is added.
+
+Success `outputSchema` and `structuredContent` remain success-only and
+unchanged. Missing `get_path_info` remains successful with `exists:false`.
 
 ## Version 1.0 target contract direction
 

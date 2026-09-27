@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -44,9 +45,17 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		execCtx = context.Background()
 	}
 
-	result, rpcErr := tool.Execute(execCtx, params.Arguments)
-	if rpcErr != nil {
-		return nil, rpcErr
+	result, err := tool.Execute(execCtx, params.Arguments)
+	if err != nil {
+		var expected *toolExecutionError
+		if errors.As(err, &expected) && expected != nil {
+			wrapped, wrapErr := protocol.NewCallToolErrorResult(string(expected.category), expected.message)
+			if wrapErr != nil {
+				return nil, internalToolResultError()
+			}
+			return wrapped, nil
+		}
+		return nil, internalToolResultError()
 	}
 
 	wrapped, rpcErr := wrapSuccessfulToolResult(result)

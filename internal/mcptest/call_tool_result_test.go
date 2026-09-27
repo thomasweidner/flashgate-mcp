@@ -13,13 +13,13 @@ func TestDecodeCallToolResultAcceptsStructuredTextResult(t *testing.T) {
 		isError bool
 	}{
 		{raw: json.RawMessage(`{"content":[{"type":"text","text":"{}"}],"structuredContent":{}}`)},
-		{raw: json.RawMessage(`{"content":[{"type":"text","text":"{\"message\":\"failed\"}"}],"structuredContent":{"message":"failed"},"isError":true}`), isError: true},
+		{raw: json.RawMessage(`{"content":[{"type":"text","text":"{\"category\":\"invalid_path\",\"message\":\"failed\"}"}],"isError":true}`), isError: true},
 	} {
 		decoded, err := DecodeCallToolResult(test.raw)
 		if err != nil {
 			t.Fatalf("expected valid CallToolResult, got %v", err)
 		}
-		if !decoded.HasStructuredContent || decoded.IsError != test.isError {
+		if decoded.HasStructuredContent == test.isError || decoded.IsError != test.isError {
 			t.Fatalf("unexpected decoded result: %#v", decoded)
 		}
 	}
@@ -43,6 +43,11 @@ func TestDecodeCallToolResultRejectsLegacyUnwrappedCaptures(t *testing.T) {
 
 func TestDecodeCallToolResultRejectsInvalidForms(t *testing.T) {
 	tests := []string{
+		`{"content":[{"type":"text","text":"{}"}],"structuredContent":{},"isError":true}`,
+		`{"content":[{"type":"text","text":"{}"}],"isError":true}`,
+		`{"content":[{"type":"text","text":"{}"}],"isError":null}`,
+		`{"content":[{"type":"text","text":"{\"category\":\"x\",\"message\":\"m\"}"}],"isError":false}`,
+
 		`[]`,
 		`{}`,
 		`{"content":{},"structuredContent":{}}`,

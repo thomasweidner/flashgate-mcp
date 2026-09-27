@@ -70,14 +70,14 @@ func (t *DeletePathTool) Definition() protocol.Tool {
 }
 
 // Execute deletes the requested path.
-func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
+func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
 	var arguments deletePathArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
 		return nil, rpcErr
 	}
 
 	if !isNonBlank(arguments.Path) {
-		return nil, invalidParamsError()
+		return nil, invalidArgumentsError()
 	}
 
 	if err := t.filesystem.Delete(arguments.Path, arguments.Recursive); err != nil {

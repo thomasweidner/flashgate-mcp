@@ -75,14 +75,14 @@ func (t *MovePathTool) Definition() protocol.Tool {
 }
 
 // Execute moves the requested source path to the target path.
-func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
+func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
 	var arguments movePathArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
 		return nil, rpcErr
 	}
 
 	if !isNonBlank(arguments.Source) || !isNonBlank(arguments.Target) {
-		return nil, invalidParamsError()
+		return nil, invalidArgumentsError()
 	}
 
 	if err := t.filesystem.Move(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {

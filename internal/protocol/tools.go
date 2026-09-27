@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"strings"
 )
 
 // Tool describes a MCP tool exposed by the server.
@@ -38,7 +39,7 @@ func NewTextContent(text string) TextContent {
 // CallToolResult is the MCP result envelope for tools/call.
 type CallToolResult struct {
 	Content           []TextContent   `json:"content"`
-	StructuredContent json.RawMessage `json:"structuredContent"`
+	StructuredContent json.RawMessage `json:"structuredContent,omitempty"`
 	IsError           bool            `json:"isError,omitempty"`
 }
 
@@ -58,4 +59,21 @@ func NewCallToolResult(structuredContent json.RawMessage) (CallToolResult, error
 		Content:           []TextContent{NewTextContent(string(content))},
 		StructuredContent: content,
 	}, nil
+}
+
+// NewCallToolErrorResult creates an expected tool failure without success data.
+// Callers supply only stable categories and safe, normalized messages.
+func NewCallToolErrorResult(category, message string) (CallToolResult, error) {
+	if strings.TrimSpace(category) == "" || strings.TrimSpace(message) == "" {
+		return CallToolResult{}, errors.New("tool error category and message are required")
+	}
+	payload := struct {
+		Category string `json:"category"`
+		Message  string `json:"message"`
+	}{category, message}
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		return CallToolResult{}, err
+	}
+	return CallToolResult{Content: []TextContent{NewTextContent(string(encoded))}, IsError: true}, nil
 }

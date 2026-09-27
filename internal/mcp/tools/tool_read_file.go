@@ -73,20 +73,20 @@ func (t *ReadFileTool) Definition() protocol.Tool {
 }
 
 // Execute reads the requested file.
-func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, *protocol.Error) {
+func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
 	var arguments readFileArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
 		return nil, rpcErr
 	}
 
 	if !isNonBlank(arguments.Path) {
-		return nil, invalidParamsError()
+		return nil, invalidArgumentsError()
 	}
 
 	maxBytes := t.serverMaxBytes
 	if arguments.MaxBytes != nil {
 		if *arguments.MaxBytes < 1 {
-			return nil, invalidParamsError()
+			return nil, invalidArgumentsError()
 		}
 		maxBytes = *arguments.MaxBytes
 	}

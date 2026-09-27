@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path "$PSScriptRoot\.."
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
 $buildDir = Join-Path $repoRoot "build"
-$stamp = "{0}-{1}" -f ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()), $PID
+[string]$stamp = "{0}-{1}" -f ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()), $PID
 $requestPath = Join-Path $buildDir "smoke-jsonrpc-negative-$stamp-request.jsonl"
 $responsePath = Join-Path $buildDir "smoke-jsonrpc-negative-$stamp-response.jsonl"
 
@@ -26,6 +26,7 @@ try {
         '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"stat_path","arguments":{}}}'
         '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"exists_path","arguments":{}}}'
         '{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"mkdir","arguments":{}}}'
+        '{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"../outside.txt"}}}'
     )
 
     [System.IO.File]::WriteAllText($requestPath, (($requests -join "`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
@@ -38,8 +39,8 @@ try {
 
     $responses = Get-Content $responsePath | Where-Object { $_.Trim().Length -gt 0 }
 
-    if ($responses.Count -ne 8) {
-        throw "Expected 8 JSON-RPC responses, got $($responses.Count). Response file: $responsePath"
+    if ($responses.Count -ne 9) {
+        throw "Expected 9 JSON-RPC responses, got $($responses.Count). Response file: $responsePath"
     }
 
     $parseError = $responses[0] | ConvertFrom-Json
@@ -93,6 +94,21 @@ try {
         }
     }
 
+    $toolError = $responses[8] | ConvertFrom-Json -AsHashtable
+    $result = $toolError['result']
+    if ($toolError.ContainsKey('error') -or $result['isError'] -isnot [bool] -or $result['isError'] -ne $true -or $result.ContainsKey('structuredContent')) {
+        throw 'Expected an MCP error result without structuredContent'
+    }
+    if ($result.Count -ne 2 -or @($result['content']).Count -ne 1) {
+        throw 'Unexpected MCP error fields or block count'
+    }
+    $block = $result['content'][0]
+    if ($block.Count -ne 2 -or $block['type'] -ne 'text' -or $block['text'] -cne '{"category":"invalid_path","message":"filesystem error: invalid path"}') {
+        throw 'Unexpected safe compact path-error payload'
+    }
+    if ($responses[8].Contains([string]$repoRoot) -or $responses[8].Contains(([string]$repoRoot | ConvertTo-Json -Compress).Trim('"'))) {
+        throw 'Root path leaked'
+    }
     Write-Host "Negative JSON-RPC smoke test passed."
 } finally {
     Remove-Item -LiteralPath $requestPath, $responsePath -Force -ErrorAction SilentlyContinue
