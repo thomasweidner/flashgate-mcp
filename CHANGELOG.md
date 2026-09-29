@@ -12,6 +12,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Added an exact machine-readable MCP support matrix for currently advertised revisions; it lists only `2025-11-25` and does not activate `2026-07-28`.
+
 - Established root `VERSION` as the sole editable product SemVer source (`0.1.0` seed), with exact release-tag parity and generated notes audited from this changelog. This entry does not mark `0.1.0` as released.
 - Added explicit MCP `2025-11-25` discovery annotations for all eight filesystem tools. The exact annotation matrix includes explicit `false` members; annotations do not grant authorization or change server-side checks.
 - Added task-bound scratch routing for PowerShell and Python validation producers, with explicit working roots, fail-closed path validation, and portable Windows/Linux checks.

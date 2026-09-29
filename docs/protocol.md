@@ -6,6 +6,12 @@ This document distinguishes the current implemented protocol from the accepted V
 
 ## Current implementation
 
+The [machine-readable MCP protocol matrix](mcp-protocol-matrix.json) is the
+canonical list of currently advertised revisions. Its sole entry is
+`2025-11-25`, opened by `initialize` over STDIO with no advertised extensions.
+An entry means implemented and validated support. The final `2026-07-28`
+revision is a Version 1.0 target and is absent from the current matrix.
+
 The current server:
 
 - communicates through UTF-8 JSON-RPC messages over STDIO;
@@ -69,10 +75,20 @@ Version 1.0 uses exact revision-specific paths rather than one permanent generat
 For the `2025-11-25` initialization path:
 
 - retain the `initialize`/`notifications/initialized` contract while that revision is supported;
+- reply with the supported `2025-11-25` revision when a client proposes a syntactically valid but unsupported revision through `initialize`;
 - select only behavior defined and implemented for that revision;
 - preserve current clients until an explicit later deprecation/removal decision.
 
 For the `2026-07-28` stateless path:
+
+BL-208 owns implementation of this separate runtime path. Its opening and
+unsupported-version response belong to that revision and do not change the
+current `2025-11-25` initialize negotiation. A revision dispatcher must select
+an explicitly implemented path by the request's revision-specific opening and
+metadata; it must not infer support from a newer date, a prior request on the
+connection, or a client capability claim. Its unsupported-version response is
+revision-specific, not a global policy. The matrix gains this revision only
+after its implementation and required support gates pass.
 
 - do not use `initialize`, `notifications/initialized`, or a protocol-level MCP session;
 - require the request's `_meta` protocol version and client capabilities, with client information treated only as self-reported compatibility/diagnostic metadata;

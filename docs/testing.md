@@ -297,6 +297,21 @@ The `tools/list` JSON-RPC wire test checks schema and annotation exposure for bo
 
 ### MCP Compatibility Testing
 
+`internal/protocol` strictly decodes the
+[advertised revision matrix](mcp-protocol-matrix.json), rejects unknown or
+trailing JSON and unsupported entries, and checks parity with the implemented
+protocol constant. Focused `internal/mcp/initialize` tests cover the supported
+proposal, an unsupported valid proposal that receives `2025-11-25`, and invalid
+params. `cmd/server` exercises both proposals and the unregistered
+`server/discover` method through the real JSON-RPC STDIO server path, including
+protocol-only stdout and exact current capabilities.
+
+Adding a revision is a breaking/upgrade gate: first implement its own opening,
+dispatch, negotiation/error, positive, negative, and cross-revision wire
+contracts; then pass the existing compatibility, conformance, schema, security,
+platform, and documentation gates. Only then add it to the advertised matrix.
+The matrix contains current support, not planned revisions.
+
 The implemented protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, pre-`CallToolResult` unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the normalized tool-error contract. The decoder intentionally validates the exact FlashGate-emitted `2025-11-25` subset (one text block; success requires object `structuredContent` with text parity; error requires `isError:true` and absent `structuredContent`; no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
 
 Version 1.0 adds a separate `2026-07-28` compatibility matrix rather than mutating the `2025-11-25` expectations in place. Required coverage includes `server/discover`; per-request protocol/capability `_meta`; optional self-reported `clientInfo` without authorization effect; response `serverInfo`; `UnsupportedProtocolVersion`; required result `resultType`; list `ttlMs`/`cacheScope`; extension downgrade/mismatch; no connection-history authority; and cross-revision opening/probe behavior on STDIO. Future protocol revisions require their own explicit matrix/path delta. Complete JSON Schema 2020-12 validation and official MCP conformance tooling remain planned.
