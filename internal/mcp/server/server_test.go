@@ -56,6 +56,36 @@ func TestServerRunHandlesValidRequest(t *testing.T) {
 	}
 }
 
+func TestRuntimeHandlesRequestWithoutTransport(t *testing.T) {
+	t.Parallel()
+
+	testRouter := router.New()
+	testRouter.Register(&testHandler{
+		method: "test/ok",
+		result: map[string]any{"ok": true},
+	})
+	runtime := NewRuntime(testRouter, Options{})
+
+	response := runtime.Handle(
+		context.Background(),
+		[]byte(`{"jsonrpc":"2.0","id":"runtime","method":"test/ok"}`),
+	)
+	if response == nil {
+		t.Fatal("expected response")
+	}
+	if string(response.ID) != `"runtime"` || response.Error != nil {
+		t.Fatalf("unexpected response: %#v", response)
+	}
+
+	notification := runtime.Handle(
+		context.Background(),
+		[]byte(`{"jsonrpc":"2.0","method":"test/ok"}`),
+	)
+	if notification != nil {
+		t.Fatalf("expected no notification response, got %#v", notification)
+	}
+}
+
 func TestServerRunReturnsMethodNotFound(t *testing.T) {
 	t.Parallel()
 

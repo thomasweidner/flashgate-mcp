@@ -15,7 +15,15 @@ import (
 
 // Server is the MCP server runtime.
 type Server struct {
-	transport        *transport.Transport
+	transport   *transport.Transport
+	runtime     *Runtime
+	diagnostics *diagnostics.Logger
+}
+
+// Runtime is the transport-neutral MCP request runtime. It validates and
+// dispatches one complete JSON-RPC message without owning framing or host
+// lifecycle.
+type Runtime struct {
 	router           *router.Router
 	maxArgumentBytes int64
 	diagnostics      *diagnostics.Logger
@@ -37,7 +45,15 @@ func New(in io.Reader, out io.Writer, router *router.Router) *Server {
 // NewWithOptions creates a new MCP server with explicit runtime options.
 func NewWithOptions(in io.Reader, out io.Writer, router *router.Router, options Options) *Server {
 	return &Server{
-		transport:        transport.NewWithLimits(in, out, options.MaxMessageBytes, options.MaxResponseBytes),
+		transport:   transport.NewWithLimits(in, out, options.MaxMessageBytes, options.MaxResponseBytes),
+		runtime:     NewRuntime(router, options),
+		diagnostics: options.Diagnostics,
+	}
+}
+
+// NewRuntime creates a transport-neutral MCP request runtime.
+func NewRuntime(router *router.Router, options Options) *Runtime {
+	return &Runtime{
 		router:           router,
 		maxArgumentBytes: options.MaxArgumentBytes,
 		diagnostics:      options.Diagnostics,
@@ -70,31 +86,43 @@ func (s *Server) Run(ctx context.Context) error {
 			return err
 		}
 
-		request, validationErr := validateRequestMessageWithLimits(message, s.maxArgumentBytes)
-		if validationErr != nil {
-			s.logDebug("jsonrpc validation error code=%d", validationErr.code)
-			if writeErr := s.writeError(validationErr.id, validationErr.code, validationErr.message); writeErr != nil {
-				return writeErr
-			}
+		response := s.runtime.Handle(ctx, message)
+		if response == nil {
 			continue
 		}
-
-		if request.notification {
-			s.logDebug("jsonrpc notification ignored method=%s", request.method)
-			continue
-		}
-
-		response := s.handleRequest(ctx, request)
-		if err := s.writeResponse(request.id, response); err != nil {
+		if err := s.writeResponse(response.ID, *response); err != nil {
 			return err
 		}
 	}
 }
 
-func (s *Server) handleRequest(ctx context.Context, request validatedRequest) (response protocol.Response) {
+// Handle validates and dispatches one complete JSON-RPC message. Notifications
+// return nil because they have no protocol response.
+func (r *Runtime) Handle(ctx context.Context, message []byte) *protocol.Response {
+	request, validationErr := validateRequestMessageWithLimits(message, r.maxArgumentBytes)
+	if validationErr != nil {
+		r.logDebug("jsonrpc validation error code=%d", validationErr.code)
+		return &protocol.Response{
+			JSONRPC: protocol.JSONRPCVersion,
+			ID:      normalizedID(validationErr.id),
+			Error: &protocol.Error{
+				Code:    validationErr.code,
+				Message: validationErr.message,
+			},
+		}
+	}
+	if request.notification {
+		r.logDebug("jsonrpc notification ignored method=%s", request.method)
+		return nil
+	}
+	response := r.handleRequest(ctx, request)
+	return &response
+}
+
+func (r *Runtime) handleRequest(ctx context.Context, request validatedRequest) (response protocol.Response) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			s.logDebug("handler panic recovered method=%s", request.method)
+			r.logDebug("handler panic recovered method=%s", request.method)
 			response = protocol.Response{
 				JSONRPC: protocol.JSONRPCVersion,
 				ID:      request.id,
@@ -106,7 +134,7 @@ func (s *Server) handleRequest(ctx context.Context, request validatedRequest) (r
 		}
 	}()
 
-	result, rpcErr := s.router.Dispatch(
+	result, rpcErr := r.router.Dispatch(
 		request.method,
 		handlers.Context{Context: ctx},
 		request.params,
@@ -164,4 +192,17 @@ func (s *Server) logDebug(format string, args ...any) {
 	if s.diagnostics != nil {
 		s.diagnostics.Debugf(format, args...)
 	}
+}
+
+func (r *Runtime) logDebug(format string, args ...any) {
+	if r.diagnostics != nil {
+		r.diagnostics.Debugf(format, args...)
+	}
+}
+
+func normalizedID(id json.RawMessage) json.RawMessage {
+	if len(id) == 0 {
+		return nullID()
+	}
+	return id
 }
