@@ -119,7 +119,11 @@ Payload-heavy content is transmitted once. Small metadata results may retain tex
 
 Version 1.0 must publish an explicit supported MCP protocol matrix.
 
-The implemented revision remains `2025-11-25`. The final `2026-07-28` specification is now an accepted Version 1.0 implementation target. The planned release matrix supports both exact revisions after BL-207/208 complete: a `2025-11-25` initialization path and a separate `2026-07-28` stateless path. This is a release target, not a claim that `2026-07-28` is implemented today.
+The production support matrix currently lists only `2025-11-25`. The
+`2026-07-28` stateless adapter is implemented as a compiled-in candidate and
+validated with an internal test policy. Public activation remains dependent on
+BL-204, BL-212, and BL-219. The Version 1.0 release matrix targets both exact
+revisions.
 
 FlashGate documentation and code name protocol paths by exact revision. A later MCP revision therefore receives its own explicit support-matrix entry, adapter delta, and tests.
 

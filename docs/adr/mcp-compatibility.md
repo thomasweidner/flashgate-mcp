@@ -14,7 +14,10 @@ FlashGate modules/providers are optional local project extensions. MCP protocol 
 
 The local FlashGate core remains independent of MCP protocol versions. The MCP adapter owns protocol-version negotiation, extension negotiation, revision-specific DTOs, and mapping between internal domain results and MCP wire contracts. FlashGate retains its own Go MCP adapter; official MCP SDKs/schemas are interoperability and conformance references, not runtime dependencies. Adopting an MCP SDK later requires a separate dependency/architecture decision.
 
-The implemented protocol remains `2025-11-25`. Version 1.0 targets support for the final `2026-07-28` revision alongside the `2025-11-25` initialization path, but `2026-07-28` is not supported until FlashGate has the revision-specific adapter implementation, compatibility/conformance tests, and changelog/documentation evidence. Future revisions are added only through explicit matrix entries and adapter/test deltas.
+The production policy remains `2025-11-25`. The `2026-07-28` adapter is a
+compiled and internally tested candidate; it is not publicly supported until
+BL-204, BL-212, and BL-219 pass and the exact matrix entry is activated.
+Future revisions require explicit matrix entries and adapter/test deltas.
 
 New MCP features must not be inserted directly into core domains. The internal Operations/Job Manager will be designed so the MCP adapter can map eligible internal jobs to the final official MCP Tasks Extension `io.modelcontextprotocol/tasks`. The 2025 experimental task lifecycle and the final extension lifecycle must not be combined. No custom operation status/result/cancel tools are accepted as the primary MCP job contract while the Tasks-extension and client-compatibility decision remains open.
 
@@ -32,7 +35,7 @@ Keeping revision-specific protocol details at the adapter boundary preserves a s
 
 ## Consequences
 
-- MCP `2025-11-25` remains the only implemented protocol revision.
+- MCP `2025-11-25` remains the only production-enabled protocol revision.
 - The final `2026-07-28` revision is an accepted Version 1.0 target but is not claimed as supported before its revision-specific implementation and validation pass.
 - The Operations/Job Manager has no dependency on MCP types.
 - The MCP adapter needs explicit internal-job-to-Task mapping and fallback decisions.

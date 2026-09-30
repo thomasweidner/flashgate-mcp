@@ -15,4 +15,7 @@ const (
 
 	// ErrInternalError indicates an internal server error.
 	ErrInternalError = -32603
+
+	// ErrUnsupportedProtocolVersion is the stateless MCP revision mismatch.
+	ErrUnsupportedProtocolVersion = -32022
 )
