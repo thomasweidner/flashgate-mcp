@@ -82,6 +82,30 @@ historical report. Consolidate applicable contracts and retain unresolved work
 under its existing owner. Removing a report never resolves its findings.
 `CHANGELOG.md` remains the narrative release-notes source.
 
+## Backlog-item completion review
+
+Before a backlog item is marked complete, perform a semantic closure review in
+addition to the automated documentation checks:
+
+- update the owning `BACKLOG.md` row in the same closure change;
+- satisfy the complete acceptance scope, or bind every intentionally deferred
+  deliverable to one concrete existing successor BL and add that deliverable to
+  the successor's own acceptance scope;
+- review all directly affected current documentation and remove stale
+  current/planned/implemented claims;
+- explicitly disposition `VERSION`, `CHANGELOG.md`, tests/CI, current-version
+  candidate artifacts, release/distribution, migration, and security impact;
+- whenever `VERSION` changes, require one nonempty `## [<VERSION>]` changelog
+  section in the same change. The section may be undated before publication; a
+  public release adds ` - YYYY-MM-DD` only with the matching `v<VERSION>` tag.
+
+A predecessor-only note such as "document later" is not a valid handoff. The
+successor must carry the obligation in its own canonical backlog scope so a
+future implementation chat can discover it without reading historical work.
+These are semantic completion obligations; the current checker does not infer
+all of them from arbitrary diffs. Sprint-level documentation review remains an
+aggregate backstop rather than the first reconciliation point.
+
 ## Regression and CI boundary
 
 `cmd/doccheck` is a development command using only Go's standard library; the

@@ -29,6 +29,8 @@ FlashGate is a native, local-first MCP server optimized for low latency, low tok
 3. For a new architecture or security decision, add or amend an ADR before implementation.
 4. Keep current implementation facts separate from target Version 1.0 behavior.
 5. Do not promote a `Later` item into Version 1.0 without an explicit backlog and documentation decision.
+6. Before completing a backlog item, update its backlog status and either satisfy the complete acceptance scope or bind every intentionally deferred deliverable to one concrete existing successor BL and add that deliverable to the successor's own acceptance scope.
+7. Explicitly disposition affected documentation, `CHANGELOG.md`/`VERSION`, tests/CI, candidate artifacts, release/distribution, migration, and security impact; use not-applicable only when the area is genuinely unaffected.
 
 ## Design requirements
 
@@ -85,11 +87,15 @@ version together with the required changelog and migration notes. After Version
 Documentation-only, test-only, planning-only, and behavior-neutral refactoring
 changes do not require a product-version increment. Root `VERSION` is the one
 editable product-version source. `CHANGELOG.md` is the narrative release-notes
-source; keep `[Unreleased]` until a release is prepared. A release requires an
-entry headed `## [<VERSION>] - YYYY-MM-DD`, nonempty notes, the exact
-`v<VERSION>` tag on the built commit, and a clean working tree. A tag is parity
-evidence, not the product-version source. Ordinary direct `go build` remains
-`0.0.0-dev`; explicit build versions are for metadata validation fixtures.
+source. Every `VERSION` change must create or update exactly one nonempty
+`## [<VERSION>]` section in the same change and place that version's notes there;
+version-specific notes must not remain only under `[Unreleased]`. An introduced
+but unpublished product version uses an undated version heading. `[Unreleased]`
+is reserved for notable changes not yet assigned to a product version. A public
+release dates the existing section as `## [<VERSION>] - YYYY-MM-DD` and requires
+the exact `v<VERSION>` tag on the built commit plus a clean working tree. A tag
+is parity evidence, not the product-version source. Ordinary direct `go build`
+remains `0.0.0-dev`; explicit build versions are for metadata validation fixtures.
 
 
 ## Documentation changes
