@@ -518,6 +518,8 @@ flashgate-mcp_<version>_linux_arm64.tar.gz
 
 Each archive has a sibling `.sha256` file and exactly one top-level directory containing the platform binary, `LICENSE`, `README.md`, and `THIRD-PARTY-NOTICES.md`. Windows artifacts carry `VERSIONINFO`, an embedded machine-readable build manifest, and the canonical FlashGate icon; Linux artifacts carry matching CLI, embedded-manifest, Go/VCS, ELF architecture, and Go build-ID metadata. Before upload, every matrix path builds independently twice, validates metadata and exact archive contents, compares binary, archive, checksum-file, and inventory identities, and performs a machine-readable host/credential leak scan.
 
+The current workflow uploads validated build outputs as time-limited GitHub Actions artifacts. Persistent public GitHub Release publication is planned under the Version 1.0 release boundary (`BL-263`); transient workflow artifacts are validation evidence, not the final distribution channel.
+
 Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-metadata.md), [Artifact verification](docs/artifact-verification.md), and [Manual metadata validation](docs/metadata-validation.md).
 
 Historical project and release milestones remain available in `BACKLOG.md` and

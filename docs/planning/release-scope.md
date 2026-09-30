@@ -13,13 +13,13 @@
 
 Version 1.0 is reached after `SPR-061` only when `BL-263` passes.
 
-Before further functional implementation in `SPR-048`, Version 1.0 planning
-requires the prerequisite chain `BL-260 -> BL-245 -> BL-203`. BL-260 and
-BL-245 are therefore assigned to SPR-048 rather than SPR-061: product-code
-coverage is established first, canonical product versioning second, and BL-203
-is the first following functional owner. This sequencing change does not mark
-any of those tasks implemented and does not alter the final SPR-061/BL-263
-release gate.
+The `SPR-048` prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete:
+product-code coverage and canonical product versioning are established before
+subsequent functional work. BL-255 now owns current-version candidate artifacts
+before the next `VERSION`-changing merge; BL-257 follows BL-204 plus BL-212,
+BL-258 follows BL-213 plus BL-214, and BL-256 follows BL-215 so the schema,
+payload, and catalog contracts are CI-enforced in the implementation sprint.
+The final public release boundary remains SPR-061/BL-263.
 
 ## Version 1.0 product objective
 
@@ -168,7 +168,8 @@ Version 1.0 requires:
 - atomic update/rollback instructions;
 - no silent automatic update;
 - public security policy, governance, maintainer, and contribution rules;
-- complete installation, removal, rollback, operation, and troubleshooting documentation.
+- complete installation, removal, rollback, operation, and troubleshooting documentation;
+- persistent GitHub Release publication for `v<VERSION>` with the already validated platform archives, checksums, release notes, and available supply-chain evidence; transient GitHub Actions artifacts alone are not the public distribution result.
 
 ## Explicit post-Version-1.0 work
 
@@ -226,8 +227,9 @@ The following remain outside the accepted local Version 1.0 architecture and req
 6. supported MCP revisions and extensions are explicitly documented and tested;
 7. performance, payload, token, memory, CPU, concurrency, and security budgets pass;
 8. release artifacts and service assets are reproducible, traceable, and rollback-capable;
-9. user, administrator, security, and developer documentation matches the released implementation;
-10. breaking-change, compatibility, deprecation, and migration policy is published for post-1.0 releases.
+9. the release publishes persistent GitHub Release `v<VERSION>` assets using the validated archives, checksums, release notes, and available supply-chain evidence rather than relying only on transient workflow artifacts;
+10. user, administrator, security, and developer documentation matches the released implementation;
+11. breaking-change, compatibility, deprecation, and migration policy is published for post-1.0 releases.
 
 ## Related documents
 

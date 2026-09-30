@@ -63,13 +63,20 @@ A functional merge and its `VERSION` change are one product change:
 
 Build scripts, CLI output, Windows `VERSIONINFO`, Linux metadata, embedded
 manifests, archive names, checksums, and release validation consume `VERSION`.
-At release, any passed version must equal `VERSION`; the built commit must have
-the exact `v<VERSION>` tag, and its tree must be clean. `CHANGELOG.md` is the
-only manually maintained narrative release-notes source. `cmd/releaseaudit
-source --root . --release` validates its dated `## [<VERSION>] - YYYY-MM-DD`
-section and may generate notes and a typed JSON report. No generated notes are
-added to binary archives. CI does not infer version bumps from diffs; the
-same-merge rule is a contributor and review contract.
+Every `VERSION` change must create or update exactly one nonempty
+`## [<VERSION>]` section in `CHANGELOG.md` in the same product change. The
+section may remain undated while that product version exists only as a repository
+or candidate-build version; `[Unreleased]` holds notable changes not yet assigned
+to a product version. At public release, any passed version must equal `VERSION`;
+the existing version section is dated as `## [<VERSION>] - YYYY-MM-DD`, the built
+commit must have the exact `v<VERSION>` tag, and its tree must be clean.
+`CHANGELOG.md` is the only manually maintained narrative release-notes source.
+`cmd/releaseaudit source --root . --release` validates the dated release section
+and may generate notes and a typed JSON report. No generated notes are added to
+binary archives. CI does not infer version bumps from diffs; the same-merge
+version/changelog rule is a contributor and completion-review contract. BL-255
+owns the planned per-version candidate-artifact CI that will validate the exact
+repository `VERSION` before later functional work relies on it.
 
 
 SemVer and `SOURCE_DATE_EPOCH` use one versioned fixture contract in

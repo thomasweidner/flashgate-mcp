@@ -2,19 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
-The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/), and this project uses semantic versioning once releases begin.
+The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/).
+FlashGate uses semantic product versions before its first public release. An
+undated `## [<VERSION>]` section records a product version introduced in the
+repository but not yet published as a release; public release publication adds
+` - YYYY-MM-DD` to that existing section.
 
 ## [Unreleased]
 
+### Added
+
+- Added an exact machine-readable MCP support matrix for currently advertised revisions; it lists only `2025-11-25` and does not activate `2026-07-28`.
+
 ### Changed
 
-- Version 0.2.0: expected registered filesystem-tool failures now return MCP `isError:true` with compact `category`/`message` text JSON and no `structuredContent`. Request errors and unavailable tools remain JSON-RPC; unexpected failures use generic Internal error. Success output schemas and results are unchanged.
+- Standardized public documentation in English with stable topic-based filenames, consolidated client and migration guidance, and separated historical execution reports from product documentation.
+
+### Planning
+
+- Made backlog-item completion, rather than sprint end, the primary reconciliation point for backlog status, changelog/version, affected documentation, tests/CI, candidate artifacts, release/distribution, migration, and security impact. Intentionally deferred work must be carried by one concrete successor BL in both the closing and successor scopes.
+- Moved current-version candidate-artifact and schema/payload/catalog CI owners `BL-255`–`BL-258` into `SPR-048`, with dependency-bound execution before later implementation relies on their contracts.
+- Assigned persistent GitHub Release publication to the Version 1.0 release boundary in BL-263; transient GitHub Actions artifacts remain validation evidence rather than the public distribution result.
+- Updated BL-330 from an already-resolved status decision to the remaining FlashGate-specific application and validation of the canonical project work-item status model.
+
+## [0.3.0]
 
 ### Added
 
-- Version 0.3.0: implemented an internal MCP `2026-07-28` stateless adapter candidate with per-request metadata validation, `server/discover`, revision-specific errors and results, and conservative private cache hints. The existing `2025-11-25` initialization path remains the production default. The new path is not publicly enabled or advertised; activation awaits BL-204, BL-212, and BL-219.
+- Implemented an internal MCP `2026-07-28` stateless adapter candidate with per-request metadata validation, `server/discover`, revision-specific errors and results, and conservative private cache hints. The existing `2025-11-25` initialization path remains the production default. The new path is not publicly enabled or advertised; activation awaits BL-204, BL-212, and BL-219.
 
-- Added an exact machine-readable MCP support matrix for currently advertised revisions; it lists only `2025-11-25` and does not activate `2026-07-28`.
+## [0.2.0]
+
+### Changed
+
+- Expected registered filesystem-tool failures now return MCP `isError:true` with compact `category`/`message` text JSON and no `structuredContent`. Request errors and unavailable tools remain JSON-RPC; unexpected failures use generic Internal error. Success output schemas and results are unchanged.
+
+## [0.1.0]
+
+### Added
 
 - Established root `VERSION` as the sole editable product SemVer source (`0.1.0` seed), with exact release-tag parity and generated notes audited from this changelog. This entry does not mark `0.1.0` as released.
 - Added explicit MCP `2025-11-25` discovery annotations for all eight filesystem tools. The exact annotation matrix includes explicit `false` members; annotations do not grant authorization or change server-side checks.
@@ -27,8 +52,6 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 - Established a public, self-contained repository boundary for build, test, release, contribution, and product documentation.
 
 ### Changed
-
-- Standardized public documentation in English with stable topic-based filenames, consolidated client and migration guidance, and separated historical execution reports from product documentation.
 
 - Switched coverage to the deterministic production-server package graph and raised the separate Windows/Linux hard gates to 90.0%, with an exact unrounded threshold check and package inventories.
 - Converged public documentation and the documentation gate around current filesystem capabilities, Version 1.0 targets, portable contributor guidance, and durable repository-boundary checks.

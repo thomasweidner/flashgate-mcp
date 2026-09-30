@@ -26,6 +26,7 @@ before retiring a document.
 
 - Keep changes inside one coherent, reviewable acceptance boundary.
 - Preserve completed backlog work as history; do not reopen it implicitly.
+- Before completing a backlog item, reconcile its `BACKLOG.md` status and explicitly disposition affected documentation, `CHANGELOG.md`/`VERSION`, tests/CI, candidate artifacts, release/distribution, migration, and security impact. Any intentionally deferred deliverable must be named in both the closing item and one concrete successor BL.
 - Stop for a new product, architecture, security, platform, dependency,
   release, or scope decision instead of converting it into an assumption.
 - Validate directly affected areas first, then run the repository-wide gates

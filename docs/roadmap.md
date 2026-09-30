@@ -14,7 +14,7 @@ FlashGate MCP is the binding project name. The current implementation is a nativ
 |---|---|---|
 | Architecture and identity | `SPR-041` | FlashGate identity, ADR baseline, authoritative backlog consolidation |
 | Technical transition | `SPR-042`–`SPR-044` | Technical rename, pre-1.0 filesystem contract cleanup, read-only client preparation |
-| Efficiency, quality/version foundations, and shared runtime | `SPR-045`–`SPR-049` | Production-code coverage gate and canonical product versioning at the start of SPR-048, then payload/result architecture, explicit MCP revision matrix (`2025-11-25` initialization path plus final `2026-07-28` stateless path), tool/token/cache budgets, native adapter policy, Operations/Job Manager, quotas, identity-bound state |
+| Efficiency, quality/version foundations, and shared runtime | `SPR-045`–`SPR-049` | Production-code coverage and canonical product versioning, per-version candidate artifacts, payload/result architecture, explicit MCP revision matrix (`2025-11-25` initialization path plus final `2026-07-28` stateless path), schema/payload/catalog CI enforcement, native adapter policy, Operations/Job Manager, quotas, identity-bound state |
 | Filesystem and search | `SPR-050`–`SPR-052` | Efficient inspection, hashes/content identities, bounded file/tree compare and expected-state verification, MIME/binary/large-result handling, safe edits/plans, bounded search |
 | Policy model | `SPR-053` | Named roots, read-only safe default, capabilities, profiles, dynamic tool registration, negative authorization tests |
 | Process and execution | `SPR-054`–`SPR-057` | Threat models, observation, managed processes, typed allowlisted commands, OS isolation, cursor output |
@@ -25,21 +25,22 @@ FlashGate MCP is the binding project name. The current implementation is a nativ
 
 ### SPR-048 quality and version prerequisites
 
-Before additional functional work in `SPR-048`, the canonical order is
-`BL-260 -> BL-245 -> BL-203`. BL-260 establishes the production-server
-coverage scope and activates the documented hard coverage gate only after real
-coverage reaches it. BL-245 then establishes the canonical product-version
-source so later functional merges carry their required SemVer change. BL-203 is
-the first following functional owner. This sequencing decision moves BL-260 and
-BL-245 forward from SPR-061; it does not implement any of the three tasks.
+The prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete: the
+production-server coverage gate and canonical product-version source are active,
+and subsequent functional work carries the required SemVer change. Before the
+next merge that changes `VERSION`, BL-255 adds controlled candidate artifacts for
+the exact repository version. Within the same sprint, BL-257 follows BL-204 plus
+BL-212, BL-258 follows BL-213 plus BL-214, and BL-256 follows BL-215 so schema,
+payload, and catalog contracts become CI-enforced before later work relies on
+them rather than waiting for the final release sprint.
 
 ### MCP revision migration sequence (`SPR-048`)
 
 The protocol migration is intentionally split so each implementation chat has a bounded owner and the current `2025-11-25` runtime stays truthful until the new path is complete:
 
-1. **BL-207 — revision matrix and dispatch contract:** rebase the prepared protocol-matrix work against this planning; define exact revision entries and dispatch invariants while continuing to advertise only already implemented support.
-2. **BL-208 — `2026-07-28` stateless path:** implement per-request metadata, `server/discover`, unsupported-version/result/cache semantics, and exact extension negotiation without weakening the `2025-11-25` path.
-3. **BL-204 / BL-212 / BL-219 — conformance, schemas, and cache gates:** complete final-spec conformance, JSON Schema 2020-12, deterministic fingerprints, and safe cache-scope coverage; only then may the support matrix advertise `2026-07-28`.
+1. **BL-207 — completed revision matrix and dispatch contract:** the exact revision matrix and dispatch invariants are defined while production continues to advertise only enabled support.
+2. **BL-208 — completed `2026-07-28` stateless candidate path:** per-request metadata, `server/discover`, unsupported-version/result/cache semantics, and exact extension negotiation are implemented behind the production policy without weakening the `2025-11-25` path.
+3. **BL-204 / BL-212 / BL-219 — remaining activation gates:** complete final-spec conformance, JSON Schema 2020-12, deterministic fingerprints, and safe cache-scope coverage; only then may the support matrix advertise `2026-07-28`.
 4. **BL-209 / BL-210 / BL-211 — Tasks decision and mapping:** decide final Tasks support, map internal Operations/Jobs if selected, and define the bounded no-Tasks fallback.
 
 Prepared Mobile PRs #60, #69, and #149 are inputs to those later chats, not merge-ready authority after this convergence.
