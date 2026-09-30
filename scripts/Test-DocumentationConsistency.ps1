@@ -306,20 +306,64 @@ $architecture = [string]$documents['docs/architecture.md']
 $identity = [string]$documents['docs/project-identity.md']
 $protocol = [string]$documents['docs/protocol.md']
 $scope = [string]$documents['docs/planning/release-scope.md']
+$security = [string]$documents['docs/security.md']
+$matrixPath = Join-Path $resolvedRoot 'docs/mcp-protocol-matrix.json'
+$advertised2025Only = $false
+if (Test-Path -LiteralPath $matrixPath -PathType Leaf) {
+    try {
+        $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
+        $matrixText = $utf8.GetString([System.IO.File]::ReadAllBytes($matrixPath))
+        $matrix = ConvertFrom-Json -InputObject $matrixText -AsHashtable -Depth 8 -ErrorAction Stop
+        $revisions = @($matrix['revisions'])
+        $advertised2025Only = (
+            $matrix['schemaVersion'] -eq 'flashgate-mcp-protocol-matrix/v1' -and
+            $revisions.Count -eq 1 -and
+            $revisions[0]['protocolVersion'] -eq '2025-11-25' -and
+            $revisions[0]['opening'] -eq 'initialize' -and
+            @($revisions[0]['extensions']).Count -eq 0
+        )
+    }
+    catch {
+        $advertised2025Only = $false
+    }
+}
+$publicMcpDocuments = [string[]]@(
+    $readme, $architecture, $protocol, $scope, $security,
+    [string]$documents['docs/adr/mcp-compatibility.md']
+)
+$obsoleteMcpClaims = [string[]]@(
+    $publicMcpDocuments | Where-Object {
+        $_.Contains('Current implementation remains only `2025-11-25`') -or
+        $_.Contains('The implemented protocol remains MCP `2025-11-25`') -or
+        $_.Contains('The implemented revision remains `2025-11-25`') -or
+        $_.Contains('not a claim that `2026-07-28` is implemented today') -or
+        $_.Contains('The planned `2026-07-28` path') -or
+        $_.Contains('Those behaviors are target architecture only until BL-207/208')
+    }
+)
 Add-Check -Id 'CURRENT-AND-V1-SCOPE-PARITY' -Passed (
     $readme.Contains('Today it provides secure, root-confined filesystem access') -and
     $readme.Contains('Version 1.0 extends that foundation') -and
     $architecture.Contains('Its current implementation provides root-confined filesystem access') -and
     $identity.Contains('Today it provides secure, root-confined filesystem access') -and
-    $scope.Contains('This is a release target, not a claim that `2026-07-28` is implemented today.')
-) -Message 'Current filesystem implementation and Version 1.0 targets agree across public authorities.'
+    $scope.Contains('stateless adapter is implemented as a compiled-in candidate') -and
+    $scope.Contains('The Version 1.0 release matrix targets both exact')
+) -Message 'Current filesystem implementation and the Version 1.0 candidate/activation distinction agree.'
 Add-Check -Id 'MCP-REVISION-PARITY' -Passed (
-    $readme.Contains('The implemented protocol remains MCP `2025-11-25`') -and
-    $architecture.Contains('Current implementation remains only `2025-11-25`') -and
+    $advertised2025Only -and
+    $obsoleteMcpClaims.Count -eq 0 -and
+    $architecture.Contains('The production policy enables and advertises only `2025-11-25`') -and
+    $architecture.Contains('`2026-07-28` stateless adapter is compiled in') -and
+    $protocol.Contains('canonical list of currently advertised revisions') -and
+    $protocol.Contains('adapter is compiled in and tested with an injected internal support policy') -and
+    $protocol.Contains('remains disabled by the production policy and absent from the matrix until') -and
     $protocol.Contains('advertises MCP revision `2025-11-25`') -and
-    $scope.Contains('The implemented revision remains `2025-11-25`') -and
-    $scope.Contains('The final `2026-07-28` specification is now an accepted Version 1.0 implementation target')
-) -Message 'Current MCP runtime and later Version 1.0 revision target remain distinct.'
+    $scope.Contains('Public activation remains dependent on') -and
+    $security.Contains('It remains disabled and unadvertised until BL-204, BL-212, and') -and
+    $architecture.Contains('BL-204, BL-212, and BL-219') -and
+    $protocol.Contains('BL-204, BL-212, and BL-219') -and
+    $scope.Contains('BL-204, BL-212, and BL-219')
+) -Message ('Implemented candidate and sole advertised 2025 revision remain distinct; ObsoleteClaimDocumentCount={0}; MatrixParity={1}.' -f $obsoleteMcpClaims.Count, $advertised2025Only)
 
 $storagePlan = [string]$documents['docs/planning/tool-adapters.md']
 $storageNames = [string[]]@(

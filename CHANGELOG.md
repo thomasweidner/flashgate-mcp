@@ -12,6 +12,8 @@ The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/)
 
 ### Added
 
+- Version 0.3.0: implemented an internal MCP `2026-07-28` stateless adapter candidate with per-request metadata validation, `server/discover`, revision-specific errors and results, and conservative private cache hints. The existing `2025-11-25` initialization path remains the production default. The new path is not publicly enabled or advertised; activation awaits BL-204, BL-212, and BL-219.
+
 - Added an exact machine-readable MCP support matrix for currently advertised revisions; it lists only `2025-11-25` and does not activate `2026-07-28`.
 
 - Established root `VERSION` as the sole editable product SemVer source (`0.1.0` seed), with exact release-tag parity and generated notes audited from this changelog. This entry does not mark `0.1.0` as released.

@@ -9,8 +9,10 @@ This document distinguishes the current implemented protocol from the accepted V
 The [machine-readable MCP protocol matrix](mcp-protocol-matrix.json) is the
 canonical list of currently advertised revisions. Its sole entry is
 `2025-11-25`, opened by `initialize` over STDIO with no advertised extensions.
-An entry means implemented and validated support. The final `2026-07-28`
-revision is a Version 1.0 target and is absent from the current matrix.
+An entry means publicly enabled and validated support. The `2026-07-28`
+adapter is compiled in and tested with an injected internal support policy, but
+remains disabled by the production policy and absent from the matrix until
+BL-204, BL-212, and BL-219 pass.
 
 The current server:
 
@@ -81,14 +83,18 @@ For the `2025-11-25` initialization path:
 
 For the `2026-07-28` stateless path:
 
-BL-208 owns implementation of this separate runtime path. Its opening and
-unsupported-version response belong to that revision and do not change the
-current `2025-11-25` initialize negotiation. A revision dispatcher must select
-an explicitly implemented path by the request's revision-specific opening and
-metadata; it must not infer support from a newer date, a prior request on the
-connection, or a client capability claim. Its unsupported-version response is
-revision-specific, not a global policy. The matrix gains this revision only
-after its implementation and required support gates pass.
+The compiled adapter selects this path from each request's reserved `_meta`.
+Before production activation, a `server/discover` probe follows legacy
+unknown-method semantics (`-32601`), so a dual-era client can continue with
+`initialize`. Tests enable both exact revisions through the same router and
+server code. Once the stateless path is enabled, missing or malformed required
+modern metadata on `server/discover` returns `InvalidParams` (`-32602`), while
+any string protocol version not enabled on that path returns
+`UnsupportedProtocolVersion` (`-32022`) with only stateless-selectable revisions
+in `data.supported`. The legacy `initialize` response continues to negotiate
+`2025-11-25`. No previous request, discovery call, or client capability claim
+enables the stateless path. BL-204, BL-212, and BL-219 remain its production
+activation gates.
 
 - do not use `initialize`, `notifications/initialized`, or a protocol-level MCP session;
 - require the request's `_meta` protocol version and client capabilities, with client information treated only as self-reported compatibility/diagnostic metadata;
@@ -98,6 +104,11 @@ after its implementation and required support gates pass.
 - emit the revision-required `ttlMs`/`cacheScope` on cacheable list/read results, including `resources/read` when resources are exposed;
 - deliver opted-in tool/prompt/resource list-change and `resources/updated` notifications only through a client-opened `subscriptions/listen` stream on this revision; `resources/subscribe`/unsolicited-notification compatibility behavior remains confined to the `2025-11-25` initialization path;
 - negotiate only explicitly supported extensions.
+
+The current server exposes only tools, with no list-change, prompt, or resource
+capability. Therefore `subscriptions/listen` is unavailable; it advertises no
+change stream and maintains no notification queue. The active MCP extension set
+is empty. Later resource/list capabilities require their own owner work.
 
 The adapter derives the active profile/capability tool catalog, compact server instructions, exact-revision catalog fingerprint, and cache invalidation inputs from current server state. None of these artifacts grants authorization.
 

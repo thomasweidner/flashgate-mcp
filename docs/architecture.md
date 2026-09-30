@@ -338,7 +338,9 @@ See [Execution Identity Backends](execution-identity-backends.md) and ADR-015.
 
 The core is protocol independent. The MCP adapter owns all revision-specific wire behavior.
 
-Current implementation remains only `2025-11-25`. The final `2026-07-28` specification is an accepted Version 1.0 target, not an implementation claim.
+The production policy enables and advertises only `2025-11-25`. A separate
+`2026-07-28` stateless adapter is compiled in and exercised through an injected
+test policy; public activation remains gated by BL-204, BL-212, and BL-219.
 
 FlashGate names protocol paths by exact revision:
 
@@ -352,7 +354,7 @@ The migration keeps FlashGate's own Go MCP adapter. Official MCP SDKs and schema
 
 Version 1.0 protocol work includes:
 
-- an exact supported-revision matrix covering `2025-11-25` and, after implementation, `2026-07-28`;
+- an exact supported-revision matrix covering `2025-11-25` and, after the remaining support gates pass, `2026-07-28`;
 - revision-specific opening/dispatch and incompatibility behavior;
 - `2026-07-28` per-request `_meta`, mandatory `server/discover`, `UnsupportedProtocolVersion`, result `resultType`, response `serverInfo`, and list `ttlMs`/`cacheScope`;
 - deterministic tool catalogs and exact-revision fingerprints;

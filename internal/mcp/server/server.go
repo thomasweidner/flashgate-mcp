@@ -8,6 +8,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/diagnostics"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/transport"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -106,20 +107,21 @@ func (s *Server) handleRequest(ctx context.Context, request validatedRequest) (r
 		}
 	}()
 
-	result, rpcErr := s.router.Dispatch(
+	revisionRequest, metadataErr := revision.Inspect(request.params)
+	if metadataErr != nil {
+		return protocol.Response{JSONRPC: protocol.JSONRPCVersion, ID: request.id, Error: metadataErr}
+	}
+	result, rpcErr := s.router.DispatchRevision(
+		revisionRequest,
 		request.method,
 		handlers.Context{Context: ctx},
-		request.params,
 	)
 
 	if rpcErr != nil {
 		return protocol.Response{
 			JSONRPC: protocol.JSONRPCVersion,
 			ID:      request.id,
-			Error: &protocol.Error{
-				Code:    rpcErr.Code,
-				Message: rpcErr.Message,
-			},
+			Error:   rpcErr,
 		}
 	}
 

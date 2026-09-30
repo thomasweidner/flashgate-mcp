@@ -5,8 +5,31 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
+
+func TestDiscoverRespectsProtocolEra(t *testing.T) {
+	legacy := NewWithPolicy("flashgate", "test", revision.ProductionPolicy())
+	modern := NewWithPolicy("flashgate", "test", revision.NewPolicy(protocol.ProtocolVersion, revision.Stateless))
+	for _, request := range []revision.Request{
+		{Version: protocol.ProtocolVersion},
+		{Version: revision.Stateless, StatelessEnvelope: true},
+	} {
+		_, rpcErr := legacy.DispatchRevision(request, "server/discover", handlers.Context{})
+		if rpcErr == nil || rpcErr.Code != protocol.ErrMethodNotFound {
+			t.Fatalf("legacy-only discovery probe exposed modern era: %#v", rpcErr)
+		}
+	}
+	_, rpcErr := modern.DispatchRevision(revision.Request{Version: protocol.ProtocolVersion}, "server/discover", handlers.Context{})
+	if rpcErr == nil || rpcErr.Code != protocol.ErrInvalidParams {
+		t.Fatalf("candidate discovery without modern metadata: %#v", rpcErr)
+	}
+	result, rpcErr := modern.DispatchRevision(revision.Request{Version: revision.Stateless, StatelessEnvelope: true}, "server/discover", handlers.Context{})
+	if rpcErr != nil || result == nil {
+		t.Fatalf("candidate discovery rejected complete metadata: %#v %#v", result, rpcErr)
+	}
+}
 
 func TestRouterDispatchesRegisteredHandler(t *testing.T) {
 	t.Parallel()

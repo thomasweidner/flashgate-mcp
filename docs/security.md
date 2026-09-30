@@ -473,7 +473,11 @@ A heavy telemetry dependency is not required. Optional standard trace-context pr
 
 ### MCP version and extension compatibility
 
-The implemented revision remains MCP `2025-11-25`. The final `2026-07-28` revision is a Version 1.0 target but remains unadvertised until its exact adapter path and tests are complete.
+The production policy enables only MCP `2025-11-25`. The compiled `2026-07-28`
+adapter validates each request independently and is tested with an injected
+support policy. It remains disabled and unadvertised until BL-204, BL-212, and
+BL-219 pass. Client metadata, extension claims, and cache hints never authorize
+tools or filesystem access.
 
 Version 1.0 protocol security includes:
 
