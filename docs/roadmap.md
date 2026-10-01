@@ -6,7 +6,7 @@
 
 FlashGate MCP is the binding project name. The current implementation is a native Go filesystem MCP over STDIO. Version 1.0 expands that core into a bounded local host-operation platform while preserving low startup latency, low RAM/CPU use, compact tool catalogs, and no interpreter runtime.
 
-`Planned` backlog tasks are required for Version 1.0. `Later` tasks are accepted post-Version-1.0 work.
+Backlog status describes execution state. The sprint sequence identifies Version 1.0 work, while the separate Post-1.0 workstream table identifies accepted work beyond Version 1.0.
 
 ## Version 1.0 sequence
 

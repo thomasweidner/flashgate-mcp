@@ -16,6 +16,7 @@ repository but not yet published as a release; public release publication adds
 
 ### Changed
 
+- Migrated human backlog and sprint status to the canonical six-status lifecycle while retaining Post-1.0 placement in a separate workstream table; added deterministic status and placement validation.
 - Standardized public documentation in English with stable topic-based filenames, consolidated client and migration guidance, and separated historical execution reports from product documentation.
 
 ### Planning

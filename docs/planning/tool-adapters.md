@@ -15,7 +15,7 @@ FlashGate expands host functionality only when the result remains consistent wit
 - optional adapters add implementation capability, not authorization authority;
 - no mandatory interpreter runtime, remote listener, implicit elevation, or arbitrary plugin loading.
 
-The current eight filesystem tools remain the implemented baseline until their respective owners change runtime behavior. Future names below are accepted target names only when their backlog owner is `Planned` or `Later` and remain absent from `tools/list` until implemented and authorized by the effective profile.
+The current eight filesystem tools remain the implemented baseline until their respective owners change runtime behavior. Future names below are accepted target names under their canonical backlog owners and remain absent from `tools/list` until implemented and authorized by the effective profile. The backlog's sprint sequence and Post-1.0 workstream table determine release placement independently of owner status.
 
 ## 2. Public naming contract
 
@@ -329,7 +329,7 @@ A local write inside a sync root may later propagate externally. FlashGate may r
 
 ### 7.4 Availability mutation
 
-Later candidate public tool:
+Post-1.0 candidate public tool:
 
 - `set_path_availability`
 

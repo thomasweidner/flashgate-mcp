@@ -160,6 +160,11 @@ below before completion.
 
 ## Required Quality Checks
 
+The documentation composite gate includes positive and negative fixtures for
+all six human work-item statuses and the separate Post-1.0 placement table.
+Run it for backlog, sprint, or release-scope changes; its status checks do not
+alter technical result, review, authorization, artifact, or protocol states.
+
 Before committing, run:
 
 ```bash

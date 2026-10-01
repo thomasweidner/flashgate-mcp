@@ -51,7 +51,7 @@ The automated rules cover:
 - suspicious non-English prose and comments in fenced examples;
 - relative inline and reference links, target path spelling and case, and
   Markdown heading or explicit HTML-anchor destinations;
-- complete public-document coverage, stable backlog IDs and status parity;
+- complete public-document coverage, stable backlog and sprint IDs, canonical human-status values, and separate Post-1.0 placement parity;
 - current versus planned product/protocol behavior and release boundaries;
 - existing Windows/Linux build, coverage, lint, metadata, shell, documentation,
   release, and security gates;
@@ -113,6 +113,11 @@ product server does not import it. Its fixtures cover filename exceptions,
 Unicode and prose boundaries, malformed text, symlinks, missing/duplicate
 anchors, reference links, case mismatches, path escapes, ignored/vendor files,
 and failed Git inventory. The normal full Go tests include these regressions.
+
+The composite PowerShell gate runs a deterministic positive and negative
+fixture matrix for human status and Post-1.0 placement, then checks the real
+backlog and sprint tables. It keeps technical result and protocol states outside
+the human-status contract.
 
 CI runs the checker on Windows and Ubuntu and runs the composite gate on the
 exact PR head. Changes to PowerShell or CI additionally require the shell gates

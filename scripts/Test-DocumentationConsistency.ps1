@@ -173,6 +173,75 @@ function Get-InternalReferenceFindings {
     return [object[]]$findings
 }
 
+function Test-HumanStatusModel {
+    param(
+        [Parameter(Mandatory)] [string]$BacklogText,
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [string[]]$ExpectedPostIds
+    )
+
+    $allowed = [string[]]@('Planned', 'In Progress', 'Blocked', 'Completed', 'Rejected', 'Superseded')
+    $findings = [System.Collections.Generic.List[string]]::new()
+    $backlogRows = [regex]::Matches($BacklogText, '(?m)^\| (?<Id>BL-[0-9]{3}) \| (?<Status>[^|\r\n]+) \|')
+    $sprintRows = [regex]::Matches($BacklogText, '(?m)^\| (?<Id>SPR-[0-9]{3}) \| (?<Status>[^|\r\n]+) \|')
+    $backlogById = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
+    foreach ($row in $backlogRows) {
+        $id = $row.Groups['Id'].Value
+        $status = $row.Groups['Status'].Value.Trim()
+        if ($status -cnotin $allowed) { $findings.Add(('Invalid backlog status: {0}:{1}' -f $id, $status)) }
+        if ($backlogById.ContainsKey($id)) { $findings.Add('Duplicate backlog ID: {0}' -f $id) }
+        else { $backlogById.Add($id, $status) }
+    }
+    $sprintIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($row in $sprintRows) {
+        $id = $row.Groups['Id'].Value
+        $status = $row.Groups['Status'].Value.Trim()
+        if ($status -cnotin $allowed) { $findings.Add(('Invalid sprint status: {0}:{1}' -f $id, $status)) }
+        if (-not $sprintIds.Add($id)) { $findings.Add('Duplicate sprint ID: {0}' -f $id) }
+    }
+
+    $postIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $postTable = [regex]::Match($BacklogText, '(?s)\| Post-1\.0 workstream \| Backlog IDs \| Direction \|\r?\n\|---\|---\|---\|\r?\n(?<Rows>(?:\|[^\r\n]*\|\r?\n)*)')
+    if (-not $postTable.Success) {
+        $findings.Add('Post-1.0 workstream table is missing or malformed.')
+    }
+    else {
+        $postRows = [regex]::Matches($postTable.Groups['Rows'].Value, '(?m)^\| [^|]+ \| (?<Ids>[^|]+) \| [^|]+ \|$')
+        foreach ($row in $postRows) {
+            foreach ($token in ($row.Groups['Ids'].Value -split ',')) {
+                $trimmed = $token.Trim()
+                $idMatch = [regex]::Match($trimmed, '^BL-(?<Start>[0-9]{3})(?:[–-]BL-(?<End>[0-9]{3}))?$')
+                if (-not $idMatch.Success) {
+                    $findings.Add('Malformed Post-1.0 reference: {0}' -f $trimmed)
+                    continue
+                }
+                $start = [int]$idMatch.Groups['Start'].Value
+                $end = if ($idMatch.Groups['End'].Success) { [int]$idMatch.Groups['End'].Value } else { $start }
+                if ($end -lt $start) { $findings.Add('Descending Post-1.0 range: {0}' -f $trimmed); continue }
+                for ($number = $start; $number -le $end; $number++) {
+                    $id = 'BL-{0:D3}' -f $number
+                    if (-not $postIds.Add($id)) { $findings.Add('Duplicate Post-1.0 reference: {0}' -f $id) }
+                    if (-not $backlogById.ContainsKey($id)) { $findings.Add('Missing canonical Post-1.0 item: {0}' -f $id) }
+                }
+            }
+        }
+    }
+    foreach ($id in $ExpectedPostIds) {
+        if (-not $postIds.Contains($id)) { $findings.Add('Missing expected Post-1.0 placement: {0}' -f $id) }
+    }
+    foreach ($id in $postIds) {
+        if ($id -cnotin $ExpectedPostIds) { $findings.Add('Unexpected Post-1.0 placement: {0}' -f $id) }
+    }
+    [pscustomobject]@{
+        Passed = $findings.Count -eq 0
+        Findings = [string[]]$findings
+        BacklogCount = $backlogRows.Count
+        SprintCount = $sprintRows.Count
+        PostCount = $postIds.Count
+        BacklogIds = [string[]]@($backlogById.Keys)
+        SprintIds = [string[]]@($sprintIds)
+    }
+}
+
 $requiredPublicPaths = [string[]]@(
     'AGENTS.md',
     'docs/README.md',
@@ -254,22 +323,22 @@ $backlog = [string]$documents['BACKLOG.md']
 $ci = [string]$documents['.github/workflows/ci.yml']
 $release = [string]$documents['.github/workflows/release-build.yml']
 
-Add-Check -Id 'BACKLOG-BL343' -Passed ($backlog -match '(?m)^\| BL-343 \| Done \|') -Message 'BL-343 remains historical Done work.'
-Add-Check -Id 'BACKLOG-BL344' -Passed ($backlog -match '(?m)^\| BL-344 \| Done \|') -Message 'BL-344 remains historical Done work.'
+Add-Check -Id 'BACKLOG-BL343' -Passed ($backlog -match '(?m)^\| BL-343 \| Completed \|') -Message 'BL-343 remains historical Completed work.'
+Add-Check -Id 'BACKLOG-BL344' -Passed ($backlog -match '(?m)^\| BL-344 \| Completed \|') -Message 'BL-344 remains historical Completed work.'
 $bl344ContradictoryStatusCount = [regex]::Matches(
     $backlog,
     '(?i)\bBL-344\s+is\s+`?In Progress`?'
 ).Count
-$bl344DoneSummaryCount = [regex]::Matches(
+$bl344CompletedSummaryCount = [regex]::Matches(
     $backlog,
-    '(?i)\bBL-344\s+(?:is|are)\s+`?Done`?'
+    '(?i)\bBL-344\s+(?:is|are)\s+`?Completed`?'
 ).Count
 Add-Check -Id 'BACKLOG-BL344-STATUS-PARITY' -Passed (
     $bl344ContradictoryStatusCount -eq 0 -and
-    $bl344DoneSummaryCount -gt 0
+    $bl344CompletedSummaryCount -gt 0
 ) -Message (
-    'DoneSummaryCount={0}; ContradictoryStatusCount={1}.' -f
-    $bl344DoneSummaryCount,
+    'CompletedSummaryCount={0}; ContradictoryStatusCount={1}.' -f
+    $bl344CompletedSummaryCount,
     $bl344ContradictoryStatusCount
 )
 $backlogHighest = Get-BacklogHighestIdentifier -BacklogText $backlog
@@ -281,25 +350,53 @@ Add-Check -Id 'BACKLOG-HIGHEST' -Passed $backlogHighest.Passed -Message (
     $backlogDiagnosticsJson
 )
 
-$expectedMilestones = [object[]]@(
-    [pscustomobject]@{ id = 'BL-217'; status = 'Later' },
-    [pscustomobject]@{ id = 'BL-345'; status = 'Later' },
-    [pscustomobject]@{ id = 'BL-346'; status = 'Planned' },
-    [pscustomobject]@{ id = 'BL-350'; status = 'Later' },
-    [pscustomobject]@{ id = 'BL-351'; status = 'Later' },
-    [pscustomobject]@{ id = 'BL-352'; status = 'Planned' },
-    [pscustomobject]@{ id = 'BL-353'; status = 'Planned' }
+$expectedPostIds = [string[]]@(
+    'BL-081', 'BL-083', 'BL-112', 'BL-127', 'BL-128', 'BL-150', 'BL-158',
+    'BL-169', 'BL-176', 'BL-180', 'BL-181', 'BL-182', 'BL-183', 'BL-184',
+    'BL-185', 'BL-186', 'BL-187', 'BL-188', 'BL-217', 'BL-232', 'BL-240',
+    'BL-313', 'BL-345', 'BL-347', 'BL-348', 'BL-349', 'BL-350', 'BL-351',
+    'BL-354', 'BL-355', 'BL-356', 'BL-357', 'BL-358', 'BL-359', 'BL-360',
+    'BL-361', 'BL-362'
 )
-$milestoneErrors = [System.Collections.Generic.List[string]]::new()
-foreach ($item in $expectedMilestones) {
-    $rowPattern = '(?m)^\| {0} \| {1} \|' -f $item.id, $item.status
-    if (-not [regex]::IsMatch($backlog, $rowPattern)) {
-        $milestoneErrors.Add('{0}:{1}' -f $item.id, $item.status)
+$statusModel = Test-HumanStatusModel -BacklogText $backlog -ExpectedPostIds $expectedPostIds
+Add-Check -Id 'BACKLOG-HUMAN-STATUS-AND-POST-PLACEMENT' -Passed $statusModel.Passed -Message (
+    'BL={0}; Sprints={1}; Post={2}; Findings={3}' -f
+    $statusModel.BacklogCount, $statusModel.SprintCount, $statusModel.PostCount,
+    (ConvertTo-Json -InputObject ([string[]]$statusModel.Findings) -Compress)
+)
+$missingStableIds = [string[]]@(
+    @(1..362 | ForEach-Object { 'BL-{0:D3}' -f $_ } | Where-Object { $_ -cnotin $statusModel.BacklogIds }) +
+    @(41..61 | ForEach-Object { 'SPR-{0:D3}' -f $_ } | Where-Object { $_ -cnotin $statusModel.SprintIds })
+)
+Add-Check -Id 'BACKLOG-STABLE-IDS' -Passed ($missingStableIds.Count -eq 0) -Message (
+    'Missing={0}.' -f (ConvertTo-Json -InputObject $missingStableIds -Compress)
+)
+
+$fixtureHeader = [string[]]@('| Post-1.0 workstream | Backlog IDs | Direction |', '|---|---|---|')
+foreach ($status in [string[]]@('Planned', 'In Progress', 'Blocked', 'Completed', 'Rejected', 'Superseded')) {
+    $fixture = ([string[]]@(('| BL-001 | {0} | Fixture | Scope |' -f $status), '| SPR-001 | Planned | BL-001 | Fixture |') + $fixtureHeader) -join "`n"
+    $actual = Test-HumanStatusModel -BacklogText ($fixture + "`n") -ExpectedPostIds ([string[]]@())
+    Add-Check -Id ('STATUS-FIXTURE-ACCEPT-{0}' -f ($status -replace ' ', '-')) -Passed $actual.Passed -Message (ConvertTo-Json -InputObject ([string[]]$actual.Findings) -Compress)
+}
+foreach ($status in [string[]]@('Ready', 'Done', 'Later', 'Unknown', 'Planned (Post-1.0)')) {
+    foreach ($kind in [string[]]@('BL', 'SPR')) {
+        $blStatus = if ($kind -eq 'BL') { $status } else { 'Planned' }
+        $sprintStatus = if ($kind -eq 'SPR') { $status } else { 'Planned' }
+        $fixture = ([string[]]@(('| BL-001 | {0} | Fixture | Scope |' -f $blStatus), ('| SPR-001 | {0} | BL-001 | Fixture |' -f $sprintStatus)) + $fixtureHeader) -join "`n"
+        $actual = Test-HumanStatusModel -BacklogText ($fixture + "`n") -ExpectedPostIds ([string[]]@())
+        $diagnosticPrefix = if ($kind -eq 'BL') { 'Invalid backlog status: BL-001:' } else { 'Invalid sprint status: SPR-001:' }
+        $specificFinding = [string[]]@($actual.Findings | Where-Object { $_.StartsWith($diagnosticPrefix, [System.StringComparison]::Ordinal) })
+        Add-Check -Id ('STATUS-FIXTURE-REJECT-{0}-{1}' -f $kind, ($status -replace '[^A-Za-z0-9]', '-')) -Passed (-not $actual.Passed -and $specificFinding.Count -eq 1) -Message (ConvertTo-Json -InputObject ([string[]]$actual.Findings) -Compress)
     }
 }
-Add-Check -Id 'BACKLOG-MILESTONE-PARITY' -Passed ($milestoneErrors.Count -eq 0) -Message (
-    'MissingExpectedRows={0}.' -f (ConvertTo-Json -InputObject ([string[]]$milestoneErrors) -Compress)
-)
+$postFixture = ([string[]]@('| BL-001 | Planned | Fixture | Scope |', '| SPR-001 | Planned | BL-001 | Fixture |') + $fixtureHeader + '| Future | BL-001 | Fixture |') -join "`n"
+$postResult = Test-HumanStatusModel -BacklogText ($postFixture + "`n") -ExpectedPostIds ([string[]]@('BL-001'))
+Add-Check -Id 'STATUS-FIXTURE-ACCEPT-POST-PLANNED' -Passed $postResult.Passed -Message (ConvertTo-Json -InputObject ([string[]]$postResult.Findings) -Compress)
+$driftResult = Test-HumanStatusModel -BacklogText ($postFixture + "`n") -ExpectedPostIds ([string[]]@('BL-002'))
+Add-Check -Id 'STATUS-FIXTURE-REJECT-POST-DRIFT' -Passed (-not $driftResult.Passed -and 'Missing expected Post-1.0 placement: BL-002' -cin $driftResult.Findings) -Message (ConvertTo-Json -InputObject ([string[]]$driftResult.Findings) -Compress)
+$missingReferenceFixture = $postFixture.Replace('| Future | BL-001 |', '| Future | BL-002 |')
+$missingReferenceResult = Test-HumanStatusModel -BacklogText ($missingReferenceFixture + "`n") -ExpectedPostIds ([string[]]@('BL-002'))
+Add-Check -Id 'STATUS-FIXTURE-REJECT-MISSING-BL' -Passed (-not $missingReferenceResult.Passed -and 'Missing canonical Post-1.0 item: BL-002' -cin $missingReferenceResult.Findings) -Message (ConvertTo-Json -InputObject ([string[]]$missingReferenceResult.Findings) -Compress)
 
 $readme = [string]$documents['README.md']
 $architecture = [string]$documents['docs/architecture.md']
@@ -522,6 +619,8 @@ $result = [pscustomobject]@{
     computedHighestAssignedBacklogIdentifier = $backlogHighest.ComputedHighestAssignedBacklogIdentifier
     declaredHighestAssignedBacklogIdentifier = $backlogHighest.DeclaredHighestAssignedBacklogIdentifier
     bl344ContradictoryStatusCount             = $bl344ContradictoryStatusCount
+    bl344CompletedSummaryCount                = $bl344CompletedSummaryCount
+    humanStatusModel                          = $statusModel
     privateActiveHostPathCount                = $privateActiveHostPathCount
     privateHostPathFindings                   = [object[]]$privateHostPathFindings
     operativeFindings                        = [object[]]$operativeFindings
