@@ -665,7 +665,7 @@ When `MCP_READ_ONLY=true`, only `list_directory`, `read_file`, and `get_path_inf
 
 Planned work is maintained authoritatively in [BACKLOG.md](BACKLOG.md). [docs/roadmap.md](docs/roadmap.md) contains only the high-level sequence.
 
-The backlog covers Version 1.0 filesystem, search, process, typed command, system, security, payload-efficiency, hybrid identity, service, CI, supply-chain, release, and documentation work. Tasks marked `Later` are accepted post-Version-1.0 work and do not delay the initial stable release.
+The backlog covers Version 1.0 filesystem, search, process, typed command, system, security, payload-efficiency, hybrid identity, service, CI, supply-chain, release, and documentation work. Human status describes execution state. The separate Post-1.0 workstream table identifies accepted work beyond the initial stable release.
 
 ## License
 

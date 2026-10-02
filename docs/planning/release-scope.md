@@ -6,9 +6,9 @@
 
 `BACKLOG.md` is authoritative. In the canonical catalog:
 
-- `Done` means implemented and retained for traceability;
-- `Planned` means required for Version 1.0;
-- `Later` means accepted post-Version-1.0 work;
+- `Completed` means finished and retained for traceability;
+- `Planned` means accepted work awaiting execution, independent of release placement;
+- the sprint sequence identifies Version 1.0 work, and the separate Post-1.0 workstream table identifies later release scope;
 - a task may change milestone only through an explicit backlog and documentation decision.
 
 Version 1.0 is reached after `SPR-061` only when `BL-263` passes.
@@ -194,7 +194,7 @@ The following work is accepted but must not delay Version 1.0:
 - vendor-neutral local cloud/placeholder semantics, filesystem watch, and bounded archives (`BL-345`, `BL-347`–`BL-348`);
 - allowlisted OS-settings reads, a portable FlashGate agent skill, and scoped path compression (`BL-349`–`BL-351`).
 
-These `Later` owners do not enlarge the Version 1.0 release gate. Their candidate tool names and core/adapter boundaries are recorded in the [future tool and adapter plan](tool-adapters.md).
+These Post-1.0 workstream owners do not enlarge the Version 1.0 release gate. Their candidate tool names and core/adapter boundaries are recorded in the [future tool and adapter plan](tool-adapters.md).
 
 ### Provider and community ecosystem
 
@@ -219,8 +219,8 @@ The following remain outside the accepted local Version 1.0 architecture and req
 
 `BL-263` must verify at minimum:
 
-1. all canonical `Planned` tasks are `Done` or have a documented explicit waiver approved in the release record;
-2. all remaining `Later` tasks are correctly described as post-Version-1.0 and are not required by released contracts;
+1. all tasks assigned to Version 1.0 by the sprint sequence are `Completed` or have a documented explicit waiver approved in the release record;
+2. all remaining Post-1.0 workstream tasks are correctly described as outside Version 1.0 and are not required by released contracts;
 3. direct STDIO remains functional without administrative installation;
 4. system service mode implements Variant A only and rejects unsupported Variant B configuration safely;
 5. in-process impersonation does not exist;

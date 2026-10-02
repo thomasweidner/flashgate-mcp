@@ -28,7 +28,7 @@ FlashGate is a native, local-first MCP server optimized for low latency, low tok
 2. Read the relevant ADRs, architecture, security, tool conventions, and testing plan.
 3. For a new architecture or security decision, add or amend an ADR before implementation.
 4. Keep current implementation facts separate from target Version 1.0 behavior.
-5. Do not promote a `Later` item into Version 1.0 without an explicit backlog and documentation decision.
+5. Do not move a Post-1.0 workstream item into Version 1.0 without an explicit backlog and documentation decision; status alone does not determine release placement.
 6. Before completing a backlog item, update its backlog status and either satisfy the complete acceptance scope or bind every intentionally deferred deliverable to one concrete existing successor BL and add that deliverable to the successor's own acceptance scope.
 7. Explicitly disposition affected documentation, `CHANGELOG.md`/`VERSION`, tests/CI, candidate artifacts, release/distribution, migration, and security impact; use not-applicable only when the area is genuinely unaffected.
 
