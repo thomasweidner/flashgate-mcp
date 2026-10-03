@@ -79,6 +79,23 @@ type Metadata struct {
 	Size  int64  `json:"size"`
 }
 
+// DiskUsage contains capacity information for the filesystem that stores a
+// root-confined path. It intentionally contains no volume name, mount point,
+// device identifier, or host path.
+type DiskUsage struct {
+	TotalBytes     uint64 `json:"totalBytes"`
+	UsedBytes      uint64 `json:"usedBytes"`
+	AvailableBytes uint64 `json:"availableBytes"`
+}
+
+// DiskUsageProvider exposes root-confined filesystem capacity independently
+// from the baseline FileSystem interface. This keeps the operation reusable by
+// the planned system-information adapter without changing the public MCP tool
+// catalog.
+type DiskUsageProvider interface {
+	DiskUsage(path string) (DiskUsage, error)
+}
+
 // FileSystem defines filesystem operations used by MCP tools.
 type FileSystem interface {
 	List(path string) ([]Entry, error)
