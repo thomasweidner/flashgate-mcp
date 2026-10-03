@@ -114,6 +114,15 @@ It is an orientation only, is not model-specific, does not use a tokenizer, and 
 
 `baseline.schema.json` defines result format `flashgate-benchmark/v1`. A result records project, commit, whether the binary came from a dirty working tree, Go version, OS, architecture, repetitions, starts, resources, `tools/list`, workflows, warnings, budget evaluation, unsupported metrics, and stable suite/catalog/corpus plus runtime/transport/backend/profile/parallelism provenance.
 
+New authoritative baseline candidates additionally carry `authoritative_provenance`.
+It binds lowercase SHA-256 identities for the measured binary, source tree,
+complete build inputs, controller, task-local workspace, preflight evidence and
+final host-gate evidence. Preparation and measurement start/end timestamps must
+be present and ordered. `ValidateAuthoritativeProvenance` re-hashes the measured
+binary and rejects incomplete, malformed, reordered, or mismatched evidence.
+Existing historical baselines remain readable; recording replacement baselines
+requires the complete provenance block and native Windows/Linux finalization.
+
 Versioned baseline creation is deliberately two-stage. First complete tests, vet,
 lint, parser validation, and builds in isolated Windows and native Linux checkouts
 from the same clean implementation commit. After the final preparation operation,
