@@ -45,8 +45,12 @@ type workflowBudget struct {
 
 // SerializationBudget is the deterministic payload and allocation gate for one fixture.
 type SerializationBudget struct {
-	MaxPayloadBytes uint64 `json:"max_payload_bytes"`
-	MaxAllocsPerOp  uint64 `json:"max_allocs_per_op"`
+	MaxPayloadBytes                      uint64 `json:"max_payload_bytes"`
+	MaxAllocsPerOp                       uint64 `json:"max_allocs_per_op"`
+	UsefulPayloadBytes                   uint64 `json:"useful_payload_bytes"`
+	MaxWireAmplificationMilli            uint64 `json:"max_wire_amplification_milli"`
+	MaxApproxTokenCostMilliPerUsefulByte uint64 `json:"max_approx_token_cost_milli_per_useful_byte"`
+	MaxSerializationCopies               uint64 `json:"max_serialization_copies"`
 }
 
 type serializationBudgetSet map[string]SerializationBudget

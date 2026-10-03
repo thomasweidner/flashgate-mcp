@@ -164,7 +164,15 @@ projection. Runner result construction records budget messages only in
 `budget_evaluation`; general result `warnings` contain only non-budget runtime
 warnings and remain forbidden in clean versioned baselines.
 
-Payload and allocation contracts are both validated in ordinary tests. Under race
+Payload, wire-amplification, approximate-token-per-useful-byte, serialization-copy,
+and allocation contracts are validated in ordinary tests. Payload-bearing directory
+fixtures count their canonical compact domain JSON as useful bytes; file-content
+fixtures count the requested raw UTF-8 bytes. Metadata-only fixtures record zero useful
+bytes and retain absolute byte budgets rather than inventing a division-by-zero ratio.
+Ratio budgets use ceiling-rounded thousandths so their JSON representation and checks
+remain deterministic and do not depend on floating-point formatting.
+
+Under race
 instrumentation the functional serialization, payload, fixture, and budget-contract
 checks still run, while only the `testing.AllocsPerRun` assertion is skipped because
 the race detector changes allocation behavior. The authoritative race gate runs on

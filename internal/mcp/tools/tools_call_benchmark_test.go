@@ -27,11 +27,12 @@ func BenchmarkCallToolResultSerialization(b *testing.B) {
 	fixtures := callToolResultBenchmarkFixtures()
 	variants := []struct {
 		name      string
+		copies    uint64
 		serialize func(any) ([]byte, error)
 	}{
-		{"historical_direct", json.Marshal},
-		{"text_only", serializeTextOnlyCallToolResult},
-		{"text_plus_structured", serializeStructuredCallToolResult},
+		{"historical_direct", 0, json.Marshal},
+		{"text_only", 1, serializeTextOnlyCallToolResult},
+		{"text_plus_structured", 2, serializeStructuredCallToolResult},
 	}
 
 	for _, fixture := range fixtures {
@@ -60,6 +61,13 @@ func BenchmarkCallToolResultSerialization(b *testing.B) {
 					b.StopTimer()
 					b.ReportMetric(float64(len(sample)), "payload-bytes")
 					b.ReportMetric(float64(len(response)), "response-bytes")
+					b.ReportMetric(float64(fixture.usefulPayloadBytes), "useful-payload-bytes")
+					b.ReportMetric(float64(variant.copies), "serialization-copies")
+					if fixture.usefulPayloadBytes > 0 {
+						b.ReportMetric(float64(len(response))/float64(fixture.usefulPayloadBytes), "wire-amplification")
+						approxTokens := ceilDiv(uint64(len(response)), 4)
+						b.ReportMetric(float64(approxTokens)/float64(fixture.usefulPayloadBytes), "approx-tokens/useful-byte")
+					}
 				})
 			}
 		})
@@ -232,8 +240,9 @@ func serializeBenchmarkResponse(result []byte) ([]byte, error) {
 }
 
 type callToolResultBenchmarkFixture struct {
-	name  string
-	value any
+	name               string
+	value              any
+	usefulPayloadBytes uint64
 }
 
 func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
@@ -246,14 +255,28 @@ func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 		}
 	}
 
+	directorySmall := listDirectoryResult{Entries: []fs.Entry{{Name: "a.txt", Size: 12}, {Name: "sub", IsDir: true}}}
+	directoryLarge := listDirectoryResult{Entries: largeEntries}
 	return []callToolResultBenchmarkFixture{
-		{"path_info_missing", getPathInfoMissingResult{Path: "does-not-exist.txt", Exists: false}},
-		{"path_info_existing", getPathInfoExistingResult{Path: "docs/readme.txt", Exists: true, Name: "readme.txt", Size: 128}},
-		{"directory_small", listDirectoryResult{Entries: []fs.Entry{{Name: "a.txt", Size: 12}, {Name: "sub", IsDir: true}}}},
-		{"directory_500_entries", listDirectoryResult{Entries: largeEntries}},
-		{"text_file_small", readFileResult{Content: "FlashGate benchmark text.\n", Size: 26}},
-		{"text_file_64kib", readFileResult{Content: strings.Repeat("x", 64*1024), Size: 64 * 1024}},
+		{name: "path_info_missing", value: getPathInfoMissingResult{Path: "does-not-exist.txt", Exists: false}},
+		{name: "path_info_existing", value: getPathInfoExistingResult{Path: "docs/readme.txt", Exists: true, Name: "readme.txt", Size: 128}},
+		{name: "directory_small", value: directorySmall, usefulPayloadBytes: compactJSONSize(directorySmall)},
+		{name: "directory_500_entries", value: directoryLarge, usefulPayloadBytes: compactJSONSize(directoryLarge)},
+		{name: "text_file_small", value: readFileResult{Content: "FlashGate benchmark text.\n", Size: 26}, usefulPayloadBytes: 26},
+		{name: "text_file_64kib", value: readFileResult{Content: strings.Repeat("x", 64*1024), Size: 64 * 1024}, usefulPayloadBytes: 64 * 1024},
 	}
+}
+
+func compactJSONSize(value any) uint64 {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		panic(fmt.Sprintf("marshal benchmark fixture: %v", err))
+	}
+	return uint64(len(raw))
+}
+
+func ceilDiv(numerator, denominator uint64) uint64 {
+	return (numerator + denominator - 1) / denominator
 }
 
 func TestCallToolResultSerializationPayloadSizes(t *testing.T) {
@@ -324,8 +347,11 @@ func TestCallToolResultSerializationBudgets(t *testing.T) {
 			t.Fatalf("serialization fixture %q has no budget", fixture.name)
 		}
 		usedBudgets[budgetName] = struct{}{}
-		if budget.MaxPayloadBytes == 0 || budget.MaxAllocsPerOp == 0 {
+		if budget.MaxPayloadBytes == 0 || budget.MaxAllocsPerOp == 0 || budget.MaxSerializationCopies == 0 {
 			t.Fatalf("serialization budget %q is structurally incomplete", budgetName)
+		}
+		if budget.UsefulPayloadBytes != fixture.usefulPayloadBytes {
+			t.Fatalf("serialization fixture %q useful payload=%d, budget records %d", fixture.name, fixture.usefulPayloadBytes, budget.UsefulPayloadBytes)
 		}
 
 		payload, err := serializeStructuredCallToolResult(fixture.value)
@@ -335,7 +361,32 @@ func TestCallToolResultSerializationBudgets(t *testing.T) {
 		if uint64(len(payload)) > budget.MaxPayloadBytes {
 			t.Fatalf("serialization fixture %q payload=%d exceeds budget %d", fixture.name, len(payload), budget.MaxPayloadBytes)
 		}
-
+		const serializationCopies = 2 // compact JSON is emitted in text and structuredContent.
+		if serializationCopies > budget.MaxSerializationCopies {
+			t.Fatalf("serialization fixture %q copies=%d exceeds budget %d", fixture.name, serializationCopies, budget.MaxSerializationCopies)
+		}
+		response, err := serializeBenchmarkResponse(payload)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if fixture.usefulPayloadBytes == 0 {
+			if budget.MaxWireAmplificationMilli != 0 || budget.MaxApproxTokenCostMilliPerUsefulByte != 0 {
+				t.Fatalf("metadata-only fixture %q must not define ratio budgets", fixture.name)
+			}
+			continue
+		}
+		if budget.MaxWireAmplificationMilli == 0 || budget.MaxApproxTokenCostMilliPerUsefulByte == 0 {
+			t.Fatalf("payload-bearing fixture %q must define positive ratio budgets", fixture.name)
+		}
+		wireAmplificationMilli := ceilDiv(uint64(len(response))*1000, fixture.usefulPayloadBytes)
+		if wireAmplificationMilli > budget.MaxWireAmplificationMilli {
+			t.Fatalf("serialization fixture %q wire amplification=%d milli exceeds budget %d", fixture.name, wireAmplificationMilli, budget.MaxWireAmplificationMilli)
+		}
+		approxTokens := ceilDiv(uint64(len(response)), 4)
+		tokenCostMilli := ceilDiv(approxTokens*1000, fixture.usefulPayloadBytes)
+		if tokenCostMilli > budget.MaxApproxTokenCostMilliPerUsefulByte {
+			t.Fatalf("serialization fixture %q approximate token cost=%d milli/useful-byte exceeds budget %d", fixture.name, tokenCostMilli, budget.MaxApproxTokenCostMilliPerUsefulByte)
+		}
 	}
 	for budgetName := range budgets {
 		if _, ok := usedBudgets[budgetName]; !ok {
