@@ -24,6 +24,12 @@ versions, and missing source gates. A release requires `v<VERSION>` on HEAD and
 a clean tree; ordinary direct `go build` retains `0.0.0-dev` and Windows file
 version `0.0.0.0`.
 
+Future bounded filesystem plan tests must satisfy the permanent negative,
+race, limit, cancellation, partial-completion, dry-run, and platform gates in
+the [bounded filesystem plan threat model](bounded-filesystem-plans-threat-model.md).
+That contract is test guidance for the planned implementation, not evidence
+that a plan tool currently exists.
+
 ## Test Commands
 
 Run all tests:
