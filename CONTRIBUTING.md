@@ -26,11 +26,12 @@ FlashGate is a native, local-first MCP server optimized for low latency, low tok
 
 1. Identify the canonical backlog task and sprint.
 2. Read the relevant ADRs, architecture, security, tool conventions, and testing plan.
-3. For a new architecture or security decision, add or amend an ADR before implementation.
-4. Keep current implementation facts separate from target Version 1.0 behavior.
-5. Do not move a Post-1.0 workstream item into Version 1.0 without an explicit backlog and documentation decision; status alone does not determine release placement.
-6. Before completing a backlog item, update its backlog status and either satisfy the complete acceptance scope or bind every intentionally deferred deliverable to one concrete existing successor BL and add that deliverable to the successor's own acceptance scope.
-7. Explicitly disposition affected documentation, `CHANGELOG.md`/`VERSION`, tests/CI, candidate artifacts, release/distribution, migration, and security impact; use not-applicable only when the area is genuinely unaffected.
+3. Bind the task to [the implementation contract](docs/planning/implementation-contract.md) and its family, then inspect [architecture traceability](docs/planning/architecture-traceability.md). A new or materially changed technical BL updates both in the same planning change; resolve architecture role, prerequisites/reuse, retrofit targets, public delta, invariants, validation, and completion before implementation.
+4. For a new architecture or security decision, add or amend an ADR before implementation.
+5. Keep current implementation facts separate from target Version 1.0 behavior.
+6. Do not move a Post-1.0 workstream item into Version 1.0 without an explicit backlog and documentation decision; status alone does not determine release placement.
+7. Before completing a backlog item, update its backlog status and either satisfy the complete acceptance scope or bind every intentionally deferred deliverable to one concrete existing successor BL and add that deliverable to the successor's own acceptance scope.
+8. Explicitly disposition affected documentation, `CHANGELOG.md`/`VERSION`, tests/CI, candidate artifacts, release/distribution, migration, and security impact; use not-applicable only when the area is genuinely unaffected.
 
 ## Design requirements
 

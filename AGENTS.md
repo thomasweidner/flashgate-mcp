@@ -25,6 +25,7 @@ before retiring a document.
 ## Working rules
 
 - Keep changes inside one coherent, reviewable acceptance boundary.
+- For every new or materially changed technical BL, apply [the implementation contract](docs/planning/implementation-contract.md) and update [architecture traceability](docs/planning/architecture-traceability.md) in the same planning change. Identify architecture role, prerequisites/reuse, existing retrofit targets, and acceptance before implementation; an architecture change names affected current controls.
 - Preserve completed backlog work as history; do not reopen it implicitly.
 - Before completing a backlog item, reconcile its `BACKLOG.md` status and explicitly disposition affected documentation, `CHANGELOG.md`/`VERSION`, tests/CI, candidate artifacts, release/distribution, migration, and security impact. Any intentionally deferred deliverable must be named in both the closing item and one concrete successor BL.
 - Stop for a new product, architecture, security, platform, dependency,

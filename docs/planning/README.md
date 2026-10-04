@@ -7,6 +7,8 @@ and the accepted architecture decisions.
 
 | Plan | Purpose |
 |---|---|
+| [Implementation contract](implementation-contract.md) | Shared technical-BL architecture, reuse, retrofit, validation, and closure obligations. |
+| [Architecture traceability](architecture-traceability.md) | Living target requirement, owner, prerequisite, retrofit, validation, and closure map. |
 | [Tool adapters](tool-adapters.md) | Future public tool names, capability detail, adapter taxonomy, security, and resource constraints. |
 | [Runtime modes](runtime-modes.md) | Direct STDIO, local proxy/auto, and operating-system service targets. |
 | [Efficiency](efficiency.md) | Payload, catalog, latency, resource, and benchmark requirements. |

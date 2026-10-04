@@ -1,6 +1,6 @@
 # Future Tool and Adapter Plan
 
-**Status:** Accepted planning contract. `BACKLOG.md` owns canonical task status, milestone, and implementation ownership. This document owns the detailed public naming, capability, adapter, security, and efficiency contract referenced by those owners. Implementations must read both their canonical backlog row and the relevant sections of this document. Nothing in this document advertises an unimplemented MCP tool.
+**Status:** Accepted planning contract. `BACKLOG.md` owns canonical task status, milestone, and implementation ownership. This document owns the detailed public naming, capability, adapter, security, and efficiency contract referenced by those owners. Implementations must read both their canonical backlog row and the relevant sections of this document. Nothing in this document advertises an unimplemented MCP tool. Technical owners inherit the [implementation contract](implementation-contract.md) and update [architecture traceability](architecture-traceability.md) when names, adapter boundaries, reuse, or retrofit obligations change. Search owners extend the accepted `search_paths` and `search_text` families rather than adding a public tool per backlog row.
 
 ## 1. Purpose and scope
 

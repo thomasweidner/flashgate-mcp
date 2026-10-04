@@ -586,6 +586,8 @@ Compatibility requires PowerShell major version 7 and minor version 6. `Observed
 
 ## Documentation regression
 
+For each new or materially changed technical BL, validate its [implementation-contract](planning/implementation-contract.md) family binding and [architecture-traceability](planning/architecture-traceability.md) row alongside backlog status, sprint ownership, prerequisites/reuse, retrofit obligations, and affected documentation. BL-315 owns future machine checks for missing coverage, ownerless rows, invalid references, and completed owners with unbound retrofit residuals. BL-263 requires traceability closure for Version 1.0. The current automated documentation checker does not yet prove all semantic bindings. For planning changes, explicitly check the hard-prerequisite graph for cycles and planned sprint/order inversions, separately from family coverage and matrix requirement coverage; completed historical prerequisites are exempt from planned-order comparison. BL-315 retains future machine-check ownership.
+
 Run the focused standard-library-only documentation checker before the full
 applicable quality chain:
 

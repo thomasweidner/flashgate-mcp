@@ -133,6 +133,8 @@ Not yet implemented:
 
 The user-worker backend is represented because interfaces are Version 1.0 work. Its runtime implementation is post-Version 1.0.
 
+The [technical backlog implementation contract](planning/implementation-contract.md) makes each planned owner inherit this target architecture; [architecture traceability](planning/architecture-traceability.md) records prerequisites, current implementation retrofit targets, validation owners, and closure state. SPR-053 establishes named roots, profiles/capabilities, central authorization, configuration, audit/correlation, backend-neutral dispatch, and context binding before Operations, filesystem expansion, and search consume those interfaces. Current `MCP_ROOT`, `MCP_READ_ONLY`, and direct MCP-to-filesystem paths remain implementation facts until their planned owners migrate them.
+
 ## Dependency direction
 
 The local system core is independent of MCP, JSON-RPC, STDIO, Named Pipes, Unix sockets, SCM, systemd, and protocol-specific resource types.
@@ -550,11 +552,11 @@ Authoritative tasks and status are in [BACKLOG.md](../BACKLOG.md).
 
 Near-term sequence:
 
-1. complete efficiency/payload/catalog/native-adapter foundations;
-2. implement jobs, bounded domains, profiles, and typed execution;
-3. define hybrid identity and service contracts;
-4. implement Variant A system services;
-5. pass Version 1.0 security, performance, supply-chain, compatibility, and documentation gates.
+1. complete SPR-048 candidate/supply-chain, MCP conformance/schema, payload-class, catalog-budget, and native/no-interpreter policy contracts that do not require later profile or job runtime;
+2. establish SPR-053 named roots, profiles, configuration, backend-neutral context, central authorization, effective catalog, audit/correlation, and state binding, then its fingerprint/instruction/catalog gates;
+3. build SPR-049 Operations and one bounded result store, then MCP Tasks mapping, resource handoff, and payload/resource CI as their prerequisites permit;
+4. extend filesystem, search, process, typed execution, and system domains on that foundation;
+5. implement local runtime/service modes and pass Version 1.0 security, performance, supply-chain verification, compatibility, and documentation gates.
 
 ## Post-Version-1.0 decisions
 

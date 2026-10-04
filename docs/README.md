@@ -43,6 +43,8 @@ Start with the root [README](../README.md) for the current product baseline.
 
 ## Follow accepted plans
 
+The [implementation contract](planning/implementation-contract.md) and [architecture traceability](planning/architecture-traceability.md) bind technical backlog work to the accepted target architecture and current retrofit owners.
+
 The [planning index](planning/README.md) groups accepted tool, runtime,
 efficiency, and release targets. The [roadmap](roadmap.md) summarizes direction;
 [BACKLOG.md](../BACKLOG.md) owns IDs, statuses, and milestones. Planned behavior

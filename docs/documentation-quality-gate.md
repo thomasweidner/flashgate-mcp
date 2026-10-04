@@ -88,6 +88,7 @@ Before a backlog item is marked complete, perform a semantic closure review in
 addition to the automated documentation checks:
 
 - update the owning `BACKLOG.md` row in the same closure change;
+- verify the BL's [implementation-contract](planning/implementation-contract.md) family and [architecture-traceability](planning/architecture-traceability.md) row, including architecture role, prerequisites/reuse, retrofit targets, validation, and successor-bound residuals; new or materially changed technical BLs update both authorities together;
 - satisfy the complete acceptance scope, or bind every intentionally deferred
   deliverable to one concrete existing successor BL and add that deliverable to
   the successor's own acceptance scope;
