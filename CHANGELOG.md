@@ -21,6 +21,7 @@ repository but not yet published as a release; public release publication adds
 
 ### Planning
 
+- Converged the inherited technical-BL implementation contract and living architecture traceability under BL-315; reordered the release and core-foundation lane, and defined exact-byte local pre-release promotion without changing product behavior or `VERSION`.
 - Made backlog-item completion, rather than sprint end, the primary reconciliation point for backlog status, changelog/version, affected documentation, tests/CI, candidate artifacts, release/distribution, migration, and security impact. Intentionally deferred work must be carried by one concrete successor BL in both the closing and successor scopes.
 - Moved current-version candidate-artifact and schema/payload/catalog CI owners `BL-255`–`BL-258` into `SPR-048`, with dependency-bound execution before later implementation relies on their contracts.
 - Assigned persistent GitHub Release publication to the Version 1.0 release boundary in BL-263; transient GitHub Actions artifacts remain validation evidence rather than the public distribution result.

@@ -17,9 +17,11 @@ The `SPR-048` prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete:
 product-code coverage and canonical product versioning are established before
 subsequent functional work. BL-255 now owns current-version candidate artifacts
 before the next `VERSION`-changing merge; BL-257 follows BL-204 plus BL-212,
-BL-258 follows BL-213 plus BL-214, and BL-256 follows BL-215 so the schema,
-payload, and catalog contracts are CI-enforced in the implementation sprint.
-The final public release boundary remains SPR-061/BL-263.
+BL-213/214 and BL-215 define payload and catalog contracts in SPR-048. BL-216/219/256 require the later SPR-053 effective profile/catalog/context foundation; BL-218/258 require SPR-049 BL-090 result storage. The final public release boundary remains SPR-061/BL-263. After BL-330, complete BL-315 convergence, BL-255 current-version candidate and exact-byte local promotion, and BL-262 supply-chain foundation. Close BL-204/212/257 and early payload/catalog/native policy contracts, then establish SPR-053 named-root/profile/configuration -> BL-236 context -> BL-159 authorization -> BL-110 catalog -> BL-166 audit -> BL-239 state binding. Finish BL-216/219/256 and BL-209/211 there. In SPR-049, complete BL-084–BL-089 lifecycle -> BL-090 store, then conditional BL-210 Tasks mapping, BL-218 resource handoff and BL-258 payload/resource CI. Operations, filesystem, and search consume the final foundation; the matrix's hard predecessors follow this sprint and within-sprint order. [Architecture traceability](architecture-traceability.md) records hard edges and closure obligations.
+
+## Local pre-release promotion
+
+BL-255 may promote a fully BL-248-verified current-version candidate for local use before Version 1.0. Promotion reuses exactly the verified artifact bytes; it never rebuilds or mutates them. Immutable identity includes `VERSION + SourceCommitSHA + ArtifactSHA256`. An optional mutable `current` convenience alias may select the latest verified local set but never replaces immutable identity or silently overwrites different bytes under one identity. The earlier candidate CI may upload transient verification artifacts as evidence. Local promotion itself creates no additional remote upload, Git tag, GitHub Release, remote publication, or external release claim. Root `VERSION` remains the canonical BL-245 source; no SemVer pre-release suffix is generated merely for local promotion. BL-263 owns public release. BL-243 later owns complete installation, removal, and operation guidance across direct, service, and proxy modes; local promotion does not imply those modes already work.
 
 ## Version 1.0 product objective
 
@@ -219,7 +221,7 @@ The following remain outside the accepted local Version 1.0 architecture and req
 
 `BL-263` must verify at minimum:
 
-1. all tasks assigned to Version 1.0 by the sprint sequence are `Completed` or have a documented explicit waiver approved in the release record;
+1. all tasks assigned to Version 1.0 by the sprint sequence are `Completed` or have a documented explicit waiver approved in the release record, and [architecture traceability](architecture-traceability.md) has no ownerless requirement or unresolved Version 1.0 retrofit except an explicitly approved release waiver;
 2. all remaining Post-1.0 workstream tasks are correctly described as outside Version 1.0 and are not required by released contracts;
 3. direct STDIO remains functional without administrative installation;
 4. system service mode implements Variant A only and rejects unsupported Variant B configuration safely;

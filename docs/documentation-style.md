@@ -67,7 +67,7 @@ architecture decisions, contributor guidance, and accepted planning separately.
 Use one canonical location for each contract and link to it instead of copying
 requirements into multiple competing authorities.
 
-`BACKLOG.md` owns task identifiers, ownership, status, and milestone. Keep
+`BACKLOG.md` owns task identifiers, ownership, status, and milestone. The [implementation contract](planning/implementation-contract.md) owns shared technical-BL readiness and retrofit rules; [architecture traceability](planning/architecture-traceability.md) owns the living requirement-to-owner and closure map. New or materially changed technical BLs update both in one planning change; architecture changes identify affected current controls. Keep
 assigned identifiers stable and retain concise completed entries without
 turning the backlog into an execution-report archive.
 
