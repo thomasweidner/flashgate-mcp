@@ -76,6 +76,28 @@ continued absence of the delayed survivor marker.
 
 ## Acceptance evidence
 
+### Planned public publication handoff
+
+The planned lane is `BL-248 verified artifact -> BL-255 immutable candidate
+identity -> BL-262 evidence -> BL-363 publication`. BL-248 remains the sole
+artifact-verification authority; publication adds no competing verifier.
+BL-255 binds `VERSION + SourceCommitSHA + ArtifactSHA256` and promotes those
+bytes locally without an additional remote upload. BL-262 owns supply-chain
+and rollback evidence; BL-363 consumes and carries or unambiguously binds the
+public-distribution evidence alongside the verified archives and checksums.
+
+BL-363 plans persistent GitHub prereleases for versions below 1.0.0 with
+`prerelease=true`. It must publish exactly the verified Windows/Linux x64/ARM64
+archive bytes, without build, rebuild, repackaging, or silent asset replacement.
+For a public candidate, release-relevant source and the dated canonical
+changelog entry are final before freeze; the exact `v<VERSION>` tag must target
+its SourceCommitSHA. Changed source/notes/date requires a new candidate and
+verification. Identity, hash, tag, asset, permission or required-evidence drift
+fails closed; remote readback verifies the published identity and bytes.
+Stable Version 1.0 remains a separate BL-263 gate and publication.
+
+### Current validation evidence
+
 Validate each applicable binary and archive against the current build identity.
 Record native execution separately from cross-build and static inspection; a
 cross-built ARM64 binary is not evidence of native ARM64 validation. Keep

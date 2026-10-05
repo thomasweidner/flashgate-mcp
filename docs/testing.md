@@ -16,7 +16,8 @@ path constraints documented by the invoked script.
 Build-input tests validate root `VERSION` as strict single-line SemVer in
 PowerShell, Bash, and Go. The backlog-item completion contract requires every
 `VERSION` change to carry one nonempty `## [<VERSION>]` changelog section in the
-same change; it may remain undated until publication. `cmd/releaseaudit source`
+same change; it may remain undated until preparation for public candidate
+freeze. `cmd/releaseaudit source`
 validates the changelog and requires that existing section to be dated as
 `## [<VERSION>] - YYYY-MM-DD` in release mode. The release workflow regression
 rejects job-level permission overrides, free manual versions, tag-derived
@@ -500,6 +501,33 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - no secret, full payload, unrestricted environment, or unnecessary host-path leakage.
 
 ### Release and supply-chain tests
+
+#### Planned BL-363 public prerelease gates
+
+BL-363 must later add focused positive, negative and boundary coverage for the
+separate publication path, reusing BL-248 verification, BL-255 candidate identity
+and BL-262 evidence. This registration adds no tests or implemented publisher.
+
+- require GitHub `prerelease=true` and a canonical version below 1.0.0;
+- reject automatic publication on ordinary main merges;
+- reject unverified candidates and publication-time build, rebuild or repackaging;
+- bind VERSION, exact `v<VERSION>` tag target, SourceCommitSHA and ArtifactSHA256;
+- verify finalized release-relevant source and dated changelog notes before
+  public candidate freeze; reject later notes/date/version edits under that identity;
+- reject version/tag/source/hash drift, asset collisions and different bytes
+  under the same immutable identity; forbid silent overwrite/replacement/deletion;
+- require the complete Windows/Linux x64/ARM64 archive/checksum contract and
+  needed BL-262 evidence, including its public-distribution binding;
+- test permission minimization, permission drift, separate release-write rights,
+  read-only build/verification rights and secret-free diagnostics/evidence;
+- verify remote release identity, tag target, prerelease flag, evidence and exact
+  asset inventory/hashes by readback, including failed/ambiguous write outcomes
+  with no blind retry;
+- preserve ordinary `0.x.y` without invented suffixes; an explicitly separate
+  SemVer candidate version must match every canonical version surface;
+- reject stable/latest Version 1.0 claims; BL-363 success never passes BL-263.
+
+#### Existing and Version 1.0 artifact gates
 
 - artifact version/help/platform/name checks;
 - compact and verbose CLI identity checks;

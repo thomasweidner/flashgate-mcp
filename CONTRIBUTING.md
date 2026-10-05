@@ -91,12 +91,30 @@ editable product-version source. `CHANGELOG.md` is the narrative release-notes
 source. Every `VERSION` change must create or update exactly one nonempty
 `## [<VERSION>]` section in the same change and place that version's notes there;
 version-specific notes must not remain only under `[Unreleased]`. An introduced
-but unpublished product version uses an undated version heading. `[Unreleased]`
+but unpublished product version may use an undated version heading until
+preparation for public candidate freeze. `[Unreleased]`
 is reserved for notable changes not yet assigned to a product version. A public
-release dates the existing section as `## [<VERSION>] - YYYY-MM-DD` and requires
-the exact `v<VERSION>` tag on the built commit plus a clean working tree. A tag
+release requires the existing section dated as `## [<VERSION>] - YYYY-MM-DD`
+and the exact `v<VERSION>` tag on the built commit plus a clean working tree. A tag
 is parity evidence, not the product-version source. Ordinary direct `go build`
 remains `0.0.0-dev`; explicit build versions are for metadata validation fixtures.
+
+Planned public pre-1.0 GitHub prereleases belong to BL-363, after BL-255
+candidate verification/local promotion and BL-262 evidence; stable Version 1.0
+publication remains BL-263. Ordinary `0.x.y` stays unsuffixed: `0.4.0` uses
+VERSION `0.4.0`, tag `v0.4.0`, artifact version `0.4.0`, and GitHub
+`prerelease=true`. This publication flag does not change SemVer identity.
+Only an intentionally separate candidate version uses a suffix such as
+`0.4.0-rc.1`; then VERSION, `v0.4.0-rc.1`, the changelog version section and
+artifact names all carry it. A publisher never invents a version or suffix.
+
+For a public candidate, finalize release-relevant source bytes, including
+VERSION and the dated changelog version entry, before candidate freeze. The
+date is the intended release date and does not prove publication. Freeze
+binds SourceCommitSHA and ArtifactSHA256; `v<VERSION>` must target exactly that
+commit. Later identity-relevant edits, including a changed release date,
+require a new candidate build and verification. Publication consumes only
+those verified bytes and notes from that commit's canonical CHANGELOG.md.
 
 
 ## Documentation changes
