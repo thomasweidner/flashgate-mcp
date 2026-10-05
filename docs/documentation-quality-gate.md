@@ -97,8 +97,13 @@ addition to the automated documentation checks:
 - explicitly disposition `VERSION`, `CHANGELOG.md`, tests/CI, current-version
   candidate artifacts, release/distribution, migration, and security impact;
 - whenever `VERSION` changes, require one nonempty `## [<VERSION>]` changelog
-  section in the same change. The section may be undated before publication; a
-  public release adds ` - YYYY-MM-DD` only with the matching `v<VERSION>` tag.
+  section in the same change. The section may remain undated while the version
+  has no candidate frozen for public publication. Before freezing a public
+  candidate, finalize its release notes and date as `## [<VERSION>] - YYYY-MM-DD`
+  in the canonical candidate source commit. Public publication verifies that dated
+  section together with the exact `v<VERSION>` tag; it does not add or change the
+  date after candidate freeze. Later identity-relevant changes to the date or
+  notes require a new candidate build and renewed verification.
 
 A predecessor-only note such as "document later" is not a valid handoff. The
 successor must carry the obligation in its own canonical backlog scope so a
