@@ -530,6 +530,9 @@ and BL-262 evidence. This registration adds no tests or implemented publisher.
 #### Existing and Version 1.0 artifact gates
 
 - artifact version/help/platform/name checks;
+- `internal/version` release-workflow naming parity for all Windows/Linux
+  x64/ARM64 archives, checksum companions, uploaded workflow artifacts, and
+  job-summary names; legacy product-name markers fail this permanent gate;
 - compact and verbose CLI identity checks;
 - Windows x64/ARM64 `VERSIONINFO`, PE architecture, icon, and Explorer property checks;
 - Linux x64 native and ARM64 cross-build Go/VCS, ELF-header, ELF-note, and Go build-ID checks;
