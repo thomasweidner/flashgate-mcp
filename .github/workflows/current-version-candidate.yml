@@ -1,0 +1,437 @@
+name: Current-Version Candidate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Bind candidate source and decide verification
+    runs-on: ubuntu-latest
+    outputs:
+      run_candidate: ${{ steps.candidate.outputs.run_candidate }}
+      version: ${{ steps.source.outputs.version }}
+      source_epoch: ${{ steps.source.outputs.source_epoch }}
+      source_time: ${{ steps.source.outputs.source_time }}
+      source_commit: ${{ steps.source.outputs.source_commit }}
+    steps:
+      - name: Checkout exact event source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Decide candidate gate
+        id: candidate
+        shell: bash
+        env:
+          CANDIDATE_EVENT: ${{ github.event_name }}
+          CANDIDATE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -Eeuo pipefail
+          [[ "$CANDIDATE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$(git rev-parse HEAD)" == "$CANDIDATE_COMMIT" ]]
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
+          if [[ "$CANDIDATE_EVENT" == 'workflow_dispatch' ]]; then
+            echo 'run_candidate=true' >> "$GITHUB_OUTPUT"
+            echo 'Explicit current-version reverification at the dispatch commit.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          [[ "$CANDIDATE_EVENT" == 'pull_request' ]]
+          [[ "$PR_BASE_REF" == 'main' ]]
+          base="$PR_BASE_SHA"
+          [[ "$base" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$(git rev-parse "$base^{commit}")" == "$base" ]]
+          if git diff --quiet "$base" HEAD -- VERSION; then
+            base_workflow="$(git ls-tree --full-tree --name-only "$base" -- .github/workflows/current-version-candidate.yml)"
+            if [[ -n "$base_workflow" ]]; then
+              [[ "$base_workflow" == '.github/workflows/current-version-candidate.yml' ]]
+              echo 'run_candidate=false' >> "$GITHUB_OUTPUT"
+              echo 'VERSION unchanged and candidate workflow exists in exact base; matrix skipped.' >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo 'Candidate workflow absent from exact base; bootstrap matrix required.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            status=$?
+            [[ "$status" -eq 1 ]] || exit "$status"
+          fi
+          echo 'run_candidate=true' >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        if: steps.candidate.outputs.run_candidate == 'true'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Validate candidate source
+        if: steps.candidate.outputs.run_candidate == 'true'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          source scripts/build-input-validation.sh
+          flashgate_read_repository_version "$PWD"
+          version="$FLASHGATE_REPOSITORY_VERSION"
+          mkdir -p build/audit
+          go -C . run -mod=vendor ./cmd/releaseaudit source \
+            --root "$PWD" --candidate --report build/audit/candidate-source.json
+          source_epoch="$(git show -s --format=%ct HEAD)"
+          flashgate_validate_source_date_epoch "$source_epoch"
+          source_time="$(date -u -d "@$source_epoch" '+%Y-%m-%dT%H:%M:%SZ')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "source_epoch=$source_epoch" >> "$GITHUB_OUTPUT"
+          echo "source_time=$source_time" >> "$GITHUB_OUTPUT"
+          echo "source_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
+        id: source
+
+      - name: Upload candidate source audit
+        if: steps.candidate.outputs.run_candidate == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-source-${{ steps.source.outputs.source_commit }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/audit/candidate-source.json
+          if-no-files-found: error
+          retention-days: 14
+
+  build:
+    name: ${{ matrix.platform }} ${{ matrix.public_arch }}
+    needs: prepare
+    if: needs.prepare.outputs.run_candidate == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            goarch: amd64
+            public_arch: x64
+            archive_extension: zip
+          - os: windows-latest
+            platform: windows
+            goarch: arm64
+            public_arch: arm64
+            archive_extension: zip
+          - os: ubuntu-latest
+            platform: linux
+            goarch: amd64
+            public_arch: x64
+            archive_extension: tar.gz
+          - os: ubuntu-latest
+            platform: linux
+            goarch: arm64
+            public_arch: arm64
+            archive_extension: tar.gz
+
+    env:
+      CANDIDATE_VERSION: ${{ needs.prepare.outputs.version }}
+      SOURCE_DATE_EPOCH: ${{ needs.prepare.outputs.source_epoch }}
+      CANDIDATE_SOURCE_TIME: ${{ needs.prepare.outputs.source_time }}
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.source_commit }}
+          fetch-depth: 0
+
+      - name: Verify clean exact source
+        shell: bash
+        run: |
+          [[ "$(git rev-parse HEAD)" == "${{ needs.prepare.outputs.source_commit }}" ]]
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install Linux inspection tools
+        if: matrix.platform == 'linux'
+        run: sudo apt-get update && sudo apt-get install --yes binutils file
+
+      - name: Validate shared build-input fixtures
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
+        run: ./scripts/Test-BuildInputValidation.ps1
+
+      - name: Validate shared build-input fixtures
+        if: matrix.platform == 'linux'
+        shell: bash
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
+        run: bash scripts/test-build-input-validation.sh
+
+      - name: Create Windows candidate artifact (build 1)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          ./scripts/New-ReleaseArtifact.ps1 `
+            -Version $env:CANDIDATE_VERSION `
+            -GOARCH '${{ matrix.goarch }}' `
+            -OutputDirectory build/candidate-1
+
+      - name: Validate Windows candidate artifact
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $null = New-Item -ItemType Directory -Path build/audit -Force
+          $year = [DateTimeOffset]::FromUnixTimeSeconds(
+            [int64]$env:SOURCE_DATE_EPOCH
+          ).Year
+          $base = "flashgate-mcp_$($env:CANDIDATE_VERSION)_windows_${{ matrix.public_arch }}"
+          ./scripts/Test-ReleaseArtifact.ps1 `
+            -WorkingPath $env:RUNNER_TEMP `
+            -ArchivePath "build/candidate-1/$base.zip" `
+            -ChecksumPath "build/candidate-1/$base.zip.sha256" `
+            -ExpectedVersion $env:CANDIDATE_VERSION `
+            -ExpectedPublicArch '${{ matrix.public_arch }}' `
+            -ExpectedGOARCH '${{ matrix.goarch }}' `
+            -ExpectedPlatform windows `
+            -ExpectedCommit '${{ needs.prepare.outputs.source_commit }}' `
+            -ExpectedSourceTime $env:CANDIDATE_SOURCE_TIME `
+            -ExpectedModified false `
+            -ExpectedCopyrightYear $year 2>&1 |
+            Tee-Object -FilePath "build/audit/verify-windows-${{ matrix.public_arch }}.txt"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows BL-248 artifact verification failed.'
+          }
+          Add-Content -LiteralPath "build/audit/verify-windows-${{ matrix.public_arch }}.txt" `
+            -Value 'SourceCommit: ${{ needs.prepare.outputs.source_commit }}'
+
+      - name: Create Linux candidate artifact (build 1)
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          bash scripts/new-release-artifact.sh \
+            --version "$CANDIDATE_VERSION" \
+            --goarch '${{ matrix.goarch }}' \
+            --output-directory build/candidate-1
+
+      - name: Validate Linux candidate artifact
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p build/audit
+          base="flashgate-mcp_${CANDIDATE_VERSION}_linux_${{ matrix.public_arch }}"
+          bash scripts/test-release-artifact.sh \
+            --archive "build/candidate-1/${base}.tar.gz" \
+            --checksum "build/candidate-1/${base}.tar.gz.sha256" \
+            --expected-version "$CANDIDATE_VERSION" \
+            --expected-public-arch '${{ matrix.public_arch }}' \
+            --expected-goarch '${{ matrix.goarch }}' \
+            --expected-commit '${{ needs.prepare.outputs.source_commit }}' \
+            --expected-source-time "$CANDIDATE_SOURCE_TIME" \
+            --expected-modified false |
+            tee "build/audit/verify-linux-${{ matrix.public_arch }}.txt"
+          printf 'SourceCommit: %s\n' '${{ needs.prepare.outputs.source_commit }}' >> "build/audit/verify-linux-${{ matrix.public_arch }}.txt"
+
+      - name: Create Windows candidate artifact (build 2)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          ./scripts/New-ReleaseArtifact.ps1 `
+            -Version $env:CANDIDATE_VERSION `
+            -GOARCH '${{ matrix.goarch }}' `
+            -OutputDirectory build/candidate-2
+
+      - name: Create Linux candidate artifact (build 2)
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          bash scripts/new-release-artifact.sh \
+            --version "$CANDIDATE_VERSION" \
+            --goarch '${{ matrix.goarch }}' \
+            --output-directory build/candidate-2
+
+      - name: Compare Windows candidate reproductions
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $base = "flashgate-mcp_$($env:CANDIDATE_VERSION)_windows_${{ matrix.public_arch }}"
+          $null = New-Item -ItemType Directory -Path build/audit -Force
+          & go -C . run -mod=vendor ./cmd/releaseaudit compare `
+            --artifact-a "build/candidate-1/$base.zip" `
+            --checksum-a "build/candidate-1/$base.zip.sha256" `
+            --artifact-b "build/candidate-2/$base.zip" `
+            --checksum-b "build/candidate-2/$base.zip.sha256" `
+            --binary-suffix /flashgate-mcp.exe `
+            --report "build/audit/repro-windows-${{ matrix.public_arch }}.json"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows candidate reproducibility gate failed.'
+          }
+
+      - name: Compare Linux candidate reproductions
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          base="flashgate-mcp_${CANDIDATE_VERSION}_linux_${{ matrix.public_arch }}"
+          mkdir -p build/audit
+          go -C . run -mod=vendor ./cmd/releaseaudit compare \
+            --artifact-a "build/candidate-1/${base}.tar.gz" \
+            --checksum-a "build/candidate-1/${base}.tar.gz.sha256" \
+            --artifact-b "build/candidate-2/${base}.tar.gz" \
+            --checksum-b "build/candidate-2/${base}.tar.gz.sha256" \
+            --binary-suffix /flashgate-mcp \
+            --report "build/audit/repro-linux-${{ matrix.public_arch }}.json"
+
+      - name: Leak-scan Windows candidate
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $base = "flashgate-mcp_$($env:CANDIDATE_VERSION)_windows_${{ matrix.public_arch }}"
+          $arguments = @(
+            '-C', '.', 'run', '-mod=vendor', './cmd/releaseaudit',
+            'scan',
+            '--artifact', "build/candidate-1/$base.zip",
+            '--checksum', "build/candidate-1/$base.zip.sha256",
+            '--report', "build/audit/leak-windows-${{ matrix.public_arch }}.json"
+          )
+          foreach ($value in @(
+            $env:GITHUB_WORKSPACE,
+            $env:RUNNER_TEMP,
+            $env:USERPROFILE,
+            $env:USERNAME,
+            $env:COMPUTERNAME
+          )) {
+            if (-not [string]::IsNullOrWhiteSpace($value)) {
+              $arguments += @('--forbidden', $value)
+            }
+          }
+          & go @arguments
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Windows candidate leak scan failed.'
+          }
+
+      - name: Leak-scan Linux candidate
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          base="flashgate-mcp_${CANDIDATE_VERSION}_linux_${{ matrix.public_arch }}"
+          arguments=(
+            -C . run -mod=vendor ./cmd/releaseaudit
+            scan
+            --artifact "build/candidate-1/${base}.tar.gz"
+            --checksum "build/candidate-1/${base}.tar.gz.sha256"
+            --report "build/audit/leak-linux-${{ matrix.public_arch }}.json"
+          )
+          for value in \
+            "$GITHUB_WORKSPACE" \
+            "$RUNNER_TEMP" \
+            "$HOME" \
+            "$USER" \
+            "$(hostname)"; do
+            [[ -z "$value" ]] || arguments+=(--forbidden "$value")
+          done
+          go "${arguments[@]}"
+
+      - name: Bind verified candidate record
+        shell: pwsh
+        run: |
+          $target = '${{ matrix.platform }}-${{ matrix.public_arch }}'
+          $base = "flashgate-mcp_${{ needs.prepare.outputs.version }}_${{ matrix.platform }}_${{ matrix.public_arch }}.${{ matrix.archive_extension }}"
+          $bundle = 'build/candidate-bundle'
+          $null = New-Item -ItemType Directory -Path $bundle -Force
+          foreach ($source in @(
+            "build/candidate-1/$base",
+            "build/candidate-1/$base.sha256",
+            "build/audit/verify-$target.txt",
+            "build/audit/repro-$target.json",
+            "build/audit/leak-$target.json"
+          )) {
+            Copy-Item -LiteralPath $source -Destination $bundle -ErrorAction Stop
+          }
+          & go -C . run -mod=vendor ./cmd/releaseaudit candidate-record `
+            --root . `
+            --dir $bundle `
+            --version '${{ needs.prepare.outputs.version }}' `
+            --commit '${{ needs.prepare.outputs.source_commit }}' `
+            --platform '${{ matrix.platform }}' `
+            --architecture '${{ matrix.public_arch }}' `
+            --output "$bundle/record-$target.json"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Candidate record binding failed.'
+          }
+
+      - name: Upload validated candidate artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-target-${{ needs.prepare.outputs.source_commit }}-${{ matrix.platform }}-${{ matrix.public_arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/candidate-bundle/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Write candidate summary
+        shell: bash
+        run: |
+          echo "## Validated candidate artifact" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: \`$CANDIDATE_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Platform: \`${{ matrix.platform }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Architecture: \`${{ matrix.public_arch }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Archive: \`flashgate-mcp_${{ needs.prepare.outputs.version }}_${{ matrix.platform }}_${{ matrix.public_arch }}.${{ matrix.archive_extension }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Checksum: \`flashgate-mcp_${{ needs.prepare.outputs.version }}_${{ matrix.platform }}_${{ matrix.public_arch }}.${{ matrix.archive_extension }}.sha256\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Workflow artifact: \`candidate-target-${{ needs.prepare.outputs.source_commit }}-${{ matrix.platform }}-${{ matrix.public_arch }}-${{ github.run_id }}-${{ github.run_attempt }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${{ needs.prepare.outputs.source_commit }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source time: \`$CANDIDATE_SOURCE_TIME\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Reproducibility gate: \`PASS\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Leak scan: \`PASS\`" >> "$GITHUB_STEP_SUMMARY"
+
+  manifest:
+    name: Bind four-target candidate manifest
+    needs: [prepare, build]
+    if: needs.prepare.outputs.run_candidate == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.source_commit }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Download verified target artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: candidate-target-${{ needs.prepare.outputs.source_commit }}-*
+          path: build/candidate-bundle
+          merge-multiple: true
+
+      - name: Bind complete candidate identity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "$(git rev-parse HEAD)" == '${{ needs.prepare.outputs.source_commit }}' ]]
+          go -C . run -mod=vendor ./cmd/releaseaudit candidate-manifest \
+            --root . \
+            --dir build/candidate-bundle \
+            --version '${{ needs.prepare.outputs.version }}' \
+            --commit '${{ needs.prepare.outputs.source_commit }}' \
+            --output build/candidate-bundle/candidate-manifest.json
+
+      - name: Upload verified four-target identity
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-manifest-${{ needs.prepare.outputs.source_commit }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/candidate-bundle/candidate-manifest.json
+          if-no-files-found: error
+          retention-days: 14

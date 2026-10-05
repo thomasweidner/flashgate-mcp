@@ -502,6 +502,28 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 
 ### Release and supply-chain tests
 
+#### Current-version candidate and local promotion
+
+Run `go test -trimpath ./internal/version` for actual four-row workflow matrix,
+archive/checksum/container/summary parity and naming mutations. Run
+`go test ./cmd/releaseaudit` for candidate source versus release semantics,
+workflow policy, strict manifest/record binding, four-target identity, hash and
+evidence mismatches, local exact-byte readback, and immutable overwrite
+rejection, nonregular `current` rejection before identity visibility, and alias
+update/cleanup rollback with both new and preexisting immutable identities.
+Workflow policy tests reject dispatch inputs, incorrect event commit binding,
+skipped dispatches, changed PR skip/run behavior, and publication/write rights.
+An input-free dispatch always verifies root `VERSION`; an unchanged PR skips
+only when the workflow exists in its exact bound base. Actual Bash execution
+tests cover the first-PR bootstrap, failed/unexpected existence queries and
+exact commit/base binding. Policy mutations reject removal of bootstrap or
+unconditional execution of all unchanged-version PRs.
+The candidate workflow must run the existing BL-248 platform
+verifier, independent second build, `releaseaudit compare`, and leak scan for
+every target before producing a record. A later hosted Windows/Linux x64/ARM64
+run is required for BL-255 completion; local or cross-built tests do not replace
+that evidence. Local promotion performs no build or remote write.
+
 #### Planned BL-363 public prerelease gates
 
 BL-363 must later add focused positive, negative and boundary coverage for the
