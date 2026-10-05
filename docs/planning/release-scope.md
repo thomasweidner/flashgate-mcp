@@ -17,11 +17,52 @@ The `SPR-048` prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete:
 product-code coverage and canonical product versioning are established before
 subsequent functional work. BL-255 now owns current-version candidate artifacts
 before the next `VERSION`-changing merge; BL-257 follows BL-204 plus BL-212,
-BL-213/214 and BL-215 define payload and catalog contracts in SPR-048. BL-216/219/256 require the later SPR-053 effective profile/catalog/context foundation; BL-218/258 require SPR-049 BL-090 result storage. The final public release boundary remains SPR-061/BL-263. After BL-330, complete BL-315 convergence, BL-255 current-version candidate and exact-byte local promotion, and BL-262 supply-chain foundation. Close BL-204/212/257 and early payload/catalog/native policy contracts, then establish SPR-053 named-root/profile/configuration -> BL-236 context -> BL-159 authorization -> BL-110 catalog -> BL-166 audit -> BL-239 state binding. Finish BL-216/219/256 and BL-209/211 there. In SPR-049, complete BL-084–BL-089 lifecycle -> BL-090 store, then conditional BL-210 Tasks mapping, BL-218 resource handoff and BL-258 payload/resource CI. Operations, filesystem, and search consume the final foundation; the matrix's hard predecessors follow this sprint and within-sprint order. [Architecture traceability](architecture-traceability.md) records hard edges and closure obligations.
+BL-213/214 and BL-215 define payload and catalog contracts in SPR-048. BL-216/219/256 require the later SPR-053 effective profile/catalog/context foundation; BL-218/258 require SPR-049 BL-090 result storage. The stable Version 1.0 public release boundary remains SPR-061/BL-263; public pre-1.0 prereleases belong to SPR-048/BL-363. After BL-330 and BL-315 convergence, the near-term order is BL-255 -> BL-262 -> BL-363 -> BL-204 + BL-212 -> BL-257 -> BL-213 -> BL-214 -> BL-215 -> BL-220 -> SPR-053. Establish SPR-053 named-root/profile/configuration -> BL-236 context -> BL-159 authorization -> BL-110 catalog -> BL-166 audit -> BL-239 state binding. Finish BL-216/219/256 and BL-209/211 there. In SPR-049, complete BL-084–BL-089 lifecycle -> BL-090 store, then conditional BL-210 Tasks mapping, BL-218 resource handoff and BL-258 payload/resource CI. Operations, filesystem, and search consume the final foundation; the matrix's hard predecessors follow this sprint and within-sprint order. [Architecture traceability](architecture-traceability.md) records hard edges and closure obligations.
 
 ## Local pre-release promotion
 
-BL-255 may promote a fully BL-248-verified current-version candidate for local use before Version 1.0. Promotion reuses exactly the verified artifact bytes; it never rebuilds or mutates them. Immutable identity includes `VERSION + SourceCommitSHA + ArtifactSHA256`. An optional mutable `current` convenience alias may select the latest verified local set but never replaces immutable identity or silently overwrites different bytes under one identity. The earlier candidate CI may upload transient verification artifacts as evidence. Local promotion itself creates no additional remote upload, Git tag, GitHub Release, remote publication, or external release claim. Root `VERSION` remains the canonical BL-245 source; no SemVer pre-release suffix is generated merely for local promotion. BL-263 owns public release. BL-243 later owns complete installation, removal, and operation guidance across direct, service, and proxy modes; local promotion does not imply those modes already work.
+BL-255 may promote a fully BL-248-verified current-version candidate for local use before Version 1.0. Promotion reuses exactly the verified artifact bytes; it never rebuilds or mutates them. Immutable identity includes `VERSION + SourceCommitSHA + ArtifactSHA256`. An optional mutable `current` convenience alias may select the latest verified local set but never replaces immutable identity or silently overwrites different bytes under one identity. The earlier candidate CI may upload transient verification artifacts as evidence. Local promotion itself creates no additional remote upload, Git tag, GitHub Release, remote publication, or external release claim. Root `VERSION` remains the canonical BL-245 source; no SemVer pre-release suffix is generated merely for local promotion. BL-363 owns planned public pre-1.0 prereleases; BL-263 owns the stable Version 1.0 gate and stable publication. BL-243 later owns complete installation, removal, and operation guidance across direct, service, and proxy modes; local promotion does not imply those modes already work.
+
+## Public pre-1.0 prerelease publication
+
+BL-363 is planned in SPR-048, after BL-245/248/255/262. The ownership chain is
+`BL-245 + BL-248 -> BL-255 -> BL-262 -> BL-363 -> further pre-1.0 development -> BL-263`.
+BL-245 owns version/changelog/tag semantics, BL-248 verification, BL-255 the
+immutable candidate and local exact-byte promotion, and BL-262 supply-chain
+and rollback evidence. BL-363 consumes these contracts to persist the exact
+verified archives, checksums, and bound public evidence in GitHub Releases.
+It creates no second version, verifier, or supply-chain authority.
+
+Publication requires an explicit external-write boundary and mandatory GitHub
+`prerelease=true` for versions below 1.0.0; ordinary main merges never publish
+automatically. Publication performs no build, rebuild, repackaging, or mutation
+of verified bytes. Version, source commit, artifact hashes, tag target, existing
+assets, and required evidence must agree; collisions or drift fail closed.
+Published assets are never silently replaced, overwritten, or deleted. Remote
+readback must verify release identity, exact tag target, prerelease flag, asset
+inventory and hashes. Public download guidance is part of BL-363 acceptance;
+the current workflow still provides only temporary Actions artifacts.
+
+Normal `0.x.y` is a canonical SemVer product version: for example,
+`VERSION=0.4.0`, tag `v0.4.0`, artifact version `0.4.0`, and GitHub
+`prerelease=true`. The flag classifies the publication channel and creates no
+SemVer suffix. A suffix such as `0.4.0-rc.1` is used only for an intentionally
+separate candidate version and must match VERSION, tag, changelog section and
+artifact names. Publishers never invent a version or suffix.
+
+For a candidate intended for public publication, finalize all release-relevant
+source bytes before candidate freeze, including VERSION and the dated,
+nonempty CHANGELOG version section required by BL-245. The date records the
+intended public release date; it is not itself proof of publication. Freeze
+binds SourceCommitSHA and verified artifact hashes. The exact `v<VERSION>` tag
+must point to that commit. Any later identity-relevant source edit, including
+notes or date changes, requires a new candidate build and verification before
+publication, never an edit silently retained under the frozen identity. Notes
+are derived only from that commit's canonical CHANGELOG.md.
+
+A pre-1.0 prerelease implies no stable/latest claim and never satisfies the
+stable Version 1.0 gate. BL-263 alone owns that gate and stable publication,
+reusing the safe publication foundation after further development and closure.
 
 ## Version 1.0 product objective
 
@@ -229,7 +270,7 @@ The following remain outside the accepted local Version 1.0 architecture and req
 6. supported MCP revisions and extensions are explicitly documented and tested;
 7. performance, payload, token, memory, CPU, concurrency, and security budgets pass;
 8. release artifacts and service assets are reproducible, traceable, and rollback-capable;
-9. the release publishes persistent GitHub Release `v<VERSION>` assets using the validated archives, checksums, release notes, and available supply-chain evidence rather than relying only on transient workflow artifacts;
+9. the stable Version 1.0 release publishes persistent GitHub Release `v<VERSION>` assets using the validated archives, checksums, canonical changelog notes, and available supply-chain evidence rather than relying only on transient workflow artifacts; reuse the BL-363 safe publication foundation without treating prerelease success as passage of this stable gate;
 10. user, administrator, security, and developer documentation matches the released implementation;
 11. breaking-change, compatibility, deprecation, and migration policy is published for post-1.0 releases.
 

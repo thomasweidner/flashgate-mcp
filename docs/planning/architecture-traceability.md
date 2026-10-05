@@ -36,7 +36,8 @@ also inherits its owner's focused tests and `T`.
 | Catalog and initialization budget definitions (A, R, TA) | BL-215 | — | BL-216 instructions and BL-256 CI consume budgets | `tools/list` and initialization-size baseline | BL-215, BL-256 | Version 1.0 profile-specific limits defined |
 | Early Native Tool/no-interpreter policy (A, S, TA) | BL-220 | — | BL-163 and typed-command owners later implement policy; no early command engine | Current native Go runtime and future adapter selection | BL-220, BL-163 | Typed no-shell selection, executable identity and evidence gate defined |
 | Current-version candidate and exact-byte local promotion (R, T) | BL-255 | BL-245, BL-248 | BL-262 later consumes verified identity; `current` is an optional alias | Existing CI candidate/verification artifacts | BL-248, BL-255 | Verified VERSION/commit/hash bytes promoted unchanged; local step makes no additional remote/public upload |
-| Supply-chain provenance and rollback foundation (A, R, T) | BL-262 | BL-255 | BL-263 later verifies evidence | Current build/release audit and archive paths | BL-262, BL-263 | Provenance, signing plan, SBOM, checksums and atomic rollback evidence |
+| Supply-chain provenance and rollback foundation (A, R, T) | BL-262 | BL-255 | BL-363 consumes evidence; BL-263 later verifies it | Current build/release audit and archive paths | BL-262, BL-363, BL-263 | Provenance, signing plan, SBOM, checksums and atomic rollback evidence; no publication ownership |
+| Persistent public pre-1.0 GitHub prereleases (A, S, R, T, DEC-FP-002) | BL-363 | BL-245, BL-248, BL-255, BL-262 | Reuse root VERSION, BL-245 CHANGELOG/tag contract, BL-248 verifier, BL-255 candidate identity/verified bytes, and BL-262 supply-chain/rollback evidence; BL-263 later consumes the safe publication foundation | Current tag-gated build/validation path in `release-build.yml`; temporary Actions artifacts versus persistent GitHub Releases; public release/download guidance | BL-363 positive/negative identity, permissions and remote-readback gates | Verified immutable candidate bytes are persistently published as a GitHub prerelease with exact version/source/artifact identity and no publication-time rebuild or silent asset replacement; separate explicit publication boundary, no stable/latest claim |
 
 ## Core policy, context, catalog, and state foundation
 
@@ -95,7 +96,7 @@ also inherits its owner's focused tests and `T`.
 | Cross-project efficiency evidence (R, T) | BL-261 | BL-249, BL-250 | BL-263 consumes report | FlashGate benchmark and pinned peers | BL-261, BL-263 | Same-host/corpus/workflow comparison without unsupported claims |
 | Response-size/benchmark integrity follow-up (R, T) | BL-205, BL-317–BL-323, BL-325–BL-329 | — | Reuse schemas, controllers and deterministic corpus | Benchmark loaders, host evidence and docs | Owning BLs, BL-263 | Bounded, deterministic and truthful measurements |
 | Public release governance/validation portability (R, T) | BL-172–BL-173, BL-177–BL-179, BL-331–BL-332 | — | Reuse contribution, workflow and artifact gates | Workflow pins, release/security guidance, ARM64/host-path docs | Owning BLs, BL-263 | Portable, truthful release controls |
-| Version 1.0 architecture/release closure (R, T) | BL-263 | BL-242, BL-243, BL-244, BL-249, BL-250, BL-261, BL-262 | Audit every Version 1.0 row plus BL-305/306/308/315 continuous controls | Every retained implementation/public contract in matrix | BL-263 | No ownerless requirement or retrofit except approved waiver; public release only after gate |
+| Stable Version 1.0 architecture/release closure (R, T) | BL-263 | BL-242, BL-243, BL-244, BL-249, BL-250, BL-261, BL-262, BL-363 | Audit every Version 1.0 row plus BL-305/306/308/315 controls; reuse BL-363 safe publication foundation | Every retained implementation/public contract in matrix | BL-263 | No ownerless requirement or retrofit except approved waiver; stable Version 1.0 publication only after its gate; BL-363 prerelease success does not satisfy it |
 
 
 ## Coverage and future work
@@ -117,5 +118,5 @@ migrated paths/contracts, and any residual dual-bound to one successor. BL-315
 reviews parity and plans machine checks for missing coverage, ownerless rows,
 invalid references, and unresolved retrofit on Completed tasks. BL-308
 maintains architecture and ADRs. BL-263 enumerates and audits these rows
-before public release; completed historical prerequisites are reuse evidence,
+before stable Version 1.0 publication; completed historical prerequisites are reuse evidence,
 not proof that later targets have closed.

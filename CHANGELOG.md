@@ -5,8 +5,9 @@ All notable changes to this project will be documented in this file.
 The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/).
 FlashGate uses semantic product versions before its first public release. An
 undated `## [<VERSION>]` section records a product version introduced in the
-repository but not yet published as a release; public release publication adds
-` - YYYY-MM-DD` to that existing section.
+repository but not yet published as a release. Public-release preparation adds
+` - YYYY-MM-DD` to that existing section before freezing the candidate intended
+for publication; the date alone does not prove that a release was published.
 
 ## [Unreleased]
 
@@ -24,7 +25,7 @@ repository but not yet published as a release; public release publication adds
 - Converged the inherited technical-BL implementation contract and living architecture traceability under BL-315; reordered the release and core-foundation lane, and defined exact-byte local pre-release promotion without changing product behavior or `VERSION`.
 - Made backlog-item completion, rather than sprint end, the primary reconciliation point for backlog status, changelog/version, affected documentation, tests/CI, candidate artifacts, release/distribution, migration, and security impact. Intentionally deferred work must be carried by one concrete successor BL in both the closing and successor scopes.
 - Moved current-version candidate-artifact and schema/payload/catalog CI owners `BL-255`–`BL-258` into `SPR-048`, with dependency-bound execution before later implementation relies on their contracts.
-- Assigned persistent GitHub Release publication to the Version 1.0 release boundary in BL-263; transient GitHub Actions artifacts remain validation evidence rather than the public distribution result.
+- Registered BL-363 in SPR-048 for planned persistent public pre-1.0 GitHub prereleases after BL-255 verified candidates and BL-262 supply-chain evidence. Publication preserves exact verified bytes, canonical version/tag/source/hash identity and frozen changelog notes, with `prerelease=true`, a separate minimal-permission publication boundary and remote readback. Stable Version 1.0 publication remains exclusively BL-263; transient Actions artifacts remain current validation evidence. This planning decision implements no publisher and changes no product version.
 - Updated BL-330 from an already-resolved status decision to the remaining FlashGate-specific application and validation of the canonical project work-item status model.
 
 ## [0.3.0]

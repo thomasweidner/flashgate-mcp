@@ -495,6 +495,27 @@ Version 1.0 protocol security includes:
 
 ### Release and supply-chain security
 
+BL-363 plans the SPR-048 public pre-1.0 GitHub prerelease path after BL-255
+verified candidates and BL-262 supply-chain/rollback evidence. Publication is
+an explicit external/remote write boundary. Build and verification keep minimal
+read-only repository permissions; the future separate publication path receives
+only the release-write rights it needs, never `write-all` or unnecessary
+issues, PR or admin rights. This plan assumes no new long-lived credential
+mechanism. Secrets must never appear in logs or evidence.
+
+The future publisher must bind each remote write attempt to its authorized
+target and verified immutable VERSION/source-commit/artifact-hash identity.
+Reject release, tag, hash, asset, required-evidence and permission drift
+fail-closed before writing; never silently overwrite, replace or delete a
+published asset. Publication performs no build, rebuild or repackaging.
+Remote readback verifies release identity, exact `v<VERSION>` target,
+`prerelease=true`, evidence and asset inventory/hashes. A failed or ambiguous
+write stops automatic retries and requires readback/reconciliation before a
+separately authorized attempt. BL-363 owns these implementation and negative
+test obligations; no publisher is implemented by this planning contract.
+BL-263 retains the independent stable Version 1.0 gate and stable publication;
+pre-1.0 publication permits no stable/latest claim.
+
 Version 1.0 requires:
 
 - pinned/validated workflow strategy;

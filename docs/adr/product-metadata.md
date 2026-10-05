@@ -87,12 +87,25 @@ binary name `flashgate-mcp`.
 
 - Root `VERSION` is the only editable canonical product-version source in the repository. It contains exactly one SemVer value without a leading `v`.
 - Release tags use `v<VERSION>` and must point to the exact commit being built. Tags establish parity; they do not supply the product version.
-- Prerelease tags may contain a SemVer suffix, for example `v0.5.0-rc.1`.
+- Ordinary public pre-1.0 versions remain normal `0.x.y` SemVer values: VERSION `0.4.0`, tag `v0.4.0`, and artifact version `0.4.0` use GitHub `prerelease=true`. That flag classifies the publication channel and does not generate a suffix.
+- A SemVer prerelease suffix is allowed only for an intentionally separate candidate version, for example VERSION `0.4.0-rc.1`, tag `v0.4.0-rc.1`, changelog version heading `0.4.0-rc.1`, and artifact names containing `0.4.0-rc.1`. A publisher must never invent a version or `-rc.N` suffix.
 - The leading `v` belongs to the Git tag, not the embedded product version.
 - Ordinary uncontrolled builds use `0.0.0-dev` regardless of tags. Controlled builds use `VERSION`.
 - Explicit SemVer overrides are restricted to controlled metadata or regression-test inputs. For a release, an override may at most assert the expected value of `VERSION`.
 - `CHANGELOG.md` is the only manually maintained narrative release-notes source. Published release notes are derived from it.
 - Freely entered release-version values are not a canonical source.
+
+BL-245 retains canonical VERSION/changelog/tag ownership. Planned BL-363
+publication consumes BL-248 verification, BL-255 immutable candidate identity
+and verified bytes, and BL-262 supply-chain evidence; it creates no additional
+authority. For a candidate intended for public publication, finalize all
+release-relevant source, including VERSION and the dated CHANGELOG version
+entry, before freeze. The date is the intended release date and alone does not
+prove publication. Bind `VERSION + SourceCommitSHA + ArtifactSHA256` and require
+`v<VERSION>` to point exactly to SourceCommitSHA. Later identity-relevant edits
+require a new candidate build and verification; publication performs no rebuild,
+repackaging or byte mutation. BL-263 remains the sole stable Version 1.0 gate
+and stable-publication owner.
 
 ### Semantic Versioning
 

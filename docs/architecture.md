@@ -522,6 +522,25 @@ Version 1.0 release evidence includes:
 
 ### Build identity and native metadata
 
+The planned SPR-048 release lane is `BL-255 -> BL-262 -> BL-363`, reusing
+completed BL-245 version/tag/changelog semantics and BL-248 verification.
+BL-255 owns candidate verification and local exact-byte promotion; BL-262 owns
+supply-chain and rollback evidence; BL-363 owns persistent public pre-1.0 GitHub
+prerelease distribution through a separate explicit external-write boundary.
+BL-263 alone owns the later stable Version 1.0 gate and stable publication.
+Successful prerelease publication does not satisfy that gate.
+
+Build/verification stays read-oriented. The current tag-gated
+`release-build.yml` has `contents: read` and produces temporary Actions
+artifacts. BL-363 plans a distinct minimally privileged publication path
+consuming a verified immutable `VERSION + SourceCommitSHA + ArtifactSHA256`
+candidate and BL-262 evidence, without publication-time build/rebuild/repackaging
+or silent asset replacement. Finalize release-relevant source and dated
+canonical changelog notes before public candidate freeze; `v<VERSION>` must
+point exactly to its SourceCommitSHA. Remote readback binds release, tag,
+`prerelease=true`, evidence and assets. These are target contracts, not an
+implemented publisher. See [release scope](planning/release-scope.md).
+
 `internal/version` is the canonical runtime build-information model.
 Controlled builds resolve SemVer, numeric Windows file version, commit,
 canonical source time, modified state, Go toolchain, target, and public
@@ -552,7 +571,7 @@ Authoritative tasks and status are in [BACKLOG.md](../BACKLOG.md).
 
 Near-term sequence:
 
-1. complete SPR-048 candidate/supply-chain, MCP conformance/schema, payload-class, catalog-budget, and native/no-interpreter policy contracts that do not require later profile or job runtime;
+1. complete SPR-048 in order: BL-255 -> BL-262 -> BL-363 -> BL-204 + BL-212 -> BL-257 -> BL-213 -> BL-214 -> BL-215 -> BL-220; these candidate, supply-chain, public prerelease and early contract owners do not require later profile or job runtime;
 2. establish SPR-053 named roots, profiles, configuration, backend-neutral context, central authorization, effective catalog, audit/correlation, and state binding, then its fingerprint/instruction/catalog gates;
 3. build SPR-049 Operations and one bounded result store, then MCP Tasks mapping, resource handoff, and payload/resource CI as their prerequisites permit;
 4. extend filesystem, search, process, typed execution, and system domains on that foundation;

@@ -66,9 +66,10 @@ manifests, archive names, checksums, and release validation consume `VERSION`.
 Every `VERSION` change must create or update exactly one nonempty
 `## [<VERSION>]` section in `CHANGELOG.md` in the same product change. The
 section may remain undated while that product version exists only as a repository
-or candidate-build version; `[Unreleased]` holds notable changes not yet assigned
-to a product version. At public release, any passed version must equal `VERSION`;
-the existing version section is dated as `## [<VERSION>] - YYYY-MM-DD`, the built
+or local candidate-build version; a public candidate requires dated notes before
+freeze. `[Unreleased]` holds notable changes not yet assigned
+to a product version. For public release, any passed version must equal `VERSION`;
+the existing version section must be dated as `## [<VERSION>] - YYYY-MM-DD`, the built
 commit must have the exact `v<VERSION>` tag, and its tree must be clean.
 `CHANGELOG.md` is the only manually maintained narrative release-notes source.
 `cmd/releaseaudit source --root . --release` validates the dated release section
@@ -77,6 +78,26 @@ binary archives. CI does not infer version bumps from diffs; the same-merge
 version/changelog rule is a contributor and completion-review contract. BL-255
 owns the planned per-version candidate-artifact CI that will validate the exact
 repository `VERSION` before later functional work relies on it.
+
+### Planned pre-1.0 publication identity
+
+DEC-FP-002 and BL-245 remain the versioning authority. BL-363 plans public
+pre-1.0 GitHub prereleases after `BL-255 -> BL-262`; it creates no second
+version source. Ordinary `0.x.y` remains a normal SemVer product version:
+`VERSION=0.4.0`, tag `v0.4.0`, artifact version `0.4.0`, and GitHub
+`prerelease=true`. The flag classifies the publication channel without a suffix.
+An explicit `0.4.0-rc.1` is allowed only for a deliberately separate candidate
+version; VERSION, tag `v0.4.0-rc.1`, changelog heading and artifact names must
+match. Publishers never generate `-rc.N` or another version.
+
+Before freezing a candidate intended for public publication, finalize VERSION
+and all release-relevant source, including the dated, nonempty CHANGELOG entry.
+Its date records the intended release date, not evidence of publication. Bind
+`VERSION + SourceCommitSHA + ArtifactSHA256`; the exact `v<VERSION>` tag must
+point to SourceCommitSHA. A subsequent notes/date/version edit requires a new
+candidate build and verification. Publication uses only verified frozen bytes
+and notes derived from that commit's CHANGELOG.md, with no rebuild or repackaging.
+BL-263 alone retains stable Version 1.0 gate/publication ownership.
 
 
 SemVer and `SOURCE_DATE_EPOCH` use one versioned fixture contract in
@@ -248,6 +269,11 @@ performs build 1, metadata and archive validation, build 2, binary/archive/
 checksum/inventory reproducibility comparison, and a release-content leak
 scan. Machine-readable reproducibility and leak reports are uploaded with the
 validated archive and checksum.
+
+This current workflow has `contents: read` and uploads temporary Actions
+artifacts; it is not a persistent public publisher. BL-363 must retrofit the
+verified-candidate handoff to a separate explicit publication path without
+expanding build/verification rights or rebuilding at publication time.
 
 Stable, prerelease, and development expectations are stored in `internal/version/testdata/build-metadata-fixtures.json` and exercised by `internal/version/fixtures_test.go`.
 
