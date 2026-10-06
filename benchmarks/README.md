@@ -143,7 +143,9 @@ Repository artifact tests load the Windows and Linux baselines together, enforce
 complete provenance, budget, resource, sample, exit-status, stderr, warning, and
 unsupported-metric gates, and compare an explicit deterministic cross-platform
 projection while excluding only time, memory, CPU, generation time, and platform
-identity fields.
+identity fields. Before indexing either artifact, the loader binds each fixed
+baseline filename to its required embedded OS and architecture and rejects swapped
+or mislabeled platform contents.
 
 `budgets.json` separates deterministic hard contracts from noisy soft review limits:
 
