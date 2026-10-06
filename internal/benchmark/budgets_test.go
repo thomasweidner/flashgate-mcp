@@ -1,11 +1,60 @@
 package benchmark
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
+
+func TestHardMeasurementSetDiagnosticsAreDeterministic(t *testing.T) {
+	wantTools := []string{
+		"hard: tools/list profile default measurement is missing",
+		"hard: tools/list profile default budget is missing",
+		"hard: tools/list profile read_only measurement is missing",
+		"hard: tools/list profile read_only budget is missing",
+		"hard: tools/list budget profile alpha is unknown",
+		"hard: tools/list budget profile zeta is unknown",
+	}
+	wantWorkflows := []string{
+		"hard: workflow alpha measurement is missing",
+		"hard: workflow alpha budget is missing",
+		"hard: workflow zeta measurement is missing",
+		"hard: workflow zeta budget is missing",
+		"hard: workflow budget beta is unknown",
+		"hard: workflow budget gamma is unknown",
+	}
+
+	for iteration := 0; iteration < 100; iteration++ {
+		var toolsMessages []string
+		validateToolsListMeasurements(nil, map[string]toolsListBudget{
+			"zeta":  {},
+			"alpha": {},
+		}, func(format string, args ...any) {
+			toolsMessages = append(toolsMessages, "hard: "+fmt.Sprintf(format, args...))
+		})
+		// The count diagnostic is deterministic but is outside the missing/unknown
+		// set whose former map iteration made the aggregate unstable.
+		toolsMessages = toolsMessages[1:]
+		if !reflect.DeepEqual(toolsMessages, wantTools) {
+			t.Fatalf("iteration %d tools/list diagnostics=%q, want %q", iteration, toolsMessages, wantTools)
+		}
+
+		var workflowMessages []string
+		validateWorkflowMeasurements(nil, []string{"zeta", "alpha"}, map[string]workflowBudget{
+			"gamma": {},
+			"beta":  {},
+		}, func(format string, args ...any) {
+			workflowMessages = append(workflowMessages, "hard: "+fmt.Sprintf(format, args...))
+		})
+		workflowMessages = workflowMessages[1:]
+		if !reflect.DeepEqual(workflowMessages, wantWorkflows) {
+			t.Fatalf("iteration %d workflow diagnostics=%q, want %q", iteration, workflowMessages, wantWorkflows)
+		}
+	}
+}
 
 func TestLoadSerializationBudgetsRejectsDuplicateFixture(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "budgets.json")
