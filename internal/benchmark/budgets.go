@@ -101,11 +101,11 @@ func EvaluateBudgets(path string, result Result) (BudgetEvaluation, error) {
 	if err != nil {
 		return BudgetEvaluation{}, err
 	}
-	expectedWorkflows, err := loadExpectedWorkflowNames(filepath.Join(filepath.Dir(path), "workflows.json"))
+	expectedWorkflows, err := loadExpectedWorkflows(filepath.Join(filepath.Dir(path), "workflows.json"))
 	if err != nil {
 		return BudgetEvaluation{}, err
 	}
-	if err := validateBudgetDefinitions(budgets, expectedWorkflows); err != nil {
+	if err := validateBudgetDefinitions(budgets, workflowNames(expectedWorkflows)); err != nil {
 		return BudgetEvaluation{}, err
 	}
 
@@ -120,7 +120,7 @@ func EvaluateBudgets(path string, result Result) (BudgetEvaluation, error) {
 	}
 
 	validateToolsListMeasurements(result.ToolsList, budgets.Hard.ToolsList, hardFailure)
-	validateWorkflowMeasurements(result.Workflows, expectedWorkflows, budgets.Hard.Workflows, hardFailure)
+	validateWorkflowMeasurements(result.Workflows, workflowNames(expectedWorkflows), budgets.Hard.Workflows, hardFailure)
 
 	for _, measurement := range result.ToolsList {
 		budget, ok := budgets.Hard.ToolsList[measurement.Profile]
@@ -155,6 +155,9 @@ func EvaluateBudgets(path string, result Result) (BudgetEvaluation, error) {
 		checkHardMaximum(&evaluation, "workflow "+measurement.Name+" written_bytes", measurement.WrittenBytes.Max, budget.MaxWrittenBytes)
 		checkHardMaximum(&evaluation, "workflow "+measurement.Name+" scanned_bytes", measurement.ScannedBytes.Max, budget.MaxScannedBytes)
 		checkHardMaximum(&evaluation, "workflow "+measurement.Name+" entries", measurement.Entries.Max, budget.MaxEntries)
+		contract := expectedWorkflows[measurement.Name]
+		checkExactUsefulOutput(&evaluation, measurement.Name, "read_bytes", measurement.ReadBytes, contract.ExpectedReadBytes)
+		checkExactUsefulOutput(&evaluation, measurement.Name, "entries", measurement.Entries, contract.ExpectedEntries)
 		if limit := budgets.Soft.WorkflowP95NS[measurement.Name]; measurement.DurationNS.P95 > limit {
 			softWarning("workflow %s duration p95=%d exceeds %d", measurement.Name, measurement.DurationNS.P95, limit)
 		}
@@ -206,7 +209,12 @@ func loadBudgetFile(path string) (budgetFile, error) {
 	return budgets, nil
 }
 
-func loadExpectedWorkflowNames(path string) ([]string, error) {
+type expectedWorkflow struct {
+	ExpectedReadBytes *uint64
+	ExpectedEntries   *uint64
+}
+
+func loadExpectedWorkflows(path string) (map[string]expectedWorkflow, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, benchmarkReadError("benchmark workflow catalog", path, err)
@@ -229,22 +237,38 @@ func loadExpectedWorkflowNames(path string) ([]string, error) {
 	if catalog.SchemaVersion != WorkflowCatalogVersion {
 		return nil, fmt.Errorf("unsupported workflow catalog schema version %q", catalog.SchemaVersion)
 	}
-	seen := make(map[string]struct{}, len(catalog.Workflows))
-	names := make([]string, 0, len(catalog.Workflows))
+	workflows := make(map[string]expectedWorkflow, len(catalog.Workflows))
 	for _, workflow := range catalog.Workflows {
 		if workflow.Name == "" {
 			return nil, fmt.Errorf("benchmark workflow catalog contains an empty name")
 		}
-		if _, ok := seen[workflow.Name]; ok {
+		if _, ok := workflows[workflow.Name]; ok {
 			return nil, fmt.Errorf("benchmark workflow catalog contains duplicate %q", workflow.Name)
 		}
-		seen[workflow.Name] = struct{}{}
-		names = append(names, workflow.Name)
+		workflows[workflow.Name] = expectedWorkflow{ExpectedReadBytes: workflow.ExpectedReadBytes, ExpectedEntries: workflow.ExpectedEntries}
 	}
-	if len(names) == 0 {
+	if len(workflows) == 0 {
 		return nil, fmt.Errorf("benchmark workflow catalog is empty")
 	}
-	return names, nil
+	return workflows, nil
+}
+
+func workflowNames(workflows map[string]expectedWorkflow) []string {
+	names := make([]string, 0, len(workflows))
+	for name := range workflows {
+		names = append(names, name)
+	}
+	return sortedStrings(names)
+}
+
+func checkExactUsefulOutput(evaluation *BudgetEvaluation, workflow, counter string, summary MetricSummary, expected *uint64) {
+	if expected == nil {
+		return
+	}
+	if summary.Min != *expected || summary.Max != *expected {
+		evaluation.HardFailures++
+		evaluation.Messages = append(evaluation.Messages, fmt.Sprintf("hard: workflow %s %s useful output range=%d..%d, want exact %d", workflow, counter, summary.Min, summary.Max, *expected))
+	}
 }
 
 func validateBudgetDefinitions(budgets budgetFile, expectedWorkflows []string) error {
