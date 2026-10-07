@@ -525,10 +525,12 @@ exact head against its base and runs the four-platform BL-248 artifact gates
 when root `VERSION` changes or the workflow is absent from that exact base
 commit. This bootstrap exception verifies the first PR introducing the workflow
 even with unchanged `VERSION`; later unchanged-version PRs skip the matrix.
-Its input-free manual dispatch always reverifies
-root `VERSION` at the exact dispatch commit, including finalized notes/date
-with an unchanged version. Both event paths upload temporary target evidence and a strict
-four-target candidate manifest. `releaseaudit candidate-promote` can copy that
+An input-free manual dispatch on `refs/heads/main` always reverifies root
+`VERSION` at the validated current main commit, including finalized notes/date
+with an unchanged version. Non-main branch and tag dispatches are skipped
+before checkout. Every dispatch job explicitly checks out main; a main SHA
+change between jobs fails closed. Both event paths upload temporary target
+evidence and a strict four-target candidate manifest. `releaseaudit candidate-promote` can copy that
 verified bundle to a local immutable identity with SHA-256 readback; its optional
 `current` file is only a mutable alias. BL-255 still requires a real hosted
 four-target run before closure. The workflow does not publish a GitHub Release.

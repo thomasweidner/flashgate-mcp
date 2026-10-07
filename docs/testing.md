@@ -511,12 +511,19 @@ workflow policy, strict manifest/record binding, four-target identity, hash and
 evidence mismatches, local exact-byte readback, and immutable overwrite
 rejection, nonregular `current` rejection before identity visibility, and alias
 update/cleanup rollback with both new and preexisting immutable identities.
-Workflow policy tests reject dispatch inputs, incorrect event commit binding,
-skipped dispatches, changed PR skip/run behavior, and publication/write rights.
-An input-free dispatch always verifies root `VERSION`; an unchanged PR skips
-only when the workflow exists in its exact bound base. Actual Bash execution
-tests cover the first-PR bootstrap, failed/unexpected existence queries and
-exact commit/base binding. Policy mutations reject removal of bootstrap or
+Workflow policy tests reject dispatch inputs, event-derived dispatch checkouts,
+missing main-only guards, altered PR-head binding, enabled or omitted Go caches,
+changed PR skip/run behavior, and publication/write rights. An input-free dispatch
+on `refs/heads/main` always verifies root `VERSION` at the validated current main
+commit, independently of a version diff. Non-main branch and tag dispatches skip
+before candidate code checkout. Build and manifest jobs explicitly check out
+main for dispatch and fail if its SHA has changed since source validation.
+An unchanged PR skips only when the workflow exists in its exact bound base.
+Actual Bash execution tests cover main-only dispatch, non-main branch/tag
+rejection before checkout, the first-PR bootstrap, failed/unexpected existence
+queries, and exact commit/base binding. They use native Bash on Linux and the
+required Git Bash on Windows; Windows execution does not replace the native
+Linux quality chain. Policy mutations reject removal of bootstrap or
 unconditional execution of all unchanged-version PRs.
 The candidate workflow must run the existing BL-248 platform
 verifier, independent second build, `releaseaudit compare`, and leak scan for

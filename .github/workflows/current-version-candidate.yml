@@ -12,6 +12,7 @@ permissions:
 jobs:
   prepare:
     name: Bind candidate source and decide verification
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_type == 'branch')
     runs-on: ubuntu-latest
     outputs:
       run_candidate: ${{ steps.candidate.outputs.run_candidate }}
@@ -20,10 +21,18 @@ jobs:
       source_time: ${{ steps.source.outputs.source_time }}
       source_commit: ${{ steps.source.outputs.source_commit }}
     steps:
-      - name: Checkout exact event source
+      - name: Checkout exact PR head
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Checkout current main for dispatch
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_type == 'branch'
+        uses: actions/checkout@v7
+        with:
+          ref: refs/heads/main
           fetch-depth: 0
 
       - name: Decide candidate gate
@@ -31,17 +40,23 @@ jobs:
         shell: bash
         env:
           CANDIDATE_EVENT: ${{ github.event_name }}
-          CANDIDATE_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          CANDIDATE_COMMIT: ${{ github.event.pull_request.head.sha }}
+          CANDIDATE_REF: ${{ github.ref }}
+          CANDIDATE_REF_TYPE: ${{ github.ref_type }}
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           set -Eeuo pipefail
+          if [[ "$CANDIDATE_EVENT" == 'workflow_dispatch' ]]; then
+            [[ "$CANDIDATE_REF" == 'refs/heads/main' && "$CANDIDATE_REF_TYPE" == 'branch' ]]
+            CANDIDATE_COMMIT="$(git rev-parse refs/remotes/origin/main^{commit})"
+          fi
           [[ "$CANDIDATE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           [[ "$(git rev-parse HEAD)" == "$CANDIDATE_COMMIT" ]]
           [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
           if [[ "$CANDIDATE_EVENT" == 'workflow_dispatch' ]]; then
             echo 'run_candidate=true' >> "$GITHUB_OUTPUT"
-            echo 'Explicit current-version reverification at the dispatch commit.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Explicit current-version reverification at the validated current main commit.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           [[ "$CANDIDATE_EVENT" == 'pull_request' ]]
@@ -138,9 +153,17 @@ jobs:
 
     steps:
       - name: Checkout exact PR head
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.source_commit }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Checkout current main for dispatch
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_type == 'branch'
+        uses: actions/checkout@v7
+        with:
+          ref: refs/heads/main
           fetch-depth: 0
 
       - name: Verify clean exact source
@@ -398,10 +421,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact PR head
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v7
         with:
-          ref: ${{ needs.prepare.outputs.source_commit }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
+
+      - name: Checkout current main for dispatch
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_type == 'branch'
+        uses: actions/checkout@v7
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+
+      - name: Verify clean exact source
+        shell: bash
+        run: |
+          [[ "$(git rev-parse HEAD)" == "${{ needs.prepare.outputs.source_commit }}" ]]
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
 
       - name: Set up Go
         uses: actions/setup-go@v6

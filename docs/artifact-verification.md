@@ -103,10 +103,13 @@ It compares root `VERSION` at the exact PR head with the event-bound base and
 skips the matrix when unchanged only if the candidate workflow already exists
 in that exact base commit. A missing base workflow enables the bootstrap matrix
 for the first PR introducing this lane; an existence-query error fails closed.
-An input-free `workflow_dispatch` always
-reverifies root `VERSION` at the exact dispatch commit, so finalized notes/date
-can be verified again without changing the version. Both paths share the same
-record/manifest and BL-248 gates. A changed PR version, bootstrap PR or dispatch requires the four Windows/
+An input-free `workflow_dispatch` on `refs/heads/main` always reverifies root
+`VERSION` at the validated current main commit, so finalized notes/date can be
+verified again without changing the version. Non-main branch and tag dispatches
+are skipped before checkout. Every dispatch job explicitly checks out main;
+a main SHA change between jobs fails closed. Both paths share the same
+record/manifest and BL-248 gates. For later BL-363 reverification, the finalized
+source must first be the current main state. A changed PR version, bootstrap PR or dispatch requires the four Windows/
 Linux x64/ARM64 targets. Each target runs the existing BL-248 platform verifier,
 independent second build, `releaseaudit compare`, and `releaseaudit scan` before
 uploading its archive, sibling checksum, verifier output, audit reports, and
