@@ -211,7 +211,13 @@ func validateVerificationEvidence(contents []byte, record candidateRecord) error
 	for _, line := range strings.Split(text, "\n") {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) == 2 {
-			fields[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+			key := strings.TrimSpace(parts[0])
+			if strings.EqualFold(key, "Sha256") {
+				if _, exists := fields["Sha256"]; exists || key != "Sha256" {
+					return errors.New("BL-248 verifier SHA-256 field is duplicate or noncanonical")
+				}
+			}
+			fields[key] = strings.TrimSpace(parts[1])
 		}
 	}
 	if fields["Status"] != "PASS" || fields["Version"] != record.Version || fields["PublicArch"] != record.Architecture ||
@@ -220,7 +226,7 @@ func validateVerificationEvidence(contents []byte, record candidateRecord) error
 		fields["ErrorCount"] != "0" {
 		return errors.New("BL-248 verifier evidence does not bind a passing target")
 	}
-	if value := fields["Sha256"]; value != "" && !strings.EqualFold(value, record.ArtifactSHA256) {
+	if value := fields["Sha256"]; !hashPattern.MatchString(value) || value != record.ArtifactSHA256 {
 		return errors.New("BL-248 verifier SHA-256 differs")
 	}
 	return nil

@@ -116,8 +116,15 @@ uploading its archive, sibling checksum, verifier output, audit reports, and
 strict target record as transient Actions evidence. A final job assembles a
 four-target `flashgate-current-candidate/v1` manifest only when every target
 passes. The verifier output is bound to the same archive name, version and
-architecture; report and artifact hashes are checked again when assembling
-the manifest and during local promotion.
+architecture, and must contain exactly one canonical `Sha256` field: a
+64-character lowercase hexadecimal SHA-256 of the controlled archive copy
+actually checked by the platform verifier. All four targets require this hash
+to equal the candidate record's `artifactSha256`. Missing, empty, malformed,
+duplicate, noncanonical or differing hash fields fail closed, even when the
+checksum, reproducibility and leak reports otherwise pass. Report and artifact
+hashes are checked again when assembling the manifest and during local
+promotion; evidence from another archive with the same version, source commit
+and architecture cannot authorize the candidate bytes.
 
 `releaseaudit candidate-promote` takes a local bundle, that manifest, expected
 version and full source commit, and a local destination. It rehashes all source

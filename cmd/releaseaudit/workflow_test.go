@@ -568,3 +568,104 @@ func candidateBash(t *testing.T) string {
 	}
 	return path
 }
+
+func TestLinuxVerifierArchiveHash(t *testing.T) {
+	// Exercise the complete production shell script and real TAR/checksum/hash
+	// tools. Metadata and Go/Python inventory gates are controlled PASS fixtures;
+	// this is archive-hash regression evidence, not real binary verification.
+	bash := candidateBash(t)
+	for _, arch := range []string{"x64", "arm64"} {
+		for _, mode := range []string{"pass", "original changed", "hash fails", "malformed", "short", "checksum fails"} {
+			t.Run(arch+"/"+mode, func(t *testing.T) {
+				root := t.TempDir()
+				if err := os.Mkdir(filepath.Join(root, "scripts"), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				for _, name := range []string{"test-release-artifact.sh", "build-input-validation.sh"} {
+					data, err := os.ReadFile(filepath.Join("..", "..", "scripts", name))
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(root, "scripts", name), data, 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := os.WriteFile(filepath.Join(root, "scripts", "Test-LinuxMetadata.sh"), []byte("#!/usr/bin/env bash\nprintf metadata > \"$FIXTURE_ROOT/metadata-called\"\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				fixture := `set -euo pipefail
+cd "$1"
+export FIXTURE_ROOT="$PWD" FIXTURE_MODE="$2"
+arch="$3"
+goarch=amd64
+[[ "$arch" != arm64 ]] || goarch=arm64
+base="flashgate-mcp_0.3.0_linux_$arch"
+mkdir "$base" scratch
+for name in LICENSE README.md THIRD-PARTY-NOTICES.md flashgate-mcp; do
+    printf '%s\n' "$name" > "$base/$name"
+done
+tar -czf "$base.tar.gz" "$base/"
+sha256sum "$base.tar.gz" > "$base.tar.gz.sha256"
+expected="$(sha256sum "$base.tar.gz")"
+expected="${expected%% *}"
+export TMPDIR="$PWD/scratch"
+go() { return 0; }
+python3() { return 0; }
+cp() {
+    command cp "$@" || return
+    if [[ "$FIXTURE_MODE" == 'original changed' && "$2" == *.tar.gz ]]; then
+        printf changed > "$2"
+    fi
+}
+sha256sum() {
+    if [[ "$1" == -- ]]; then
+        case "$FIXTURE_MODE" in
+            'hash fails') printf '%s\n' 'fixture hash failure' >&2; return 1 ;;
+            malformed) printf '%064d  %s\n' 0 "$2" | tr '0' g; return 0 ;;
+            short) printf 'abc  %s\n' "$2"; return 0 ;;
+        esac
+    fi
+    if [[ "$FIXTURE_MODE" == 'checksum fails' && "$1" == -c ]]; then return 1; fi
+    command sha256sum "$@"
+}
+export -f go python3 cp sha256sum
+set +e
+bash scripts/test-release-artifact.sh \
+    --archive "$PWD/$base.tar.gz" --checksum "$PWD/$base.tar.gz.sha256" \
+    --expected-version 0.3.0 --expected-public-arch "$arch" --expected-goarch "$goarch" \
+    --expected-commit 0123456789abcdef0123456789abcdef01234567 \
+    --expected-source-time 2026-01-01T00:00:00Z --expected-modified false | tee output.txt
+code=${PIPESTATUS[0]}
+set -e
+printf 'EXPECTED_HASH=%s\nEXIT=%s\n' "$expected" "$code"
+`
+				cmd := exec.Command(bash, "-c", fixture, "fixture", filepath.ToSlash(root), mode, arch)
+				data, err := cmd.CombinedOutput()
+				if err != nil {
+					t.Fatalf("fixture execution: %v\n%s", err, data)
+				}
+				text := string(data)
+				pass := mode == "pass" || mode == "original changed"
+				if strings.Count(text, "Status: ") != 1 || strings.Count(text, "Sha256: ") != 1 {
+					t.Fatalf("terminal report is ambiguous:\n%s", text)
+				}
+				if pass {
+					expected := strings.Split(strings.Split(text, "EXPECTED_HASH=")[1], "\n")[0]
+					if !strings.Contains(text, "Status: PASS\n") || !strings.Contains(text, "EXIT=0\n") || !strings.Contains(text, "Sha256: "+expected+"\n") {
+						t.Fatalf("checked controlled archive hash was lost by tee:\n%s", text)
+					}
+					if _, err := os.Stat(filepath.Join(root, "metadata-called")); err != nil {
+						t.Fatal("metadata fixture was not reached", err)
+					}
+				} else {
+					if !strings.Contains(text, "Status: FAIL\n") || strings.Contains(text, "EXIT=0\n") || !strings.Contains(text, "Sha256: \n") {
+						t.Fatalf("invalid hash/checksum did not fail closed:\n%s", text)
+					}
+					if _, err := os.Stat(filepath.Join(root, "metadata-called")); !os.IsNotExist(err) {
+						t.Fatal("hash failure reached metadata gate", err)
+					}
+				}
+			})
+		}
+	}
+}

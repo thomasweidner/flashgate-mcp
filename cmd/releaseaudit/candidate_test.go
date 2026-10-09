@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/tar"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -128,6 +129,138 @@ func TestCandidateCurrentFailureRollsBackOnlyNewIdentity(t *testing.T) {
 
 const testCandidateCommit = "0123456789abcdef0123456789abcdef01234567"
 
+func TestCandidateVerifierHashBinding(t *testing.T) {
+	for index, target := range candidateTargets {
+		t.Run(target.Platform+"-"+target.Architecture, func(t *testing.T) {
+			dir, _, manifest := candidateFixture(t)
+			record := manifest.Records[index]
+			contents, err := os.ReadFile(filepath.Join(dir, record.VerificationEvidence))
+			if err != nil {
+				t.Fatal(err)
+			}
+			valid := string(contents)
+			for _, text := range []string{valid, strings.ReplaceAll(valid, "\n", "\r\n"),
+				strings.ReplaceAll(valid, "Sha256: ", "Sha256       : ")} {
+				if err := validateVerificationEvidence([]byte(text), record); err != nil {
+					t.Fatal("valid platform output rejected:", err)
+				}
+			}
+			line := "Sha256: " + record.ArtifactSHA256 + "\n"
+			for name, invalid := range map[string]string{
+				"missing":          strings.Replace(valid, line, "", 1),
+				"empty":            strings.Replace(valid, line, "Sha256: \n", 1),
+				"malformed":        strings.Replace(valid, record.ArtifactSHA256, strings.Repeat("g", 64), 1),
+				"short":            strings.Replace(valid, record.ArtifactSHA256, record.ArtifactSHA256[:63], 1),
+				"long":             strings.Replace(valid, record.ArtifactSHA256, record.ArtifactSHA256+"0", 1),
+				"uppercase":        strings.Replace(valid, record.ArtifactSHA256, strings.ToUpper(record.ArtifactSHA256), 1),
+				"wrong archive":    strings.Replace(valid, record.ArtifactSHA256, strings.Repeat("0", 64), 1),
+				"duplicate":        valid + line,
+				"wrong then valid": strings.Replace(valid, line, "Sha256: "+strings.Repeat("0", 64)+"\n"+line, 1),
+				"valid then wrong": valid + "Sha256: " + strings.Repeat("0", 64) + "\n",
+				"case alias":       valid + "sha256: " + record.ArtifactSHA256 + "\n",
+				"field case":       strings.Replace(valid, "Sha256:", "SHA256:", 1),
+				"status":           strings.Replace(valid, "Status: PASS", "Status: FAIL", 1),
+				"version":          strings.Replace(valid, "Version: "+record.Version, "Version: 0.4.0", 1),
+				"architecture":     strings.Replace(valid, "PublicArch: "+record.Architecture, "PublicArch: other", 1),
+				"commit":           strings.Replace(valid, record.SourceCommitSHA, strings.Repeat("a", 40), 1),
+				"archive path":     strings.Replace(valid, "ArchivePath: "+record.Archive, "ArchivePath: other.tar.gz", 1),
+				"checksum path":    strings.Replace(valid, "ChecksumPath: "+record.Checksum, "ChecksumPath: other.sha256", 1),
+				"errors":           strings.Replace(valid, "ErrorCount: 0", "ErrorCount: 1", 1),
+			} {
+				t.Run(name, func(t *testing.T) {
+					// Rebind the report file so rejection proves semantic validation,
+					// rather than merely detecting a changed evidence-file hash.
+					bad := record
+					bad.VerificationSHA256 = writeCandidateFixture(t, dir, bad.VerificationEvidence, invalid)
+					if err := verifyCandidateRecord(dir, bad); err == nil {
+						t.Fatal("unbound or invalid verifier accepted despite valid other evidence")
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestCandidateRejectsCrossArchiveVerifier(t *testing.T) {
+	for index, target := range candidateTargets {
+		t.Run(target.Platform+"-"+target.Architecture, func(t *testing.T) {
+			dir, path, manifest := candidateFixture(t)
+			record := &manifest.Records[index]
+			// Two real archives share the exact candidate filename and identity.
+			// Only their bytes differ; retain verifier evidence for archive A.
+			writeArchive := func(name string, second bool) string {
+				if target.Platform == "windows" {
+					payload := "archive A"
+					if second {
+						payload = "archive B"
+					}
+					writeZIPFixture(t, name, []byte(payload))
+				} else {
+					entry := ""
+					if second {
+						entry = "root/other"
+					}
+					writeTarFixture(t, name, tar.TypeReg, entry, tar.TypeReg)
+				}
+				hash, err := hashFile(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return hash
+			}
+			archivePath := filepath.Join(dir, record.Archive)
+			originalHash := record.ArtifactSHA256
+			hashA := writeArchive(archivePath, false)
+			evidence, err := os.ReadFile(filepath.Join(dir, record.VerificationEvidence))
+			if err != nil {
+				t.Fatal(err)
+			}
+			record.VerificationSHA256 = writeCandidateFixture(t, dir, record.VerificationEvidence,
+				strings.Replace(string(evidence), record.ArtifactSHA256, hashA, 1))
+			record.ArtifactSHA256 = writeArchive(archivePath, true)
+			if hashA == record.ArtifactSHA256 {
+				t.Fatal("fixture archives must differ")
+			}
+			record.ChecksumSHA256 = writeCandidateFixture(t, dir, record.Checksum, record.ArtifactSHA256+"  "+record.Archive+"\n")
+			record.CompareSHA256 = writeCandidateFixture(t, dir, record.CompareReport,
+				fmt.Sprintf(`{"schema":"flashgate-release-reproducibility/v1","status":"PASS","archiveSha256":"%s","checksumSha256":"%s","binarySha256":"%s","inventoryCount":5,"errors":[]}`, record.ArtifactSHA256, record.ChecksumSHA256, record.ArtifactSHA256))
+			// Every other record/file binding, including the leak PASS, is valid.
+			recordPath := filepath.Join(dir, "record-"+target.Platform+"-"+target.Architecture+".json")
+			if err := os.Remove(recordPath); err != nil {
+				t.Fatal(err)
+			}
+			if err := writeJSON(recordPath, *record); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			if err := writeJSON(path, manifest); err != nil {
+				t.Fatal(err)
+			}
+			for name, verify := range map[string]func() error{
+				"record":   func() error { return verifyCandidateRecord(dir, *record) },
+				"manifest": func() error { return verifyCandidateManifest(dir, manifest) },
+				"promotion": func() error {
+					return promoteCandidate(dir, filepath.Join(t.TempDir(), "promotion"), path, manifest, false)
+				},
+			} {
+				t.Run(name, func(t *testing.T) {
+					if err := verify(); err == nil || !strings.Contains(err.Error(), "verifier SHA-256 differs") {
+						t.Fatalf("cross-archive evidence did not fail at verifier binding: %v", err)
+					}
+				})
+			}
+			// Replacing only the verifier binding with B restores full acceptance.
+			record.VerificationSHA256 = writeCandidateFixture(t, dir, record.VerificationEvidence,
+				strings.Replace(string(evidence), originalHash, record.ArtifactSHA256, 1))
+			if err := verifyCandidateRecord(dir, *record); err != nil {
+				t.Fatal("control candidate B should pass:", err)
+			}
+		})
+	}
+}
+
 func writeCandidateFixture(t *testing.T, dir, name, contents string) string {
 	t.Helper()
 	if err := os.WriteFile(filepath.Join(dir, name), []byte(contents), 0o600); err != nil {
@@ -146,7 +279,7 @@ func candidateFixture(t *testing.T) (string, string, candidateManifest) {
 		artifactHash := writeCandidateFixture(t, dir, archive, "verified candidate bytes: "+archive)
 		checksumHash := writeCandidateFixture(t, dir, checksum, artifactHash+"  "+archive+"\n")
 		evidenceHash := writeCandidateFixture(t, dir, evidence,
-			fmt.Sprintf("Status: PASS\nArchivePath: %s\nChecksumPath: %s\nVersion: %s\nPublicArch: %s\nSourceCommit: %s\nErrorCount: 0\n", archive, checksum, manifest.Version, target.Architecture, manifest.SourceCommitSHA))
+			fmt.Sprintf("Status: PASS\nArchivePath: %s\nChecksumPath: %s\nVersion: %s\nPublicArch: %s\nSourceCommit: %s\nSha256: %s\nErrorCount: 0\n", archive, checksum, manifest.Version, target.Architecture, manifest.SourceCommitSHA, artifactHash))
 		compareHash := writeCandidateFixture(t, dir, compare,
 			fmt.Sprintf(`{"schema":"flashgate-release-reproducibility/v1","status":"PASS","archiveSha256":"%s","checksumSha256":"%s","binarySha256":"%s","inventoryCount":5,"errors":[]}`, artifactHash, checksumHash, artifactHash))
 		leakHash := writeCandidateFixture(t, dir, leak,
@@ -317,6 +450,21 @@ func TestCandidateManifestRejectsMutations(t *testing.T) {
 		"bad checksum": func(dir string, m *candidateManifest) {
 			name := m.Records[0].Checksum
 			m.Records[0].ChecksumSHA256 = writeCandidateFixture(t, dir, name, "bad checksum\n")
+		},
+		"repro archive binding": func(dir string, m *candidateManifest) {
+			r := &m.Records[0]
+			r.CompareSHA256 = writeCandidateFixture(t, dir, r.CompareReport,
+				fmt.Sprintf(`{"schema":"flashgate-release-reproducibility/v1","status":"PASS","archiveSha256":"%s","checksumSha256":"%s","binarySha256":"%s","inventoryCount":5,"errors":[]}`, strings.Repeat("0", 64), r.ChecksumSHA256, r.ArtifactSHA256))
+		},
+		"repro checksum binding": func(dir string, m *candidateManifest) {
+			r := &m.Records[0]
+			r.CompareSHA256 = writeCandidateFixture(t, dir, r.CompareReport,
+				fmt.Sprintf(`{"schema":"flashgate-release-reproducibility/v1","status":"PASS","archiveSha256":"%s","checksumSha256":"%s","binarySha256":"%s","inventoryCount":5,"errors":[]}`, r.ArtifactSHA256, strings.Repeat("0", 64), r.ArtifactSHA256))
+		},
+		"leak archive binding": func(dir string, m *candidateManifest) {
+			r := &m.Records[0]
+			r.LeakSHA256 = writeCandidateFixture(t, dir, r.LeakReport,
+				`{"schema":"flashgate-release-leak-scan/v1","status":"PASS","artifact":"other.zip","scannedEntries":5,"findings":[],"allowedMarkers":[],"errors":[]}`)
 		},
 		"rebuild bytes": func(dir string, _ *candidateManifest) {
 			writeCandidateFixture(t, dir, "flashgate-mcp_0.3.0_windows_x64.zip", "rebuilt")
