@@ -98,6 +98,50 @@ Stable Version 1.0 remains a separate BL-263 gate and publication.
 
 ### Current validation evidence
 
+BL-255 adds a current-version candidate workflow on pull requests to `main`.
+It compares root `VERSION` at the exact PR head with the event-bound base and
+skips the matrix when unchanged only if the candidate workflow already exists
+in that exact base commit. A missing base workflow enables the bootstrap matrix
+for the first PR introducing this lane; an existence-query error fails closed.
+An input-free `workflow_dispatch` on `refs/heads/main` always reverifies root
+`VERSION` at the validated current main commit, so finalized notes/date can be
+verified again without changing the version. Non-main branch and tag dispatches
+are skipped before checkout. Every dispatch job explicitly checks out main;
+a main SHA change between jobs fails closed. Both paths share the same
+record/manifest and BL-248 gates. For later BL-363 reverification, the finalized
+source must first be the current main state. A changed PR version, bootstrap PR or dispatch requires the four Windows/
+Linux x64/ARM64 targets. Each target runs the existing BL-248 platform verifier,
+independent second build, `releaseaudit compare`, and `releaseaudit scan` before
+uploading its archive, sibling checksum, verifier output, audit reports, and
+strict target record as transient Actions evidence. A final job assembles a
+four-target `flashgate-current-candidate/v1` manifest only when every target
+passes. The verifier output is bound to the same archive name, version and
+architecture, and must contain exactly one canonical `Sha256` field: a
+64-character lowercase hexadecimal SHA-256 of the controlled archive copy
+actually checked by the platform verifier. All four targets require this hash
+to equal the candidate record's `artifactSha256`. Missing, empty, malformed,
+duplicate, noncanonical or differing hash fields fail closed, even when the
+checksum, reproducibility and leak reports otherwise pass. Report and artifact
+hashes are checked again when assembling the manifest and during local
+promotion; evidence from another archive with the same version, source commit
+and architecture cannot authorize the candidate bytes.
+
+`releaseaudit candidate-promote` takes a local bundle, that manifest, expected
+version and full source commit, and a local destination. It rehashes all source
+files, checks the four BL-248 evidence records, copies the exact bytes through
+a temporary sibling directory, and reads back every promoted file before the
+immutable directory becomes visible. A present identity with different bytes
+fails closed. The optional `current` file is a mutable pointer to that directory
+and grants no identity authority. Promotion checks its prestate before exposing
+a new identity. A failed alias update or cleanup restores the original alias
+bytes/mode or absence and removes only an identity created by that invocation;
+preexisting verified identities are retained. Unrecoverable filesystem errors
+are reported with rollback parity unresolved and retained recovery evidence.
+This local operation builds, repacks and
+uploads nothing; BL-262 owns supply-chain/rollback evidence and BL-363 owns
+public publication. A real hosted four-target run remains required before
+BL-255 closure; local tests do not stand in for hosted Windows/Linux evidence.
+
 Validate each applicable binary and archive against the current build identity.
 Record native execution separately from cross-build and static inspection; a
 cross-built ARM64 binary is not evidence of native ARM64 validation. Keep

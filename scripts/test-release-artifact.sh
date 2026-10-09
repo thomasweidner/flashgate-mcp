@@ -16,6 +16,7 @@ errors=()
 warnings=()
 extraction_root=""
 inventory_report=""
+archive_sha256=""
 
 add_error() { errors+=("$1"); }
 
@@ -111,6 +112,18 @@ fi
 
 actual_entries=""
 if ((${#errors[@]} == 0)); then
+    if ! archive_digest="$(sha256sum -- "$validated_archive")"; then
+        add_error "unable to hash the controlled validation archive"
+    else
+        archive_sha256="${archive_digest%% *}"
+        if [[ ! "$archive_sha256" =~ ^[0-9a-f]{64}$ ]]; then
+            archive_sha256=""
+            add_error "invalid SHA-256 for the controlled validation archive"
+        fi
+    fi
+fi
+
+if ((${#errors[@]} == 0)); then
     if ! actual_entries="$(tar -tzf "$validated_archive")"; then
         add_error "unable to list archive"
     fi
@@ -201,6 +214,7 @@ printf 'ArchivePath: %s\n' "$archive_path"
 printf 'ChecksumPath: %s\n' "$checksum_path"
 printf 'Version: %s\n' "$expected_version"
 printf 'PublicArch: %s\n' "$expected_public_arch"
+printf 'Sha256: %s\n' "$archive_sha256"
 printf 'WarningCount: %d\n' "${#warnings[@]}"
 printf 'ErrorCount: %d\n' "${#errors[@]}"
 printf 'Warnings: %s\n' "$(IFS='; '; echo "${warnings[*]:-}")"

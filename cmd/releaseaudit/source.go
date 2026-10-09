@@ -25,6 +25,7 @@ type sourceReport struct {
 	Version      string   `json:"version"`
 	ExpectedTag  string   `json:"expectedTag"`
 	Release      bool     `json:"release"`
+	Candidate    bool     `json:"candidate,omitempty"`
 	ReleaseDate  string   `json:"releaseDate,omitempty"`
 	ReleaseNotes string   `json:"releaseNotes,omitempty"`
 	Errors       []string `json:"errors"`
@@ -33,7 +34,8 @@ type sourceReport struct {
 func runSource(arguments []string) error {
 	flags := flag.NewFlagSet("source", flag.ContinueOnError)
 	root := flags.String("root", "", "repository root")
-	release := flags.Bool("release", false, "require release notes for VERSION")
+	release := flags.Bool("release", false, "require dated release notes for VERSION")
+	candidate := flags.Bool("candidate", false, "require a nonempty VERSION changelog section without a tag")
 	reportPath := flags.String("report", "", "optional JSON report path")
 	notesPath := flags.String("notes-output", "", "optional generated release notes path")
 	if err := flags.Parse(arguments); err != nil {
@@ -42,12 +44,15 @@ func runSource(arguments []string) error {
 	if *root == "" || flags.NArg() != 0 {
 		return errors.New("source requires --root and no positional arguments")
 	}
+	if *candidate && *release {
+		return errors.New("--candidate and --release are mutually exclusive")
+	}
 	if *notesPath != "" && !*release {
 		return errors.New("--notes-output requires --release")
 	}
 	report := sourceReport{
 		Schema: "flashgate-release-source/v1", Status: "PASS",
-		Release: *release, Errors: []string{},
+		Release: *release, Candidate: *candidate, Errors: []string{},
 	}
 	value, err := readRepositoryVersion(filepath.Join(*root, "VERSION"))
 	if err != nil {
@@ -63,7 +68,7 @@ func runSource(arguments []string) error {
 		!utf8.Valid(changelog) || bytes.HasPrefix(changelog, []byte{0xef, 0xbb, 0xbf}) {
 		report.Errors = append(report.Errors, "CHANGELOG.md has invalid encoding or size")
 	} else {
-		date, notes, auditErr := auditChangelog(string(changelog), value, *release)
+		date, notes, auditErr := auditChangelog(string(changelog), value, *release, *candidate)
 		if auditErr != nil {
 			report.Errors = append(report.Errors, auditErr.Error())
 		} else {
@@ -134,7 +139,7 @@ func readRepositoryVersion(name string) (string, error) {
 	return value, nil
 }
 
-func auditChangelog(contents, value string, release bool) (string, string, error) {
+func auditChangelog(contents, value string, release, candidate bool) (string, string, error) {
 	lines := strings.Split(strings.ReplaceAll(contents, "\r\n", "\n"), "\n")
 	unreleasedCount := 0
 	versionCount := 0
@@ -149,6 +154,10 @@ func auditChangelog(contents, value string, release bool) (string, string, error
 			}
 			if strings.HasPrefix(line, "## ["+value+"]") {
 				versionCount++
+				if candidate && line == "## ["+value+"]" {
+					inRelease = true
+					continue
+				}
 				match := releaseHeading.FindStringSubmatch(line)
 				if match == nil || match[1] != value {
 					return "", "", errors.New("release heading must be ## [VERSION] - YYYY-MM-DD")
@@ -168,13 +177,13 @@ func auditChangelog(contents, value string, release bool) (string, string, error
 	if unreleasedCount != 1 {
 		return "", "", errors.New("CHANGELOG.md requires exactly one [Unreleased] section")
 	}
-	if release && versionCount != 1 {
+	if (release || candidate) && versionCount != 1 {
 		return "", "", errors.New("CHANGELOG.md requires exactly one release section for VERSION")
 	}
 	if versionCount > 1 {
 		return "", "", errors.New("CHANGELOG.md has duplicate release sections for VERSION")
 	}
-	if !release {
+	if !release && !candidate {
 		return date, "", nil
 	}
 	hasEntry := false
@@ -184,7 +193,10 @@ func auditChangelog(contents, value string, release bool) (string, string, error
 		}
 	}
 	if !hasEntry {
-		return "", "", errors.New("release notes require at least one nonempty entry")
+		return "", "", errors.New("version notes require at least one nonempty entry")
+	}
+	if candidate {
+		return date, "", nil
 	}
 	return date, "# FlashGate MCP " + value + "\n\n" + strings.TrimSpace(strings.Join(notes, "\n")) + "\n", nil
 }

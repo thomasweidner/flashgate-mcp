@@ -520,6 +520,21 @@ Each archive has a sibling `.sha256` file and exactly one top-level directory co
 
 The current workflow uploads validated build outputs as time-limited GitHub Actions artifacts with `contents: read`. Persistent public pre-1.0 GitHub prereleases are planned under `BL-363` in `SPR-048`, after `BL-255 -> BL-262`; publication is not implemented and no public downloads are claimed here. That planned path publishes the already verified candidate bytes without rebuilding through an explicit separate publication boundary. Stable Version 1.0 publication and its release gate remain owned by `BL-263`.
 
+The separate `current-version-candidate.yml` workflow checks a pull request's
+exact head against its base and runs the four-platform BL-248 artifact gates
+when root `VERSION` changes or the workflow is absent from that exact base
+commit. This bootstrap exception verifies the first PR introducing the workflow
+even with unchanged `VERSION`; later unchanged-version PRs skip the matrix.
+An input-free manual dispatch on `refs/heads/main` always reverifies root
+`VERSION` at the validated current main commit, including finalized notes/date
+with an unchanged version. Non-main branch and tag dispatches are skipped
+before checkout. Every dispatch job explicitly checks out main; a main SHA
+change between jobs fails closed. Both event paths upload temporary target
+evidence and a strict four-target candidate manifest. `releaseaudit candidate-promote` can copy that
+verified bundle to a local immutable identity with SHA-256 readback; its optional
+`current` file is only a mutable alias. BL-255 still requires a real hosted
+four-target run before closure. The workflow does not publish a GitHub Release.
+
 An ordinary canonical version such as `0.4.0` keeps that version in artifacts
 and tag `v0.4.0`; GitHub `prerelease=true` identifies the pre-1.0 publication
 channel without inventing a SemVer suffix. See the planned [release
