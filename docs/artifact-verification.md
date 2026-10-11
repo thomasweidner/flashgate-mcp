@@ -139,8 +139,9 @@ preexisting verified identities are retained. Unrecoverable filesystem errors
 are reported with rollback parity unresolved and retained recovery evidence.
 This local operation builds, repacks and
 uploads nothing; BL-262 owns supply-chain/rollback evidence and BL-363 owns
-public publication. A real hosted four-target run remains required before
-BL-255 closure; local tests do not stand in for hosted Windows/Linux evidence.
+public publication. The initial hosted four-target candidate run passed for BL-255 in PR #303
+before its 2026-10-11 merge. Future candidate identities still require hosted
+Windows/Linux evidence; local tests do not substitute for it.
 
 Validate each applicable binary and archive against the current build identity.
 Record native execution separately from cross-build and static inspection; a
