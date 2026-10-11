@@ -28,11 +28,10 @@ Backlog status describes execution state. The sprint sequence identifies Version
 
 The prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete: the
 production-server coverage gate and canonical product-version source are active,
-and subsequent functional work carries the required SemVer change. Before the
-next merge that changes `VERSION`, BL-255's local implementation adds controlled
-candidate artifacts for the exact repository version and exact-byte local
-promotion. Its hosted four-target run and independent review remain closure
-gates. BL-262 follows verified local promotion.
+and subsequent functional work carries the required SemVer change. BL-255 completed in PR #303 (merged 2026-10-11): hosted Windows/Linux
+x64/ARM64 candidate validation and independent implementation review passed,
+and exact-byte local promotion is implemented without public publication.
+BL-262 follows this verified candidate foundation.
 BL-363 then plans persistent public pre-1.0 GitHub prereleases of those exact
 verified bytes with `prerelease=true`, a separate explicit publication boundary
 and no publication-time rebuild. Stable Version 1.0 gate/publication remains
