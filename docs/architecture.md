@@ -530,6 +530,13 @@ prerelease distribution through a separate explicit external-write boundary.
 BL-263 alone owns the later stable Version 1.0 gate and stable publication.
 Successful prerelease publication does not satisfy that gate.
 
+The BL-255 candidate lane reads root `VERSION`, runs the existing BL-248
+platform validators, reproduction comparison and leak scan, then binds four
+target records in a strict manifest. Local promotion copies those verified
+files into one immutable version/source/manifest-hash directory, checks source
+and destination SHA-256, and may update a separate mutable `current` alias.
+The candidate CI lane has only `contents: read`; publishing remains BL-363.
+
 Build/verification stays read-oriented. The current tag-gated
 `release-build.yml` has `contents: read` and produces temporary Actions
 artifacts. BL-363 plans a distinct minimally privileged publication path

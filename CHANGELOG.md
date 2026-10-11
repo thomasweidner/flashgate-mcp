@@ -13,6 +13,7 @@ for publication; the date alone does not prove that a release was published.
 
 ### Added
 
+- Added a read-only current-version candidate CI gate for Windows and Linux x64/ARM64, a strict four-target verification manifest, and local exact-byte promotion with immutable version/source/artifact identity. Hosted candidate evidence and public publication remain separate gates.
 - Added an exact machine-readable MCP support matrix for currently advertised revisions; it lists only `2025-11-25` and does not activate `2026-07-28`.
 
 ### Changed

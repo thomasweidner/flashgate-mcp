@@ -23,6 +23,13 @@ BL-213/214 and BL-215 define payload and catalog contracts in SPR-048. BL-216/21
 
 BL-255 may promote a fully BL-248-verified current-version candidate for local use before Version 1.0. Promotion reuses exactly the verified artifact bytes; it never rebuilds or mutates them. Immutable identity includes `VERSION + SourceCommitSHA + ArtifactSHA256`. An optional mutable `current` convenience alias may select the latest verified local set but never replaces immutable identity or silently overwrites different bytes under one identity. The earlier candidate CI may upload transient verification artifacts as evidence. Local promotion itself creates no additional remote upload, Git tag, GitHub Release, remote publication, or external release claim. Root `VERSION` remains the canonical BL-245 source; no SemVer pre-release suffix is generated merely for local promotion. BL-363 owns planned public pre-1.0 prereleases; BL-263 owns the stable Version 1.0 gate and stable publication. BL-243 later owns complete installation, removal, and operation guidance across direct, service, and proxy modes; local promotion does not imply those modes already work.
 
+The BL-255 implementation binds each of the four canonical archives and sibling
+checksums to the full source commit, BL-248 verifier output, reproduction report,
+and leak report in a strict machine-readable manifest. Local promotion rechecks
+all hashes, stages unchanged bytes in a sibling directory and verifies the
+destination before updating an optional `current` pointer. BL-255 remains open
+until a real hosted four-target run and independent review confirm this path.
+
 ## Public pre-1.0 prerelease publication
 
 BL-363 is planned in SPR-048, after BL-245/248/255/262. The ownership chain is

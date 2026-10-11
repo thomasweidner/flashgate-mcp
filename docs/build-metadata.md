@@ -76,8 +76,20 @@ commit must have the exact `v<VERSION>` tag, and its tree must be clean.
 and may generate notes and a typed JSON report. No generated notes are added to
 binary archives. CI does not infer version bumps from diffs; the same-merge
 version/changelog rule is a contributor and completion-review contract. BL-255
-owns the planned per-version candidate-artifact CI that will validate the exact
-repository `VERSION` before later functional work relies on it.
+adds `releaseaudit source --candidate`, which requires one nonempty section for
+root `VERSION` and accepts an undated section for local candidate verification.
+The read-only candidate CI compares exact PR head and base `VERSION`, then runs
+the four-target BL-248 gates for a version change or when the candidate workflow
+is absent from that exact base commit. An unchanged-version PR skips only when
+the workflow already exists in its bound base; Git-query errors fail the gate.
+An input-free manual dispatch on `refs/heads/main` always runs those same
+gates for root `VERSION` at the validated current main commit, including
+unchanged versions with finalized release notes/date. Non-main branch and tag
+dispatches are skipped before checkout. Every dispatch job explicitly checks
+out main; a main SHA change between jobs fails closed. It records archive,
+checksum, verifier, reproduction, and leak hashes in a strict manifest. The
+tagged release path retains `--release`, dated notes and its clean-tree/tag
+gates.
 
 ### Planned pre-1.0 publication identity
 

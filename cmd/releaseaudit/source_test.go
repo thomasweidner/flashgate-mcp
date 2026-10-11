@@ -55,21 +55,29 @@ func TestAuditChangelog(t *testing.T) {
 	cases := []struct {
 		name, changelog string
 		release         bool
+		candidate       bool
 		valid           bool
 	}{
-		{"release", valid, true, true},
-		{"unreleased", "## [Unreleased]\n\n- Work in progress.\n", false, true},
-		{"missing-section", "## [Unreleased]\n", true, false},
-		{"missing-unreleased", "## [0.1.0] - 2026-09-24\n- Entry\n", true, false},
-		{"duplicate-unreleased", "## [Unreleased]\n## [Unreleased]\n", false, false},
-		{"duplicate-version", valid + "\n## [0.1.0] - 2026-09-25\n- Again\n", true, false},
-		{"empty-notes", "## [Unreleased]\n## [0.1.0] - 2026-09-24\n### Added\n", true, false},
-		{"malformed-date", "## [Unreleased]\n## [0.1.0] - 2026-99-99\n- Entry\n", true, false},
-		{"ambiguous-heading", "## [Unreleased]\n## [0.1.0] pending\n- Entry\n", true, false},
+		{"release", valid, true, false, true},
+		{"unreleased", "## [Unreleased]\n\n- Work in progress.\n", false, false, true},
+		{"missing-section", "## [Unreleased]\n", true, false, false},
+		{"missing-unreleased", "## [0.1.0] - 2026-09-24\n- Entry\n", true, false, false},
+		{"duplicate-unreleased", "## [Unreleased]\n## [Unreleased]\n", false, false, false},
+		{"duplicate-version", valid + "\n## [0.1.0] - 2026-09-25\n- Again\n", true, false, false},
+		{"empty-notes", "## [Unreleased]\n## [0.1.0] - 2026-09-24\n### Added\n", true, false, false},
+		{"malformed-date", "## [Unreleased]\n## [0.1.0] - 2026-99-99\n- Entry\n", true, false, false},
+		{"ambiguous-heading", "## [Unreleased]\n## [0.1.0] pending\n- Entry\n", true, false, false},
+		{"candidate undated", "## [Unreleased]\n\n## [0.1.0]\n\n- Candidate.\n", false, true, true},
+		{"candidate dated", valid, false, true, true},
+		{"candidate missing section", "## [Unreleased]\n", false, true, false},
+		{"candidate wrong section", "## [Unreleased]\n## [0.2.0]\n- Wrong.\n", false, true, false},
+		{"candidate empty section", "## [Unreleased]\n## [0.1.0]\n### Added\n", false, true, false},
+		{"candidate duplicate section", "## [Unreleased]\n## [0.1.0]\n- First.\n## [0.1.0]\n- Second.\n", false, true, false},
+		{"candidate malformed section", "## [Unreleased]\n## [0.1.0] pending\n- Entry\n", false, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, notes, err := auditChangelog(tc.changelog, "0.1.0", tc.release)
+			_, notes, err := auditChangelog(tc.changelog, "0.1.0", tc.release, tc.candidate)
 			if (err == nil) != tc.valid {
 				t.Fatalf("valid=%t, error=%v", tc.valid, err)
 			}
@@ -118,5 +126,27 @@ func TestRunSourceReport(t *testing.T) {
 	data, err = os.ReadFile(report)
 	if err != nil || !strings.Contains(string(data), `"status": "FAIL"`) {
 		t.Fatalf("notes output failure was not reported: %v", err)
+	}
+}
+
+func TestCandidateSourceMode(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "VERSION"), []byte("0.1.0\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("## [Unreleased]\n\n## [0.1.0]\n\n- Candidate.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runSource([]string{"--root", root, "--candidate"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runSource([]string{"--root", root, "--candidate", "--release"}); err == nil {
+		t.Fatal("candidate and release accepted together")
+	}
+	if err := os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("## [Unreleased]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runSource([]string{"--root", root, "--candidate"}); err == nil {
+		t.Fatal("candidate without version section passed")
 	}
 }
