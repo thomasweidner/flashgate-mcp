@@ -15,8 +15,9 @@ Version 1.0 is reached after `SPR-061` only when `BL-263` passes.
 
 The `SPR-048` prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete:
 product-code coverage and canonical product versioning are established before
-subsequent functional work. BL-255 now owns current-version candidate artifacts
-before the next `VERSION`-changing merge; BL-257 follows BL-204 plus BL-212,
+subsequent functional work. BL-255 completed the current-version candidate
+and exact-byte local-promotion foundation in PR #303; future `VERSION`-changing
+merges use its hosted candidate gate. BL-257 follows BL-204 plus BL-212,
 BL-213/214 and BL-215 define payload and catalog contracts in SPR-048. BL-216/219/256 require the later SPR-053 effective profile/catalog/context foundation; BL-218/258 require SPR-049 BL-090 result storage. The stable Version 1.0 public release boundary remains SPR-061/BL-263; public pre-1.0 prereleases belong to SPR-048/BL-363. After BL-330 and BL-315 convergence, the near-term order is BL-255 -> BL-262 -> BL-363 -> BL-204 + BL-212 -> BL-257 -> BL-213 -> BL-214 -> BL-215 -> BL-220 -> SPR-053. Establish SPR-053 named-root/profile/configuration -> BL-236 context -> BL-159 authorization -> BL-110 catalog -> BL-166 audit -> BL-239 state binding. Finish BL-216/219/256 and BL-209/211 there. In SPR-049, complete BL-084–BL-089 lifecycle -> BL-090 store, then conditional BL-210 Tasks mapping, BL-218 resource handoff and BL-258 payload/resource CI. Operations, filesystem, and search consume the final foundation; the matrix's hard predecessors follow this sprint and within-sprint order. [Architecture traceability](architecture-traceability.md) records hard edges and closure obligations.
 
 ## Local pre-release promotion
