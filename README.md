@@ -532,8 +532,10 @@ before checkout. Every dispatch job explicitly checks out main; a main SHA
 change between jobs fails closed. Both event paths upload temporary target
 evidence and a strict four-target candidate manifest. `releaseaudit candidate-promote` can copy that
 verified bundle to a local immutable identity with SHA-256 readback; its optional
-`current` file is only a mutable alias. BL-255 still requires a real hosted
-four-target run before closure. The workflow does not publish a GitHub Release.
+`current` file is only a mutable alias. The initial hosted four-target candidate run passed for PR #303 before its
+2026-10-11 merge, completing BL-255. Future candidate identities still need
+their applicable hosted verification. The workflow does not publish a
+GitHub Release.
 
 An ordinary canonical version such as `0.4.0` keeps that version in artifacts
 and tag `v0.4.0`; GitHub `prerelease=true` identifies the pre-1.0 publication
