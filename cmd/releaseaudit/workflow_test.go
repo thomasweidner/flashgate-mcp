@@ -115,6 +115,9 @@ func TestReleaseWorkflowPolicy(t *testing.T) {
 }
 
 func validateCandidateWorkflow(contents string) error {
+	if err := validateSupplyWorkflow(contents); err != nil {
+		return err
+	}
 	if err := validateCandidateTrustBoundary(contents); err != nil {
 		return err
 	}

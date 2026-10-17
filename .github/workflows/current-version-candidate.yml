@@ -80,11 +80,18 @@ jobs:
           echo 'run_candidate=true' >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
-        if: steps.candidate.outputs.run_candidate == 'true'
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: false
+
+      - name: Test supply-chain contracts independently of candidate matrix
+        shell: bash
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
+          GOTMPDIR: ${{ runner.temp }}
+          TMPDIR: ${{ runner.temp }}
+        run: go test -mod=vendor ./cmd/releaseaudit
 
       - name: Validate candidate source
         if: steps.candidate.outputs.run_candidate == 'true'
@@ -464,6 +471,32 @@ jobs:
             --version '${{ needs.prepare.outputs.version }}' \
             --commit '${{ needs.prepare.outputs.source_commit }}' \
             --output build/candidate-bundle/candidate-manifest.json
+
+      - name: Generate and independently verify supply-chain evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          manifest_hash="$(sha256sum build/candidate-bundle/candidate-manifest.json | cut -d ' ' -f 1)"
+          arguments=(--forbidden "$GITHUB_WORKSPACE" --forbidden "$RUNNER_TEMP" --forbidden "$HOME" --forbidden "$USER" --forbidden "$(hostname)")
+          go -C . run -mod=vendor ./cmd/releaseaudit supply-chain-generate \
+            --root . --dir build/candidate-bundle --output build/supply-chain \
+            --version '${{ needs.prepare.outputs.version }}' \
+            --commit '${{ needs.prepare.outputs.source_commit }}' \
+            --manifest-sha256 "$manifest_hash" "${arguments[@]}"
+          index_hash="$(sha256sum build/supply-chain/supply-chain-index.json | cut -d ' ' -f 1)"
+          go -C . run -mod=vendor ./cmd/releaseaudit supply-chain-verify \
+            --dir build/supply-chain --version '${{ needs.prepare.outputs.version }}' \
+            --commit '${{ needs.prepare.outputs.source_commit }}' \
+            --manifest-sha256 "$manifest_hash" --index-sha256 "$index_hash" "${arguments[@]}"
+          printf 'SupplyChainIndexSHA256: %s\nCandidateManifestSHA256: %s\n' "$index_hash" "$manifest_hash" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload complete verified supply-chain bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-evidence-${{ needs.prepare.outputs.source_commit }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/supply-chain/
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload verified four-target identity
         uses: actions/upload-artifact@v7

@@ -698,3 +698,13 @@ See `LICENSE` for details.
 ## PowerShell 7.6 LTS patch contract
 
 Compatibility requires PowerShell major version 7 and minor version 6. `ObservedPowerShellVersion` records the actual patch. `MinimumPowerShellVersion` is `null` unless a specific fix establishes and justifies a minimum patch. `ServicingTarget=LatestServicedPatchWithin7.6` is the maintenance target. Exact patch, path, or hash bindings are allowed only for historical evidence, bug reproduction, installer/download/SBOM/supply-chain provenance, or a documented minimum-patch fix; each exception must be explicitly classified.
+
+## Candidate supply-chain evidence
+
+The existing releaseaudit tool generates and verifies a separate unsigned
+SPDX source inventory, four artifact-bound provenance statements and compact
+index from a complete verified four-target candidate. The bundle carries original
+candidate files for later consumers; checksums require external trust anchors.
+See [artifact verification](docs/artifact-verification.md#native-supply-chain-evidence)
+for commands, scope, retention, signing boundaries and rollback limitations.
+This tooling creates no public release, installation or automatic update.
