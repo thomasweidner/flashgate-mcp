@@ -173,7 +173,7 @@ These exclusions do not permit Version 1.0 interfaces to block the accepted late
 
 ## Acceptance
 
-Release is accepted only when all `Planned` tasks are complete or explicitly waived in a reviewed release record, every public contract matches documentation, security and efficiency budgets pass, Variant B configuration is rejected safely, Variant C is absent, and the release artifacts are reproducible, traceable, and rollback-capable.
+Version 1.0 is accepted only when tasks assigned to Version 1.0 by the sprint sequence and [release scope](planning/release-scope.md) are complete or covered by an explicitly approved waiver in the reviewed release record. Planned Post-1.0 work does not independently block this gate. Acceptance also requires that every public contract matches documentation, security and efficiency budgets pass, Variant B configuration is rejected safely, Variant C is absent, and the release artifacts are reproducible, traceable, and rollback-capable.
 
 ## Related documents
 

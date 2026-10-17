@@ -28,8 +28,10 @@ The BL-255 implementation binds each of the four canonical archives and sibling
 checksums to the full source commit, BL-248 verifier output, reproduction report,
 and leak report in a strict machine-readable manifest. Local promotion rechecks
 all hashes, stages unchanged bytes in a sibling directory and verifies the
-destination before updating an optional `current` pointer. BL-255 remains open
-until a real hosted four-target run and independent review confirm this path.
+destination before updating an optional `current` pointer. PR #303 and the
+documented closure on 2026-10-11 completed the hosted four-target and independent
+review requirements. This validates promotion functionality; it does not prove
+a production installation or a separate production promotion.
 
 ## Public pre-1.0 prerelease publication
 
@@ -292,3 +294,14 @@ The following remain outside the accepted local Version 1.0 architecture and req
 - [Execution identity backends](../execution-identity-backends.md)
 - [Native runtime and service plan](runtime-modes.md)
 - [ADR-015: Hybrid service execution identity](../adr/execution-identity.md)
+
+## Supply-chain consumer boundary
+
+BL-262 supplies [unsigned source inventory, provenance and rollback evidence](../artifact-verification.md#native-supply-chain-evidence)
+through the existing candidate infrastructure. BL-363 must consume the complete
+externally anchored bundle within its 14-day Actions retention or from an
+explicitly bound local copy, without generating a parallel authority or mutating
+verified bytes. Productive signing, installation and deployment/service rollback
+remain separate decisions. Local pointer operations do not prove an atomic
+whole-deployment switch. BL-262 completion awaits platform validation and
+independent review; BL-255 remains completed historical work.

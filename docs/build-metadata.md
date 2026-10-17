@@ -335,3 +335,14 @@ Native work roots are direct children of
 `^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$` form. Creation and cleanup reject symlink
 components and use descriptor-bound identity checks; cleanup cannot target the
 base, `$HOME`, `/home` or `/`.
+
+## Supply-chain metadata binding
+
+BL-262's [separate portable evidence bundle](artifact-verification.md#native-supply-chain-evidence)
+binds VERSION, SourceCommitSHA, original candidate manifest and artifact hashes
+without changing build, archive or promotion bytes. SPDX inventories active Go
+build modules and branding inputs with accurate checksum classes; it does not
+claim complete platform binary composition. Four unsigned in-toto Candidate-Verification statements
+reuse BL-248 verification and reproduction reports. Source commit time remains
+distinct from an unobserved build invocation time. Authenticode must be resolved
+before a new candidate freeze; detached signing and credentials remain separate.

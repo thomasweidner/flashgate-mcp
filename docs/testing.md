@@ -527,9 +527,11 @@ Linux quality chain. Policy mutations reject removal of bootstrap or
 unconditional execution of all unchanged-version PRs.
 The candidate workflow must run the existing BL-248 platform
 verifier, independent second build, `releaseaudit compare`, and leak scan for
-every target before producing a record. A later hosted Windows/Linux x64/ARM64
-run is required for BL-255 completion; local or cross-built tests do not replace
-that evidence. Local promotion performs no build or remote write.
+every target before producing a record. The hosted Windows/Linux x64/ARM64 run and independent review completed
+BL-255 in PR #303, with documented closure on 2026-10-11. Each new candidate
+identity still needs its own valid four-target verification evidence; historical
+completion does not verify later bytes. Local promotion performs no build or
+remote write.
 
 #### Planned BL-363 public prerelease gates
 
@@ -661,3 +663,27 @@ editorial review. See [the documentation quality gate](documentation-quality-gat
 
 The development checker is not imported by `cmd/server` and does not expand
 the product-coverage denominator. The full repository tests still include it.
+
+## Native supply-chain evidence validation
+
+Run go test -mod=vendor ./cmd/releaseaudit -run '^TestSupply' first, then the full
+releaseaudit package and applicable repository quality chain. Tests cover stable
+SPDX/statement/index bytes, package/relationship identity, h1 checksum taxonomy,
+go.mod/go.sum/vendor parity, all four artifact subjects, no invented builder or
+invocation facts, the exact versioned Candidate-Verification predicate, rejection
+of the superseded SLSA predicate and shape even with rebound digest anchors,
+unchanged carried candidate bytes, required external trust anchors, missing/duplicate/extra files,
+rebound bad schemas/hashes/identities, swapped provenance, manipulation,
+traversal, nonregular inputs, symlinks, collisions, leak rejection and synthetic
+rollback with immutable-byte/current-pointer parity. Symlink cases require host
+symlink creation rights; a skipped case must be reported, not treated as proof.
+Existing BL-255 failure injection remains the rollback failure-handling gate.
+
+Candidate policy mutations enforce always-run tests at unchanged VERSION,
+complete-manifest generation, independent verification before upload, external
+anchors, runner leak markers, one build matrix and contents: read permissions.
+The complete evidence bundle retains its original candidate/source inputs for
+BL-363; retention and explicit local-copy binding are documented in
+[artifact verification](artifact-verification.md#native-supply-chain-evidence).
+Each new candidate identity requires its own evidence. Local synthetic tests
+never substitute for hosted artifact verification or native Linux/race gates.

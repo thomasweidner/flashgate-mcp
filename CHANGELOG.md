@@ -13,6 +13,11 @@ for publication; the date alone does not prove that a release was published.
 
 ### Added
 
+- Extend releaseaudit with deterministic unsigned SPDX source inventory, four
+  artifact-bound provenance statements and a compact verified supply-chain index;
+  reuse the candidate workflow and exact-byte promotion for consumer handoff and
+  controlled rollback validation. Product VERSION remains unchanged.
+
 - Added a read-only current-version candidate CI gate for Windows and Linux x64/ARM64, a strict four-target verification manifest, and local exact-byte promotion with immutable version/source/artifact identity. Hosted candidate evidence and public publication remain separate gates.
 - Added an exact machine-readable MCP support matrix for currently advertised revisions; it lists only `2025-11-25` and does not activate `2026-07-28`.
 
