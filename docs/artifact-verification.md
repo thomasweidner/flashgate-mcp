@@ -182,6 +182,14 @@ full semantics; it records VERSION, source commit and commit time, source input
 hashes, the four artifact/verifier/reproduction identities, SBOM/provenance hashes
 and unsigned signing status. Paths are relative to this one evidence set.
 
+Linux artifact verification invokes `Test-LinuxMetadata.sh` with `--portable-report`
+before candidate-record hashes are bound. `BinaryPath` then names the checked
+archive-relative `flashgate-mcp_<VERSION>_linux_<arch>/flashgate-mcp` entry.
+The metadata verifier still uses the actual local binary path for every static
+and runtime check; direct diagnostic invocation without this option retains its
+normal `BinaryPath` output. Portable mode rejects a mismatched release layout.
+Reports are never redacted or rewritten after their hashes have been bound.
+
 Generation requires an exact source commit checkout, source input parity with
 that commit, expected VERSION/commit and an externally bound candidate manifest
 SHA-256. Text checkout EOL conversion is permitted, but carried source inputs use

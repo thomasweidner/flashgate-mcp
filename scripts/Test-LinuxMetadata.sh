@@ -22,6 +22,7 @@ expected_commit=""
 expected_source_time=""
 expected_modified=""
 skip_execution=false
+portable_report=false
 require_vcs=true
 require_go_note=true
 artifact_timeout_seconds=10
@@ -48,6 +49,7 @@ Required:
   --expected-modified true|false
 
 Optional:
+  --portable-report  Emit the checked release-relative BinaryPath, not its local path
   --skip-execution
   --allow-missing-vcs
   --allow-missing-go-note
@@ -122,6 +124,10 @@ while (($# > 0)); do
             (($# >= 2)) || { add_error "--expected-modified requires a value"; break; }
             expected_modified="$2"
             shift 2
+            ;;
+        --portable-report)
+            portable_report=true
+            shift
             ;;
         --skip-execution)
             skip_execution=true
@@ -207,6 +213,20 @@ if ! flashgate_validate_semver "$expected_product_version"; then
     add_error "expected product version is invalid"
 elif [[ "$FLASHGATE_FILE_VERSION" != "$expected_file_version" ]]; then
     add_error "expected product/file version mapping is inconsistent"
+fi
+
+# Only the report label changes. Every inspection and execution below keeps
+# using binary_path. The artifact verifier has already checked this layout.
+report_binary_path="$binary_path"
+if [[ "$portable_report" == true ]]; then
+    report_binary_path=""
+    artifact_reference="flashgate-mcp_${expected_product_version}_linux_${expected_public_arch}/flashgate-mcp"
+    if [[ "$binary_path" == "$artifact_reference" ||
+        "$binary_path" == */"$artifact_reference" ]]; then
+        report_binary_path="$artifact_reference"
+    else
+        add_error "portable report requires the canonical release binary layout"
+    fi
 fi
 
 file_output=""
@@ -436,7 +456,7 @@ else
 fi
 
 printf 'Status: %s\n' "$status"
-printf 'BinaryPath: %s\n' "$binary_path"
+printf 'BinaryPath: %s\n' "$report_binary_path"
 printf 'ExpectedProductVersion: %s\n' "$expected_product_version"
 printf 'ExpectedFileVersion: %s\n' "$expected_file_version"
 printf 'ExpectedPublicArch: %s\n' "$expected_public_arch"

@@ -687,3 +687,10 @@ BL-363; retention and explicit local-copy binding are documented in
 [artifact verification](artifact-verification.md#native-supply-chain-evidence).
 Each new candidate identity requires its own evidence. Local synthetic tests
 never substitute for hosted artifact verification or native Linux/race gates.
+
+The native Linux releaseaudit regression builds real x64 and ARM64 archives,
+verifies their complete metadata and portable `BinaryPath` output, binds the
+actual reports into candidate records and generates/verifies the supply-chain
+bundle under unchanged leak rules. It also checks the default local diagnostic
+path, wrong layout/metadata failures, report tampering and unchanged archive
+bytes. ARM64 static verification does not claim native ARM64 execution on x64.
