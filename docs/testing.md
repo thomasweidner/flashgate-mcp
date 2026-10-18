@@ -579,6 +579,10 @@ and BL-262 evidence. This registration adds no tests or implemented publisher.
   bounded stdout/stderr, deterministic Windows termination/cleanup deadlines,
   complete verifier error aggregation, and READY-confirmed
   child-tree/process-group cleanup;
+- Linux group-security regressions with a waitable session-leader identity,
+  uncooperative children surviving their parent's READY/RELEASE/activation exit,
+  start/session/group mismatch and foreign-process rejection, bounded group
+  readback, signal failure, and bounded capture-thread/pipe cleanup;
 - regular-clone, linked-worktree, nonrepository, and damaged-Git fixtures;
 - no interpreter runtime dependency;
 - service asset syntax and install/remove dry validation;
@@ -694,3 +698,11 @@ actual reports into candidate records and generates/verifies the supply-chain
 bundle under unchanged leak rules. It also checks the default local diagnostic
 path, wrong layout/metadata failures, report tampering and unchanged archive
 bytes. ARM64 static verification does not claim native ARM64 execution on x64.
+
+Synthetic supply-chain fixtures keep their source VERSION aligned with their
+manifest, independently of the checkout's VERSION. The default candidate fixture
+retains its fixed synthetic identity for negative tests. Version-change tests
+generate and verify stable and prerelease evidence, reject mismatched source
+and external versions, and require no visible output after failed generation.
+The real Linux regression reads the checkout's current VERSION and uses its
+canonical file-version mapping together with the actual commit and build state.

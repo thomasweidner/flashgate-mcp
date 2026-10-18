@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/version"
 )
 
 // Exercise real metadata stdout, rather than substituting a PASS-only verifier.
@@ -37,7 +39,15 @@ func TestLinuxPortableCandidateEvidence(t *testing.T) {
 		modified = "true"
 	}
 	t.Setenv("SOURCE_DATE_EPOCH", stamp)
-	dir, manifestPath, manifest := candidateFixture(t)
+	value, err := readRepositoryVersion(filepath.Join(root, "VERSION"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fileVersion, err := version.WindowsFileVersion(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, manifestPath, manifest := candidateVersionFixture(t, value)
 	manifest.SourceCommitSHA = commit
 	before := map[string]string{}
 	digest := func(path string) string {
@@ -107,7 +117,7 @@ func TestLinuxPortableCandidateEvidence(t *testing.T) {
 			command(root, "tar", "-xzf", filepath.Join(dir, archive), "-C", extracted, "--no-same-owner", "--no-same-permissions")
 			binary := filepath.Join(extracted, filepath.FromSlash(reference))
 			args := []string{filepath.Join(root, "scripts", "Test-LinuxMetadata.sh"), "--binary", binary,
-				"--expected-product-version", manifest.Version, "--expected-file-version", manifest.Version + ".0",
+				"--expected-product-version", manifest.Version, "--expected-file-version", fileVersion,
 				"--expected-public-arch", target.Architecture, "--expected-goarch", goarch, "--expected-commit", commit,
 				"--expected-source-time", sourceTime, "--expected-modified", modified, "--skip-execution"}
 			binaryHash := digest(binary)

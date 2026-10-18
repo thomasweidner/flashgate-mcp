@@ -5,6 +5,31 @@ used by the executable, Windows resources, Linux build information, archive
 names, and release workflows. BL-248 does not introduce a second version or
 product-metadata source.
 
+## Linux verifier process cleanup
+
+The bounded Linux verifier starts a new session and binds its direct child's
+PID, process start ticks, session and process group. It observes parent exit
+with `waitid(WNOWAIT)` and retains the waitable leader until group cleanup has
+finished, preventing reuse of the numeric group identity. Stream capture
+threads do not reap processes or send signals.
+
+Every terminal path kills only that identity-checked group, including after
+leader exit and child reparenting. A bounded procfs identity readback confirms
+that no live members remain in the pinned session/group; it does not discover
+ownership by searching for arbitrary PIDs or ancestry. Unexpected group changes,
+unreadable state, signal failure or unconfirmed termination fail closed.
+Parent reaping, group termination and stream closure are checked separately.
+A three-second cleanup budget is followed by at most 200 ms of capture-thread
+cancellation; no wait, join or drain is unbounded.
+Existing validation reasons are retained and cleanup failures are appended.
+
+This is a verifier process-group boundary, not a general process sandbox.
+An unrelated session is never signalled. Retained pipe writers outside the
+bound group cause a bounded stream-cleanup failure. The native process contract
+includes uncooperative children and foreign-session pipe writers. Its intentional
+parent-exit-before-release fixture accepts either parent-dead or child-ancestry
+rejection only with confirmed child exit and no timeout activation or survivor.
+
 ## Canonical expectation sources
 
 The root `VERSION` file supplies the canonical controlled product version;

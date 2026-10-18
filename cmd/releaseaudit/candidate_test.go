@@ -272,8 +272,13 @@ func writeCandidateFixture(t *testing.T, dir, name, contents string) string {
 
 func candidateFixture(t *testing.T) (string, string, candidateManifest) {
 	t.Helper()
+	return candidateVersionFixture(t, "0.3.0")
+}
+
+func candidateVersionFixture(t *testing.T, value string) (string, string, candidateManifest) {
+	t.Helper()
 	dir := t.TempDir()
-	manifest := candidateManifest{Schema: candidateSchema, Version: "0.3.0", SourceCommitSHA: testCandidateCommit}
+	manifest := candidateManifest{Schema: candidateSchema, Version: value, SourceCommitSHA: testCandidateCommit}
 	for _, target := range candidateTargets {
 		archive, checksum, evidence, compare, leak := candidateNames(manifest.Version, target)
 		artifactHash := writeCandidateFixture(t, dir, archive, "verified candidate bytes: "+archive)

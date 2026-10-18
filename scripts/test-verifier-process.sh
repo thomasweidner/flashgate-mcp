@@ -59,6 +59,7 @@ cleanup() {
         "$temporary_directory/static.log" \
         "$temporary_directory/missing.log" \
         "$temporary_directory/arm64.log" \
+        "$temporary_directory/group-security.log" \
         "${barrier_files[@]}"; do
         if [[ -f "$file" || -L "$file" ]]; then
             rm -f -- "$file"
@@ -108,6 +109,17 @@ check() {
         failures+=("$name")
     fi
 }
+
+group_security_exit=0
+python3 -B "$root_path/scripts/testdata/test_bounded_process_runner.py" \
+    --runner "$root_path/scripts/bounded-process-runner.py" \
+    --work-root "$temporary_directory" \
+    >"$temporary_directory/group-security.log" 2>&1 || group_security_exit=$?
+if ((group_security_exit != 0)); then
+    cat -- "$temporary_directory/group-security.log" >&2
+fi
+check "$((group_security_exit == 0))" \
+    "owned Linux group identity, parent-exit cleanup, foreign-process and stream security"
 
 failure_reason_matches() {
     local actual_reason="$1"
@@ -428,7 +440,11 @@ for race_iteration in 1 2 3; do
         "exit-after-released-${race_iteration}|exit-after-released|ReadyChildNotAliveBeforeTimeout|15|false|ready|valid"
         "exit-after-activated-${race_iteration}|exit-after-activated|ReadyChildNotAliveAfterActivated|15|false|ready|valid|ReadyChildNotAliveBeforeTimeout"
         "exit-after-final-check-${race_iteration}|exit-after-final-check|ReadyChildNotAliveBeforeTimeout|15|false|ready|valid"
-        "parent-exit-before-release-${race_iteration}|parent-exit-before-release|ReadyParentNotAlive|15|false|ready|valid"
+        # Parent exit can occur between the live-parent read and the child
+        # ancestry read. Only this intentional race accepts the second safe
+        # rejection; the common condition still requires bounded FAIL, no
+        # timeout activation, confirmed child exit and no survivor marker.
+        "parent-exit-before-release-${race_iteration}|parent-exit-before-release|ReadyParentNotAlive|15|false|ready|valid|ReadyChildIdentityMismatch"
         "parent-exit-after-released-${race_iteration}|parent-exit-after-released|ReadyParentNotAlive|15|false|ready|valid"
         "parent-exit-before-timeout-${race_iteration}|parent-exit-before-timeout|ReadyParentNotAlive|15|false|ready|valid"
     )

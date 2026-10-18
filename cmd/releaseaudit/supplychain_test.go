@@ -80,11 +80,19 @@ func TestSupplyWorkflowPolicy(t *testing.T) {
 
 func supplySourceFixture(t *testing.T) string {
 	t.Helper()
+	return supplyVersionSourceFixture(t, "0.3.0")
+}
+
+func supplyVersionSourceFixture(t *testing.T, value string) string {
+	t.Helper()
 	dir := t.TempDir()
 	for _, name := range supplySourceNames {
 		data, err := os.ReadFile(filepath.Join("..", "..", filepath.FromSlash(name)))
 		if err != nil {
 			t.Fatal(err)
+		}
+		if name == "VERSION" {
+			data = []byte(value + "\n")
 		}
 		p := filepath.Join(dir, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
@@ -95,6 +103,42 @@ func supplySourceFixture(t *testing.T) string {
 		}
 	}
 	return dir
+}
+
+func TestSupplyFixtureVersionChange(t *testing.T) {
+	for _, value := range []string{"0.4.0", "0.4.0-rc.1"} {
+		t.Run(value, func(t *testing.T) {
+			dir, path, manifest := candidateVersionFixture(t, value)
+			source := supplyVersionSourceFixture(t, manifest.Version)
+			out := filepath.Join(t.TempDir(), "evidence")
+			if err := generateSupply(source, dir, out, supplyTestTime, manifest, nil, nil); err != nil {
+				t.Fatal("matching changed version rejected:", err)
+			}
+			manifestHash, err := hashFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			indexHash, err := hashFile(filepath.Join(out, supplyIndexName))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := verifySupply(out, value, manifest.SourceCommitSHA, manifestHash, indexHash, nil); err != nil {
+				t.Fatal("changed version evidence did not verify:", err)
+			}
+			if err := verifySupply(out, "0.3.0", manifest.SourceCommitSHA, manifestHash, indexHash, nil); err == nil {
+				t.Fatal("wrong external version accepted")
+			}
+			writeCandidateFixture(t, source, "VERSION", "0.3.0\n")
+			parent := t.TempDir()
+			if err := generateSupply(source, dir, filepath.Join(parent, "rejected"), supplyTestTime, manifest, nil, nil); err == nil || !strings.Contains(err.Error(), "source VERSION mismatch") {
+				t.Fatalf("mismatched source version did not fail closed: %v", err)
+			}
+			entries, err := os.ReadDir(parent)
+			if err != nil || len(entries) != 0 {
+				t.Fatal("mismatched version left visible output:", entries, err)
+			}
+		})
+	}
 }
 
 func supplyFixture(t *testing.T) (string, string, string, candidateManifest) {
