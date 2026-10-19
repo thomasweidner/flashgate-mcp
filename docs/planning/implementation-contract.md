@@ -81,3 +81,23 @@ must appear in the predecessor and one concrete successor acceptance scope.
 The Version 1.0 `BL-263` gate requires no ownerless architecture requirement
 or unresolved retrofit obligation in its release scope except an explicit,
 approved waiver recorded by that release gate.
+
+## BL-262 task binding
+
+Architecture role: release and validation. Hard prerequisite: completed BL-255;
+reuse completed BL-248 verification, reproduction and leak contracts, BL-245
+VERSION semantics, internal/version and the existing releaseaudit CLI. Retrofit
+current-version-candidate.yml at its complete manifest consumer. The tag-gated
+release-build.yml stays a validation path; BL-363 owns its later publication
+consumer retrofit and must use this evidence authority.
+
+Acceptance is the [native supply-chain evidence contract](../artifact-verification.md#native-supply-chain-evidence):
+one deterministic source SBOM, four unsigned in-toto Candidate-Verification statements, compact index, external
+trust anchors, complete portable bundle, strict readback, leak rejection and
+synthetic rollback through BL-255. No MCP/runtime contract or VERSION delta,
+new dependency, second CLI/matrix/verifier, credentials or productive signing.
+Build tools and third-party assets are distinguished from runtime dependencies;
+source inventory never implies complete platform binary composition. BL-363
+consumes the complete anchored set within retention or from a bound local copy;
+BL-263 owns stable release closure. Closure requires local platform gates and
+independent review; publication and provider/signing decisions remain separate.

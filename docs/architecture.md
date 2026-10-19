@@ -607,3 +607,15 @@ Remote transport, product splitting, interpreter-based core operation, or unrest
 - [Native runtime and service plan](planning/runtime-modes.md)
 - [ADR directory](adr)
 - [ADR-017: Host process ownership and lifecycle](adr/host-lifecycle.md)
+
+## Release supply-chain tooling
+
+BL-262 extends cmd/releaseaudit and the existing four-target candidate manifest
+consumer. One unsigned contract-version-1 index binds a deterministic SPDX 2.3
+source inventory and four in-toto Candidate-Verification statements to BL-255 identity and BL-248
+verification/reproduction evidence. A separate complete bundle carries original
+candidate files and committed source inventory inputs; immutable promotion bytes
+are preserved. Consumer verification requires externally pinned digest anchors.
+BL-363 consumes this authority for prerelease publication; BL-263 owns stable
+release closure. Signing providers and deployment/service rollback are separate
+boundaries. See [artifact verification](artifact-verification.md#native-supply-chain-evidence).

@@ -12,12 +12,15 @@ Solid style.
 | Upstream path | `svgs/solid/bolt-lightning.svg` |
 | Icon license | Creative Commons Attribution 4.0 International (`CC BY 4.0`) |
 | Upstream copyright | Copyright 2026 Fonticons, Inc. |
-| Source SVG SHA-256 | `82691d34c696ab16fc079f9607ac3e4db9a1d56c0b386ef10800c16a7e467c86` |
+| Repository SVG SHA-256 (including final LF) | `e4a71aa99bccffbf50801129bf015a95ee52edff333ff9bbcf96b3808bbb3934` |
+| SVG SHA-256 without final LF | `82691d34c696ab16fc079f9607ac3e4db9a1d56c0b386ef10800c16a7e467c86` |
 | Generated ICO SHA-256 | `5931fe2714e38999356b5d607dfaa78ae3798df95274549de8fbe1db9b24a173` |
 | Normalized seven-frame identity SHA-256 | `9cd0c1943ddc4dbd7f7c3b475e1d7ffbe99c9c6c436d24478a3497351bc6c032` |
 
-The upstream SVG is stored unchanged, including its embedded attribution
-comment.
+The SVG retains the upstream content and embedded attribution comment. The
+repository representation adds one final LF byte; the two hashes above
+distinguish exact repository bytes from the representation without that byte.
+Supply-chain evidence hashes the committed repository bytes.
 
 `flashgate.ico` is a deterministic raster derivative generated from the SVG
 with the following fixed parameters:

@@ -115,6 +115,9 @@ func TestReleaseWorkflowPolicy(t *testing.T) {
 }
 
 func validateCandidateWorkflow(contents string) error {
+	if err := validateSupplyWorkflow(contents); err != nil {
+		return err
+	}
 	if err := validateCandidateTrustBoundary(contents); err != nil {
 		return err
 	}
@@ -590,7 +593,7 @@ func TestLinuxVerifierArchiveHash(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				if err := os.WriteFile(filepath.Join(root, "scripts", "Test-LinuxMetadata.sh"), []byte("#!/usr/bin/env bash\nprintf metadata > \"$FIXTURE_ROOT/metadata-called\"\n"), 0o600); err != nil {
+				if err := os.WriteFile(filepath.Join(root, "scripts", "Test-LinuxMetadata.sh"), []byte("#!/usr/bin/env bash\n[[ \" $* \" == *' --portable-report '* ]] || exit 1\nprintf metadata > \"$FIXTURE_ROOT/metadata-called\"\n"), 0o600); err != nil {
 					t.Fatal(err)
 				}
 				fixture := `set -euo pipefail

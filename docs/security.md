@@ -637,3 +637,22 @@ Remote access or a product/binary split requires a separate ADR and threat model
 - [ADR-014](adr/runtime-modes.md)
 - [ADR-015](adr/execution-identity.md)
 - [ADR-017](adr/host-lifecycle.md)
+
+## Unsigned release evidence boundary
+
+The [supply-chain verifier](artifact-verification.md#native-supply-chain-evidence)
+checks externally anchored VERSION, source commit and index/manifest digests,
+complete four-target identity, original candidate checksums, source inventory and
+canonical evidence bytes. Unknown, duplicate, extra, missing, swapped, linked,
+traversing or nonregular evidence fails closed. Generated documents, carried candidate reports and
+source inputs are leak-scanned before upload. Caller-controlled evidence roots
+must remain stable during verification. Integrity hashes do not authenticate an
+unsigned author or builder. The project-specific Candidate-Verification predicate
+binds existing verification evidence; no SLSA level or build attestation is asserted.
+
+Current evidence explicitly says unsigned. Authenticode must precede a newly
+verified candidate freeze because it changes PE bytes. Linux detached signing
+requires separately approved trust/provider/credential controls. No signing,
+installation, service lifecycle, updater or public publishing authority is
+created. Prior-candidate selection reuses BL-255 verification and alias recovery;
+filesystem selection does not atomically replace running deployments.

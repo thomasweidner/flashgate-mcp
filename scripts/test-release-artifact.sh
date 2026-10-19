@@ -192,6 +192,7 @@ if ((${#errors[@]} == 0)); then
 
     metadata_arguments=(
         --binary "$binary_path"
+        --portable-report
         --expected-product-version "$expected_version"
         --expected-file-version "$FLASHGATE_FILE_VERSION"
         --expected-public-arch "$expected_public_arch"
