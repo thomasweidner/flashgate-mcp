@@ -303,5 +303,7 @@ externally anchored bundle within its 14-day Actions retention or from an
 explicitly bound local copy, without generating a parallel authority or mutating
 verified bytes. Productive signing, installation and deployment/service rollback
 remain separate decisions. Local pointer operations do not prove an atomic
-whole-deployment switch. BL-262 completion awaits platform validation and
-independent review; BL-255 remains completed historical work.
+whole-deployment switch. BL-262's technical delivery, platform validation and
+terminal independent review were accepted with documented historical residuals,
+and PR #306 was merged. Formal backlog status reconciliation is prepared in
+this documentation change; BL-255 remains completed historical work.
