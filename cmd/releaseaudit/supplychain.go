@@ -617,7 +617,11 @@ func generateSupply(source, candidate, destination, commitTime string, manifest 
 	if err != nil {
 		return err
 	}
-	defer func() { result = errors.Join(result, os.RemoveAll(stage)) }()
+	promotion, err := bindStageRename(stage, abs)
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, promotion.cleanup()) }()
 	write := func(name string, data []byte) error {
 		p := filepath.Join(stage, filepath.FromSlash(name))
 		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
@@ -656,7 +660,9 @@ func generateSupply(source, candidate, destination, commitTime string, manifest 
 	if err := verifySupply(stage, manifest.Version, manifest.SourceCommitSHA, supplyDigest(manifestBytes), supplyDigest(files[supplyIndexName]), forbidden); err != nil {
 		return err
 	}
-	if err := os.Rename(stage, abs); err != nil {
+	if err := promotion.rename(func(path string) error {
+		return verifySupply(path, manifest.Version, manifest.SourceCommitSHA, supplyDigest(manifestBytes), supplyDigest(files[supplyIndexName]), forbidden)
+	}); err != nil {
 		return err
 	}
 	return verifySupply(abs, manifest.Version, manifest.SourceCommitSHA, supplyDigest(manifestBytes), supplyDigest(files[supplyIndexName]), forbidden)

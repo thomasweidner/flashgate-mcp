@@ -533,11 +533,22 @@ identity still needs its own valid four-target verification evidence; historical
 completion does not verify later bytes. Local promotion performs no build or
 remote write.
 
-#### Planned BL-363 public prerelease gates
+#### BL-363 public prerelease gates
 
-BL-363 must later add focused positive, negative and boundary coverage for the
+Local stage-promotion tests inject rename, clock and sleep operations to prove
+immediate success, exact Win32 5/32 classification, eight-call and two-second
+retry-control limits, and single-call behavior on other platforms. Drift matrices
+cover stage replacement/disappearance/content, target creation, parent/reparse
+changes and ambiguous success/error results. Identity and byte readback plus
+ownership-checked cleanup remain required. Run `go test ./cmd/releaseaudit -run
+'^TestStageRename'` first, then Candidate/Supply/Publication regressions and the
+complete platform chains. Candidate alias failures must reach their intended
+injection points; no earlier stage error can satisfy that rollback matrix.
+
+BL-363 adds focused positive, negative and boundary coverage for the
 separate publication path, reusing BL-248 verification, BL-255 candidate identity
-and BL-262 evidence. This registration adds no tests or implemented publisher.
+and BL-262 evidence. Local provider doubles validate the implemented publisher;
+the first real publication and provider readback remain separate acceptance.
 
 - require GitHub `prerelease=true` and a canonical version below 1.0.0;
 - reject automatic publication on ordinary main merges;
@@ -669,6 +680,30 @@ The development checker is not imported by `cmd/server` and does not expand
 the product-coverage denominator. The full repository tests still include it.
 
 ## Native supply-chain evidence validation
+
+### Publication consumer validation
+
+Run `go test -mod=vendor ./cmd/releaseaudit -run '^TestPublication'` before the
+complete releaseaudit and repository chains. The local-only provider doubles
+exercise draft staging, every individual consumed write failure, exact transfer,
+downloaded asset parity, publication and final readback. Negatives cover tag,
+source, dated notes and external authorization identity, existing release,
+missing/extra/changed assets, ambiguous writes, readback failure, stable/latest
+claims, workflow permissions, main-push exclusion and rerun rejection. HTTP
+doubles check actual provider payloads, annotated-tag peeling, response handling
+and refusal of write redirects. No credential or real remote write is needed.
+
+Reuse the BL-248/255/262 security matrices below for evidence inventory,
+provenance-subject, unsafe path, nonregular input and external-anchor negatives;
+the publisher calls their existing verifier. ZIP transport tests additionally
+reject traversal, duplicate/case-colliding names, links and special entries.
+Run both platform quality chains, shell/workflow policy, build-input and
+documentation gates, Linux race and the unchanged product coverage thresholds.
+Local mocks do not prove hosted publication, retention or real provider readback.
+The manual [publication procedure](prerelease-publication.md) remains separately
+authorized; BL-363 stays open until its real acceptance is demonstrated.
+
+### Supply-chain producer and verifier validation
 
 Run go test -mod=vendor ./cmd/releaseaudit -run '^TestSupply' first, then the full
 releaseaudit package and applicable repository quality chain. Tests cover stable

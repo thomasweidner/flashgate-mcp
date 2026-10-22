@@ -1,0 +1,142 @@
+name: Publish verified prerelease
+run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.authorization != '' && format('BL-363 publication {0}', fromJSON(inputs.authorization).originalApproval) || 'BL-363 dispatch required' }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      authorization:
+        description: Externally approved flashgate-publication-authorization/v1 JSON
+        required: true
+        type: string
+      authorization_sha256:
+        description: Independently trusted SHA-256 of the exact authorization bytes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flashgate-public-prerelease
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && github.repository == 'thomasweidner/flashgate-mcp'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      FLASHGATE_AUTHORIZATION_SHA256: ${{ inputs.authorization_sha256 }}
+    steps:
+      - name: Checkout publication implementation from main
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: publisher
+
+      - name: Set up Go for releaseaudit tooling only
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: publisher/go.mod
+          cache: false
+
+      - name: Initialize exclusive publication workspace
+        id: workspace
+        env:
+          PUBLICATION_RUNNER_TEMP: ${{ runner.temp }}
+        shell: python
+        run: |
+          import os, pathlib
+          root = pathlib.Path(os.environ['PUBLICATION_RUNNER_TEMP']) / 'publication'
+          root.mkdir(mode=0o700, exist_ok=False)
+          for name in ('go-cache', 'go-tmp', 'tmp'):
+              (root / name).mkdir(mode=0o700)
+          values = {
+              'FLASHGATE_WORK_ROOT': root,
+              'GOCACHE': root / 'go-cache',
+              'GOTMPDIR': root / 'go-tmp',
+              'TMPDIR': root / 'tmp',
+          }
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8', newline='\n') as output:
+              for name, path in values.items():
+                  output.write(name + '=' + str(path) + '\n')
+
+      - name: Bind authorization without shell interpolation
+        env:
+          PUBLICATION_AUTHORIZATION: ${{ inputs.authorization }}
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib
+          root = pathlib.Path(os.environ['FLASHGATE_WORK_ROOT'])
+          assert root.is_dir() and not root.is_symlink()
+          data = os.environ['PUBLICATION_AUTHORIZATION'].encode('utf-8')
+          assert hashlib.sha256(data).hexdigest() == os.environ['FLASHGATE_AUTHORIZATION_SHA256']
+          with (root / 'authorization.json').open('xb') as output:
+              output.write(data)
+          value = json.loads(data)
+          commit = value['sourceCommit']
+          assert len(commit) == 40 and all(c in '0123456789abcdef' for c in commit)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('commit=' + commit + '\n')
+        id: authorization
+
+      - name: Checkout exact frozen candidate source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.authorization.outputs.commit }}
+          fetch-depth: 0
+          persist-credentials: false
+          path: source
+
+      - name: Compile development publication tool
+        working-directory: publisher
+        shell: bash
+        run: go build -mod=vendor -o "$FLASHGATE_WORK_ROOT/releaseaudit" ./cmd/releaseaudit
+
+      - name: Verify origin and download existing evidence once
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          "$FLASHGATE_WORK_ROOT/releaseaudit" publication-download \
+            --dir "$FLASHGATE_WORK_ROOT/evidence" \
+            --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
+            --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256"
+
+      - name: Verify source and approved publication plan
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          "$FLASHGATE_WORK_ROOT/releaseaudit" publication-preflight \
+            --root "$GITHUB_WORKSPACE/source" --dir "$FLASHGATE_WORK_ROOT/evidence" \
+            --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
+            --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256" \
+            --output "$FLASHGATE_WORK_ROOT/plan.json"
+
+      - name: Publish once after independent draft asset readback
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          "$FLASHGATE_WORK_ROOT/releaseaudit" publication-publish \
+            --root "$GITHUB_WORKSPACE/source" --dir "$FLASHGATE_WORK_ROOT/evidence" \
+            --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
+            --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256" \
+            --output "$FLASHGATE_WORK_ROOT/attempt.jsonl"
+
+      - name: Retain plan and one-shot journal for reconciliation
+        if: always() && steps.workspace.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: publication-attempt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.FLASHGATE_WORK_ROOT }}/plan.json
+            ${{ env.FLASHGATE_WORK_ROOT }}/attempt.jsonl
+          if-no-files-found: warn
+          retention-days: 90

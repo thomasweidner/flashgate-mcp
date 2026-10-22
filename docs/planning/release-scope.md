@@ -35,7 +35,7 @@ a production installation or a separate production promotion.
 
 ## Public pre-1.0 prerelease publication
 
-BL-363 is planned in SPR-048, after BL-245/248/255/262. The ownership chain is
+BL-363 is in progress in SPR-048, after BL-245/248/255/262. The ownership chain is
 `BL-245 + BL-248 -> BL-255 -> BL-262 -> BL-363 -> further pre-1.0 development -> BL-263`.
 BL-245 owns version/changelog/tag semantics, BL-248 verification, BL-255 the
 immutable candidate and local exact-byte promotion, and BL-262 supply-chain
@@ -51,7 +51,10 @@ assets, and required evidence must agree; collisions or drift fail closed.
 Published assets are never silently replaced, overwritten, or deleted. Remote
 readback must verify release identity, exact tag target, prerelease flag, asset
 inventory and hashes. Public download guidance is part of BL-363 acceptance;
-the current workflow still provides only temporary Actions artifacts.
+the build workflows provide temporary Actions artifacts. The separate manual
+publisher is implemented; the first actual public release, independent review
+and operational readback remain BL-363 acceptance. See the
+[publication procedure](../prerelease-publication.md).
 
 Normal `0.x.y` is a canonical SemVer product version: for example,
 `VERSION=0.4.0`, tag `v0.4.0`, artifact version `0.4.0`, and GitHub

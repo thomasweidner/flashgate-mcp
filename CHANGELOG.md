@@ -11,6 +11,10 @@ for publication; the date alone does not prove that a release was published.
 
 ## [Unreleased]
 
+### Release tooling
+
+- Added an explicit manual pre-1.0 publication workflow and releaseaudit adapter consuming the existing verified four-target candidate and complete supply-chain bundle. Publication binds externally approved source, notes, evidence and asset hashes, stages a draft, transfers exact bytes once, downloads every asset before publishing, and confirms the final prerelease. Conflicts and failed or ambiguous writes hold for read-only reconciliation. This records local implementation, not an actual public release; product VERSION is unchanged.
+
 ### Added
 
 - Extend releaseaudit with deterministic unsigned SPDX source inventory, four
