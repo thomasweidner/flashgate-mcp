@@ -71,6 +71,8 @@ Required bounded capabilities include metadata, pages, ranges, text/media/binary
 
 Required bounded capabilities include path/name/metadata/literal/regex search, include/exclude patterns, depth/file/scanned-byte/match/context limits, binary behavior, deterministic ordering, pagination, and a pure-Go baseline. Optional ripgrep and persistent indexing are post-Version-1.0.
 
+The normative foundation is the [search model and threat model](search-model-and-threat-model.md). It requires one authorized root, root-relative results, server-owned incremental budgets, deterministic ordering, explicit unstable-file outcomes, and no shell or interpreter boundary.
+
 ### Operations and jobs
 
 Required capabilities include opaque handles, lifecycle, status, cancellation, deadlines, progress, bounded results/pages, TTL, cleanup, ownership, per-principal limits, and domain-neutral orchestration. Domain services retain domain logic.
