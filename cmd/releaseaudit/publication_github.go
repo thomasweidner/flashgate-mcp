@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -272,23 +273,72 @@ func (g *githubPublication) Upload(ctx context.Context, id int64, asset publicat
 
 // Redirects are read-only and credentials never cross the API host boundary.
 // Returned upload URLs and provider error bodies are never trusted or logged.
-func (g *githubPublication) download(ctx context.Context, path string) (io.ReadCloser, error) {
-	res, err := g.request(ctx, "GET", g.endpoint(path), "application/octet-stream", nil, 0)
+type publicationDownloadClass uint8
+
+const (
+	releaseAssetDownload publicationDownloadClass = iota
+	actionsArtifactDownload
+)
+
+func publicationDownloadHost(u *url.URL, class publicationDownloadClass) bool {
+	// Compare the complete authority too: an empty explicit port, escaped host,
+	// trailing dot, opaque URL or fragment must not acquire an allowlisted identity.
+	if u.Scheme != "https" || u.Opaque != "" || u.User != nil || u.Host != u.Hostname() || u.Fragment != "" {
+		return false
+	}
+	host := u.Hostname()
+	for _, label := range strings.Split(host, ".") {
+		if len(label) == 0 || len(label) > 63 || label[0] == '-' || label[len(label)-1] == '-' {
+			return false
+		}
+		for _, ch := range label {
+			if !(ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' || ch == '-') {
+				return false
+			}
+		}
+	}
+	return host == "github.com" || strings.HasSuffix(host, ".githubusercontent.com") || strings.HasSuffix(host, ".github.com") ||
+		class == actionsArtifactDownload && strings.HasSuffix(host, ".blob.core.windows.net")
+}
+
+func (g *githubPublication) download(ctx context.Context, endpoint string, class publicationDownloadClass) (io.ReadCloser, error) {
+	// A download class is not permission to broaden arbitrary API requests.
+	prefix, suffix := "/releases/assets/", ""
+	if class == actionsArtifactDownload {
+		prefix, suffix = "/actions/artifacts/", "/zip"
+	} else if class != releaseAssetDownload {
+		return nil, errors.New("invalid download class")
+	}
+	id := strings.TrimSuffix(strings.TrimPrefix(endpoint, prefix), suffix)
+	n, err := strconv.ParseInt(id, 10, 64)
+	if err != nil || n < 1 || endpoint != prefix+strconv.FormatInt(n, 10)+suffix {
+		return nil, errors.New("download endpoint/class mismatch")
+	}
+	// A copied client retains transport and timeout bounds but disables both
+	// implicit redirects and CookieJar injection, including on API requests.
+	client := *g.client
+	client.Jar = nil
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
+	download := *g
+	download.client = &client
+	res, err := download.request(ctx, "GET", g.endpoint(endpoint), "application/octet-stream", nil, 0)
 	if err != nil {
 		return nil, err
 	}
 	for redirects := 0; res.StatusCode == 302 || res.StatusCode == 301 || res.StatusCode == 307; redirects++ {
 		location := res.Header.Get("Location")
-		_ = res.Body.Close()
+		if err := res.Body.Close(); err != nil {
+			return nil, errors.New("download redirect close failed")
+		}
 		u, err := url.Parse(location)
-		if err != nil || redirects >= 3 || u.Scheme != "https" || u.User != nil || u.Port() != "" || !(u.Hostname() == "github.com" || strings.HasSuffix(u.Hostname(), ".githubusercontent.com") || strings.HasSuffix(u.Hostname(), ".github.com")) {
+		if err != nil || redirects >= 3 || !publicationDownloadHost(u, class) {
 			return nil, errors.New("unsafe download redirect")
 		}
 		req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 		if err != nil {
 			return nil, errors.New("invalid download redirect")
 		}
-		res, err = g.client.Do(req)
+		res, err = client.Do(req)
 		if err != nil {
 			return nil, errors.New("download read failed")
 		}
@@ -300,7 +350,7 @@ func (g *githubPublication) download(ctx context.Context, path string) (io.ReadC
 	return res.Body, nil
 }
 func (g *githubPublication) ReadAsset(ctx context.Context, id int64) (io.ReadCloser, error) {
-	return g.download(ctx, fmt.Sprintf("/releases/assets/%d", id))
+	return g.download(ctx, fmt.Sprintf("/releases/assets/%d", id), releaseAssetDownload)
 }
 
 // A workflow rerun is denied before any write. A new run with the same
@@ -408,15 +458,178 @@ func (g *githubPublication) verifyRetainedCopy(ctx context.Context, a publicatio
 	return nil
 }
 
-// Extraction creates only exclusive regular files in a new caller-owned root.
-// Explicit directories, aliases, case collisions and extra inputs fail closed.
-func extractPublicationEvidence(reader io.ReaderAt, size int64, destination string) error {
-	if err := rejectSymlinkParents(filepath.Dir(destination)); err != nil {
+// Publication evidence has a portable ASCII inventory. Reject aliases on both
+// hosts, before passing archive names to any filesystem operation. The shared
+// archive normalizer remains unchanged for other consumers.
+func publicationEvidencePath(name string) error {
+	normal, err := normalizeArchivePath(name)
+	if err != nil || normal != name || name == "" || len(name) > 1024 {
+		return errors.New("noncanonical evidence path")
+	}
+	for _, ch := range name {
+		if ch < 0x21 || ch > 0x7e || strings.ContainsRune(`\:<>"|?*`, ch) {
+			return errors.New("nonportable evidence path")
+		}
+	}
+	for _, part := range strings.Split(name, "/") {
+		if strings.HasSuffix(part, ".") {
+			return errors.New("ambiguous evidence path")
+		}
+		base, _, _ := strings.Cut(strings.ToUpper(part), ".")
+		if base == "CON" || base == "PRN" || base == "AUX" || base == "NUL" || base == "CONIN$" || base == "CONOUT$" ||
+			len(base) == 4 && (strings.HasPrefix(base, "COM") || strings.HasPrefix(base, "LPT")) && base[3] >= '1' && base[3] <= '9' {
+			return errors.New("reserved evidence path")
+		}
+	}
+	return nil
+}
+
+type publicationEvidenceRoot struct {
+	root, parent *os.Root
+	path         string
+	identity     os.FileInfo
+	parents      []stageParent
+	directories  map[string]os.FileInfo
+}
+
+func publicationRootDirectory(root *os.Root, name string) (os.FileInfo, error) {
+	link, err := root.Lstat(name)
+	if err != nil || link.Mode().Type() != os.ModeDir {
+		return nil, errors.New("evidence directory is not regular")
+	}
+	file, err := root.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	info, statErr := file.Stat() // freezes Windows file identity from the handle
+	if err := errors.Join(statErr, file.Close()); err != nil {
+		return nil, err
+	}
+	if !info.IsDir() || !os.SameFile(link, info) {
+		return nil, errors.New("evidence directory identity changed")
+	}
+	return info, nil
+}
+
+func newPublicationEvidenceRoot(destination string) (_ *publicationEvidenceRoot, result error) {
+	abs, err := filepath.Abs(destination)
+	if err != nil {
+		return nil, err
+	}
+	b := &publicationEvidenceRoot{path: abs, directories: map[string]os.FileInfo{}}
+	for current := filepath.Dir(abs); ; current = filepath.Dir(current) {
+		info, err := stageDirectory(current) // reuse the existing no-reparse identity check
+		if err != nil {
+			return nil, err
+		}
+		b.parents = append(b.parents, stageParent{current, info})
+		if filepath.Dir(current) == current {
+			break
+		}
+	}
+	b.parent, err = os.OpenRoot(filepath.Dir(abs))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if result != nil {
+			result = errors.Join(result, b.close())
+		}
+	}()
+	info, err := publicationRootDirectory(b.parent, ".")
+	if err != nil || !os.SameFile(b.parents[0].info, info) {
+		return nil, errors.New("evidence parent binding changed")
+	}
+	if err := b.parent.Mkdir(filepath.Base(abs), 0o700); err != nil {
+		return nil, err // existing targets, including links, are never adopted
+	}
+	b.identity, err = stageDirectory(abs)
+	if err != nil {
+		return nil, err
+	}
+	b.root, err = b.parent.OpenRoot(filepath.Base(abs))
+	if err != nil {
+		return nil, err
+	}
+	if err := b.check(); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+func (b *publicationEvidenceRoot) close() error {
+	var err error
+	if b.root != nil {
+		err = b.root.Close()
+	}
+	if b.parent != nil {
+		err = errors.Join(err, b.parent.Close())
+	}
+	return err
+}
+
+func (b *publicationEvidenceRoot) check() error {
+	for _, p := range append(append([]stageParent{}, b.parents...), stageParent{b.path, b.identity}) {
+		info, err := stageDirectory(p.path)
+		if err != nil || !os.SameFile(p.info, info) {
+			return errors.New("evidence root/parent identity changed; recovery retained")
+		}
+	}
+	info, err := publicationRootDirectory(b.root, ".")
+	if err != nil || !os.SameFile(b.identity, info) {
+		return errors.New("evidence root handle identity changed")
+	}
+	for name, bound := range b.directories {
+		info, err := publicationRootDirectory(b.root, name)
+		if err != nil || !os.SameFile(bound, info) {
+			return errors.New("evidence subdirectory identity changed")
+		}
+	}
+	return nil
+}
+
+func (b *publicationEvidenceRoot) mkdirParents(name string) error {
+	parts := strings.Split(path.Dir(name), "/")
+	for i := range parts {
+		dir := strings.Join(parts[:i+1], "/")
+		if dir == "." || b.directories[dir] != nil {
+			continue
+		}
+		if err := b.check(); err != nil {
+			return err
+		}
+		if err := b.root.Mkdir(filepath.FromSlash(dir), 0o700); err != nil {
+			return err
+		}
+		info, err := publicationRootDirectory(b.root, filepath.FromSlash(dir))
+		if err != nil {
+			return err
+		}
+		b.directories[dir] = info
+	}
+	return b.check()
+}
+
+func copyPublicationEvidence(in io.ReadCloser, out io.WriteCloser, size uint64) error {
+	n, copyErr := io.Copy(out, io.LimitReader(in, int64(size)+1))
+	if err := errors.Join(copyErr, in.Close(), out.Close()); err != nil {
 		return err
 	}
-	if err := os.Mkdir(destination, 0o700); err != nil {
+	if n != int64(size) {
+		return errors.New("evidence entry size mismatch")
+	}
+	return nil
+}
+
+// Descriptor-relative creation confines every write even during path exchange.
+// Identity checks additionally reject drift instead of silently accepting a
+// moved root or an in-root alias. Failed extractions retain their recovery data.
+func extractPublicationEvidence(reader io.ReaderAt, size int64, destination string) (result error) {
+	bound, err := newPublicationEvidenceRoot(destination)
+	if err != nil {
 		return err
 	}
+	defer func() { result = errors.Join(result, bound.close()) }()
 	archive, err := zip.NewReader(reader, size)
 	if err != nil {
 		return err
@@ -424,23 +637,36 @@ func extractPublicationEvidence(reader io.ReaderAt, size int64, destination stri
 	if len(archive.File) > 128 {
 		return errors.New("evidence entry count exceeded")
 	}
-	seen := map[string]bool{}
+	seen := map[string]string{}
+	files := map[string]bool{}
 	var total uint64
 	for _, entry := range archive.File {
-		name, err := normalizeArchivePath(entry.Name)
-		if err != nil || name != entry.Name || entry.FileInfo().IsDir() || !entry.Mode().IsRegular() || seen[strings.ToLower(name)] || entry.UncompressedSize64 > maximumSupplyArchiveSize {
+		name := entry.Name
+		if publicationEvidencePath(name) != nil || !entry.Mode().IsRegular() || entry.UncompressedSize64 > maximumSupplyArchiveSize {
 			return errors.New("unsafe evidence archive entry")
 		}
-		seen[strings.ToLower(name)] = true
+		key := strings.ToLower(name)
+		if seen[key] != "" {
+			return errors.New("duplicate or file/directory evidence collision")
+		}
+		seen[key], files[key] = name, true
+		for dir := path.Dir(name); dir != "."; dir = path.Dir(dir) {
+			key := strings.ToLower(dir)
+			if files[key] || seen[key] != "" && seen[key] != dir {
+				return errors.New("aliased evidence directory")
+			}
+			seen[key] = dir
+		}
 		total += entry.UncompressedSize64
 		if total > 5*maximumSupplyArchiveSize {
 			return errors.New("evidence expansion bound exceeded")
 		}
-		target := filepath.Join(destination, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+	}
+	for _, entry := range archive.File {
+		if err := bound.mkdirParents(entry.Name); err != nil {
 			return err
 		}
-		out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		out, err := bound.root.OpenFile(filepath.FromSlash(entry.Name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 		if err != nil {
 			return err
 		}
@@ -448,18 +674,21 @@ func extractPublicationEvidence(reader io.ReaderAt, size int64, destination stri
 		if err != nil {
 			return errors.Join(err, out.Close())
 		}
-		n, copyErr := io.Copy(out, io.LimitReader(in, int64(entry.UncompressedSize64)+1))
-		if err := errors.Join(copyErr, in.Close(), out.Close()); err != nil {
+		info, statErr := out.Stat()
+		if statErr != nil || !info.Mode().IsRegular() {
+			return errors.Join(errors.New("nonregular evidence output"), statErr, in.Close(), out.Close())
+		}
+		if err := copyPublicationEvidence(in, out, entry.UncompressedSize64); err != nil {
 			return err
 		}
-		if n != int64(entry.UncompressedSize64) {
-			return errors.New("evidence entry size mismatch")
+		if err := bound.check(); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func (g *githubPublication) downloadEvidence(ctx context.Context, a publicationAuthorization, destination string) error {
+func (g *githubPublication) downloadEvidence(ctx context.Context, a publicationAuthorization, destination string) (result error) {
 	if err := g.verifyEvidenceOrigin(ctx, a); err != nil {
 		return err
 	}
@@ -469,7 +698,7 @@ func (g *githubPublication) downloadEvidence(ctx context.Context, a publicationA
 	if _, err := os.Lstat(destination); !errors.Is(err, os.ErrNotExist) {
 		return errors.New("new evidence directory required")
 	}
-	stream, err := g.download(ctx, fmt.Sprintf("/actions/artifacts/%d/zip", a.EvidenceArtifactID))
+	stream, err := g.download(ctx, fmt.Sprintf("/actions/artifacts/%d/zip", a.EvidenceArtifactID), actionsArtifactDownload)
 	if err != nil {
 		return err
 	}
@@ -479,7 +708,7 @@ func (g *githubPublication) downloadEvidence(ctx context.Context, a publicationA
 	if err != nil {
 		return errors.Join(err, stream.Close())
 	}
-	defer file.Close()
+	defer func() { result = errors.Join(result, file.Close()) }()
 	n, copyErr := io.Copy(file, io.LimitReader(stream, 5*maximumSupplyArchiveSize+1))
 	if err := errors.Join(copyErr, stream.Close()); err != nil {
 		return err

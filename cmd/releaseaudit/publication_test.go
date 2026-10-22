@@ -4,17 +4,22 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -793,6 +798,72 @@ func TestPublicationDownloadCompleteOriginalBundle(t *testing.T) {
 	if err := g.downloadEvidence(context.Background(), a, destination); err == nil {
 		t.Fatal("download overwrote existing evidence")
 	}
+	// Reuse these real four-target bytes for the Actions storage boundary; no
+	// additional producer fixture and no weakening of anchored consumer checks.
+	for _, kind := range []string{"azure", "invalid-evidence", "truncated", "stream-failure", "stream-close", "transport-failure"} {
+		t.Run(kind, func(t *testing.T) {
+			calls := 0
+			g := &githubPublication{token: "fixture-only", api: githubAPI}
+			g.client = &http.Client{Transport: publicationTransport(func(r *http.Request) (*http.Response, error) {
+				calls++
+				if r.URL.Host == "api.github.com" {
+					if r.Header.Get("Authorization") != "Bearer fixture-only" {
+						t.Fatal("API authorization missing")
+					}
+					if strings.HasSuffix(r.URL.Path, "/zip") {
+						return &http.Response{StatusCode: 302, Header: http.Header{"Location": {"https://fixture.blob.core.windows.net/bundle?sig=fixture%2Bonly%3D"}}, Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
+					}
+					body, err := json.Marshal(map[string]any{"id": a.EvidenceArtifactID, "name": "retained-candidate-evidence-" + a.IndexSHA256, "expired": false, "expires_at": time.Now().Add(time.Hour).UTC().Format(time.RFC3339)})
+					if err != nil {
+						t.Fatal(err)
+					}
+					return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(body)), Request: r}, nil
+				}
+				if r.URL.Host != "fixture.blob.core.windows.net" || len(r.Header) != 0 || r.URL.RawQuery != "sig=fixture%2Bonly%3D" {
+					t.Fatal("storage identity, signed query or credential isolation failed")
+				}
+				if kind == "transport-failure" {
+					return nil, errors.New("controlled unavailable download")
+				}
+				data := bundle.Bytes()
+				if kind == "invalid-evidence" {
+					data = publicationTestZip(t, []string{"untrusted"}, 0o600)
+				} else if kind == "truncated" {
+					data = data[:len(data)/2]
+				}
+				body := &publicationFaultStream{Reader: bytes.NewReader(data)}
+				if kind == "stream-failure" {
+					body.readErr = io.ErrUnexpectedEOF
+				} else if kind == "stream-close" {
+					body.closeErr = errors.New("controlled close failure")
+				}
+				return &http.Response{StatusCode: 200, Body: body, Request: r}, nil
+			})}
+			dest := filepath.Join(t.TempDir(), "evidence")
+			err := g.downloadEvidence(context.Background(), a, dest)
+			if kind == "azure" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				actual, err := publicationAssets(dest)
+				if err != nil || !reflect.DeepEqual(actual, plan.Assets) {
+					t.Fatal("redirect changed anchored four-target evidence", err)
+				}
+			} else if err == nil {
+				t.Fatal("redirect bypassed anchored verification/transport failure")
+			} else if strings.Contains(err.Error(), "sig=") || strings.Contains(err.Error(), "fixture%2B") {
+				t.Fatal("signed query leaked")
+			}
+			if calls != 3 {
+				t.Fatal("download retried or fell back", calls)
+			}
+			if kind != "transport-failure" {
+				if _, err := os.Stat(dest + ".transport.zip"); err != nil {
+					t.Fatal("transport recovery bytes not retained", err)
+				}
+			}
+		})
+	}
 }
 
 func TestPublicationProviderInvalidStates(t *testing.T) {
@@ -822,5 +893,386 @@ func TestPublicationProviderInvalidStates(t *testing.T) {
 	a.NotesSHA256 = supplyDigest([]byte(notes))
 	if _, err := publicationNotes([]byte(a.Version), changelog, a); err == nil {
 		t.Fatal("credential-bearing release notes accepted")
+	}
+}
+
+func TestPublicationDownloadClasses(t *testing.T) {
+	for _, tc := range []struct {
+		name, location string
+		class          publicationDownloadClass
+		status         int
+		valid          bool
+	}{
+		{"actions-azure", "https://fixture.blob.core.windows.net/container/blob?sig=fixture%2Bonly%3D&se=bound", actionsArtifactDownload, 302, true},
+		{"actions-github", "https://release-assets.githubusercontent.com/blob", actionsArtifactDownload, 307, true},
+		{"asset-github", "https://objects.githubusercontent.com/blob", releaseAssetDownload, 301, true},
+		{"asset-azure", "https://fixture.blob.core.windows.net/blob", releaseAssetDownload, 302, false},
+		{"suffix", "https://evilblob.core.windows.net/blob", actionsArtifactDownload, 302, false},
+		{"suffix-tail", "https://fixture.blob.core.windows.net.evil.example/blob", actionsArtifactDownload, 302, false},
+		{"bare-suffix", "https://blob.core.windows.net/blob", actionsArtifactDownload, 302, false},
+		{"http", "http://fixture.blob.core.windows.net/blob", actionsArtifactDownload, 302, false},
+		{"userinfo", "https://user:fixture@fixture.blob.core.windows.net/blob", actionsArtifactDownload, 302, false},
+		{"port", "https://fixture.blob.core.windows.net:443/blob", actionsArtifactDownload, 302, false},
+		{"empty-port", "https://fixture.blob.core.windows.net:/blob", actionsArtifactDownload, 302, false},
+		{"ip", "https://127.0.0.1/blob", actionsArtifactDownload, 302, false},
+		{"opaque", "https:fixture.blob.core.windows.net/blob", actionsArtifactDownload, 302, false},
+		{"relative", "/fixture", actionsArtifactDownload, 302, false},
+		{"invalid-location", "https://%zz/", actionsArtifactDownload, 302, false},
+		{"fragment", "https://fixture.blob.core.windows.net/blob#hidden", actionsArtifactDownload, 302, false},
+		{"bad-label", "https://-fixture.blob.core.windows.net/blob", actionsArtifactDownload, 302, false},
+		{"empty-label", "https://fixture..blob.core.windows.net/blob", actionsArtifactDownload, 302, false},
+		{"unsupported-303", "https://fixture.blob.core.windows.net/blob", actionsArtifactDownload, 303, false},
+		{"unsupported-308", "https://fixture.blob.core.windows.net/blob", actionsArtifactDownload, 308, false},
+		{"unavailable", "", actionsArtifactDownload, 404, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			jar, err := cookiejar.New(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			u, _ := url.Parse("https://fixture.blob.core.windows.net")
+			jar.SetCookies(u, []*http.Cookie{{Name: "session", Value: "fixture-only"}})
+			g := &githubPublication{token: "fixture-only", api: githubAPI}
+			g.client = &http.Client{Timeout: time.Second, Jar: jar, Transport: publicationTransport(func(r *http.Request) (*http.Response, error) {
+				calls++
+				if calls == 1 {
+					if r.URL.Host != "api.github.com" || r.Header.Get("Authorization") != "Bearer fixture-only" {
+						t.Fatal("initial request lost its bound API identity")
+					}
+					return &http.Response{StatusCode: tc.status, Header: http.Header{"Location": {tc.location}, "Set-Cookie": {"provider=fixture-only"}}, Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
+				}
+				if !tc.valid || calls != 2 || r.URL.String() != tc.location || r.Method != "GET" {
+					t.Fatal("unexpected redirect request or changed signed query")
+				}
+				for _, header := range []string{"Authorization", "Proxy-Authorization", "Cookie", "GH_TOKEN", "X-GitHub-Api-Version", "Accept", "Referer"} {
+					if r.Header.Get(header) != "" {
+						t.Fatal("sensitive or unvetted redirect header", header)
+					}
+				}
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader("exact bytes")), Request: r}, nil
+			})}
+			endpoint := "/actions/artifacts/456/zip"
+			if tc.class == releaseAssetDownload {
+				endpoint = "/releases/assets/456"
+			}
+			stream, err := g.download(context.Background(), endpoint, tc.class)
+			if tc.valid {
+				if err != nil {
+					t.Fatal(err)
+				}
+				data, readErr := io.ReadAll(stream)
+				if err := errors.Join(readErr, stream.Close()); err != nil || string(data) != "exact bytes" || calls != 2 {
+					t.Fatal("download bytes/close mismatch", err)
+				}
+			} else if err == nil || calls != 1 {
+				t.Fatal("unsafe redirect did not fail before external request", calls, err)
+			} else if strings.Contains(err.Error(), tc.location) && tc.location != "" {
+				t.Fatal("redirect URL leaked in diagnostics")
+			}
+		})
+	}
+	for _, endpoint := range []string{"/actions/artifacts/456", "/releases/assets/456", "/actions/artifacts/0456/zip", "/actions/artifacts/456/zip?other=1", "/actions/artifacts/-1/zip"} {
+		g := &githubPublication{}
+		if _, err := g.download(context.Background(), endpoint, actionsArtifactDownload); err == nil {
+			t.Fatal("broadened an unrelated endpoint", endpoint)
+		}
+	}
+	for _, class := range []publicationDownloadClass{releaseAssetDownload, actionsArtifactDownload, 255} {
+		calls := 0
+		g := &githubPublication{api: githubAPI, client: &http.Client{Transport: publicationTransport(func(r *http.Request) (*http.Response, error) {
+			calls++
+			return &http.Response{StatusCode: 302, Header: http.Header{"Location": {"https://objects.githubusercontent.com/loop"}}, Body: io.NopCloser(strings.NewReader("")), Request: r}, nil
+		})}}
+		endpoint := "/releases/assets/1"
+		if class == actionsArtifactDownload {
+			endpoint = "/actions/artifacts/1/zip"
+		}
+		if _, err := g.download(context.Background(), endpoint, class); err == nil || class != 255 && calls != 4 || class == 255 && calls != 0 {
+			t.Fatal("redirect/class budget not enforced", calls, err)
+		}
+	}
+}
+
+func publicationTestZip(t *testing.T, names []string, mode os.FileMode) []byte {
+	t.Helper()
+	var b bytes.Buffer
+	w := zip.NewWriter(&b)
+	for _, name := range names {
+		h := &zip.FileHeader{Name: name, Method: zip.Store}
+		h.SetMode(mode)
+		out, err := w.CreateHeader(h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := out.Write([]byte("fixture")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return b.Bytes()
+}
+
+func TestPublicationPortableEvidencePaths(t *testing.T) {
+	// Bound prefix/alias bookkeeping as well as expanded file bytes. A ZIP can
+	// carry long names without consuming the file-expansion budget.
+	if publicationEvidencePath(strings.Repeat("a/", 512)+"file") == nil {
+		t.Fatal("unbounded evidence name accepted")
+	}
+	for _, name := range []string{"", "../escape", "a/../../escape", "/absolute", "C:/drive", "C:drive", `\\server\share`, `a\b`, "a/../b", "a//b", "a/./b", "a\x00b", "a\x01b", "a\x7fb", "a:stream", "NUL", "con.txt", "a/COM1.json", "lPt9", "CONIN$", "a/CONOUT$", "a.", "a /b", "a/b ", "a/<b", "a/?b", "a/é", "a/COM¹.txt"} {
+		t.Run(fmt.Sprintf("%q", name), func(t *testing.T) {
+			root := t.TempDir()
+			sentinel := filepath.Join(root, "sentinel")
+			if err := os.WriteFile(sentinel, []byte("unchanged"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			data := publicationTestZip(t, []string{name}, 0o600)
+			if extractPublicationEvidence(bytes.NewReader(data), int64(len(data)), filepath.Join(root, "evidence")) == nil {
+				t.Fatal("unsafe portable name accepted")
+			}
+			if got, err := os.ReadFile(sentinel); err != nil || string(got) != "unchanged" {
+				t.Fatal("outside sentinel changed", err)
+			}
+			entries, err := os.ReadDir(root)
+			if err != nil || len(entries) != 2 {
+				t.Fatal("unexpected file outside evidence root", err)
+			}
+		})
+	}
+	for _, names := range [][]string{{"a", "a"}, {"a", "A"}, {"a", "a/b"}, {"a/b", "a"}, {"A/b", "a/c"}} {
+		data := publicationTestZip(t, names, 0o600)
+		if extractPublicationEvidence(bytes.NewReader(data), int64(len(data)), filepath.Join(t.TempDir(), "evidence")) == nil {
+			t.Fatal("alias/prefix collision accepted", names)
+		}
+	}
+	for _, mode := range []os.FileMode{os.ModeSymlink | 0o777, os.ModeDir | 0o700, os.ModeNamedPipe | 0o600, os.ModeDevice | 0o600, os.ModeSocket | 0o600} {
+		data := publicationTestZip(t, []string{"entry"}, mode)
+		if extractPublicationEvidence(bytes.NewReader(data), int64(len(data)), filepath.Join(t.TempDir(), "evidence")) == nil {
+			t.Fatal("special entry accepted", mode)
+		}
+	}
+	data := publicationTestZip(t, []string{"candidate/a/b.json", "candidate/a/c.json", "source/COPYING"}, 0o600)
+	dest := filepath.Join(t.TempDir(), "evidence")
+	if err := extractPublicationEvidence(bytes.NewReader(data), int64(len(data)), dest); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"candidate/a/b.json", "candidate/a/c.json", "source/COPYING"} {
+		got, err := os.ReadFile(filepath.Join(dest, filepath.FromSlash(name)))
+		if err != nil || string(got) != "fixture" {
+			t.Fatal("nested regular evidence changed", err)
+		}
+	}
+	if extractPublicationEvidence(bytes.NewReader(data), int64(len(data)), dest) == nil {
+		t.Fatal("existing root adopted")
+	}
+}
+
+type publicationFaultStream struct {
+	io.Reader
+	readErr, closeErr error
+	closed            bool
+}
+
+func (s *publicationFaultStream) Read(p []byte) (int, error) {
+	if s.readErr != nil {
+		return 0, s.readErr
+	}
+	return s.Reader.Read(p)
+}
+func (s *publicationFaultStream) Close() error { s.closed = true; return s.closeErr }
+
+type publicationFaultOutput struct {
+	buffer             bytes.Buffer
+	writeErr, closeErr error
+	closed             bool
+}
+
+func (s *publicationFaultOutput) Write(p []byte) (int, error) {
+	if s.writeErr != nil {
+		return 0, s.writeErr
+	}
+	return s.buffer.Write(p)
+}
+func (s *publicationFaultOutput) Close() error { s.closed = true; return s.closeErr }
+
+func TestPublicationEvidenceBoundsAndIO(t *testing.T) {
+	for _, kind := range []string{"short", "long", "read", "write", "input-close", "output-close"} {
+		t.Run(kind, func(t *testing.T) {
+			in := &publicationFaultStream{Reader: strings.NewReader("fixture")}
+			out := &publicationFaultOutput{}
+			size := uint64(7)
+			failure := errors.New("controlled I/O failure")
+			switch kind {
+			case "short":
+				size++
+			case "long":
+				size--
+			case "read":
+				in.readErr = failure
+			case "write":
+				out.writeErr = failure
+			case "input-close":
+				in.closeErr = failure
+			case "output-close":
+				out.closeErr = failure
+			}
+			if err := copyPublicationEvidence(in, out, size); err == nil || !in.closed || !out.closed {
+				t.Fatal("I/O failure/close contract lost", err)
+			}
+			if out.buffer.Len() > int(size)+1 {
+				t.Fatal("streaming bound exceeded")
+			}
+		})
+	}
+	names := make([]string, 129)
+	for i := range names {
+		names[i] = fmt.Sprintf("file-%d", i)
+	}
+	for _, kind := range []string{"entries", "single-size", "total-size", "declared-size", "crc", "truncated"} {
+		t.Run(kind, func(t *testing.T) {
+			selected := names[:1]
+			if kind == "entries" {
+				selected = names
+			} else if kind == "total-size" {
+				selected = names[:6]
+			}
+			data := publicationTestZip(t, selected, 0o600)
+			for pos := 0; ; {
+				at := bytes.Index(data[pos:], []byte{'P', 'K', 1, 2})
+				if at < 0 {
+					break
+				}
+				at += pos
+				switch kind {
+				case "single-size":
+					binary.LittleEndian.PutUint32(data[at+24:], maximumSupplyArchiveSize+1)
+				case "total-size":
+					binary.LittleEndian.PutUint32(data[at+24:], maximumSupplyArchiveSize)
+				case "declared-size":
+					binary.LittleEndian.PutUint32(data[at+24:], 8)
+				case "crc":
+					data[at+16] ^= 1
+				}
+				pos = at + 46
+			}
+			if kind == "truncated" {
+				data = data[:len(data)-24]
+			}
+			if extractPublicationEvidence(bytes.NewReader(data), int64(len(data)), filepath.Join(t.TempDir(), "evidence")) == nil {
+				t.Fatal("unsafe ZIP resource/integrity condition accepted")
+			}
+		})
+	}
+}
+
+func TestPublicationEvidenceRootConfinement(t *testing.T) {
+	for _, kind := range []string{"existing-file", "hardlink", "symlink", "root-link", "parent-link", "root-exchange", "parent-exchange", "directory-exchange"} {
+		t.Run(kind, func(t *testing.T) {
+			base := t.TempDir()
+			outside := filepath.Join(base, "outside")
+			parent := filepath.Join(base, "parent")
+			for _, dir := range []string{outside, parent} {
+				if err := os.Mkdir(dir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			sentinel := filepath.Join(outside, "sentinel")
+			if err := os.WriteFile(sentinel, []byte("unchanged"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			dest := filepath.Join(parent, "evidence")
+			if kind == "root-link" || kind == "parent-link" {
+				link := dest
+				if kind == "parent-link" {
+					link = filepath.Join(base, "parent-link")
+					dest = filepath.Join(link, "evidence")
+				}
+				if err := os.Symlink(outside, link); err != nil {
+					t.Fatal("required symlink fixture unavailable", err)
+				}
+				data := publicationTestZip(t, []string{"sentinel"}, 0o600)
+				if extractPublicationEvidence(bytes.NewReader(data), int64(len(data)), dest) == nil {
+					t.Fatal("linked root/parent accepted")
+				}
+			} else {
+				bound, err := newPublicationEvidenceRoot(dest)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() {
+					if err := bound.close(); err != nil {
+						t.Error(err)
+					}
+				}()
+				switch kind {
+				case "existing-file", "hardlink":
+					original := "owned-original"
+					var err error
+					if kind == "hardlink" {
+						original = "unchanged"
+						err = os.Link(sentinel, filepath.Join(dest, "sentinel"))
+					} else {
+						err = os.WriteFile(filepath.Join(dest, "sentinel"), []byte(original), 0o600)
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					if f, err := bound.root.OpenFile("sentinel", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600); err == nil {
+						_ = f.Close()
+						t.Fatal("existing file adopted")
+					}
+					if data, err := os.ReadFile(filepath.Join(dest, "sentinel")); err != nil || string(data) != original {
+						t.Fatal("existing file overwritten", err)
+					}
+				case "symlink":
+					if err := os.Symlink(outside, filepath.Join(dest, "redirect")); err != nil {
+						t.Fatal(err)
+					}
+					if bound.mkdirParents("redirect/new") == nil {
+						t.Fatal("unowned linked parent adopted")
+					}
+					if f, err := bound.root.OpenFile("redirect/new", os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600); err == nil {
+						_ = f.Close()
+						t.Fatal("descriptor root escaped")
+					}
+				default:
+					target := dest
+					if kind == "parent-exchange" {
+						target = parent
+					} else if kind == "directory-exchange" {
+						if err := bound.mkdirParents("nested/file"); err != nil {
+							t.Fatal(err)
+						}
+						target = filepath.Join(dest, "nested")
+					}
+					if err := os.Rename(target, target+"-moved"); err != nil {
+						var code syscall.Errno
+						if runtime.GOOS != "windows" || !errors.As(err, &code) || code != 5 && code != 32 {
+							t.Fatal(err)
+						}
+						// Windows may prevent exchange while Root holds its handle.
+						if err := bound.check(); err != nil {
+							t.Fatal("blocked exchange changed the binding", err)
+						}
+						t.Log("descriptor handle prevented the requested exchange")
+					} else {
+						if err := os.Symlink(outside, target); err != nil {
+							t.Fatal(err)
+						}
+						if bound.check() == nil {
+							t.Fatal("identity/reparse drift accepted")
+						}
+					}
+				}
+			}
+			if data, err := os.ReadFile(sentinel); err != nil || string(data) != "unchanged" {
+				t.Fatal("outside sentinel modified", err)
+			}
+			if entries, err := os.ReadDir(outside); err != nil || len(entries) != 1 {
+				t.Fatal("outside file created", err)
+			}
+		})
 	}
 }
