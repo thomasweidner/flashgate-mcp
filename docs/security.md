@@ -270,6 +270,12 @@ Version 1.0 security work includes:
 
 Post-Version-1.0 security work includes the Variant B user-worker implementation, user-scoped persistent hosts, BL-217 conditional-read/cache semantics, optional accelerators, and any external provider ecosystem. Future owners `BL-345`, `BL-347`–`BL-349`, and `BL-351` require separate threat models and negative tests before implementation: placeholder hydration/offline and reparse escapes; watch queue overflow, owner binding and restart; archive traversal, link escape, expansion bombs and partial cleanup; allowlisted settings disclosure; and compression mutation authorization/inheritance. BL-217 additionally requires cross-principal/profile/root/backend cache-partition tests, stale/invalidation races, current-authorization rechecks, hash-as-capability negatives, and proof that fresh/strong requests do not accept cached evidence when current state is required. The portable agent skill `BL-350` may explain these controls but grants none of them.
 
+The Version 1.0 target for structured audit events, immutable event and trace
+correlation, redaction, bounded backpressure, rotation, retention, disk-full
+behavior, and log-injection resistance is defined by the
+[Audit Lifecycle and Trace Correlation Contract](audit-lifecycle-and-trace-contract.md).
+It is not implemented by the current filesystem-only runtime.
+
 ## Accepted Target Security Architecture
 
 Except where the current-state sections above state otherwise, the controls below are planned and are not implemented yet.
