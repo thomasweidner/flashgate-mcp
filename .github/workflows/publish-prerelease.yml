@@ -1,5 +1,5 @@
 name: Publish verified prerelease
-run-name: BL-363 publication ${{ fromJSON(inputs.authorization).originalApproval }}
+run-name: ${{ github.event_name == 'workflow_dispatch' && inputs.authorization != '' && format('BL-363 publication {0}', fromJSON(inputs.authorization).originalApproval) || 'BL-363 dispatch required' }}
 
 on:
   workflow_dispatch:
@@ -28,10 +28,6 @@ jobs:
       contents: write
       actions: read
     env:
-      FLASHGATE_WORK_ROOT: ${{ runner.temp }}/publication
-      GOCACHE: ${{ runner.temp }}/publication/go-cache
-      GOTMPDIR: ${{ runner.temp }}/publication/go-tmp
-      TMPDIR: ${{ runner.temp }}/publication/tmp
       FLASHGATE_AUTHORIZATION_SHA256: ${{ inputs.authorization_sha256 }}
     steps:
       - name: Checkout publication implementation from main
@@ -48,6 +44,27 @@ jobs:
           go-version-file: publisher/go.mod
           cache: false
 
+      - name: Initialize exclusive publication workspace
+        id: workspace
+        env:
+          PUBLICATION_RUNNER_TEMP: ${{ runner.temp }}
+        shell: python
+        run: |
+          import os, pathlib
+          root = pathlib.Path(os.environ['PUBLICATION_RUNNER_TEMP']) / 'publication'
+          root.mkdir(mode=0o700, exist_ok=False)
+          for name in ('go-cache', 'go-tmp', 'tmp'):
+              (root / name).mkdir(mode=0o700)
+          values = {
+              'FLASHGATE_WORK_ROOT': root,
+              'GOCACHE': root / 'go-cache',
+              'GOTMPDIR': root / 'go-tmp',
+              'TMPDIR': root / 'tmp',
+          }
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8', newline='\n') as output:
+              for name, path in values.items():
+                  output.write(name + '=' + str(path) + '\n')
+
       - name: Bind authorization without shell interpolation
         env:
           PUBLICATION_AUTHORIZATION: ${{ inputs.authorization }}
@@ -55,9 +72,7 @@ jobs:
         run: |
           import hashlib, json, os, pathlib
           root = pathlib.Path(os.environ['FLASHGATE_WORK_ROOT'])
-          root.mkdir(exist_ok=False)
-          for name in ('go-cache', 'go-tmp', 'tmp'):
-              (root / name).mkdir()
+          assert root.is_dir() and not root.is_symlink()
           data = os.environ['PUBLICATION_AUTHORIZATION'].encode('utf-8')
           assert hashlib.sha256(data).hexdigest() == os.environ['FLASHGATE_AUTHORIZATION_SHA256']
           with (root / 'authorization.json').open('xb') as output:
@@ -116,12 +131,12 @@ jobs:
             --output "$FLASHGATE_WORK_ROOT/attempt.jsonl"
 
       - name: Retain plan and one-shot journal for reconciliation
-        if: always()
+        if: always() && steps.workspace.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: publication-attempt-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            ${{ runner.temp }}/publication/plan.json
-            ${{ runner.temp }}/publication/attempt.jsonl
+            ${{ env.FLASHGATE_WORK_ROOT }}/plan.json
+            ${{ env.FLASHGATE_WORK_ROOT }}/attempt.jsonl
           if-no-files-found: warn
           retention-days: 90
