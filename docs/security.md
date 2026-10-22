@@ -43,6 +43,12 @@ Production code outside `internal/fs` must not directly call filesystem APIs suc
 
 All filesystem access must go through the `FileSystem` abstraction.
 
+Root-scoped disk-capacity lookup follows the same `PathGuard` boundary and
+accepts only an existing relative path. Its domain result is deliberately
+limited to total, used, and caller-available bytes. Volume labels, mount
+points, device identifiers, filesystem types, and resolved host paths are not
+returned. The core lookup is not, by itself, a public MCP authorization path.
+
 ### Central Path Validation
 
 Path validation is centralized in:
