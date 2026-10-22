@@ -265,6 +265,23 @@ func TestLocalFileSystemReadRejectsTooLargeFile(t *testing.T) {
 	}
 }
 
+func TestLocalFileSystemReadAcceptsFileAtExactLimit(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "file.txt"), "hello")
+
+	filesystem := mustNewLocalFileSystem(t, root)
+
+	content, err := filesystem.Read("file.txt", 5)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if string(content) != "hello" {
+		t.Fatalf("expected %q, got %q", "hello", string(content))
+	}
+}
+
 func TestLocalFileSystemReadRejectsZeroLimit(t *testing.T) {
 	t.Parallel()
 
