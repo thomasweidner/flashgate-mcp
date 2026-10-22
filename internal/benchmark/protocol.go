@@ -170,9 +170,13 @@ func toolCallSpec(name string, arguments map[string]any) requestSpec {
 }
 
 type workflowDefinition struct {
-	name     string
-	requests []requestSpec
+	name              string
+	requests          []requestSpec
+	expectedReadBytes *uint64
+	expectedEntries   *uint64
 }
+
+func exactCounter(value uint64) *uint64 { return &value }
 
 func referenceWorkflows() []workflowDefinition {
 	pathChecks := []requestSpec{initializeSpec()}
@@ -189,13 +193,23 @@ func referenceWorkflows() []workflowDefinition {
 		{name: "initialize_tools_list", requests: []requestSpec{initializeSpec(), toolsListSpec()}},
 		{name: "get_path_info_existing", requests: []requestSpec{initializeSpec(), toolCallSpec("get_path_info", map[string]any{"path": "existing.txt"})}},
 		{name: "get_path_info_missing", requests: []requestSpec{initializeSpec(), toolCallSpec("get_path_info", map[string]any{"path": "missing.txt"})}},
-		{name: "read_file_small", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"path": "small.txt"})}},
-		{name: "read_file_64kib", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"path": "text-64kib.txt"})}},
-		{name: "list_directory_small", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"path": "small-dir"})}},
-		{name: "list_directory_500_entries", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"path": "large-dir"})}},
+		{name: "read_file_small", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"path": "small.txt"})}, expectedReadBytes: exactCounter(26)},
+		{name: "read_file_64kib", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"path": "text-64kib.txt"})}, expectedReadBytes: exactCounter(65536)},
+		{name: "list_directory_small", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"path": "small-dir"})}, expectedEntries: exactCounter(3)},
+		{name: "list_directory_500_entries", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"path": "large-dir"})}, expectedEntries: exactCounter(500)},
 		{name: "multiple_path_checks", requests: pathChecks},
-		{name: "multiple_file_reads", requests: reads},
+		{name: "multiple_file_reads", requests: reads, expectedReadBytes: exactCounter(260)},
 	}
+}
+
+func validateWorkflowUsefulOutput(workflow workflowDefinition, counters Counters) error {
+	if workflow.expectedReadBytes != nil && counters.ReadBytes != *workflow.expectedReadBytes {
+		return fmt.Errorf("read_bytes=%d, want exact useful output %d", counters.ReadBytes, *workflow.expectedReadBytes)
+	}
+	if workflow.expectedEntries != nil && counters.Entries != *workflow.expectedEntries {
+		return fmt.Errorf("entries=%d, want exact useful output %d", counters.Entries, *workflow.expectedEntries)
+	}
+	return nil
 }
 
 func addResultCounters(method string, result json.RawMessage, counters *Counters) error {
