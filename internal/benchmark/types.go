@@ -17,30 +17,48 @@ const (
 
 // Result is the versioned, host-path-free benchmark result.
 type Result struct {
-	SchemaVersion          string                   `json:"schema_version"`
-	BenchmarkSuiteVersion  string                   `json:"benchmark_suite_version"`
-	WorkflowCatalogVersion string                   `json:"workflow_catalog_version"`
-	CorpusVersion          string                   `json:"corpus_version"`
-	Project                string                   `json:"project"`
-	Commit                 string                   `json:"commit"`
-	WorkingTreeDirty       bool                     `json:"working_tree_dirty"`
-	GeneratedAtUTC         time.Time                `json:"generated_at_utc"`
-	GoVersion              string                   `json:"go_version"`
-	OS                     string                   `json:"os"`
-	Architecture           string                   `json:"architecture"`
-	RuntimeMode            string                   `json:"runtime_mode"`
-	Transport              string                   `json:"transport"`
-	ExecutionBackend       string                   `json:"execution_backend"`
-	Profile                string                   `json:"profile"`
-	Parallelism            int                      `json:"parallelism"`
-	Repetitions            int                      `json:"repetitions"`
-	StartMeasurements      ProcessStartMeasurements `json:"start_measurements"`
-	Resources              ResourceSummary          `json:"resource_measurements"`
-	ToolsList              []ToolsListMeasurement   `json:"tools_list_measurements"`
-	Workflows              []WorkflowMeasurement    `json:"workflow_measurements"`
-	BudgetEvaluation       BudgetEvaluation         `json:"budget_evaluation"`
-	Warnings               []string                 `json:"warnings"`
-	UnsupportedMetrics     []string                 `json:"unsupported_metrics"`
+	SchemaVersion           string                   `json:"schema_version"`
+	BenchmarkSuiteVersion   string                   `json:"benchmark_suite_version"`
+	WorkflowCatalogVersion  string                   `json:"workflow_catalog_version"`
+	CorpusVersion           string                   `json:"corpus_version"`
+	Project                 string                   `json:"project"`
+	Commit                  string                   `json:"commit"`
+	WorkingTreeDirty        bool                     `json:"working_tree_dirty"`
+	GeneratedAtUTC          time.Time                `json:"generated_at_utc"`
+	GoVersion               string                   `json:"go_version"`
+	OS                      string                   `json:"os"`
+	Architecture            string                   `json:"architecture"`
+	RuntimeMode             string                   `json:"runtime_mode"`
+	Transport               string                   `json:"transport"`
+	ExecutionBackend        string                   `json:"execution_backend"`
+	Profile                 string                   `json:"profile"`
+	Parallelism             int                      `json:"parallelism"`
+	Repetitions             int                      `json:"repetitions"`
+	StartMeasurements       ProcessStartMeasurements `json:"start_measurements"`
+	Resources               ResourceSummary          `json:"resource_measurements"`
+	ToolsList               []ToolsListMeasurement   `json:"tools_list_measurements"`
+	Workflows               []WorkflowMeasurement    `json:"workflow_measurements"`
+	BudgetEvaluation        BudgetEvaluation         `json:"budget_evaluation"`
+	Warnings                []string                 `json:"warnings"`
+	UnsupportedMetrics      []string                 `json:"unsupported_metrics"`
+	AuthoritativeProvenance *AuthoritativeProvenance `json:"authoritative_provenance,omitempty"`
+}
+
+// AuthoritativeProvenance binds a native baseline measurement to its prepared
+// binary, source/build inputs, controller, workspace and host-gate evidence.
+// Paths and host identifiers are deliberately not retained.
+type AuthoritativeProvenance struct {
+	BinarySHA256              string    `json:"binary_sha256"`
+	SourceTreeSHA256          string    `json:"source_tree_sha256"`
+	BuildInputsSHA256         string    `json:"build_inputs_sha256"`
+	ControllerSHA256          string    `json:"controller_sha256"`
+	WorkspaceIdentitySHA256   string    `json:"workspace_identity_sha256"`
+	PreflightEvidenceSHA256   string    `json:"preflight_evidence_sha256"`
+	FinalHostGateSHA256       string    `json:"final_host_gate_sha256"`
+	PreparationStartedAtUTC   time.Time `json:"preparation_started_at_utc"`
+	PreparationCompletedAtUTC time.Time `json:"preparation_completed_at_utc"`
+	MeasurementStartedAtUTC   time.Time `json:"measurement_started_at_utc"`
+	MeasurementCompletedAtUTC time.Time `json:"measurement_completed_at_utc"`
 }
 
 // ProcessStartMeasurements separates the first start after build from later new processes.

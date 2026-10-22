@@ -80,9 +80,29 @@
       }
     },
     "warnings": { "type": "array", "items": { "type": "string" } },
-    "unsupported_metrics": { "type": "array", "items": { "type": "string" } }
+    "unsupported_metrics": { "type": "array", "items": { "type": "string" } },
+    "authoritative_provenance": { "$ref": "#/$defs/authoritativeProvenance" }
   },
   "$defs": {
+    "authoritativeProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["binary_sha256", "source_tree_sha256", "build_inputs_sha256", "controller_sha256", "workspace_identity_sha256", "preflight_evidence_sha256", "final_host_gate_sha256", "preparation_started_at_utc", "preparation_completed_at_utc", "measurement_started_at_utc", "measurement_completed_at_utc"],
+      "properties": {
+        "binary_sha256": { "$ref": "#/$defs/sha256" },
+        "source_tree_sha256": { "$ref": "#/$defs/sha256" },
+        "build_inputs_sha256": { "$ref": "#/$defs/sha256" },
+        "controller_sha256": { "$ref": "#/$defs/sha256" },
+        "workspace_identity_sha256": { "$ref": "#/$defs/sha256" },
+        "preflight_evidence_sha256": { "$ref": "#/$defs/sha256" },
+        "final_host_gate_sha256": { "$ref": "#/$defs/sha256" },
+        "preparation_started_at_utc": { "type": "string", "format": "date-time" },
+        "preparation_completed_at_utc": { "type": "string", "format": "date-time" },
+        "measurement_started_at_utc": { "type": "string", "format": "date-time" },
+        "measurement_completed_at_utc": { "type": "string", "format": "date-time" }
+      }
+    },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "metricSummary": {
       "type": "object",
       "additionalProperties": false,
