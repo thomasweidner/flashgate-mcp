@@ -495,15 +495,25 @@ Version 1.0 protocol security includes:
 
 ### Release and supply-chain security
 
-BL-363 plans the SPR-048 public pre-1.0 GitHub prerelease path after BL-255
+Local candidate/evidence stage promotion binds the original real directory and
+its ancestors, rejects reparse components, and closes identity handles before
+rename. Only Windows Win32 errors 5 and 32 permit a bounded follow-up after full
+stage revalidation and target-absence checks. Successful rename requires the
+same directory identity at the target, an absent old stage and the existing full
+content verifier. Unproven mutation or ownership retains recovery state; cleanup
+and candidate rollback must not remove an exchanged stage or unknown target.
+Caller-controlled roots must remain free of concurrent writes. These checks do
+not turn a path-based rename into an atomic defense against a concurrent owner.
+
+BL-363 implements the SPR-048 public pre-1.0 GitHub prerelease path after BL-255
 verified candidates and BL-262 supply-chain/rollback evidence. Publication is
 an explicit external/remote write boundary. Build and verification keep minimal
-read-only repository permissions; the future separate publication path receives
+read-only repository permissions; the separate manual publication job receives
 only the release-write rights it needs, never `write-all` or unnecessary
 issues, PR or admin rights. This plan assumes no new long-lived credential
 mechanism. Secrets must never appear in logs or evidence.
 
-The future publisher must bind each remote write attempt to its authorized
+The publisher binds each remote write attempt to its authorized
 target and verified immutable VERSION/source-commit/artifact-hash identity.
 Reject release, tag, hash, asset, required-evidence and permission drift
 fail-closed before writing; never silently overwrite, replace or delete a
@@ -512,7 +522,14 @@ Remote readback verifies release identity, exact `v<VERSION>` target,
 `prerelease=true`, evidence and asset inventory/hashes. A failed or ambiguous
 write stops automatic retries and requires readback/reconciliation before a
 separately authorized attempt. BL-363 owns these implementation and negative
-test obligations; no publisher is implemented by this planning contract.
+test obligations. The releaseaudit adapter uses an exclusively created,
+fsynced intent journal, first-attempt-only Actions context and a read-only
+history check rejecting any earlier dispatch of the same original approval,
+including reserialized authorization JSON with a different transport hash.
+No write redirect, retry, provider fallback, tag creation, deletion or asset
+replacement is implemented. A partial draft remains for human reconciliation.
+The [publication contract](prerelease-publication.md) describes the external
+authorization and recovery boundary; implementation alone proves no public release.
 BL-263 retains the independent stable Version 1.0 gate and stable publication;
 pre-1.0 publication permits no stable/latest claim.
 

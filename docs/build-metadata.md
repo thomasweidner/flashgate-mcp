@@ -91,16 +91,18 @@ checksum, verifier, reproduction, and leak hashes in a strict manifest. The
 tagged release path retains `--release`, dated notes and its clean-tree/tag
 gates.
 
-### Planned pre-1.0 publication identity
+### Pre-1.0 publication identity
 
-DEC-FP-002 and BL-245 remain the versioning authority. BL-363 plans public
+DEC-FP-002 and BL-245 remain the versioning authority. BL-363 implements public
 pre-1.0 GitHub prereleases after `BL-255 -> BL-262`; it creates no second
 version source. Ordinary `0.x.y` remains a normal SemVer product version:
 `VERSION=0.4.0`, tag `v0.4.0`, artifact version `0.4.0`, and GitHub
 `prerelease=true`. The flag classifies the publication channel without a suffix.
 An explicit `0.4.0-rc.1` is allowed only for a deliberately separate candidate
 version; VERSION, tag `v0.4.0-rc.1`, changelog heading and artifact names must
-match. Publishers never generate `-rc.N` or another version.
+match. Publishers never generate `-rc.N` or another version. The
+[manual publication path](prerelease-publication.md) consumes frozen verified
+bytes; local implementation is not proof of an available public download.
 
 Before freezing a candidate intended for public publication, finalize VERSION
 and all release-relevant source, including the dated, nonempty CHANGELOG entry.

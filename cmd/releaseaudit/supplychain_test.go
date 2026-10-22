@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -339,7 +340,120 @@ func TestSupplyPredicateRejectsReboundStatements(t *testing.T) {
 	}
 }
 
+type supplyFixtureEntry struct {
+	name string
+	mode os.FileMode
+	data []byte
+}
+
+// Snapshot only this test family's small synthetic bundles, without following
+// links. Names, types, permission bits and every byte participate in parity.
+func snapshotSupplyFixture(t *testing.T, dir string) []supplyFixtureEntry {
+	t.Helper()
+	root, err := supplyOpen(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := root.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	var entries []supplyFixtureEntry
+	err = fs.WalkDir(root.FS(), ".", func(name string, _ fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !fs.ValidPath(name) || strings.ContainsAny(name, `\:`) {
+			return errors.New("unsafe fixture path")
+		}
+		info, err := root.Lstat(name)
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && !info.Mode().IsRegular() {
+			return errors.New("fixture must contain only real directories and regular files")
+		}
+		entry := supplyFixtureEntry{name: name, mode: info.Mode()}
+		if info.Mode().IsRegular() {
+			entry.data, err = supplyRead(root, name)
+			if err != nil {
+				return err
+			}
+		}
+		entries = append(entries, entry)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return entries
+}
+
 func TestSupplyFailClosed(t *testing.T) {
+	// Exercise the real generator once, including its stage verification and
+	// rename. Negative verifier cases then mutate independent exact copies.
+	base, m, i, c := supplyFixture(t)
+	if err := verifySupply(base, c.Version, c.SourceCommitSHA, m, i, nil); err != nil {
+		t.Fatal("invalid shared fixture:", err)
+	}
+	original := snapshotSupplyFixture(t, base)
+	copies := map[string][]supplyFixtureEntry{}
+	copyFixture := func(caseT *testing.T) string {
+		caseT.Helper()
+		// Parent-owned temp roots survive each sequential subtest so subsequent
+		// cases can also check that earlier mutated copies remain unchanged.
+		dir := t.TempDir()
+		root, err := supplyOpen(base)
+		if err != nil {
+			caseT.Fatal(err)
+		}
+		defer func() {
+			if err := root.Close(); err != nil {
+				caseT.Error(err)
+			}
+		}()
+		for _, entry := range original {
+			path := filepath.Join(dir, filepath.FromSlash(entry.name))
+			if entry.mode.IsDir() {
+				if entry.name != "." {
+					if err := os.Mkdir(path, entry.mode.Perm()); err != nil {
+						caseT.Fatal(err)
+					}
+				}
+			} else if err := supplyCopy(root, entry.name, path, maximumSupplyMetadataSize); err != nil {
+				caseT.Fatal(err)
+			}
+			if err := os.Chmod(path, entry.mode.Perm()); err != nil {
+				caseT.Fatal(err)
+			}
+		}
+		if !reflect.DeepEqual(snapshotSupplyFixture(caseT, dir), original) {
+			caseT.Fatal("fixture copy bytes, inventory, types or modes differ")
+		}
+		if err := verifySupply(dir, c.Version, c.SourceCommitSHA, m, i, nil); err != nil {
+			caseT.Fatal("valid fixture copy rejected:", err)
+		}
+		copies[dir] = original
+		caseT.Cleanup(func() {
+			if !reflect.DeepEqual(snapshotSupplyFixture(caseT, base), original) {
+				caseT.Error("negative case changed shared fixture")
+			}
+			for other, expected := range copies {
+				if other != dir && !reflect.DeepEqual(snapshotSupplyFixture(caseT, other), expected) {
+					caseT.Error("negative case changed another fixture", other)
+				}
+			}
+			copies[dir] = snapshotSupplyFixture(caseT, dir)
+		})
+		return dir
+	}
+	assertMutation := func(t *testing.T, dir string) {
+		t.Helper()
+		if reflect.DeepEqual(snapshotSupplyFixture(t, dir), original) {
+			t.Fatal("negative fixture mutation did not apply")
+		}
+	}
 	cases := map[string]func(*testing.T, string){
 		"missing": func(t *testing.T, d string) {
 			if err := os.Remove(filepath.Join(d, sbomName)); err != nil {
@@ -372,8 +486,9 @@ func TestSupplyFailClosed(t *testing.T) {
 	}
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
-			d, m, i, c := supplyFixture(t)
+			d := copyFixture(t)
 			mutate(t, d)
+			assertMutation(t, d)
 			if err := verifySupply(d, c.Version, c.SourceCommitSHA, m, i, nil); err == nil {
 				t.Fatal("unsafe evidence accepted")
 			}
@@ -381,7 +496,7 @@ func TestSupplyFailClosed(t *testing.T) {
 	}
 	for _, name := range []string{"schema", "contract", "version", "commit", "manifest", "signing", "matrix", "traversal", "hash", "time", "duplicate", "unknown"} {
 		t.Run("rebound index/"+name, func(t *testing.T) {
-			d, m, _, c := supplyFixture(t)
+			d := copyFixture(t)
 			p := filepath.Join(d, supplyIndexName)
 			var index supplyIndex
 			if err := strictCandidateJSON(p, &index); err != nil {
@@ -422,12 +537,13 @@ func TestSupplyFailClosed(t *testing.T) {
 			if err := os.WriteFile(p, data, 0o600); err != nil {
 				t.Fatal(err)
 			}
+			assertMutation(t, d)
 			if err := verifySupply(d, c.Version, c.SourceCommitSHA, m, supplyDigest(data), nil); err == nil {
 				t.Fatal("invalid rebound index accepted")
 			}
 		})
 	}
-	d, m, i, c := supplyFixture(t)
+	d := copyFixture(t)
 	for _, args := range [][]string{
 		{"--dir", d, "--version", c.Version, "--commit", c.SourceCommitSHA, "--manifest-sha256", m},
 		{"--dir", d, "--version", "0.4.0", "--commit", c.SourceCommitSHA, "--manifest-sha256", m, "--index-sha256", i},
@@ -443,6 +559,7 @@ func TestSupplyFailClosed(t *testing.T) {
 	if err := verifySupply(d, c.Version, c.SourceCommitSHA, m, i, []string{"flashgate-releaseaudit"}); err == nil {
 		t.Fatal("forbidden host value accepted")
 	}
+	t.Logf("generated fixtures: 1; isolated exact copies: %d; negative mutations: %d", len(copies), len(cases)+12)
 }
 
 func TestSupplyUnsafePaths(t *testing.T) {

@@ -537,16 +537,27 @@ files into one immutable version/source/manifest-hash directory, checks source
 and destination SHA-256, and may update a separate mutable `current` alias.
 The candidate CI lane has only `contents: read`; publishing remains BL-363.
 
+The candidate and supply-chain producers share a local stage-directory promotion
+helper. Windows may retry only Win32 errors 5 and 32, within eight total calls
+and a two-second retry-control window. Each follow-up revalidates bound directory
+and ancestor identities, target absence and the producer's complete stage
+verification. Other platforms retain one rename. Alias and remote operations
+retain their existing policies; this helper is not a general filesystem retry layer.
+
 Build/verification stays read-oriented. The current tag-gated
 `release-build.yml` has `contents: read` and produces temporary Actions
-artifacts. BL-363 plans a distinct minimally privileged publication path
+artifacts. BL-363 implements a distinct minimally privileged publication path
 consuming a verified immutable `VERSION + SourceCommitSHA + ArtifactSHA256`
 candidate and BL-262 evidence, without publication-time build/rebuild/repackaging
 or silent asset replacement. Finalize release-relevant source and dated
 canonical changelog notes before public candidate freeze; `v<VERSION>` must
 point exactly to its SourceCommitSHA. Remote readback binds release, tag,
-`prerelease=true`, evidence and assets. These are target contracts, not an
-implemented publisher. See [release scope](planning/release-scope.md).
+`prerelease=true`, evidence and assets. The existing releaseaudit CLI owns the
+preflight and state machine; a narrow GitHub adapter owns provider calls.
+Only the manual publication job has release-write permission. Publication
+availability still requires a separately authorized real run and readback.
+See [prerelease publication](prerelease-publication.md) and
+[release scope](planning/release-scope.md).
 
 `internal/version` is the canonical runtime build-information model.
 Controlled builds resolve SemVer, numeric Windows file version, commit,

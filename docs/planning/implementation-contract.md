@@ -71,6 +71,32 @@ controls, and `BL-308` remains the architecture and ADR owner.
 | Response and benchmark quality — BL-172–BL-173, BL-177–BL-179, BL-205, BL-317–BL-323, BL-325–BL-329, BL-331–BL-332 | Reuse current benchmark schemas, deterministic workflow/corpus controls, host/platform evidence, and documentation gates. Strengthen checks at their existing owners without weakening result, supply-chain, platform, or public documentation truth; no benchmark result itself authorizes product behavior. |
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
 
+## BL-363 implementation binding
+
+Architecture role: release and validation, with a narrow provider adapter.
+Hard prerequisites remain completed BL-245/248/255/262. Extend cmd/releaseaudit
+and consume verifySupply and candidate semantics without a second verifier.
+The separate manual publish-prerelease.yml job owns minimal release-write
+rights; release-build.yml and current-version-candidate.yml remain read-only
+build/verification consumers. Public delta is prerelease distribution tooling,
+with no MCP/runtime or product VERSION change. Retrofit download guidance and
+the complete transient evidence handoff through the
+[publication contract](../prerelease-publication.md).
+
+Acceptance includes anchored four-target evidence, committed source/notes/tag
+parity, one-shot draft/upload/publication, full downloaded byte readback,
+permission/rerun/conflict/path negatives and applicable Windows/Linux gates.
+The local BL-255/262 retrofit shares only stage-directory promotion: bounded
+Windows Win32 5/32 follow-ups require stable directory/ancestor identities,
+target absence and the existing complete verifier. Eight calls and a two-second
+retry-control window are limits, not a blocking-call deadline. Non-Windows,
+current-alias operations and remote one-shot publication retain their policies.
+Acceptance also requires deterministic drift/budget tests, ownership-checked
+cleanup, candidate rollback parity and native Linux single-call regression.
+BL-363 remains In Progress until independent review and the first separately
+authorized real prerelease plus final readback. Local implementation neither
+completes BL-363 nor satisfies BL-263; stable publication remains BL-263.
+
 ## Closure
 
 At each BL closure, reconcile the traceability row, current documentation,

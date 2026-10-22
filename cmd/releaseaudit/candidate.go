@@ -532,6 +532,7 @@ func promoteCandidateWithOps(sourceDir, destination, manifestPath string, manife
 	var originalMode os.FileMode
 	aliasExists, aliasTouched, created := false, false, false
 	var tempPath, backupPath string
+	var promotion *stageRename
 	remove := func(path string) error {
 		if path == "" {
 			return nil
@@ -594,7 +595,11 @@ func promoteCandidateWithOps(sourceDir, destination, manifestPath string, manife
 				}
 			}
 			if created {
-				result = rollbackNewCandidate(immutable, manifest, result)
+				if err := promotion.ownedTarget(); err != nil {
+					result = errors.Join(result, fmt.Errorf("candidate rollback ownership unproven; recovery retained: %w", err))
+				} else {
+					result = rollbackNewCandidate(immutable, manifest, result)
+				}
 			}
 		}
 	}()
@@ -633,7 +638,11 @@ func promoteCandidateWithOps(sourceDir, destination, manifestPath string, manife
 		if err != nil {
 			return err
 		}
-		defer func() { result = errors.Join(result, os.RemoveAll(stage)) }()
+		promotion, err = bindStageRename(stage, immutable)
+		if err != nil {
+			return err
+		}
+		defer func() { result = errors.Join(result, promotion.cleanup()) }()
 		for _, name := range promotedNames(manifest) {
 			source := filepath.Join(sourceDir, name)
 			if name == "candidate-manifest.json" {
@@ -652,7 +661,15 @@ func promoteCandidateWithOps(sourceDir, destination, manifestPath string, manife
 		if err := sameCandidateFiles(sourceDir, stage, manifestPath, manifest); err != nil {
 			return err
 		}
-		if err := os.Rename(stage, immutable); err != nil {
+		if err := promotion.rename(func(path string) error {
+			if err := candidateHash(path, "candidate-manifest.json", hex.EncodeToString(digest[:])); err != nil {
+				return err
+			}
+			if err := verifyCandidateManifest(path, manifest); err != nil {
+				return err
+			}
+			return sameCandidateFiles(sourceDir, path, manifestPath, manifest)
+		}); err != nil {
 			return err
 		}
 		created = true
