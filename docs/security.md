@@ -395,6 +395,13 @@ Version 1.0 command execution uses server-defined command IDs. A definition fixe
 
 The server constructs argv. Standard profiles do not accept a free shell string, response files, arbitrary config overrides, unapproved hooks/plugins/loaders, or uncontrolled environment inheritance.
 
+Child-process environments are built from an explicit per-command allowlist and
+explicit values; the server environment is never merged implicitly. Variable
+names are matched case-insensitively for portable policy outcomes, output is
+deterministically ordered, and loader, interpreter, hook, plugin, and
+configuration control variables are denied even if a command definition tries
+to allow them. Command definitions must not allow credential or secret names.
+
 Interactive shell and process input remain post-Version 1.0.
 
 ### Native OS and interpreter boundary
