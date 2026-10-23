@@ -324,6 +324,21 @@ type publicationProvider interface {
 	Publish(context.Context, int64, publicationPlan) error
 }
 
+// Only these scalar values may cross the download diagnostic boundary.
+// Never retain a response, URL, header, body or wrapped transport error here.
+type publicationDownloadHTTPError struct {
+	statusCode int
+	redirected bool
+}
+
+func (e *publicationDownloadHTTPError) Error() string {
+	phase := "api_response"
+	if e.redirected {
+		phase = "redirect_response"
+	}
+	return fmt.Sprintf("download unavailable (HTTP %d, phase=%s)", e.statusCode, phase)
+}
+
 func publicationReadback(ctx context.Context, p publicationProvider, plan publicationPlan, id int64, draft bool, assets []publicationAsset) error {
 	state, err := p.Inspect(ctx, plan)
 	if err != nil {
@@ -349,6 +364,10 @@ func publicationReadback(ctx context.Context, p publicationProvider, plan public
 		}
 		stream, err := p.ReadAsset(ctx, actual.ID)
 		if err != nil {
+			var status *publicationDownloadHTTPError
+			if errors.As(err, &status) {
+				return fmt.Errorf("remote asset readback unavailable: %w", status)
+			}
 			return errors.New("remote asset readback unavailable")
 		}
 		digest, n, err := publicationHash(stream, expected.Size)
