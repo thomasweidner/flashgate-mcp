@@ -38,7 +38,12 @@ for publication; the date alone does not prove that a release was published.
 - Registered BL-363 in SPR-048 for planned persistent public pre-1.0 GitHub prereleases after BL-255 verified candidates and BL-262 supply-chain evidence. Publication preserves exact verified bytes, canonical version/tag/source/hash identity and frozen changelog notes, with `prerelease=true`, a separate minimal-permission publication boundary and remote readback. Stable Version 1.0 publication remains exclusively BL-263; transient Actions artifacts remain current validation evidence. This planning decision implements no publisher and changes no product version.
 - Updated BL-330 from an already-resolved status decision to the remaining FlashGate-specific application and validation of the canonical project work-item status model.
 
-## [0.3.0]
+## [0.3.0] - 2026-10-23
+
+### Public prerelease scope
+
+- The local STDIO server supports MCP `2025-11-25` with the eight existing filesystem tools: `list_directory`, `read_file`, `get_path_info`, `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path`. Access remains subject to the configured root, path restrictions, read-only mode, and hard resource limits.
+- The existing release-artifact formats target Windows and Linux x64/ARM64. Search, managed processes, system-service operation, and public activation of MCP `2026-07-28` are not part of this prerelease.
 
 ### Added
 
