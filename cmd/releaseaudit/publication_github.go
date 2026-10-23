@@ -325,6 +325,7 @@ func (g *githubPublication) download(ctx context.Context, endpoint string, class
 	if err != nil {
 		return nil, err
 	}
+	redirected := false
 	for redirects := 0; res.StatusCode == 302 || res.StatusCode == 301 || res.StatusCode == 307; redirects++ {
 		location := res.Header.Get("Location")
 		if err := res.Body.Close(); err != nil {
@@ -342,10 +343,11 @@ func (g *githubPublication) download(ctx context.Context, endpoint string, class
 		if err != nil {
 			return nil, errors.New("download read failed")
 		}
+		redirected = true
 	}
 	if res.StatusCode != http.StatusOK {
 		_ = res.Body.Close()
-		return nil, errors.New("download unavailable")
+		return nil, &publicationDownloadHTTPError{statusCode: res.StatusCode, redirected: redirected}
 	}
 	return res.Body, nil
 }

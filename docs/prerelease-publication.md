@@ -141,7 +141,12 @@ creation, so it cannot resume or silently repair an existing draft.
 Provider requests use the [GitHub Releases API](https://docs.github.com/en/rest/releases/releases),
 [asset API](https://docs.github.com/en/rest/releases/assets) and
 [tag API](https://docs.github.com/en/rest/git/tags). Provider errors are generic;
-response bodies, credentials and signed download URLs are not printed. Writes
+response bodies, credentials and signed download URLs are not printed. A terminal
+download response other than HTTP 200 reports only its numeric status and a fixed
+phase (`api_response` or `redirect_response`), including during release-asset
+readback. These diagnostics identify the failing response boundary, not its cause;
+other provider/transport failures remain generic. No additional request, retry or
+fallback is performed for diagnosis. Writes
 never follow redirects; read-only download redirects omit the job credential.
 
 ## Download and verify
