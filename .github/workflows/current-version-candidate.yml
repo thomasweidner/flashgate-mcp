@@ -454,7 +454,7 @@ jobs:
           cache: false
 
       - name: Download verified target artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: candidate-target-${{ needs.prepare.outputs.source_commit }}-*
           path: build/candidate-bundle
