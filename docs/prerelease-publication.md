@@ -149,6 +149,14 @@ other provider/transport failures remain generic. No additional request, retry o
 fallback is performed for diagnosis. Writes
 never follow redirects; read-only download redirects omit the job credential.
 
+Actions artifact ZIP downloads request `application/vnd.github+json` from the
+initial artifact API endpoint, which returns the archive redirect. Release-asset
+binary downloads request `application/octet-stream` and accept a direct binary
+response or an allowed redirect. Redirect requests carry neither the initial
+credential nor its API headers or cookies. Offline media-type and redirect tests
+verify this contract; they do not establish hosted download availability or the
+historical cause of a provider HTTP 415 response.
+
 ## Download and verify
 
 After an actual verified publication, select its exact `v<VERSION>` on the
