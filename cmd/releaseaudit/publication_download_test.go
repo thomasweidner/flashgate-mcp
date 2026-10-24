@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -36,7 +37,7 @@ func TestPublicationDownloadHTTPDiagnostics(t *testing.T) {
 	const signed = "https://fixture.blob.core.windows.net/blob?sig=synthetic-secret&se=synthetic-expiry"
 	for _, class := range []publicationDownloadClass{actionsArtifactDownload, releaseAssetDownload} {
 		for _, redirected := range []bool{false, true} {
-			for _, status := range []int{200, 401, 403, 404, 500, 303, 308} {
+			for _, status := range []int{200, 401, 403, 404, 415, 500, 303, 308} {
 				t.Run(fmt.Sprintf("class%d/redirect%t/status%d", class, redirected, status), func(t *testing.T) {
 					location := signed
 					if class == releaseAssetDownload {
@@ -49,6 +50,13 @@ func TestPublicationDownloadHTTPDiagnostics(t *testing.T) {
 						w.Header().Set("Location", location)
 						if redirected && r.URL.Path != "/blob" {
 							w.WriteHeader(http.StatusFound)
+							wantAccept := "application/octet-stream"
+							if class == actionsArtifactDownload {
+								wantAccept = "application/vnd.github+json"
+							}
+							if r.Header.Get("Accept") != wantAccept {
+								t.Error("initial API request has wrong download media type")
+							}
 							return
 						}
 						w.WriteHeader(status)
@@ -114,6 +122,95 @@ func TestPublicationDownloadHTTPDiagnostics(t *testing.T) {
 					}
 				})
 			}
+		}
+	}
+}
+
+func TestPublicationDownloadAcceptNegotiation(t *testing.T) {
+	for _, class := range []publicationDownloadClass{actionsArtifactDownload, releaseAssetDownload} {
+		for _, wrongAccept := range []bool{false, true} {
+			t.Run(fmt.Sprintf("class%d/wrongAccept%t", class, wrongAccept), func(t *testing.T) {
+				endpoint := "/actions/artifacts/456/zip"
+				wantAccept, otherAccept := "application/vnd.github+json", "application/octet-stream"
+				location := "https://fixture.blob.core.windows.net/blob?sig=synthetic-secret&se=synthetic-expiry"
+				if class == releaseAssetDownload {
+					endpoint = "/releases/assets/456"
+					wantAccept, otherAccept = otherAccept, wantAccept
+					location = "https://release-assets.githubusercontent.com/blob?sig=synthetic-secret&se=synthetic-expiry"
+				}
+				payload := []byte{0, 1, 2, '\n', 127, 128, 255}
+				calls := 0
+				server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path != "/blob" {
+						if r.URL.Path != "/repos/"+publicationRepository+endpoint || r.Method != http.MethodGet {
+							t.Error("initial API endpoint or method changed")
+						}
+						if r.Header.Get("Authorization") != "Bearer synthetic-token" {
+							t.Error("initial API request lost credential")
+						}
+						if r.Header.Get("Accept") != wantAccept {
+							w.WriteHeader(http.StatusUnsupportedMediaType)
+							_, _ = io.WriteString(w, "synthetic-token "+location)
+							return
+						}
+						w.Header().Set("Set-Cookie", "session=synthetic-cookie")
+						w.Header().Set("X-Sensitive", "synthetic-header")
+						w.Header().Set("Location", location)
+						w.WriteHeader(http.StatusFound)
+						return
+					}
+					_, _ = w.Write(payload)
+				}))
+				defer server.Close()
+				jar, err := cookiejar.New(nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, raw := range []string{server.URL, location} {
+					u, parseErr := url.Parse(raw)
+					if parseErr != nil {
+						t.Fatal(parseErr)
+					}
+					jar.SetCookies(u, []*http.Cookie{{Name: "session", Value: "synthetic-cookie"}})
+				}
+				g := &githubPublication{api: server.URL, token: "synthetic-token"}
+				g.client = &http.Client{Timeout: time.Second, Jar: jar, Transport: publicationLocalDownloadTransport(t, server, func(r *http.Request) {
+					calls++
+					if calls == 1 {
+						if r.Header.Get("Accept") != wantAccept || r.Header.Get("Cookie") != "" {
+							t.Error("initial download media type or cookie isolation changed")
+						}
+						if wrongAccept {
+							// Model an incorrect client header; the server must reject it.
+							r.Header.Set("Accept", otherAccept)
+						}
+						return
+					}
+					if r.URL.String() != location {
+						t.Error("signed redirect input changed")
+					}
+					for _, key := range []string{"Authorization", "Proxy-Authorization", "Cookie", "X-Sensitive", "X-GitHub-Api-Version", "Accept", "Referer"} {
+						if r.Header.Get(key) != "" {
+							t.Error("unvetted redirect header", key)
+						}
+					}
+				})}
+				stream, err := g.download(context.Background(), endpoint, class)
+				if wrongAccept {
+					var diagnostic *publicationDownloadHTTPError
+					if stream != nil || !errors.As(err, &diagnostic) || diagnostic.statusCode != 415 || diagnostic.redirected || err.Error() != "download unavailable (HTTP 415, phase=api_response)" || calls != 1 {
+						t.Fatal("media rejection lost safe status or retried", err, calls)
+					}
+					return
+				}
+				if err != nil || stream == nil {
+					t.Fatal("matching media type rejected", err)
+				}
+				data, readErr := io.ReadAll(stream)
+				if err := errors.Join(readErr, stream.Close()); err != nil || !bytes.Equal(data, payload) || calls != 2 {
+					t.Fatal("redirect payload or exact request count changed", err, calls)
+				}
+			})
 		}
 	}
 }

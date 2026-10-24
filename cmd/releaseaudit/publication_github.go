@@ -321,7 +321,11 @@ func (g *githubPublication) download(ctx context.Context, endpoint string, class
 	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
 	download := *g
 	download.client = &client
-	res, err := download.request(ctx, "GET", g.endpoint(endpoint), "application/octet-stream", nil, 0)
+	accept := "application/octet-stream"
+	if class == actionsArtifactDownload {
+		accept = "application/vnd.github+json"
+	}
+	res, err := download.request(ctx, "GET", g.endpoint(endpoint), accept, nil, 0)
 	if err != nil {
 		return nil, err
 	}
