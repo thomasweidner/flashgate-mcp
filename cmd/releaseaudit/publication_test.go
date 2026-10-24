@@ -281,6 +281,335 @@ func TestPublicationReadbackAndPrestateNegatives(t *testing.T) {
 	}
 }
 
+func publicationParityDiagnosticJSON(t *testing.T, err error) (map[string]json.RawMessage, []string) {
+	t.Helper()
+	const prefix = "remote release parity failed: "
+	if err == nil || !strings.HasPrefix(err.Error(), prefix) {
+		t.Fatalf("missing parity diagnostic: %v", err)
+	}
+	if len(err.Error()) > 4096 {
+		t.Fatal("unbounded parity diagnostic")
+	}
+	var value map[string]json.RawMessage
+	if e := json.Unmarshal([]byte(strings.TrimPrefix(err.Error(), prefix)), &value); e != nil {
+		t.Fatal("invalid diagnostic JSON", e)
+	}
+	wantKeys := []string{"codes", "createDraftID", "expectedTagCommit", "observedTagCommit", "expectedRelease", "observedRelease", "latestID"}
+	if len(value) != len(wantKeys) {
+		t.Fatal("unexpected diagnostic fields", value)
+	}
+	for _, key := range wantKeys {
+		if _, ok := value[key]; !ok {
+			t.Fatal("missing diagnostic field", key)
+		}
+	}
+	var codes []string
+	if e := json.Unmarshal(value["codes"], &codes); e != nil || len(codes) == 0 {
+		t.Fatal("missing diagnostic codes", e)
+	}
+	return value, codes
+}
+
+func TestPublicationParityDiagnostics(t *testing.T) {
+	p := publicationUnitPlan(t)
+	tests := []struct {
+		code   string
+		mutate func(*remotePublicationState)
+	}{
+		{"TAG_COMMIT", func(s *remotePublicationState) { s.TagCommit = "other" }},
+		{"RELEASE_PRESENT", func(s *remotePublicationState) { s.Release = nil }},
+		{"RELEASE_ID", func(s *remotePublicationState) { s.Release.ID = 790 }},
+		{"RELEASE_TAG", func(s *remotePublicationState) { s.Release.Tag = "other" }},
+		{"RELEASE_TARGET", func(s *remotePublicationState) { s.Release.Target = "main" }},
+		{"RELEASE_NAME", func(s *remotePublicationState) { s.Release.Name = "other" }},
+		{"RELEASE_BODY", func(s *remotePublicationState) { s.Release.Body += "other" }},
+		{"RELEASE_DRAFT", func(s *remotePublicationState) { s.Release.Draft = false }},
+		{"RELEASE_PRERELEASE", func(s *remotePublicationState) { s.Release.Prerelease = false }},
+		{"RELEASE_NOT_LATEST", func(s *remotePublicationState) { s.LatestID = 789 }},
+		{"ASSET_COUNT", func(s *remotePublicationState) { s.Release.Assets = []remotePublicationAsset{{ID: 1}} }},
+	}
+	for _, tc := range tests {
+		t.Run(tc.code, func(t *testing.T) {
+			m := newPublicationMock(p)
+			_, _ = m.CreateDraft(context.Background(), p)
+			tc.mutate(&m.state)
+			err := publicationReadback(context.Background(), m, p, 789, true, nil)
+			value, codes := publicationParityDiagnosticJSON(t, err)
+			if !reflect.DeepEqual(codes, []string{tc.code}) || string(value["createDraftID"]) != "789" {
+				t.Fatal("incorrect predicate or create ID", codes, string(value["createDraftID"]))
+			}
+			if tc.code == "RELEASE_PRESENT" && string(value["observedRelease"]) != "null" {
+				t.Fatal("absent release represented as observed metadata")
+			}
+			if tc.code == "RELEASE_ID" {
+				var observed struct{ ID int64 }
+				if e := json.Unmarshal(value["observedRelease"], &observed); e != nil || observed.ID != 790 {
+					t.Fatal("observed ID not preserved", e, observed.ID)
+				}
+			}
+		})
+	}
+	m := newPublicationMock(p)
+	_, _ = m.CreateDraft(context.Background(), p)
+	for _, assets := range [][]remotePublicationAsset{nil, {}} {
+		m.state.Release.Assets = assets
+		if err := publicationReadback(context.Background(), m, p, 789, true, nil); err != nil {
+			t.Fatal("unchanged positive/empty parity", err)
+		}
+	}
+	m.state.Release.Draft = false
+	if err := publicationReadback(context.Background(), m, p, 789, false, nil); err != nil {
+		t.Fatal("published-state positive parity", err)
+	}
+	m.state.TagCommit = "other"
+	m.state.Release.Name = "other"
+	m.state.Release.Body = "other"
+	m.state.Release.Prerelease = false
+	m.state.LatestID = 789
+	m.state.Release.Assets = []remotePublicationAsset{{ID: 1}}
+	want := []string{"TAG_COMMIT", "RELEASE_NAME", "RELEASE_BODY", "RELEASE_DRAFT", "RELEASE_PRERELEASE", "RELEASE_NOT_LATEST", "ASSET_COUNT"}
+	for i := 0; i < 2; i++ {
+		_, codes := publicationParityDiagnosticJSON(t, publicationReadback(context.Background(), m, p, 789, true, nil))
+		if !reflect.DeepEqual(codes, want) {
+			t.Fatal("multiple failures lost or reordered", codes)
+		}
+	}
+	m.state.Release = nil
+	_, codes := publicationParityDiagnosticJSON(t, publicationReadback(context.Background(), m, p, 789, true, nil))
+	if !reflect.DeepEqual(codes, []string{"TAG_COMMIT", "RELEASE_PRESENT", "RELEASE_NOT_LATEST"}) {
+		t.Fatal("nil release lost independent predicates or invented dependent fields", codes)
+	}
+	for _, body := range []string{strings.ReplaceAll(p.Notes, "\n", "\r\n"), strings.TrimSuffix(p.Notes, "\n"), p.Notes + "\n"} {
+		m = newPublicationMock(p)
+		_, _ = m.CreateDraft(context.Background(), p)
+		m.state.Release.Body = body
+		_, codes := publicationParityDiagnosticJSON(t, publicationReadback(context.Background(), m, p, 789, true, nil))
+		if !reflect.DeepEqual(codes, []string{"RELEASE_BODY"}) {
+			t.Fatal("body normalization changed exact parity", codes)
+		}
+	}
+}
+
+func TestPublicationParityDiagnosticRedaction(t *testing.T) {
+	p := publicationUnitPlan(t)
+	m := newPublicationMock(p)
+	_, _ = m.CreateDraft(context.Background(), p)
+	const marker = "fixture-only-sensitive-marker\r\nAuthorization: Bearer fixture-only\nhttps://example.invalid/asset?sig=fixture-only&cookie=fixture-only\x00\x1b"
+	large := strings.Repeat(marker, 20000)
+	p.Tag, p.Notes, p.Authorization.SourceCommit, p.Authorization.Version = large, large, large, large
+	m.state.TagCommit = large + "observed"
+	m.state.Release.Tag, m.state.Release.Target, m.state.Release.Name, m.state.Release.Body = large+"tag", large+"target", large+"name", large+"body"
+	err := publicationReadback(context.Background(), m, p, 789, true, nil)
+	value, _ := publicationParityDiagnosticJSON(t, err)
+	for _, forbidden := range []string{"sensitive-marker", "Authorization", "Bearer", "example.invalid", "sig=", "cookie=", "\r", "\n", "\x00", "\x1b"} {
+		if strings.Contains(err.Error(), forbidden) {
+			t.Fatal("untrusted diagnostic text escaped redaction", forbidden)
+		}
+	}
+	var fingerprint struct {
+		Length int    `json:"length"`
+		SHA256 string `json:"sha256"`
+	}
+	if e := json.Unmarshal(value["observedTagCommit"], &fingerprint); e != nil || fingerprint.Length != len(m.state.TagCommit) || fingerprint.SHA256 != supplyDigest([]byte(m.state.TagCommit)) {
+		t.Fatal("fingerprint does not bind immediate bytes", e)
+	}
+	var observed struct {
+		Name, Body struct {
+			Length int    `json:"length"`
+			SHA256 string `json:"sha256"`
+		}
+	}
+	if e := json.Unmarshal(value["observedRelease"], &observed); e != nil || observed.Name.Length != len(m.state.Release.Name) || observed.Name.SHA256 != supplyDigest([]byte(m.state.Release.Name)) || observed.Body.Length != len(m.state.Release.Body) || observed.Body.SHA256 != supplyDigest([]byte(m.state.Release.Body)) {
+		t.Fatal("name/body evidence does not bind immediate bytes", e)
+	}
+}
+
+// These HTTP fixtures are independent JSON objects, not githubRelease values
+// serialized from publicationMock or echoes of the create response/payload.
+func TestPublicationParityProviderJSONFixtures(t *testing.T) {
+	dir, p := publicationFixture(t)
+	type fixture struct {
+		name      string
+		mutate    func(map[string]any)
+		codes     []string
+		readError bool
+		empty     bool
+		latest    bool
+		assets    bool
+	}
+	tests := []fixture{
+		{name: "missing-after-create", empty: true, codes: []string{"RELEASE_PRESENT"}},
+		{name: "different-positive-id", mutate: func(r map[string]any) { r["id"] = 901 }, codes: []string{"RELEASE_ID"}},
+		{name: "latest-conflict", latest: true, codes: []string{"RELEASE_NOT_LATEST"}},
+		{name: "unexpected-assets", assets: true, codes: []string{"ASSET_COUNT"}},
+		{name: "name-and-body", mutate: func(r map[string]any) {
+			r["name"], r["body"] = "fixture-only-private-name", "fixture-only-private-notes"
+		}, codes: []string{"RELEASE_NAME", "RELEASE_BODY"}},
+	}
+	fields := []struct{ field, code string }{{"id", ""}, {"tag_name", "RELEASE_PRESENT"}, {"target_commitish", "RELEASE_TARGET"}, {"name", "RELEASE_NAME"}, {"body", "RELEASE_BODY"}, {"draft", "RELEASE_DRAFT"}, {"prerelease", "RELEASE_PRERELEASE"}}
+	for _, field := range fields {
+		for _, mode := range []string{"missing", "null", "wrong-type"} {
+			f, mode := field, mode
+			one := fixture{name: f.field + "-" + mode, readError: mode == "wrong-type" || f.field == "id", mutate: func(r map[string]any) {
+				switch mode {
+				case "missing":
+					delete(r, f.field)
+				case "null":
+					r[f.field] = nil
+				case "wrong-type":
+					r[f.field] = []string{"fixture-only-private-type"}
+				}
+			}}
+			if !one.readError {
+				one.codes = []string{f.code}
+			}
+			tests = append(tests, one)
+		}
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			created, creates, uploads, publishes := false, 0, 0, 0
+			requests := map[string]int{}
+			raw := map[string]any{"id": 900, "tag_name": p.Tag, "target_commitish": p.Authorization.SourceCommit, "name": "FlashGate MCP " + p.Authorization.Version, "body": p.Notes, "draft": true, "prerelease": true}
+			if tc.mutate != nil {
+				tc.mutate(raw)
+			}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				endpoint := strings.TrimPrefix(r.URL.Path, "/repos/"+publicationRepository)
+				requests[r.Method+" "+endpoint]++
+				w.Header().Set("Content-Type", "application/json")
+				switch {
+				case r.Method == "POST" && endpoint == "/releases":
+					creates++
+					created = true
+					w.WriteHeader(http.StatusCreated)
+					_, _ = w.Write([]byte(`{"id":900}`))
+				case r.Method == "POST":
+					uploads++
+					w.WriteHeader(http.StatusInternalServerError)
+				case r.Method == "PATCH":
+					publishes++
+					w.WriteHeader(http.StatusInternalServerError)
+				case endpoint == "/git/ref/tags/"+p.Tag:
+					_ = json.NewEncoder(w).Encode(map[string]any{"ref": "refs/tags/" + p.Tag, "object": map[string]string{"type": "commit", "sha": p.Authorization.SourceCommit}})
+				case endpoint == "/releases":
+					if !created || tc.empty {
+						_, _ = w.Write([]byte("[]"))
+					} else {
+						_ = json.NewEncoder(w).Encode([]any{raw})
+					}
+				case endpoint == "/releases/latest":
+					if created && tc.latest {
+						_, _ = w.Write([]byte(`{"id":900}`))
+					} else {
+						http.NotFound(w, r)
+					}
+				case endpoint == "/releases/900/assets" || endpoint == "/releases/901/assets":
+					if tc.assets {
+						_, _ = w.Write([]byte(`[{"id":1,"name":"fixture-only-private-asset","size":1,"state":"uploaded"}]`))
+					} else {
+						_, _ = w.Write([]byte("[]"))
+					}
+				default:
+					t.Errorf("unexpected provider route: %s %s", r.Method, endpoint)
+					w.WriteHeader(http.StatusInternalServerError)
+				}
+			}))
+			defer server.Close()
+			g := &githubPublication{client: server.Client(), token: "fixture-only", api: server.URL, uploads: server.URL}
+			err := executePublication(context.Background(), g, p, dir, filepath.Join(t.TempDir(), "attempt.jsonl"))
+			if err == nil || creates != 1 || uploads != 0 || publishes != 0 || requests["GET /releases"] != 2 || requests["GET /git/ref/tags/"+p.Tag] != 2 {
+				t.Fatalf("failure did not stop at first readback: create=%d upload=%d publish=%d requests=%v err=%v", creates, uploads, publishes, requests, err)
+			}
+			for key, count := range requests {
+				if count > 2 || strings.HasPrefix(key, "POST ") && count != 1 {
+					t.Fatal("provider retry", requests)
+				}
+			}
+			if tc.readError {
+				if err.Error() != "HOLD before transfer: provider readback failed" {
+					t.Fatal("provider parse error misclassified", err)
+				}
+			} else {
+				if !strings.HasPrefix(err.Error(), "HOLD before transfer: ") {
+					t.Fatal("wrong failure boundary", err)
+				}
+				value, codes := publicationParityDiagnosticJSON(t, errors.New(strings.TrimPrefix(err.Error(), "HOLD before transfer: ")))
+				if !reflect.DeepEqual(codes, tc.codes) || string(value["createDraftID"]) != "900" {
+					t.Fatal("provider mismatch not diagnosed", codes)
+				}
+			}
+			for _, forbidden := range []string{"fixture-only-private", "Bearer", "sig=", "cookie="} {
+				if strings.Contains(err.Error(), forbidden) {
+					t.Fatal("provider text disclosed", err)
+				}
+			}
+		})
+	}
+}
+
+func TestPublicationParityProviderReadBoundaries(t *testing.T) {
+	p := publicationUnitPlan(t)
+	for _, name := range []string{"latest-404", "inspect-http-error", "inspect-malformed", "latest-null", "latest-wrong-type", "asset-read-error"} {
+		t.Run(name, func(t *testing.T) {
+			calls := map[string]int{}
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				endpoint := strings.TrimPrefix(r.URL.Path, "/repos/"+publicationRepository)
+				calls[endpoint]++
+				if r.Method != "GET" {
+					t.Error("readback issued a write")
+				}
+				switch endpoint {
+				case "/git/ref/tags/" + p.Tag:
+					_ = json.NewEncoder(w).Encode(map[string]any{"ref": "refs/tags/" + p.Tag, "object": map[string]string{"type": "commit", "sha": p.Authorization.SourceCommit}})
+				case "/releases":
+					if name == "inspect-http-error" {
+						w.WriteHeader(500)
+						_, _ = w.Write([]byte("fixture-only-private-provider-error?sig=fixture-only"))
+					} else if name == "inspect-malformed" {
+						_, _ = w.Write([]byte("fixture-only-private-not-json"))
+					} else {
+						_ = json.NewEncoder(w).Encode([]any{map[string]any{"id": 900, "tag_name": p.Tag, "target_commitish": p.Authorization.SourceCommit, "name": "FlashGate MCP " + p.Authorization.Version, "body": p.Notes, "draft": true, "prerelease": true}})
+					}
+				case "/releases/latest":
+					switch name {
+					case "latest-null":
+						_, _ = w.Write([]byte("null"))
+					case "latest-wrong-type":
+						_, _ = w.Write([]byte(`{"id":"fixture-only-private-id"}`))
+					default:
+						http.NotFound(w, r)
+					}
+				case "/releases/900/assets":
+					if name == "asset-read-error" {
+						_, _ = w.Write([]byte(`[{"id":"fixture-only-private-id"}]`))
+					} else {
+						_, _ = w.Write([]byte("[]"))
+					}
+				default:
+					t.Error("unexpected read route", endpoint)
+					w.WriteHeader(500)
+				}
+			}))
+			defer server.Close()
+			g := &githubPublication{client: server.Client(), token: "fixture-only", api: server.URL, uploads: server.URL}
+			err := publicationReadback(context.Background(), g, p, 900, true, nil)
+			if name == "latest-404" {
+				if err != nil || len(calls) != 4 {
+					t.Fatal("valid empty assets/latest absence rejected", err, calls)
+				}
+			} else if err == nil || err.Error() != "provider readback failed" {
+				t.Fatal("read error changed class or disclosed provider data", err)
+			}
+			for _, n := range calls {
+				if n != 1 {
+					t.Fatal("Inspect retried", calls)
+				}
+			}
+		})
+	}
+}
+
 func TestPublicationAuthorizationAndNotes(t *testing.T) {
 	p := publicationUnitPlan(t)
 	a := p.Authorization
