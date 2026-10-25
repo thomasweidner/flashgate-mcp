@@ -537,6 +537,10 @@ denial, malformed state or unexpected assets stop without fallback. The new
 journal cannot renew the old attempt. After publish, every public asset is
 read without API credentials or cookies and rehashed; an unavailable public
 download remains HOLD without compensation.
+Upload response negotiation and request body Content-Type are independent.
+Only a typed, bounded numeric HTTP status crosses the upload-to-CLI error
+boundary; provider response text and joined source-file close errors remain
+suppressed. No diagnostic adds a request, redirect, retry or acceptance tolerance.
 The [publication contract](prerelease-publication.md) describes the external
 authorization and recovery boundary; implementation alone proves no public release.
 BL-263 retains the independent stable Version 1.0 gate and stable publication;

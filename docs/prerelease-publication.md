@@ -201,6 +201,20 @@ digest. The continuation never calls CreateDraft. The existing upload-once,
 full downloaded-byte parity, publish-once and final/public-readback sequence
 then applies. Any unexpected asset or ambiguous write stops the sequence.
 
+## Upload media negotiation and failure diagnostics
+
+The release-asset POST sends `Accept: application/vnd.github+json` and
+`Content-Type: application/octet-stream` independently, with the unchanged
+original asset bytes and exact Content-Length. A non-201 response is a consumed,
+non-retryable write attempt, including 415, 422, 502 and redirects. A typed
+numeric HTTP status is retained through the publication CLI's HOLD boundary;
+untyped provider errors and joined file-close details remain suppressed.
+Response bodies, headers, query URLs and credential material are never copied
+into diagnostic output. Transport failures without an observed HTTP response
+retain the generic consumed-write HOLD and do not invent a status.
+The actual provider cause of any historical failed upload is not inferred
+from a subsequently observed empty asset inventory.
+
 ## Provider reads and diagnostics
 
 Provider requests use the [GitHub Releases API](https://docs.github.com/en/rest/releases/releases),

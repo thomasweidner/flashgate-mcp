@@ -83,6 +83,14 @@ publication tests; do not add a recovery framework or product dependency.
 Acceptance additionally covers list-invisible drafts, direct-ID errors and
 contradictions, exact empty-draft prestate, fresh continuation approval,
 unchanged manifest bytes, and credential-free public download verification.
+Upload acceptance also binds response negotiation independently from the raw
+request media type: JSON responses, octet-stream bodies and exact lengths.
+Retrofit the request helper, upload adapter and existing execution error
+boundary so only a typed numeric HTTP status survives a failed upload; never
+forward arbitrary provider or file-close errors. Adapter and complete
+continuation tests must prove one write, no redirect/retry and no sensitive
+diagnostic output. This is the same BL-363 correction scope and adds no
+dependency, release identity or recovery path.
 Hard prerequisites remain completed BL-245/248/255/262. Extend cmd/releaseaudit
 and consume verifySupply and candidate semantics without a second verifier.
 The separate manual publish-prerelease.yml job owns minimal release-write

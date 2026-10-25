@@ -712,6 +712,13 @@ observable boundaries; they do not prove whether a historical list omission
 was caused by visibility, consistency delay or another provider condition.
 The manual [publication procedure](prerelease-publication.md) remains separately
 authorized; BL-363 stays open until its real acceptance is demonstrated.
+Upload fixtures independently verify JSON response negotiation, octet-stream
+request bodies, exact bytes and Content-Length. HTTP 201 succeeds; 415, 422,
+502 and redirects are consumed failures without a second request. Complete
+continuation-path tests require the safe numeric status at the final CLI HOLD,
+including joined close-error cases, while untyped errors, response bodies,
+headers and URL/query details stay suppressed. Missing body Content-Type is
+rejected before dispatch; invalid or nil typed status values remain generic.
 
 ### Supply-chain producer and verifier validation
 

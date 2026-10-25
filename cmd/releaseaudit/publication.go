@@ -334,6 +334,16 @@ type publicationDownloadHTTPError struct {
 	redirected bool
 }
 
+// Upload failures expose only their numeric HTTP status to the execution path.
+// Provider text and errors joined while closing a source file remain private.
+type publicationUploadHTTPError struct {
+	statusCode int
+}
+
+func (e *publicationUploadHTTPError) Error() string {
+	return fmt.Sprintf("asset transfer failed or ambiguous (HTTP %d); consumed", e.statusCode)
+}
+
 func (e *publicationDownloadHTTPError) Error() string {
 	phase := "api_response"
 	if e.redirected {
@@ -566,6 +576,10 @@ func executePublicationTarget(ctx context.Context, p publicationProvider, plan p
 			err = errors.Join(err, file.Close())
 		}
 		if err != nil {
+			var status *publicationUploadHTTPError
+			if errors.As(err, &status) && status != nil && status.statusCode >= 100 && status.statusCode <= 599 {
+				return fmt.Errorf("HOLD: asset write failed or ambiguous (HTTP %d); no retry", status.statusCode)
+			}
 			return errors.New("HOLD: asset write failed or ambiguous; no retry")
 		}
 		transferred = append(transferred, asset)

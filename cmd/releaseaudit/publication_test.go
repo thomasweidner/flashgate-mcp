@@ -856,6 +856,9 @@ func TestPublicationGitHubAdapter(t *testing.T) {
 			w.WriteHeader(201)
 			response = map[string]any{"id": id}
 		case r.Method == "POST" && path == "/releases/789/assets":
+			if r.Header.Get("Accept") != "application/vnd.github+json" || r.Header.Get("Content-Type") != "application/octet-stream" {
+				t.Error("invalid release upload media negotiation")
+			}
 			writeRequests++
 			name := r.URL.Query().Get("name")
 			if err := mock.Upload(r.Context(), 789, publicationAsset{Name: name}, r.Body); err != nil {
@@ -887,6 +890,63 @@ func TestPublicationGitHubAdapter(t *testing.T) {
 	}
 	if writeRequests != len(plan.Assets)+3 {
 		t.Fatal("provider write count mismatch")
+	}
+}
+
+func TestPublicationGitHubUploadMediaContractAndFailureBoundary(t *testing.T) {
+	payload := []byte("fixture asset payload")
+	for _, scenario := range []struct {
+		name   string
+		status int
+	}{
+		{"created", http.StatusCreated},
+		{"unsupported-media", http.StatusUnsupportedMediaType},
+		{"duplicate-asset", http.StatusUnprocessableEntity},
+		{"upstream-failure", http.StatusBadGateway},
+		{"redirect-rejected", http.StatusTemporaryRedirect},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			calls := 0
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls++
+				if r.Method != http.MethodPost || r.URL.Path != "/repos/"+publicationRepository+"/releases/123/assets" || r.URL.Query().Get("name") != "candidate-manifest.json" {
+					t.Error("upload target or method mismatch")
+				}
+				if got := r.Header.Get("Accept"); got != "application/vnd.github+json" {
+					t.Errorf("incorrect upload Accept: %q", got)
+				}
+				if got := r.Header.Get("Content-Type"); got != "application/octet-stream" {
+					t.Errorf("incorrect upload Content-Type: %q", got)
+				}
+				if got := r.ContentLength; got != int64(len(payload)) {
+					t.Errorf("incorrect content length: %d", got)
+				}
+				if got, err := io.ReadAll(r.Body); err != nil || !bytes.Equal(got, payload) {
+					t.Error("upload payload modified")
+				}
+				if scenario.status == http.StatusTemporaryRedirect {
+					w.Header().Set("Location", "/another-upload")
+				}
+				w.WriteHeader(scenario.status)
+				// Provider content must never be reflected by the returned error.
+				_, _ = w.Write([]byte("sensitive-provider-error-content"))
+			}))
+			defer server.Close()
+			client := server.Client()
+			client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
+			g := &githubPublication{client: client, token: "test-only", api: server.URL, uploads: server.URL}
+			err := g.Upload(context.Background(), 123, publicationAsset{Name: "candidate-manifest.json", Size: int64(len(payload))}, bytes.NewReader(payload))
+			if calls != 1 {
+				t.Fatalf("upload must be attempted once, got %d", calls)
+			}
+			if scenario.status == http.StatusCreated {
+				if err != nil {
+					t.Fatalf("correct upload rejected: %v", err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("HTTP %d", scenario.status)) || strings.Contains(err.Error(), "sensitive-provider-error-content") {
+				t.Fatalf("unsafe upload failure classification: %v", err)
+			}
+		})
 	}
 }
 
