@@ -106,13 +106,14 @@ type githubObject struct {
 	Type string `json:"type"`
 }
 type githubRelease struct {
-	ID         int64  `json:"id"`
-	Tag        string `json:"tag_name"`
-	Target     string `json:"target_commitish"`
-	Name       string `json:"name"`
-	Body       string `json:"body"`
-	Draft      bool   `json:"draft"`
-	Prerelease bool   `json:"prerelease"`
+	ID          int64  `json:"id"`
+	Tag         string `json:"tag_name"`
+	Target      string `json:"target_commitish"`
+	Name        string `json:"name"`
+	Body        string `json:"body"`
+	Draft       bool   `json:"draft"`
+	Prerelease  bool   `json:"prerelease"`
+	PublishedAt string `json:"published_at"`
 }
 type githubAsset struct {
 	ID    int64  `json:"id"`
@@ -161,12 +162,26 @@ func (g *githubPublication) tagCommit(ctx context.Context, tag string) (string, 
 }
 
 func (g *githubPublication) Inspect(ctx context.Context, plan publicationPlan) (remotePublicationState, error) {
+	return g.inspect(ctx, plan, 0)
+}
+
+func (g *githubPublication) InspectRelease(ctx context.Context, plan publicationPlan, id int64) (remotePublicationState, error) {
+	if id < 1 {
+		return remotePublicationState{}, errors.New("positive release ID required")
+	}
+	return g.inspect(ctx, plan, id)
+}
+
+// The list still detects visible conflicting releases. It is not the authority
+// for the existence of a draft whose immutable ID is already known.
+func (g *githubPublication) inspect(ctx context.Context, plan publicationPlan, id int64) (remotePublicationState, error) {
 	state := remotePublicationState{}
 	commit, err := g.tagCommit(ctx, plan.Tag)
 	if err != nil {
 		return state, err
 	}
 	state.TagCommit = commit
+	var listed *githubRelease
 	for page := 1; page <= 100; page++ {
 		var releases []githubRelease
 		if _, err := g.readJSON(ctx, fmt.Sprintf("/releases?per_page=100&page=%d", page), &releases, false); err != nil {
@@ -174,12 +189,17 @@ func (g *githubPublication) Inspect(ctx context.Context, plan publicationPlan) (
 		}
 		for _, r := range releases {
 			if r.Tag != plan.Tag {
+				if id > 0 && r.ID == id {
+					return state, errors.New("bound release has conflicting listed tag")
+				}
 				continue
 			}
 			if state.Release != nil || r.ID < 1 {
 				return state, errors.New("release collision")
 			}
-			state.Release = &remotePublicationRelease{ID: r.ID, Tag: r.Tag, Target: r.Target, Name: r.Name, Body: r.Body, Draft: r.Draft, Prerelease: r.Prerelease}
+			state.Release = &remotePublicationRelease{ID: r.ID, Tag: r.Tag, Target: r.Target, Name: r.Name, Body: r.Body, Draft: r.Draft, Prerelease: r.Prerelease, PublishedAt: r.PublishedAt}
+			copy := r
+			listed = &copy
 		}
 		if len(releases) < 100 {
 			break
@@ -188,10 +208,31 @@ func (g *githubPublication) Inspect(ctx context.Context, plan publicationPlan) (
 			return state, errors.New("release pagination bound exceeded")
 		}
 	}
+	if id > 0 {
+		var raw json.RawMessage
+		var direct githubRelease
+		if _, err := g.readJSON(ctx, fmt.Sprintf("/releases/%d", id), &raw, false); err != nil {
+			return state, err // No fallback, create, or write follows an unavailable ID.
+		}
+		var flags struct {
+			Draft      *bool `json:"draft"`
+			Prerelease *bool `json:"prerelease"`
+		}
+		if json.Unmarshal(raw, &flags) != nil || flags.Draft == nil || flags.Prerelease == nil || json.Unmarshal(raw, &direct) != nil {
+			return state, errors.New("direct release flags or response unavailable")
+		}
+		if direct.ID != id || listed != nil && *listed != direct {
+			return state, errors.New("direct release identity conflicts with request or list")
+		}
+		state.Release = &remotePublicationRelease{ID: direct.ID, Tag: direct.Tag, Target: direct.Target, Name: direct.Name, Body: direct.Body, Draft: direct.Draft, Prerelease: direct.Prerelease, PublishedAt: direct.PublishedAt}
+	}
 	var latest githubRelease
 	if found, err := g.readJSON(ctx, "/releases/latest", &latest, true); err != nil {
 		return state, err
 	} else if found {
+		if latest.ID < 1 {
+			return state, errors.New("latest release identity unavailable")
+		}
 		state.LatestID = latest.ID
 	}
 	if state.Release != nil {
@@ -329,6 +370,32 @@ func (g *githubPublication) download(ctx context.Context, endpoint string, class
 	if err != nil {
 		return nil, err
 	}
+	return publicationDownloadResponse(ctx, &client, res, class)
+}
+
+// Both initial public reads and every redirect are credential- and cookie-free.
+// The URL is constructed from validated identity, never a provider-supplied URL.
+func (g *githubPublication) ReadPublicAsset(ctx context.Context, plan publicationPlan, asset publicationAsset) (io.ReadCloser, error) {
+	if plan.Tag != "v"+plan.Authorization.Version || validatePublicationAuthorization(plan.Authorization) != nil ||
+		publicationEvidencePath(asset.Name) != nil || strings.Contains(asset.Name, "/") {
+		return nil, errors.New("invalid public asset identity")
+	}
+	client := *g.client
+	client.Jar = nil
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
+	endpoint := "https://github.com/" + publicationRepository + "/releases/download/" + url.PathEscape(plan.Tag) + "/" + url.PathEscape(asset.Name)
+	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
+	if err != nil {
+		return nil, errors.New("invalid public download request")
+	}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, errors.New("public download transport failed")
+	}
+	return publicationDownloadResponse(ctx, &client, res, releaseAssetDownload)
+}
+
+func publicationDownloadResponse(ctx context.Context, client *http.Client, res *http.Response, class publicationDownloadClass) (io.ReadCloser, error) {
 	redirected := false
 	for redirects := 0; res.StatusCode == 302 || res.StatusCode == 301 || res.StatusCode == 307; redirects++ {
 		location := res.Header.Get("Location")

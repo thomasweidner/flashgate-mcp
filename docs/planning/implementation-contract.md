@@ -74,6 +74,15 @@ controls, and `BL-308` remains the architecture and ADR owner.
 ## BL-363 implementation binding
 
 Architecture role: release and validation, with a narrow provider adapter.
+The publication correction keeps that role: read a positively identified draft
+by its immutable provider ID, and add a separately authorized empty-draft
+continuation using the unchanged original publication manifest. Reuse the
+existing evidence verifier, upload/readback sequence, consumed-approval history
+and exclusive journal. Retrofit the GitHub adapter, manual workflow and
+publication tests; do not add a recovery framework or product dependency.
+Acceptance additionally covers list-invisible drafts, direct-ID errors and
+contradictions, exact empty-draft prestate, fresh continuation approval,
+unchanged manifest bytes, and credential-free public download verification.
 Hard prerequisites remain completed BL-245/248/255/262. Extend cmd/releaseaudit
 and consume verifySupply and candidate semantics without a second verifier.
 The separate manual publish-prerelease.yml job owns minimal release-write

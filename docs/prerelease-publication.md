@@ -117,11 +117,20 @@ or reuse a consumed approval. This relies on GitHub retaining that provider
 history; it is not an independent cryptographic replay ledger.
 
 PREFLIGHT verifies the source, notes, complete BL-248/255/262 evidence, external
-hash anchors, existing tag target and absent release. DRAFT STAGING creates a
-prerelease draft. EXACT ASSET TRANSFER uploads every original file once.
+hash anchors, existing tag target and absent release for a create authorization.
+DRAFT STAGING creates a prerelease draft. Its positive response ID is then read
+directly through `GET /releases/{release_id}`. The paginated release list still
+detects visible conflicts, but omission from that list is not treated as proof
+that a known draft is absent. A failed direct-ID read never triggers another
+create or an alternate read route. EXACT ASSET TRANSFER uploads every original file once.
 INDEPENDENT READBACK downloads all assets and checks names, sizes and SHA-256
 before PUBLICATION sets draft=false, prerelease=true and make_latest=false.
-FINAL READBACK repeats tag/release/asset parity and rejects a latest-release claim.
+FINAL READBACK repeats tag/release/asset parity, requires a valid publication
+timestamp and rejects a latest-release claim. Every asset is then downloaded
+through its constructed public release URL without API credentials or cookies
+and checked again for exact size and SHA-256. Another provider readback follows
+those public downloads. Public download failure is HOLD even after publication;
+it never causes rollback or a second publish.
 
 An exclusively created local journal records and fsyncs each write intent before
 the request. The workflow retains the plan and journal as diagnostic artifacts.
@@ -135,8 +144,64 @@ that publication was rolled back.
 Use read-only provider inspection to establish the actual release, tag and asset
 state after HOLD. Preserve the original approval, plan, journal and run evidence.
 Any repair, cleanup or further write requires a separately authorized exact
-target state and fresh preflight; this implementation accepts only absent-release
-creation, so it cannot resume or silently repair an existing draft.
+target state and fresh preflight. The only continuation supported below is an
+explicitly bound, entirely empty draft. Partially uploaded or published releases
+cannot be resumed or silently repaired.
+
+## Explicit empty-draft continuation
+
+Preserve the failed attempt's original authorization, exact generated plan,
+journal and run evidence. Obtain a new human approval for one positive release
+ID and the independently verified SHA-256 of that original plan. The new UTF-8
+authorization has exactly these seven fields:
+
+~~~json
+{
+  "schema": "flashgate-publication-continuation-authorization/v1",
+  "action": "COMPLETE_EMPTY_DRAFT_UPLOAD_READBACK_PUBLISH_PRERELEASE",
+  "repository": "thomasweidner/flashgate-mcp",
+  "releaseId": 123,
+  "preState": "EXACT_EMPTY_DRAFT",
+  "originalApproval": "new-unique-human-continuation-approval",
+  "planSha256": "<independently trusted SHA-256 of the exact original plan bytes>"
+}
+~~~
+
+The example is not an authorization. The approved plan digest binds its full
+original authorization, five evidence anchors, candidate run/attempt/artifact,
+frozen source, tag, notes and complete asset inventory. Reusing the original
+approval reference is rejected. The existing history gate also rejects any
+earlier dispatch of the new reference, including after JSON reformatting.
+Neither file content nor a local preflight authenticates human approval.
+
+Use the existing commands with the additional
+`--publication-manifest <unchanged-original-plan.json>` parameter. Without this
+file a continuation authorization is rejected; a create authorization cannot
+be used as a continuation. Local `publication-preflight` repeats the original
+source/evidence verification and reconstructs the original plan byte for byte.
+Its new output is a `flashgate-publication-continuation-plan/v1` containing the
+new authorization and its transport SHA-256. This execution plan is distinct
+from the unchanged original `publication-manifest.json` uploaded as the final
+asset. No new product build, inventory replacement or plan rebinding occurs.
+
+After independent review and separate dispatch approval, supply the exact
+original plan bytes in the workflow's `publication_manifest` input as well as
+the new authorization and its independently approved transport digest. The
+workflow hashes both inputs before checking out the exact frozen source. It
+retains the new execution plan, authorization, original plan and journal.
+
+Before opening the new exclusive journal, the continuation reads the exact
+release ID, tag target, latest state and dedicated asset endpoint. ID, tag,
+source, name, notes, draft/prerelease flags and unpublished state must agree;
+the asset inventory must be empty. A visible conflicting release or
+contradictory list/direct-ID response fails closed. A missing, forbidden,
+malformed or timed-out direct-ID response stops before upload, with no fallback.
+The journal binds the new authorization digest and unchanged original-plan
+digest. The continuation never calls CreateDraft. The existing upload-once,
+full downloaded-byte parity, publish-once and final/public-readback sequence
+then applies. Any unexpected asset or ambiguous write stops the sequence.
+
+## Provider reads and diagnostics
 
 Provider requests use the [GitHub Releases API](https://docs.github.com/en/rest/releases/releases),
 [asset API](https://docs.github.com/en/rest/releases/assets) and
@@ -164,8 +229,10 @@ The object binds `createDraftID`, `expectedTagCommit`, `observedTagCommit`,
 ID, tag, target, name, body, draft/prerelease flags and asset count. Every string,
 including expected strings and tag/commit values, is represented only by its
 decoded byte `length` and `sha256`. A missing release is `observedRelease=null`.
-The adapter's existing scalar decoding does not preserve whether an individual
-field was absent or JSON null; diagnostics must not claim that distinction.
+Direct-ID reads require explicit non-null boolean draft and prerelease flags;
+missing flags stop as provider-read failures. Other scalar decoding does not
+preserve whether an individual field was absent or JSON null; diagnostics must
+not claim that distinction.
 `latestID` must differ from `createDraftID`; the existing latest-endpoint 404
 handling remains unchanged. The create ID is the existing readback argument,
 not a new request or journal entry.

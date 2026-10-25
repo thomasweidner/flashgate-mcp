@@ -556,6 +556,12 @@ point exactly to its SourceCommitSHA. Remote readback binds release, tag,
 preflight and state machine; a narrow GitHub adapter owns provider calls.
 Only the manual publication job has release-write permission. Publication
 availability still requires a separately authorized real run and readback.
+Known drafts are read directly by immutable release ID; the release list is
+retained for conflict detection. A separate empty-draft continuation binds a
+new human approval to one exact ID and the unchanged original publication
+manifest. It reuses the existing verifier and one-shot transfer sequence, never
+recreates a release or resumes a partial asset set, and verifies public downloads
+without a privileged credential. These are publication-tooling changes only.
 See [prerelease publication](prerelease-publication.md) and
 [release scope](planning/release-scope.md).
 
