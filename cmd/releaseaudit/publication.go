@@ -339,14 +339,85 @@ func (e *publicationDownloadHTTPError) Error() string {
 	return fmt.Sprintf("download unavailable (HTTP %d, phase=%s)", e.statusCode, phase)
 }
 
+// Parity diagnostics carry only fixed codes, numeric/boolean values and string
+// fingerprints. Neither approved nor provider-controlled text crosses stderr.
+type publicationParityString struct {
+	Length int    `json:"length"`
+	SHA256 string `json:"sha256"`
+}
+
+func publicationParityFingerprint(value string) publicationParityString {
+	return publicationParityString{len(value), supplyDigest([]byte(value))}
+}
+
+type publicationParityRelease struct {
+	ID         int64                   `json:"id"`
+	Tag        publicationParityString `json:"tag"`
+	Target     publicationParityString `json:"target"`
+	Name       publicationParityString `json:"name"`
+	Body       publicationParityString `json:"body"`
+	Draft      bool                    `json:"draft"`
+	Prerelease bool                    `json:"prerelease"`
+	AssetCount int                     `json:"assetCount"`
+}
+
+func publicationParityReleaseEvidence(r *remotePublicationRelease) *publicationParityRelease {
+	if r == nil {
+		return nil
+	}
+	return &publicationParityRelease{r.ID, publicationParityFingerprint(r.Tag), publicationParityFingerprint(r.Target),
+		publicationParityFingerprint(r.Name), publicationParityFingerprint(r.Body), r.Draft, r.Prerelease, len(r.Assets)}
+}
+
+func publicationParityError(codes []string, state remotePublicationState, plan publicationPlan, id int64, draft bool, assetCount int) error {
+	expected := remotePublicationRelease{ID: id, Tag: plan.Tag, Target: plan.Authorization.SourceCommit,
+		Name: "FlashGate MCP " + plan.Authorization.Version, Body: plan.Notes, Draft: draft, Prerelease: true}
+	expectedEvidence := publicationParityReleaseEvidence(&expected)
+	expectedEvidence.AssetCount = assetCount
+	// This closed scalar structure cannot fail JSON marshaling. Its encoded size
+	// is bounded independently of all input strings and asset inventories.
+	data, _ := json.Marshal(struct {
+		Codes             []string                  `json:"codes"`
+		CreateDraftID     int64                     `json:"createDraftID"`
+		ExpectedTagCommit publicationParityString   `json:"expectedTagCommit"`
+		ObservedTagCommit publicationParityString   `json:"observedTagCommit"`
+		ExpectedRelease   *publicationParityRelease `json:"expectedRelease"`
+		ObservedRelease   *publicationParityRelease `json:"observedRelease"`
+		LatestID          int64                     `json:"latestID"`
+	}{codes, id, publicationParityFingerprint(plan.Authorization.SourceCommit), publicationParityFingerprint(state.TagCommit),
+		expectedEvidence, publicationParityReleaseEvidence(state.Release), state.LatestID})
+	return fmt.Errorf("remote release parity failed: %s", data)
+}
+
 func publicationReadback(ctx context.Context, p publicationProvider, plan publicationPlan, id int64, draft bool, assets []publicationAsset) error {
 	state, err := p.Inspect(ctx, plan)
 	if err != nil {
 		return errors.New("provider readback failed")
 	}
 	r := state.Release
-	if state.TagCommit != plan.Authorization.SourceCommit || r == nil || r.ID != id || r.Tag != plan.Tag || r.Target != plan.Authorization.SourceCommit || r.Name != "FlashGate MCP "+plan.Authorization.Version || r.Body != plan.Notes || r.Draft != draft || !r.Prerelease || state.LatestID == id || len(r.Assets) != len(assets) {
-		return errors.New("remote release parity failed")
+	var codes []string
+	check := func(failed bool, code string) {
+		if failed {
+			codes = append(codes, code)
+		}
+	}
+	check(state.TagCommit != plan.Authorization.SourceCommit, "TAG_COMMIT")
+	check(r == nil, "RELEASE_PRESENT")
+	if r != nil {
+		check(r.ID != id, "RELEASE_ID")
+		check(r.Tag != plan.Tag, "RELEASE_TAG")
+		check(r.Target != plan.Authorization.SourceCommit, "RELEASE_TARGET")
+		check(r.Name != "FlashGate MCP "+plan.Authorization.Version, "RELEASE_NAME")
+		check(r.Body != plan.Notes, "RELEASE_BODY")
+		check(r.Draft != draft, "RELEASE_DRAFT")
+		check(!r.Prerelease, "RELEASE_PRERELEASE")
+	}
+	check(state.LatestID == id, "RELEASE_NOT_LATEST")
+	if r != nil {
+		check(len(r.Assets) != len(assets), "ASSET_COUNT")
+	}
+	if len(codes) != 0 {
+		return publicationParityError(codes, state, plan, id, draft, len(assets))
 	}
 	seen := map[int64]bool{}
 	byName := map[string]remotePublicationAsset{}

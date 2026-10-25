@@ -149,6 +149,36 @@ other provider/transport failures remain generic. No additional request, retry o
 fallback is performed for diagnosis. Writes
 never follow redirects; read-only download redirects omit the job credential.
 
+Release-state parity failures retain the stable prefix
+`remote release parity failed: ` followed by one bounded JSON object (at most
+4096 bytes including the prefix). Its `codes` array lists every observed failed
+condition in this fixed order: `TAG_COMMIT`, `RELEASE_PRESENT`, `RELEASE_ID`,
+`RELEASE_TAG`, `RELEASE_TARGET`, `RELEASE_NAME`, `RELEASE_BODY`, `RELEASE_DRAFT`,
+`RELEASE_PRERELEASE`, `RELEASE_NOT_LATEST`, `ASSET_COUNT`. With no observed release,
+release-dependent conditions are unavailable and omitted; independent tag/latest
+conditions are still reported. Multiple codes describe simultaneous mismatches,
+not one asserted root cause.
+
+The object binds `createDraftID`, `expectedTagCommit`, `observedTagCommit`,
+`expectedRelease`, `observedRelease` and `latestID`. Release projections contain
+ID, tag, target, name, body, draft/prerelease flags and asset count. Every string,
+including expected strings and tag/commit values, is represented only by its
+decoded byte `length` and `sha256`. A missing release is `observedRelease=null`.
+The adapter's existing scalar decoding does not preserve whether an individual
+field was absent or JSON null; diagnostics must not claim that distinction.
+`latestID` must differ from `createDraftID`; the existing latest-endpoint 404
+handling remains unchanged. The create ID is the existing readback argument,
+not a new request or journal entry.
+
+No raw response, free text, release notes, URL/query, header, cookie, credential,
+or wrapped provider error is emitted. Inspect/API-read failures remain the
+separate generic `provider readback failed` class; asset conflicts, download
+failures and byte-parity failures retain their existing classes. A mismatch
+code records the immediate comparison result, not proof of its external cause
+or an explanation of an earlier attempt whose responses were not retained.
+These diagnostics add no provider call, retry, fallback or acceptance tolerance,
+and do not authorize reuse of a consumed approval or repair of an existing draft.
+
 Actions artifact ZIP downloads request `application/vnd.github+json` from the
 initial artifact API endpoint, which returns the archive redirect. Release-asset
 binary downloads request `application/octet-stream` and accept a direct binary
