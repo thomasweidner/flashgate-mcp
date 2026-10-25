@@ -700,6 +700,16 @@ reject traversal, duplicate/case-colliding names, links and special entries.
 Run both platform quality chains, shell/workflow policy, build-input and
 documentation gates, Linux race and the unchanged product coverage thresholds.
 Local mocks do not prove hosted publication, retention or real provider readback.
+Empty-draft continuation regressions additionally bind a new approval and the
+unchanged original plan, reject reuse of the consumed original approval, and
+exercise positive-ID reads with hidden or conflicting list entries, HTTP
+403/404, transport deadline, malformed/duplicate JSON and mismatched identity.
+They reject nonempty drafts before upload, cover the full 40-asset sequence,
+every consumed write failure and final/public download failure, and prove no
+recreate, write retry or credential-bearing public download. A missing or
+invalid publication timestamp also prevents success. These fixtures classify
+observable boundaries; they do not prove whether a historical list omission
+was caused by visibility, consistency delay or another provider condition.
 The manual [publication procedure](prerelease-publication.md) remains separately
 authorized; BL-363 stays open until its real acceptance is demonstrated.
 

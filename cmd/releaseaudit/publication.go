@@ -308,6 +308,7 @@ type remotePublicationRelease struct {
 	ID                      int64
 	Tag, Target, Name, Body string
 	Draft, Prerelease       bool
+	PublishedAt             string
 	Assets                  []remotePublicationAsset
 }
 type remotePublicationState struct {
@@ -318,7 +319,9 @@ type remotePublicationState struct {
 
 type publicationProvider interface {
 	Inspect(context.Context, publicationPlan) (remotePublicationState, error)
+	InspectRelease(context.Context, publicationPlan, int64) (remotePublicationState, error)
 	ReadAsset(context.Context, int64) (io.ReadCloser, error)
+	ReadPublicAsset(context.Context, publicationPlan, publicationAsset) (io.ReadCloser, error)
 	CreateDraft(context.Context, publicationPlan) (int64, error)
 	Upload(context.Context, int64, publicationAsset, io.Reader) error
 	Publish(context.Context, int64, publicationPlan) error
@@ -390,7 +393,7 @@ func publicationParityError(codes []string, state remotePublicationState, plan p
 }
 
 func publicationReadback(ctx context.Context, p publicationProvider, plan publicationPlan, id int64, draft bool, assets []publicationAsset) error {
-	state, err := p.Inspect(ctx, plan)
+	state, err := p.InspectRelease(ctx, plan, id)
 	if err != nil {
 		return errors.New("provider readback failed")
 	}
@@ -418,6 +421,14 @@ func publicationReadback(ctx context.Context, p publicationProvider, plan public
 	}
 	if len(codes) != 0 {
 		return publicationParityError(codes, state, plan, id, draft, len(assets))
+	}
+	if draft && r.PublishedAt != "" {
+		return errors.New("draft has contradictory publication timestamp")
+	}
+	if !draft {
+		if _, err := time.Parse(time.RFC3339, r.PublishedAt); err != nil {
+			return errors.New("remote publication timestamp unavailable")
+		}
 	}
 	seen := map[int64]bool{}
 	byName := map[string]remotePublicationAsset{}
@@ -452,8 +463,17 @@ func publicationReadback(ctx context.Context, p publicationProvider, plan public
 // A journal is exclusively created before a write. Each intent is fsynced
 // before dispatch. No error path retries, rolls back or changes provider.
 func executePublication(ctx context.Context, p publicationProvider, plan publicationPlan, dir, journal string) (result error) {
+	return executePublicationTarget(ctx, p, plan, dir, journal, 0, plan.AuthorizationSHA256)
+}
+
+// A positive target is supplied only by a separately bound continuation. The
+// original publication manifest is identical in the create and continue paths.
+func executePublicationTarget(ctx context.Context, p publicationProvider, plan publicationPlan, dir, journal string, target int64, attemptAnchor string) (result error) {
 	if err := validatePublicationAuthorization(plan.Authorization); err != nil {
 		return err
+	}
+	if !hashPattern.MatchString(attemptAnchor) || plan.Schema != "flashgate-publication-manifest/v1" || plan.Tag != "v"+plan.Authorization.Version || supplyDigest([]byte(plan.Notes)) != plan.Authorization.NotesSHA256 {
+		return errors.New("PREFLIGHT HOLD: publication plan binding mismatch")
 	}
 	a := plan.Authorization
 	if err := verifySupply(dir, a.Version, a.SourceCommit, a.ManifestSHA256, a.IndexSHA256, nil); err != nil {
@@ -468,9 +488,18 @@ func executePublication(ctx context.Context, p publicationProvider, plan publica
 		return err
 	}
 	defer root.Close()
-	state, err := p.Inspect(ctx, plan)
-	if err != nil || state.TagCommit != plan.Authorization.SourceCommit || state.Release != nil {
-		return errors.New("PREFLIGHT HOLD: tag/release prestate conflict or unavailable")
+	if target == 0 {
+		state, err := p.Inspect(ctx, plan)
+		if err != nil || state.TagCommit != plan.Authorization.SourceCommit || state.Release != nil {
+			return errors.New("PREFLIGHT HOLD: tag/release prestate conflict or unavailable")
+		}
+	} else {
+		if target < 1 {
+			return errors.New("PREFLIGHT HOLD: positive continuation release ID required")
+		}
+		if err := publicationReadback(ctx, p, plan, target, true, nil); err != nil {
+			return fmt.Errorf("PREFLIGHT HOLD empty draft: %w", err)
+		}
 	}
 	manifest, err := supplyJSON(plan)
 	if err != nil {
@@ -488,8 +517,9 @@ func executePublication(ctx context.Context, p publicationProvider, plan publica
 	intent := func(phase, action string, id int64) error {
 		data, err := json.Marshal(struct {
 			Plan, Phase, Action string
+			Authorization       string
 			ReleaseID           int64
-		}{planHash, phase, action, id})
+		}{planHash, phase, action, attemptAnchor, id})
 		if err != nil {
 			return err
 		}
@@ -498,12 +528,17 @@ func executePublication(ctx context.Context, p publicationProvider, plan publica
 		}
 		return log.Sync()
 	}
-	if err := intent("DRAFT_STAGING", "CREATE_ONCE", 0); err != nil {
+	id := target
+	if target == 0 {
+		if err := intent("DRAFT_STAGING", "CREATE_ONCE", 0); err != nil {
+			return err
+		}
+		id, err = p.CreateDraft(ctx, plan)
+		if err != nil || id < 1 {
+			return errors.New("HOLD: draft write failed or ambiguous; read-only reconciliation required")
+		}
+	} else if err := intent("EMPTY_DRAFT_CONTINUATION", "CONTINUE_ONCE", id); err != nil {
 		return err
-	}
-	id, err := p.CreateDraft(ctx, plan)
-	if err != nil || id < 1 {
-		return errors.New("HOLD: draft write failed or ambiguous; read-only reconciliation required")
 	}
 	transferred := []publicationAsset{}
 	all := append(append([]publicationAsset{}, plan.Assets...), publicationAsset{"publication-manifest.json", "", int64(len(manifest)), planHash})
@@ -547,6 +582,19 @@ func executePublication(ctx context.Context, p publicationProvider, plan publica
 	if err := publicationReadback(ctx, p, plan, id, false, all); err != nil {
 		return fmt.Errorf("HOLD final readback: %w", err)
 	}
+	for _, asset := range all {
+		stream, err := p.ReadPublicAsset(ctx, plan, asset)
+		if err != nil {
+			return errors.New("HOLD public download unavailable")
+		}
+		digest, size, err := publicationHash(stream, asset.Size)
+		if err != nil || size != asset.Size || digest != asset.SHA256 {
+			return errors.New("HOLD public download byte parity failed")
+		}
+	}
+	if err := publicationReadback(ctx, p, plan, id, false, all); err != nil {
+		return fmt.Errorf("HOLD after public download: %w", err)
+	}
 	return intent("FINAL_READBACK", "VERIFIED_PUBLIC_PRERELEASE", id)
 }
 
@@ -557,15 +605,20 @@ func runPublication(arguments []string, mode string) error {
 	authPath := flags.String("authorization", "", "externally approved authorization JSON")
 	anchor := flags.String("authorization-sha256", "", "external authorization SHA-256")
 	output := flags.String("output", "", "new plan output or attempt journal")
+	manifestPath := flags.String("publication-manifest", "", "unchanged original plan for an authorized empty-draft continuation")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
 	if flags.NArg() != 0 || *dir == "" || *authPath == "" {
 		return errors.New("publication requires dir, authorization and no positional arguments")
 	}
-	a, err := readPublicationAuthorization(*authPath, *anchor)
+	a, continuation, original, err := readPublicationRequest(*authPath, *anchor, *manifestPath)
 	if err != nil {
 		return err
+	}
+	approval := a.OriginalApproval
+	if continuation != nil {
+		approval = continuation.OriginalApproval
 	}
 	if mode == "download" || mode == "publish" {
 		provider, err := newGitHubPublication(a, *anchor)
@@ -574,7 +627,7 @@ func runPublication(arguments []string, mode string) error {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Minute)
 		defer cancel()
-		if err := provider.checkAttempt(ctx, a.OriginalApproval); err != nil {
+		if err := provider.checkAttempt(ctx, approval); err != nil {
 			return err
 		}
 		if mode == "download" {
@@ -586,23 +639,29 @@ func runPublication(arguments []string, mode string) error {
 		if *root == "" || *output == "" {
 			return errors.New("publish requires source and new journal")
 		}
-		plan, err := preparePublication(*root, *dir, a, *anchor)
+		plan, err := preparePublicationRequest(*root, *dir, a, *anchor, continuation, original)
 		if err != nil {
 			return err
 		}
 		if err := provider.verifyEvidenceOrigin(ctx, a); err != nil {
 			return err
 		}
+		if continuation != nil {
+			return executePublicationTarget(ctx, provider, plan, *dir, *output, continuation.ReleaseID, *anchor)
+		}
 		return executePublication(ctx, provider, plan, *dir, *output)
 	}
 	if mode != "preflight" || *root == "" || *output == "" {
 		return errors.New("preflight requires source and new plan output")
 	}
-	plan, err := preparePublication(*root, *dir, a, *anchor)
+	plan, err := preparePublicationRequest(*root, *dir, a, *anchor, continuation, original)
 	if err != nil {
 		return err
 	}
 	data, err := supplyJSON(plan)
+	if continuation != nil {
+		data, err = supplyJSON(publicationContinuationPlan{"flashgate-publication-continuation-plan/v1", *continuation, *anchor})
+	}
 	if err != nil {
 		return err
 	}

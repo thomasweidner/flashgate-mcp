@@ -528,6 +528,15 @@ history check rejecting any earlier dispatch of the same original approval,
 including reserialized authorization JSON with a different transport hash.
 No write redirect, retry, provider fallback, tag creation, deletion or asset
 replacement is implemented. A partial draft remains for human reconciliation.
+An explicitly approved empty-draft continuation uses a new consumed-approval
+reference and authorization digest, an exact positive release ID and the
+unchanged original manifest digest. Direct-ID and dedicated asset reads must
+prove the complete authorized identity and zero assets before any upload.
+List omission alone is not absence; visible conflicting identity, direct-ID
+denial, malformed state or unexpected assets stop without fallback. The new
+journal cannot renew the old attempt. After publish, every public asset is
+read without API credentials or cookies and rehashed; an unavailable public
+download remains HOLD without compensation.
 The [publication contract](prerelease-publication.md) describes the external
 authorization and recovery boundary; implementation alone proves no public release.
 BL-263 retains the independent stable Version 1.0 gate and stable publication;

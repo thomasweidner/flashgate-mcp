@@ -121,12 +121,23 @@ func (m *publicationMock) Inspect(_ context.Context, _ publicationPlan) (remoteP
 	}
 	return m.state, nil
 }
+func (m *publicationMock) InspectRelease(ctx context.Context, plan publicationPlan, _ int64) (remotePublicationState, error) {
+	return m.Inspect(ctx, plan)
+}
 func (m *publicationMock) ReadAsset(_ context.Context, id int64) (io.ReadCloser, error) {
 	data := m.data[id]
 	if m.corrupt {
 		data = append(append([]byte{}, data...), 1)
 	}
 	return io.NopCloser(bytes.NewReader(data)), nil
+}
+func (m *publicationMock) ReadPublicAsset(ctx context.Context, _ publicationPlan, asset publicationAsset) (io.ReadCloser, error) {
+	for _, remote := range m.state.Release.Assets {
+		if remote.Name == asset.Name {
+			return m.ReadAsset(ctx, remote.ID)
+		}
+	}
+	return nil, errors.New("public asset absent")
 }
 func (m *publicationMock) write() error {
 	m.writes++
@@ -160,6 +171,7 @@ func (m *publicationMock) Publish(_ context.Context, _ int64, _ publicationPlan)
 		return err
 	}
 	m.state.Release.Draft = false
+	m.state.Release.PublishedAt = "2026-10-25T00:00:00Z"
 	return nil
 }
 
@@ -358,6 +370,7 @@ func TestPublicationParityDiagnostics(t *testing.T) {
 		}
 	}
 	m.state.Release.Draft = false
+	m.state.Release.PublishedAt = "2026-10-25T00:00:00Z"
 	if err := publicationReadback(context.Background(), m, p, 789, false, nil); err != nil {
 		t.Fatal("published-state positive parity", err)
 	}
@@ -438,19 +451,19 @@ func TestPublicationParityProviderJSONFixtures(t *testing.T) {
 		assets    bool
 	}
 	tests := []fixture{
-		{name: "missing-after-create", empty: true, codes: []string{"RELEASE_PRESENT"}},
-		{name: "different-positive-id", mutate: func(r map[string]any) { r["id"] = 901 }, codes: []string{"RELEASE_ID"}},
+		{name: "missing-after-create", empty: true, readError: true},
+		{name: "different-positive-id", mutate: func(r map[string]any) { r["id"] = 901 }, readError: true},
 		{name: "latest-conflict", latest: true, codes: []string{"RELEASE_NOT_LATEST"}},
 		{name: "unexpected-assets", assets: true, codes: []string{"ASSET_COUNT"}},
 		{name: "name-and-body", mutate: func(r map[string]any) {
 			r["name"], r["body"] = "fixture-only-private-name", "fixture-only-private-notes"
 		}, codes: []string{"RELEASE_NAME", "RELEASE_BODY"}},
 	}
-	fields := []struct{ field, code string }{{"id", ""}, {"tag_name", "RELEASE_PRESENT"}, {"target_commitish", "RELEASE_TARGET"}, {"name", "RELEASE_NAME"}, {"body", "RELEASE_BODY"}, {"draft", "RELEASE_DRAFT"}, {"prerelease", "RELEASE_PRERELEASE"}}
+	fields := []struct{ field, code string }{{"id", ""}, {"tag_name", "RELEASE_TAG"}, {"target_commitish", "RELEASE_TARGET"}, {"name", "RELEASE_NAME"}, {"body", "RELEASE_BODY"}, {"draft", "RELEASE_DRAFT"}, {"prerelease", "RELEASE_PRERELEASE"}}
 	for _, field := range fields {
 		for _, mode := range []string{"missing", "null", "wrong-type"} {
 			f, mode := field, mode
-			one := fixture{name: f.field + "-" + mode, readError: mode == "wrong-type" || f.field == "id", mutate: func(r map[string]any) {
+			one := fixture{name: f.field + "-" + mode, readError: mode == "wrong-type" || f.field == "id" || f.field == "tag_name" || f.field == "draft" || f.field == "prerelease", mutate: func(r map[string]any) {
 				switch mode {
 				case "missing":
 					delete(r, f.field)
@@ -503,6 +516,12 @@ func TestPublicationParityProviderJSONFixtures(t *testing.T) {
 						_, _ = w.Write([]byte(`{"id":900}`))
 					} else {
 						http.NotFound(w, r)
+					}
+				case endpoint == "/releases/900":
+					if tc.empty {
+						http.NotFound(w, r)
+					} else {
+						_ = json.NewEncoder(w).Encode(raw)
 					}
 				case endpoint == "/releases/900/assets" || endpoint == "/releases/901/assets":
 					if tc.assets {
@@ -571,6 +590,8 @@ func TestPublicationParityProviderReadBoundaries(t *testing.T) {
 					} else {
 						_ = json.NewEncoder(w).Encode([]any{map[string]any{"id": 900, "tag_name": p.Tag, "target_commitish": p.Authorization.SourceCommit, "name": "FlashGate MCP " + p.Authorization.Version, "body": p.Notes, "draft": true, "prerelease": true}})
 					}
+				case "/releases/900":
+					_ = json.NewEncoder(w).Encode(map[string]any{"id": 900, "tag_name": p.Tag, "target_commitish": p.Authorization.SourceCommit, "name": "FlashGate MCP " + p.Authorization.Version, "body": p.Notes, "draft": true, "prerelease": true})
 				case "/releases/latest":
 					switch name {
 					case "latest-null":
@@ -595,7 +616,7 @@ func TestPublicationParityProviderReadBoundaries(t *testing.T) {
 			g := &githubPublication{client: server.Client(), token: "fixture-only", api: server.URL, uploads: server.URL}
 			err := publicationReadback(context.Background(), g, p, 900, true, nil)
 			if name == "latest-404" {
-				if err != nil || len(calls) != 4 {
+				if err != nil || len(calls) != 5 {
 					t.Fatal("valid empty assets/latest absence rejected", err, calls)
 				}
 			} else if err == nil || err.Error() != "provider readback failed" {
@@ -776,6 +797,20 @@ func TestPublicationGitHubAdapter(t *testing.T) {
 	mock := newPublicationMock(plan)
 	writeRequests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/"+publicationRepository+"/releases/download/") {
+			if r.Header.Get("Authorization") != "" || r.Header.Get("Cookie") != "" {
+				t.Error("credential leaked to public download")
+			}
+			name := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+			for _, asset := range mock.state.Release.Assets {
+				if asset.Name == name {
+					_, _ = w.Write(mock.data[asset.ID])
+					return
+				}
+			}
+			http.NotFound(w, r)
+			return
+		}
 		if r.Header.Get("Authorization") != "Bearer test-only" {
 			t.Error("missing job credential")
 		}
@@ -792,9 +827,12 @@ func TestPublicationGitHubAdapter(t *testing.T) {
 		case r.Method == "GET" && path == "/releases":
 			releases := []githubRelease{}
 			if m := mock.state.Release; m != nil {
-				releases = append(releases, githubRelease{ID: m.ID, Tag: m.Tag, Target: m.Target, Name: m.Name, Body: m.Body, Draft: m.Draft, Prerelease: m.Prerelease})
+				releases = append(releases, githubRelease{ID: m.ID, Tag: m.Tag, Target: m.Target, Name: m.Name, Body: m.Body, Draft: m.Draft, Prerelease: m.Prerelease, PublishedAt: m.PublishedAt})
 			}
 			response = releases
+		case r.Method == "GET" && path == "/releases/789":
+			m := mock.state.Release
+			response = githubRelease{ID: m.ID, Tag: m.Tag, Target: m.Target, Name: m.Name, Body: m.Body, Draft: m.Draft, Prerelease: m.Prerelease, PublishedAt: m.PublishedAt}
 		case r.Method == "GET" && path == "/releases/789/assets":
 			assets := []githubAsset{}
 			for _, a := range mock.state.Release.Assets {
@@ -842,7 +880,8 @@ func TestPublicationGitHubAdapter(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
-	g := &githubPublication{client: server.Client(), token: "test-only", api: server.URL, uploads: server.URL}
+	client := &http.Client{Transport: publicationLocalDownloadTransport(t, server, func(*http.Request) {})}
+	g := &githubPublication{client: client, token: "test-only", api: server.URL, uploads: server.URL}
 	if err := executePublication(context.Background(), g, plan, dir, filepath.Join(t.TempDir(), "attempt.jsonl")); err != nil {
 		t.Fatal(err)
 	}

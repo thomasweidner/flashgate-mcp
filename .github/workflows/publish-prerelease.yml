@@ -5,12 +5,17 @@ on:
   workflow_dispatch:
     inputs:
       authorization:
-        description: Externally approved flashgate-publication-authorization/v1 JSON
+        description: Externally approved create or empty-draft continuation authorization JSON
         required: true
         type: string
       authorization_sha256:
         description: Independently trusted SHA-256 of the exact authorization bytes
         required: true
+        type: string
+      publication_manifest:
+        description: Exact original publication plan bytes; required only for empty-draft continuation
+        required: false
+        default: ''
         type: string
 
 permissions:
@@ -68,6 +73,7 @@ jobs:
       - name: Bind authorization without shell interpolation
         env:
           PUBLICATION_AUTHORIZATION: ${{ inputs.authorization }}
+          PUBLICATION_MANIFEST: ${{ inputs.publication_manifest }}
         shell: python
         run: |
           import hashlib, json, os, pathlib
@@ -78,7 +84,15 @@ jobs:
           with (root / 'authorization.json').open('xb') as output:
               output.write(data)
           value = json.loads(data)
-          commit = value['sourceCommit']
+          original = os.environ['PUBLICATION_MANIFEST'].encode('utf-8')
+          if value['schema'] == 'flashgate-publication-continuation-authorization/v1':
+              assert hashlib.sha256(original).hexdigest() == value['planSha256']
+              with (root / 'original-plan.json').open('xb') as output:
+                  output.write(original)
+              commit = json.loads(original)['authorization']['sourceCommit']
+          else:
+              assert value['schema'] == 'flashgate-publication-authorization/v1' and not original
+              commit = value['sourceCommit']
           assert len(commit) == 40 and all(c in '0123456789abcdef' for c in commit)
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write('commit=' + commit + '\n')
@@ -103,7 +117,12 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          manifest_args=()
+          if [[ -f "$FLASHGATE_WORK_ROOT/original-plan.json" ]]; then
+            manifest_args=(--publication-manifest "$FLASHGATE_WORK_ROOT/original-plan.json")
+          fi
           "$FLASHGATE_WORK_ROOT/releaseaudit" publication-download \
+            "${manifest_args[@]}" \
             --dir "$FLASHGATE_WORK_ROOT/evidence" \
             --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
             --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256"
@@ -112,7 +131,12 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          manifest_args=()
+          if [[ -f "$FLASHGATE_WORK_ROOT/original-plan.json" ]]; then
+            manifest_args=(--publication-manifest "$FLASHGATE_WORK_ROOT/original-plan.json")
+          fi
           "$FLASHGATE_WORK_ROOT/releaseaudit" publication-preflight \
+            "${manifest_args[@]}" \
             --root "$GITHUB_WORKSPACE/source" --dir "$FLASHGATE_WORK_ROOT/evidence" \
             --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
             --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256" \
@@ -124,7 +148,12 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          manifest_args=()
+          if [[ -f "$FLASHGATE_WORK_ROOT/original-plan.json" ]]; then
+            manifest_args=(--publication-manifest "$FLASHGATE_WORK_ROOT/original-plan.json")
+          fi
           "$FLASHGATE_WORK_ROOT/releaseaudit" publication-publish \
+            "${manifest_args[@]}" \
             --root "$GITHUB_WORKSPACE/source" --dir "$FLASHGATE_WORK_ROOT/evidence" \
             --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
             --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256" \
@@ -138,5 +167,7 @@ jobs:
           path: |
             ${{ env.FLASHGATE_WORK_ROOT }}/plan.json
             ${{ env.FLASHGATE_WORK_ROOT }}/attempt.jsonl
+            ${{ env.FLASHGATE_WORK_ROOT }}/authorization.json
+            ${{ env.FLASHGATE_WORK_ROOT }}/original-plan.json
           if-no-files-found: warn
           retention-days: 90
