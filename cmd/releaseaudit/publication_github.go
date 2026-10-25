@@ -41,7 +41,7 @@ func newGitHubPublication(a publicationAuthorization, anchor string) (*githubPub
 	return &githubPublication{client: &http.Client{Timeout: 5 * time.Minute, CheckRedirect: func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }}, token: os.Getenv("GH_TOKEN"), runID: run, api: githubAPI, uploads: githubUploads}, nil
 }
 
-func (g *githubPublication) request(ctx context.Context, method, endpoint, accept string, body io.Reader, size int64) (*http.Response, error) {
+func (g *githubPublication) request(ctx context.Context, method, endpoint, accept, contentType string, body io.Reader, size int64) (*http.Response, error) {
 	// Endpoints are constructed from fixed repository paths and validated IDs.
 	if !strings.HasPrefix(endpoint, g.api+"/") && !strings.HasPrefix(endpoint, g.uploads+"/") {
 		return nil, errors.New("provider endpoint rejected")
@@ -56,10 +56,10 @@ func (g *githubPublication) request(ctx context.Context, method, endpoint, accep
 	req.Header.Set("User-Agent", "flashgate-releaseaudit")
 	if body != nil {
 		req.ContentLength = size
-		req.Header.Set("Content-Type", "application/json")
-		if accept == "application/octet-stream" {
-			req.Header.Set("Content-Type", accept)
+		if contentType == "" {
+			return nil, errors.New("provider content type missing")
 		}
+		req.Header.Set("Content-Type", contentType)
 	}
 	res, err := g.client.Do(req)
 	if err != nil {
@@ -73,7 +73,7 @@ func (g *githubPublication) endpoint(path string) string {
 }
 
 func (g *githubPublication) readJSON(ctx context.Context, path string, value any, absentOK bool) (bool, error) {
-	res, err := g.request(ctx, "GET", g.endpoint(path), "application/vnd.github+json", nil, 0)
+	res, err := g.request(ctx, "GET", g.endpoint(path), "application/vnd.github+json", "", nil, 0)
 	if err != nil {
 		return false, err
 	}
@@ -260,7 +260,7 @@ func (g *githubPublication) mutate(ctx context.Context, method, path string, pay
 	if err != nil {
 		return 0, err
 	}
-	res, err := g.request(ctx, method, g.endpoint(path), "application/vnd.github+json", bytes.NewReader(data), int64(len(data)))
+	res, err := g.request(ctx, method, g.endpoint(path), "application/vnd.github+json", "application/json", bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return 0, err
 	}
@@ -301,13 +301,13 @@ func (g *githubPublication) Publish(ctx context.Context, id int64, plan publicat
 }
 func (g *githubPublication) Upload(ctx context.Context, id int64, asset publicationAsset, reader io.Reader) error {
 	endpoint := fmt.Sprintf("%s/repos/%s/releases/%d/assets?name=%s", g.uploads, publicationRepository, id, url.QueryEscape(asset.Name))
-	res, err := g.request(ctx, "POST", endpoint, "application/octet-stream", reader, asset.Size)
+	res, err := g.request(ctx, "POST", endpoint, "application/vnd.github+json", "application/octet-stream", reader, asset.Size)
 	if err != nil {
 		return err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusCreated {
-		return errors.New("asset transfer failed or ambiguous; consumed")
+		return &publicationUploadHTTPError{statusCode: res.StatusCode}
 	}
 	return nil
 }
@@ -366,7 +366,7 @@ func (g *githubPublication) download(ctx context.Context, endpoint string, class
 	if class == actionsArtifactDownload {
 		accept = "application/vnd.github+json"
 	}
-	res, err := download.request(ctx, "GET", g.endpoint(endpoint), accept, nil, 0)
+	res, err := download.request(ctx, "GET", g.endpoint(endpoint), accept, "", nil, 0)
 	if err != nil {
 		return nil, err
 	}

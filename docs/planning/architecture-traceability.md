@@ -44,6 +44,10 @@ positive-ID draft readback, explicit continuation of one authorized empty draft
 with the original manifest, and credential-free public download verification.
 Its acceptance adds hidden-list/direct-ID fixtures, conflicting identities,
 nonempty-draft rejection and fresh consumed-approval checks to the row above.
+The same adapter retrofit separates upload response Accept from body
+Content-Type and retains only typed numeric upload status through the CLI HOLD
+boundary. Full-path negatives cover rejected/ambiguous writes, suppressed
+provider and close-error text, and unchanged no-retry/redirect controls.
 No product rebuild, new dependency, tag change or general recovery engine is
 introduced; real publication and independent review remain open acceptance.
 

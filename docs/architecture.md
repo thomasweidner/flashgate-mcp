@@ -562,6 +562,10 @@ new human approval to one exact ID and the unchanged original publication
 manifest. It reuses the existing verifier and one-shot transfer sequence, never
 recreates a release or resumes a partial asset set, and verifies public downloads
 without a privileged credential. These are publication-tooling changes only.
+The adapter separates upload response media negotiation from raw request-body
+media type. A typed numeric upload status reaches the existing CLI HOLD
+boundary without forwarding provider or file-close text or changing one-shot
+execution behavior.
 See [prerelease publication](prerelease-publication.md) and
 [release scope](planning/release-scope.md).
 
