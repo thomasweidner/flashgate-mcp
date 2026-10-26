@@ -6,13 +6,20 @@ BL-363 provides `releaseaudit publication-inventory`, `publication-preflight`,
 `publication-download` and `publication-publish`, plus the manually dispatched
 `publish-prerelease.yml` workflow. Build and candidate workflows retain
 `contents: read`. Only the publication job has `contents: write` and
-`actions: read`. It uses the short-lived job token in provider steps; no new
-long-lived credential is needed. Compiling releaseaudit is development tooling,
-not a product rebuild. The publication path never builds or repackages binaries.
+`actions: read`. Provider steps use the short-lived job token, subject to the
+[workflow permission condition](#workflow-permission-condition-and-manual-publish-only-reconciliation).
+No new long-lived credential mechanism is introduced. Compiling releaseaudit is
+development tooling, not a product rebuild. Publication never builds or
+repackages binaries.
 
-Implementation is not proof of an available release. BL-363 remains In Progress
-until independent review and the first separately authorized real prerelease
-plus final readback. Stable Version 1.0 and its release gate remain BL-263.
+[Version 0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0)
+is a public prerelease, published on 2026-10-25 from frozen source
+`fa4082ce575f43b4b43c9aaa9e9fe71e3019bdb5`. Independent publication acceptance
+confirmed all 40 uploaded assets: the original 39 files plus the unchanged
+publication manifest. Credential-free public downloads matched every original
+size and SHA-256, totaling 4,866,296 bytes. This establishes availability for
+that release; each future publication still requires its own authorization and
+readback. Stable Version 1.0 and its release gate remain BL-263.
 
 ## Prepare the frozen candidate
 
@@ -144,9 +151,53 @@ that publication was rolled back.
 Use read-only provider inspection to establish the actual release, tag and asset
 state after HOLD. Preserve the original approval, plan, journal and run evidence.
 Any repair, cleanup or further write requires a separately authorized exact
-target state and fresh preflight. The only continuation supported below is an
-explicitly bound, entirely empty draft. Partially uploaded or published releases
-cannot be resumed or silently repaired.
+target state and fresh preflight. The automated continuation below supports
+only an explicitly bound, entirely empty draft. The CLI and workflow cannot
+resume partially uploaded or published releases. An already complete draft has
+the separate human-governed publish-only reconciliation boundary described
+below; it is never selected automatically.
+
+## Workflow permission condition and manual publish-only reconciliation
+
+GitHub evaluates release-write capability against workflow differences between
+the resolved target commit and the default branch. Where that target introduces
+workflow changes, the [update-release API](https://docs.github.com/en/rest/releases/releases#update-a-release)
+requires workflow-write authority in addition to release-write access. Classic
+OAuth/PAT authentication needs the existing `workflow` scope; other token types
+need the corresponding repository permission. Actions `GITHUB_TOKEN` cannot
+receive that authority. Check this condition before authorizing a frozen
+candidate; `contents: write` alone does not guarantee publication capability.
+Do not alter the frozen source or tag to bypass the condition. If the selected
+executor lacks capability, stop for an explicit executor/release decision.
+
+When a consumed attempt has left an entirely uploaded, unpublished draft,
+publication may proceed only through a separately authorized manual operation:
+
+1. Preserve the consumed approval, plan, journal and failure. Reconcile the exact
+   release ID, existing tag/source, name, notes, draft/prerelease flags and latest
+   state. Download and verify the entire asset inventory against the unchanged
+   original manifest, including the original publication manifest itself. Any
+   missing, extra or mismatching asset prevents this path.
+2. Verify that an already authorized normal CLI session has the required provider
+   capability. Obtain a new human decision binding the exact release ID, executor,
+   payload bytes/digest and one publish attempt, including ambiguous-response and
+   public-download risks. A prior upload approval cannot cover this operation.
+   This procedure grants no new credentials or permissions and provides no
+   automatic fallback when the existing session lacks authority.
+3. After fresh read-only preflight, send exactly one `PATCH /repos/{owner}/{repo}/releases/{release_id}`
+   using a reviewed payload containing only `draft=false`, `prerelease=true`
+   and `make_latest="false"`. No upload, overwrite, deletion, tag/source change,
+   asset replacement or workflow rerun is part of this operation. Persist the
+   attempt intent and safe outcome evidence without credential material.
+4. Read back release/tag/asset parity and the publication timestamp. Download
+   every public asset without credentials or cookies, verify its original length
+   and SHA-256, then repeat provider readback. Failure or ambiguity is HOLD and
+   requires read-only reconciliation; it never authorizes a retry or rollback.
+
+This is a manual recovery boundary, not a full-draft resume feature in
+`releaseaudit`. It succeeded for v0.3.0 after independent full-draft byte checks.
+The earlier workflow failure did not expose its HTTP status; the documented
+capability condition does not prove that historical response or root cause.
 
 ## Explicit empty-draft continuation
 

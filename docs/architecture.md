@@ -554,8 +554,14 @@ canonical changelog notes before public candidate freeze; `v<VERSION>` must
 point exactly to its SourceCommitSHA. Remote readback binds release, tag,
 `prerelease=true`, evidence and assets. The existing releaseaudit CLI owns the
 preflight and state machine; a narrow GitHub adapter owns provider calls.
-Only the manual publication job has release-write permission. Publication
-availability still requires a separately authorized real run and readback.
+Build and verification jobs retain read-only permissions; only the manual
+publication job requests release-write permission. Its job token cannot satisfy
+GitHub's additional workflow-write condition when frozen-target workflow bytes
+differ from the default branch. The publication contract defines a separate
+explicitly authorized manual publish-only reconciliation using existing CLI
+authority, with full-draft byte verification and no upload or write retry.
+This introduces no automatic fallback or product dependency. The first public
+prerelease, v0.3.0, passed independent publication and public-byte acceptance.
 Known drafts are read directly by immutable release ID; the release list is
 retained for conflict detection. A separate empty-draft continuation binds a
 new human approval to one exact ID and the unchanged original publication

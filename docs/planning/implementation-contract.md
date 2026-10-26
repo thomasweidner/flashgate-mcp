@@ -110,9 +110,16 @@ retry-control window are limits, not a blocking-call deadline. Non-Windows,
 current-alias operations and remote one-shot publication retain their policies.
 Acceptance also requires deterministic drift/budget tests, ownership-checked
 cleanup, candidate rollback parity and native Linux single-call regression.
-BL-363 remains In Progress until independent review and the first separately
-authorized real prerelease plus final readback. Local implementation neither
-completes BL-363 nor satisfies BL-263; stable publication remains BL-263.
+The first public v0.3.0 prerelease and all 40 original asset downloads passed
+independent publication acceptance on 2026-10-25. The publication contract now
+records the workflow-token capability condition and the separate exact manual
+publish-only boundary, with no new credential mechanism or automatic recovery.
+Formal BL-363 closure requires review/integration of this documentation
+and the canonical full-work-item completion transition. No product,
+VERSION, CHANGELOG, candidate or binary bytes change in this closure; accepted
+technical/platform evidence remains applicable. Historical failed-attempt causes
+remain unproven without leaving a current publication-acceptance failure.
+This prerelease does not satisfy BL-263; stable publication remains BL-263.
 
 ## Closure
 

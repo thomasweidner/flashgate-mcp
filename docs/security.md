@@ -510,8 +510,15 @@ verified candidates and BL-262 supply-chain/rollback evidence. Publication is
 an explicit external/remote write boundary. Build and verification keep minimal
 read-only repository permissions; the separate manual publication job receives
 only the release-write rights it needs, never `write-all` or unnecessary
-issues, PR or admin rights. This plan assumes no new long-lived credential
-mechanism. Secrets must never appear in logs or evidence.
+issues, PR or admin rights. No new long-lived credential mechanism is introduced.
+GitHub's additional workflow-write condition for a frozen target differing from
+the default branch cannot be met by Actions GITHUB_TOKEN. An already authorized
+normal CLI session may perform a separately approved, exact publish-only
+operation after complete draft-byte verification. This is no automatic fallback,
+credential/scope upgrade, asset replacement or workflow rerun. Without a capable
+existing executor and fresh exact approval, HOLD. See the publication contract
+for preflight, one-write and credential-free public readback requirements.
+Secrets must never appear in logs or evidence.
 
 The publisher binds each remote write attempt to its authorized
 target and verified immutable VERSION/source-commit/artifact-hash identity.
@@ -542,7 +549,9 @@ Only a typed, bounded numeric HTTP status crosses the upload-to-CLI error
 boundary; provider response text and joined source-file close errors remain
 suppressed. No diagnostic adds a request, redirect, retry or acceptance tolerance.
 The [publication contract](prerelease-publication.md) describes the external
-authorization and recovery boundary; implementation alone proves no public release.
+authorization and recovery boundary. Version 0.3.0 has independently accepted
+public release and exact-byte download evidence; future releases must establish
+their own complete evidence.
 BL-263 retains the independent stable Version 1.0 gate and stable publication;
 pre-1.0 publication permits no stable/latest claim.
 
