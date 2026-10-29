@@ -103,6 +103,20 @@ continued absence of the delayed survivor marker.
 
 ### Public publication handoff
 
+Current implementation: BL-363 uploads the full verified bundle plus its
+publication manifest. Accepted future target: Planned BL-364 limits every public
+release, including existing v0.3.0, to four unchanged platform archives. Original
+candidate checksums stay in the internal verification/evidence bundle; generated
+release-note checksums must agree with actual GitHub digests and hashes of
+credential-free downloads. Complete evidence remains internally retained and
+independently verifiable beyond Actions expiry. No separate checksum/evidence
+assets, mandatory signing, Artifact Attestations or Immutable Releases are implied.
+Historical removal of 36 extra v0.3.0 assets needs independently verified evidence
+disposition and separate exact deletion approval; retain four original archives,
+tag/source/prerelease identity and the original 40-asset history. The current
+procedure below remains applicable until the separately reviewed implementation
+is accepted. See the [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding).
+
 The planned lane is `BL-248 verified artifact -> BL-255 immutable candidate
 identity -> BL-262 evidence -> BL-363 publication`. BL-248 remains the sole
 artifact-verification authority; publication adds no competing verifier.

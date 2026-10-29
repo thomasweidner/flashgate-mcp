@@ -67,7 +67,7 @@ controls, and `BL-308` remains the architecture and ADR owner.
 | Typed execution and Native Tool adapters — BL-136–BL-152, BL-167–BL-170, BL-220, BL-353 | Resolve server-approved command IDs to executables and typed argv, with limits, redaction, and OS isolation. Native Tool adapters are optional, policy-constrained accelerators, never public aliases or interpreter/raw-shell passthrough. |
 | System information — BL-062, BL-153–BL-158 | Expose only scoped, explicitly released facts through domain and OS adapters; filter environment and identity data, bound results, and retain Post-1.0 network/administrative decisions outside Version 1.0. |
 | Runtime and service modes — BL-221–BL-231, BL-234–BL-238, BL-240–BL-244, BL-341 | Keep one core behind direct STDIO and local proxy/service transports. BL-233 owns configuration precedence; BL-236 owns backend-neutral dispatch. Variant A service account is the Version 1.0 backend; unsupported user-worker selection fails closed. Preserve host ownership and stdout purity. |
-| Release, artifacts, and validation — BL-203–BL-204, BL-215–BL-216, BL-241–BL-263, BL-305–BL-315, BL-363, BL-364 | Reuse root `VERSION`, BL-245 changelog/tag semantics, BL-248 verification and current CI gates. BL-255 builds/verifies candidates, then promotes the exact bytes locally with immutable identity and no additional remote publication. BL-262 supplies evidence/rollback controls. BL-363 consumes verified candidates and evidence for explicit persistent public pre-1.0 GitHub prereleases with `prerelease=true`, exact version/source/artifact identity, no publication-time rebuild or silent asset replacement, minimal separate release-write permissions, and remote readback. Finalize release-relevant source and dated changelog notes before public candidate freeze. BL-263 separately requires stable Version 1.0 traceability/gate closure and reuses the publication foundation; prerelease success never passes that gate. Retrofit the tag-gated build/validation path, transient Actions-artifact handoff and public download guidance. BL-364 plans future four-archive public downloads with a separately reviewed durable evidence binding, preserving these contracts; see its task binding below. |
+| Release, artifacts, and validation — BL-203–BL-204, BL-215–BL-216, BL-241–BL-263, BL-305–BL-315, BL-363, BL-364 | Reuse root `VERSION`, BL-245 changelog/tag semantics, BL-248 verification and current CI gates. BL-255 builds/verifies candidates, then promotes the exact bytes locally with immutable identity and no additional remote publication. BL-262 supplies evidence/rollback controls. BL-363 consumes verified candidates and evidence for explicit persistent public pre-1.0 GitHub prereleases with `prerelease=true`, exact version/source/artifact identity, no publication-time rebuild or silent asset replacement, minimal separate release-write permissions, and remote readback. Finalize release-relevant source and dated changelog notes before public candidate freeze. BL-263 separately requires stable Version 1.0 traceability/gate closure and reuses the publication foundation; prerelease success never passes that gate. Retrofit the tag-gated build/validation path, transient Actions-artifact handoff and public download guidance. BL-364 owns the accepted four-archive distribution target for all releases including v0.3.0, generated notes checksums and internal evidence retention, preserving verification and identity contracts; see its task binding below. |
 | Response and benchmark quality — BL-172–BL-173, BL-177–BL-179, BL-205, BL-317–BL-323, BL-325–BL-329, BL-331–BL-332 | Reuse current benchmark schemas, deterministic workflow/corpus controls, host/platform evidence, and documentation gates. Strengthen checks at their existing owners without weakening result, supply-chain, platform, or public documentation truth; no benchmark result itself authorizes product behavior. |
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
 
@@ -136,57 +136,94 @@ Authorities: [release architecture](../architecture.md#release-and-supply-chain-
 [security](../security.md#release-and-supply-chain-security),
 [artifact verification](../artifact-verification.md#native-supply-chain-evidence),
 [publication](../prerelease-publication.md), [release scope](release-scope.md),
-[testing](../testing.md#documentation-regression) and
-[DEC-FP-002/003](../adr/product-metadata.md). Target public delta: exactly four
-manually uploaded archives for future GitHub Releases, Windows x64/ARM64 ZIP and
-Linux x64/ARM64 TAR.GZ, with existing names and exact verified bytes. GitHub's
-automatically generated source downloads are not manually uploaded platform
-assets. No MCP/runtime delta or product-version change arises from registration.
+[testing](../testing.md#bl-364-four-archive-distribution-target) and
+[DEC-FP-003](../adr/product-metadata.md#dec-fp-003---metadata-build-and-architecture-implementation-strategy).
 
-Retrofit targets: cmd/releaseaudit publication asset inventory, authorization and
-manifest bindings, provider upload/readback and regression fixtures;
-publish-prerelease.yml's manual publication consumer; README download guidance,
-artifact-verification and publication procedures, release/security/testing
-documentation, and DEC-FP-003's current sibling-checksum requirement. Preserve
-the complete candidate/evidence producer and verifier, rather than filtering
-away evidence merely to reduce the public asset list.
+### Accepted distribution target
 
-Before implementation changes the distribution contract, assess GitHub SHA-256
-asset metadata and independently verifiable, durably available provenance/Artifact
-Attestations. Resolve evidence location, retrieval, retention beyond Actions
-expiry, trusted signer/issuer and source/subject/digest binding, independent
-verification and failure behavior. A provider digest proves no signer identity;
-BL-262's unsigned Candidate-Verification statements remain distinct from
-authenticated build attestations. Any replacement of separately downloaded
-checksums/evidence must preserve existing independently anchored verification
-and complete evidence availability, with affected ADR/public contracts reviewed
-before activation. No storage/provider/signing mechanism is selected here.
+Every FlashGate GitHub Release, including the already published v0.3.0 and later
+stable releases, must have exactly four manually uploaded platform archives:
+Windows x64/ARM64 ZIP and Linux x64/ARM64 TAR.GZ. Preserve canonical names and
+verified bytes. GitHub-generated source downloads are excluded from this count.
+No separate .sha256, SHA256SUMS, build, test, provenance or other evidence assets
+belong in the public asset list. Internal candidate sibling checksums and complete
+verification/evidence producers remain required; this changes distribution only.
 
-Assess annotated and signed tags only for future versions: exact peeled commit
-parity, trusted signer verification and rejection of invalid, missing or untrusted
-signatures under any selected policy. No implicit new credentials, keys, OIDC,
-dependency or permissions; such requirements are separate decision boundaries.
-Keep fail-closed identity and evidence checks, prerelease/stable separation,
-minimal publication rights, explicit one-shot authorization/reconciliation,
-secret-safe diagnostics and credential-free public download readback. Forbidden
-alternatives include a second verifier, publication-time rebuild/repackaging,
-silent fallback to transient or untrusted evidence, and asset replacement.
+Generate one clearly identified release-notes checksum section from the four
+independently reviewed candidate archive identities. It contains each canonical
+archive name and original SHA-256 exactly once. The actual GitHub asset digest,
+credential-free downloaded archive hash, original candidate checksum and generated
+notes value must agree. Missing, malformed or conflicting provider digests fail
+closed; metadata alone is neither original evidence nor proof of authenticity.
+CHANGELOG.md remains the sole narrative owner: retain notes from the frozen source
+and append generated checksum data, without a second editable narrative source or
+an identity-relevant source edit hidden under an old candidate.
 
-Acceptance: complete four-platform archive/content inventory; SHA-256 and
-VERSION/source/archive identity parity before and after distribution;
-credential-free downloadability and independent durable evidence retrieval;
-missing/extra/duplicate/swapped/tampered assets or evidence, unavailable metadata
-or evidence, identity drift and signature/trust negatives. Reuse BL-248/255/262/363
-focused tests and the applicable [testing gates](../testing.md), plus independent
-review of the changed release contract. Closure must reconcile guidance, ADRs,
-tests/CI, candidate identities, release/distribution, migration, security and
-VERSION/CHANGELOG disposition without reopening completed predecessors.
+Retain complete technically necessary build/supply-chain evidence internally,
+outside the public release-asset list. Before transition, demonstrate its actual
+long-term storage, retrieval and independent verification against original trusted
+manifest/index/source/archive anchors, beyond transient Actions expiry. Preserve
+the evidence's unsigned status and historical provenance; do not call BL-262
+Candidate-Verification statements authenticated build attestations. This decision
+does not select a new storage service or grant credentials/permissions.
 
-Historical release-asset handling requires its own explicit decision and exact
-mutation authorization. No retroactive change to v0.3.0, existing tags, assets or
-evidence is permitted here. This registration modifies only the three canonical
-planning files; implementation needs a separate scoped task and authorization.
-It creates no release, tag, signing, permission or cleanup authority.
+Lightweight tags remain standard, with exact v<VERSION>/SourceCommitSHA/VERSION
+parity. Annotated or signed tags, dedicated keys or signing infrastructure are not
+required. Artifact Attestations and Immutable Releases are neither prerequisites
+nor implicitly activated by BL-364. Any later adoption requires its own decision.
+
+### Historical v0.3.0 acceptance
+
+BL-364 closure includes normalization of v0.3.0, not merely future publications.
+Its original publication had 40 uploaded assets; BL-363 remains Completed and
+that historical acceptance must not be rewritten as a four-asset publication.
+Before any deletion, independently verify and retain the complete original
+inventory, exact asset IDs, original bytes/lengths/hashes, original publication
+and candidate/evidence bindings, and actual provider state. Prove long-term
+internal evidence retention and retrieval, and verify the generated release-notes
+checksums against the four original archives and independently bound originals.
+
+Only then obtain separate exact remote-delete authorization binding repository,
+release ID, the 36 additional asset IDs/names/hashes, the four retained archive
+IDs/hashes, expected provider state and executor. Release-note mutation also needs
+its own scoped external-write authorization. Neither implementation approval nor
+this planning decision authorizes a delete. Reconcile failed/ambiguous operations
+read-only without blind retry, compensation or implicit asset recreation.
+
+After the separately authorized operations, independently read back the complete
+paginated remote inventory: exactly the four original archives with unchanged
+IDs/bytes, tag, source commit, version and prerelease identity. Verify notes,
+provider digests and credential-free download hashes against original anchors.
+Retain both before/after evidence and the true chronology. Provider drift, deletion
+restrictions or unavailable evidence stop the transition without bypass.
+
+### Retrofit, validation and closure
+
+Retrofit cmd/releaseaudit publication inventory/authorization/manifest, generated
+notes, provider digest/readback and regression fixtures; the manual
+publish-prerelease.yml consumer; public download/verification/build guidance;
+release/security/testing contracts and DEC-FP-003. Preserve complete candidate
+and evidence generation/verification, exact-byte identity, fail-closed checks,
+prerelease/stable separation, minimal rights, explicit one-shot authorization,
+reconciliation and secret-safe diagnostics. No second verifier, publication-time
+rebuild/repackaging, silent replacement or transient/untrusted evidence fallback.
+
+Acceptance covers complete four-target archive/content inventories, unchanged
+identities, notes/digest/original-checksum/download parity, credential-free
+downloads, internal evidence retention/retrieval and historical before/after
+disposition. Test missing/extra/duplicate/swapped/tampered assets or evidence,
+unavailable/malformed metadata, checksum/notes/identity drift, provider restrictions,
+unsafe deletion subjects and failed/ambiguous operations. Reuse BL-248/255/262/363
+tests and applicable [testing gates](../testing.md), with independent review of
+this material release/ADR contract and the separately authorized implementation.
+
+The current BL-363 publisher still uploads all bundle files plus its publication
+manifest; it does not yet implement this target. BL-364 remains Planned until
+implementation and v0.3.0 acceptance both pass. Reconcile guidance, ADRs, tests/CI,
+candidate identities, release/distribution, migration, security and VERSION/CHANGELOG
+disposition at closure. This planning update changes no product/runtime behavior,
+VERSION or narrative changelog and grants no Git, release, tag, asset, signing,
+permission or cleanup action. Implementation is a separate authorized task.
 
 ## Closure
 

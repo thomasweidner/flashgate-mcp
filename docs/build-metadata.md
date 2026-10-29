@@ -251,7 +251,16 @@ Each archive contains exactly one top-level directory with:
 - `README.md`
 - `THIRD-PARTY-NOTICES.md`
 
-Each archive has a sibling `.sha256` file. Archive creation and validation are implemented in:
+Each candidate archive has a sibling `.sha256` file for build verification.
+The current BL-363 publisher uploads those checksums and the complete evidence
+set. Planned BL-364 retains these internal verification inputs but changes the
+public layout for every release, including v0.3.0, to four archive assets only,
+with independently bound original SHA-256 values in a generated release-notes
+section and complete internally retained evidence. GitHub digests and credential-free
+download hashes must match those originals. This target is not implemented;
+see the [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
+for historical disposition, separate mutation authorizations and acceptance.
+Archive creation and validation are implemented in:
 
 ```text
 scripts/New-ReleaseArtifact.ps1
