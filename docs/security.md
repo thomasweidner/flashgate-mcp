@@ -555,6 +555,26 @@ their own complete evidence.
 BL-263 retains the independent stable Version 1.0 gate and stable publication;
 pre-1.0 publication permits no stable/latest claim.
 
+The accepted BL-364 distribution target keeps the checks below while changing
+the public layout to four original platform archives for every release, including
+v0.3.0. Original trusted candidate checksums, generated notes values, actual GitHub
+asset digests and credential-free downloaded-byte hashes must agree; a provider
+digest alone authenticates no builder. Complete build/supply-chain evidence remains
+internally retained with independent verification and long-term retrieval, not in
+public release assets. Lightweight tags retain exact tag/commit/VERSION parity;
+BL-364 requires no signing keys/infrastructure, Artifact Attestations or Immutable
+Releases and implicitly activates none. The current publisher is not migrated.
+
+Historical deletion is a separate destructive boundary: independently verify the
+original inventory/asset IDs/bytes/hashes, durable evidence disposition, notes and
+provider state first, then require exact authorization for the 36 extra v0.3.0
+assets. Preserve four original archive IDs/bytes, tag, source and prerelease
+identity; verify full remote and credential-free readback afterwards. Missing
+evidence, identity drift or failed/ambiguous writes stop without bypass, blind
+retry or implied recreation. Preserve original 40-asset history and completed
+BL-363. The [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
+defines this future retrofit; this plan grants no external write or credential.
+
 Version 1.0 requires:
 
 - pinned/validated workflow strategy;

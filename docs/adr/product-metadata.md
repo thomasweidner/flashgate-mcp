@@ -174,6 +174,8 @@ Primary owner: `BL-246`. Shared supporting scope: `BL-247`.
 
 **Status:** Accepted
 **Date:** 2026-07-21
+**Distribution amendment:** 2026-10-28, accepted target owned by Planned BL-364;
+the existing publisher is not yet migrated.
 
 ### Single source of truth
 
@@ -331,7 +333,45 @@ identifiers.
 
 Do not include the tag's leading `v` in the product version or archive name.
 Archives contain the binary, `LICENSE`, `README.md`, and
-`THIRD-PARTY-NOTICES.md`. Publish SHA-256 checksums alongside the archives.
+`THIRD-PARTY-NOTICES.md`. Candidate builders retain sibling SHA-256 checksum
+files for verification. The current BL-363 publisher uploads those files and
+the complete evidence bundle; v0.3.0 was accepted with 40 assets. The following
+BL-364 target supersedes that public layout only when separately implemented
+and accepted; it does not rewrite the original publication history.
+
+### Accepted public distribution target
+
+For every GitHub Release, including existing v0.3.0, upload exactly the four
+platform archives in the table above. GitHub-generated source downloads are
+excluded. Do not upload separate .sha256, SHA256SUMS, build, test, provenance
+or other evidence assets. Complete build/supply-chain evidence remains internally
+retained, traceable and independently verifiable against original trusted anchors,
+outside the public asset list and beyond Actions retention.
+
+Publish the four independently reviewed original candidate SHA-256 values in one
+generated release-notes section, bound to the exact archive names. Require equality
+with actual GitHub asset digests and hashes of credential-free downloaded bytes;
+missing or conflicting values fail closed. CHANGELOG.md alone owns narrative
+notes from the frozen source. Generated checksum data creates no second narrative
+authority, no new candidate identity and no claim that a provider digest authenticates
+an unsigned builder.
+
+Lightweight tags remain standard. Exact tag/commit/VERSION binding is mandatory;
+annotated/signed tags, new signing keys or signing infrastructure are not required.
+Artifact Attestations and Immutable Releases are not prerequisites and are not
+implicitly activated. Existing BL-248/255/262 verification/evidence remains required.
+
+BL-364 includes v0.3.0 normalization after independently verified original
+inventory, asset IDs/bytes/hashes, durable internal evidence disposition, notes
+checksums and provider state. Deleting the 36 additional assets requires separate
+exact remote-delete authorization. Retain the four original archives unchanged,
+including IDs/bytes, tag, source commit and prerelease identity, and prove complete
+remote and credential-free download parity afterwards. Preserve the true original
+40-asset publication evidence and completed BL-363. See the canonical
+[BL-364 implementation binding](../planning/implementation-contract.md#bl-364-planning-binding)
+for retrofit, tests and authorization gates. This amendment is planning only.
+
+### Build verification retained
 
 Before every upload, compare two independent builds, including the binary,
 archive, checksum file, and exact inventory. A machine-readable leak scan of
@@ -388,4 +428,6 @@ or native libraries are introduced later.
 ### Backlog ownership
 
 Primary owner: `BL-246`. Shared supporting scope: `BL-247`.
+Distribution amendment and retrofit owner: `BL-364`; original metadata owners
+remain completed history.
 <!-- FP-DECISION-TECHNICAL-IMPLEMENTATION:END -->

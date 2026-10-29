@@ -35,7 +35,7 @@ a production installation or a separate production promotion.
 
 ## Public pre-1.0 prerelease publication
 
-BL-363 is in progress in SPR-048, after BL-245/248/255/262. The ownership chain is
+BL-363 is Completed in SPR-048, after BL-245/248/255/262. The ownership chain is
 `BL-245 + BL-248 -> BL-255 -> BL-262 -> BL-363 -> further pre-1.0 development -> BL-263`.
 BL-245 owns version/changelog/tag semantics, BL-248 verification, BL-255 the
 immutable candidate and local exact-byte promotion, and BL-262 supply-chain
@@ -52,8 +52,9 @@ Published assets are never silently replaced, overwritten, or deleted. Remote
 readback must verify release identity, exact tag target, prerelease flag, asset
 inventory and hashes. Public download guidance is part of BL-363 acceptance;
 the build workflows provide temporary Actions artifacts. The separate manual
-publisher is implemented; the first actual public release, independent review
-and operational readback remain BL-363 acceptance. See the
+publisher is implemented; v0.3.0 passed independent publication acceptance with
+40 original public assets. BL-364 owns the accepted distribution change below;
+the original publication evidence and completed BL-363 remain unchanged. See the
 [publication procedure](../prerelease-publication.md).
 
 Normal `0.x.y` is a canonical SemVer product version: for example,
@@ -71,11 +72,46 @@ binds SourceCommitSHA and verified artifact hashes. The exact `v<VERSION>` tag
 must point to that commit. Any later identity-relevant source edit, including
 notes or date changes, requires a new candidate build and verification before
 publication, never an edit silently retained under the frozen identity. Notes
-are derived only from that commit's canonical CHANGELOG.md.
+derive their narrative only from that commit's canonical CHANGELOG.md. BL-364's
+accepted target adds generated original-archive checksum data separately, without
+editing frozen narrative source or inventing a second notes authority.
 
 A pre-1.0 prerelease implies no stable/latest claim and never satisfies the
 stable Version 1.0 gate. BL-263 alone owns that gate and stable publication,
 reusing the safe publication foundation after further development and closure.
+
+## Accepted distribution target for all releases
+
+Planned BL-364 in SPR-048 owns the uniform public layout for every FlashGate
+GitHub Release, explicitly including existing v0.3.0 and stable Version 1.0:
+exactly four manually uploaded Windows x64/ARM64 ZIP and Linux x64/ARM64 TAR.GZ
+archives. GitHub-generated source downloads are excluded. No separate .sha256,
+SHA256SUMS, build, test, provenance or other evidence assets remain public assets.
+The current publisher still uploads the complete bundle and publication manifest;
+this accepted target is not a claim of implemented behavior.
+
+Generate the four original candidate SHA-256 values in a separate release-notes
+section; CHANGELOG.md alone owns the frozen narrative. Actual GitHub asset digests,
+credential-free downloaded bytes and independently bound original checksums must
+agree. Keep complete technically necessary build/supply-chain evidence internally,
+with proven long-term retention, retrieval and independent verification beyond
+Actions expiry. Lightweight tags remain standard with exact tag/commit/VERSION
+binding. No mandatory annotated/signed tags, key management or signing infrastructure;
+Artifact Attestations and Immutable Releases are neither prerequisites nor
+implicitly activated. Other Version 1.0 signing/evidence obligations remain under
+their existing owners and do not add public evidence assets to this layout.
+
+BL-364 cannot close on future publications alone. For v0.3.0, independently verify
+the original 40-asset inventory/IDs/bytes/hashes, long-term internal evidence
+disposition, notes checksums and provider state before separately authorizing
+deletion of exactly the 36 additional assets. Afterwards prove exactly the four
+original archives with unchanged IDs/bytes, tag, source commit and prerelease
+identity through full remote and credential-free download readback. Preserve
+original publication history and completed BL-363. Planning grants no remote
+mutation; implementation, release-note writes and exact deletion have separate
+authorization gates in the [BL-364 binding](implementation-contract.md#bl-364-planning-binding).
+BL-364 remains Planned until implementation and historical acceptance both pass;
+BL-263 consumes this contract while retaining the separate stable Version 1.0 gate.
 
 ## Version 1.0 product objective
 
@@ -225,7 +261,7 @@ Version 1.0 requires:
 - no silent automatic update;
 - public security policy, governance, maintainer, and contribution rules;
 - complete installation, removal, rollback, operation, and troubleshooting documentation;
-- persistent GitHub Release publication for `v<VERSION>` with the already validated platform archives, checksums, release notes, and available supply-chain evidence; transient GitHub Actions artifacts alone are not the public distribution result.
+- persistent GitHub Release publication for `v<VERSION>` under the [BL-364 distribution target](#accepted-distribution-target-for-all-releases): exactly four verified platform archives, generated release-note checksums, canonical changelog narrative and complete internally retained supply-chain evidence; transient GitHub Actions artifacts alone satisfy neither public distribution nor long-term evidence retention.
 
 ## Explicit post-Version-1.0 work
 
@@ -283,7 +319,7 @@ The following remain outside the accepted local Version 1.0 architecture and req
 6. supported MCP revisions and extensions are explicitly documented and tested;
 7. performance, payload, token, memory, CPU, concurrency, and security budgets pass;
 8. release artifacts and service assets are reproducible, traceable, and rollback-capable;
-9. the stable Version 1.0 release publishes persistent GitHub Release `v<VERSION>` assets using the validated archives, checksums, canonical changelog notes, and available supply-chain evidence rather than relying only on transient workflow artifacts; reuse the BL-363 safe publication foundation without treating prerelease success as passage of this stable gate;
+9. the stable Version 1.0 release publishes persistent GitHub Release `v<VERSION>` under the accepted BL-364 four-archive layout, with generated checksum notes, actual provider-digest/download/original-checksum parity, canonical CHANGELOG narrative and independently verifiable internally retained evidence; reuse BL-363 safe publication and require BL-364 acceptance, including v0.3.0 normalization, without treating prerelease success as passage of this stable gate;
 10. user, administrator, security, and developer documentation matches the released implementation;
 11. breaking-change, compatibility, deprecation, and migration policy is published for post-1.0 releases.
 

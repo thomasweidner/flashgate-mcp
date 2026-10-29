@@ -23,6 +23,29 @@ readback. Stable Version 1.0 and its release gate remain BL-263.
 
 ## Prepare the frozen candidate
 
+The procedures in this document describe the current BL-363 publisher. The
+accepted BL-364 target is not implemented: all releases, including v0.3.0, will
+have exactly four original Windows/Linux x64/ARM64 archives and no separate
+checksum/evidence assets; GitHub-generated source downloads are excluded. One
+generated release-notes section will carry independently reviewed original
+archive SHA-256 values, checked against actual GitHub digests and credential-free
+downloaded bytes. CHANGELOG.md remains the sole narrative source; complete
+build/supply-chain evidence stays internally retained and independently verifiable
+beyond Actions expiry. Lightweight tags retain exact version/source parity;
+signing infrastructure, Artifact Attestations and Immutable Releases are not
+required or implicitly activated. Implement and independently review the
+[BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
+before changing these procedures or invoking a changed publisher.
+
+Historical v0.3.0 normalization is required for BL-364 closure, after independent
+verification of original inventory, asset IDs/bytes/hashes, long-term evidence
+disposition, generated notes and provider state. Release-note writes need scoped
+authorization; deletion of the 36 additional assets needs separate exact approval.
+The existing publisher implements no deletion path. Retain four original archives,
+tag/source/prerelease identity and independently verify full remote and credential-free
+download parity afterwards. The original 40-asset publication remains history and
+BL-363 remains Completed. This plan authorizes no provider action.
+
 1. Finalize canonical VERSION and its nonempty dated CHANGELOG section before
    candidate freeze. The date records intended publication, not its completion.
    Under BL-245, release tooling alone does not increment the product version.

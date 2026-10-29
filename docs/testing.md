@@ -569,6 +569,39 @@ the first real publication and provider readback remain separate acceptance.
   SemVer candidate version must match every canonical version surface;
 - reject stable/latest Version 1.0 claims; BL-363 success never passes BL-263.
 
+#### BL-364 four-archive distribution target
+
+Planned BL-364 changes the release contract, not the currently implemented
+BL-363 test expectations. Its separately authorized implementation must retrofit
+those tests and the existing BL-248/255/262/363 paths before activation:
+
+- require exactly four manually uploaded Windows/Linux x64/ARM64 archives, full
+  archive/content inventories and unchanged candidate identities; exclude GitHub
+  source downloads, and reject separate checksum/evidence assets;
+- generate one exact four-entry release-notes SHA-256 section from independently
+  reviewed original candidate checksums, preserving frozen CHANGELOG narrative;
+- require actual GitHub digests, original anchored checksums, generated notes and
+  credential-free downloaded bytes to agree; reject absent/malformed/conflicting
+  metadata, tampered notes, unavailable downloads and version/tag/source drift;
+- independently prove complete internal evidence retention/retrieval beyond Actions
+  expiry and verification against original anchors; reject missing, extra, duplicate,
+  swapped, tampered or unbound evidence, without claiming signed build provenance;
+- preserve lightweight tags and exact tag/commit/VERSION binding; prove no implicit
+  signing/key infrastructure, Artifact Attestations or Immutable Releases activation;
+- for v0.3.0, independently bind the original 40 assets, IDs, bytes/hashes, durable
+  evidence disposition, generated notes and provider state before a separate exact
+  authorization for deletion of the 36 extras; reject unsafe, stale or archive-ID
+  deletion subjects, provider restrictions and failed/ambiguous deletion without
+  blind retry or implicit compensation;
+- afterwards verify the complete paginated remote inventory of exactly four
+  original archive IDs/bytes, unchanged tag/source/prerelease identity, notes/digests
+  and all credential-free downloads, retaining before/after history and BL-363 closure.
+
+The material release/ADR plan and later implementation need independent review.
+Documentation-only planning runs the documentation and semantic contract gates;
+it does not claim these future publisher/deletion tests already pass. See the
+[BL-364 acceptance binding](planning/implementation-contract.md#bl-364-planning-binding).
+
 #### Existing and Version 1.0 artifact gates
 
 - artifact version/help/platform/name checks;
