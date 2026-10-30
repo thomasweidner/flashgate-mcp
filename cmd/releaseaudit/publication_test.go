@@ -163,7 +163,7 @@ func (m *publicationMock) Upload(_ context.Context, _ int64, a publicationAsset,
 	}
 	id := int64(len(m.data) + 1)
 	m.data[id] = data
-	m.state.Release.Assets = append(m.state.Release.Assets, remotePublicationAsset{id, a.Name, int64(len(data)), "uploaded"})
+	m.state.Release.Assets = append(m.state.Release.Assets, remotePublicationAsset{id, a.Name, int64(len(data)), "uploaded", "sha256:" + supplyDigest(data)})
 	return nil
 }
 func (m *publicationMock) Publish(_ context.Context, _ int64, _ publicationPlan) error {
@@ -182,11 +182,14 @@ func TestPublicationExactByteSequence(t *testing.T) {
 	if err := executePublication(context.Background(), mock, plan, dir, journal); err != nil {
 		t.Fatal(err)
 	}
-	if mock.state.Release.Draft || !mock.state.Release.Prerelease || mock.writes != len(plan.Assets)+3 {
+	if mock.state.Release.Draft || !mock.state.Release.Prerelease || mock.writes != len(plan.Assets)+2 {
 		t.Fatal("publication sequence mismatch")
 	}
 	for _, a := range plan.Assets {
 		original, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(a.Path)))
+		if a.Name == publicationChecksumsName {
+			original, err = publicationGeneratedChecksums(plan.Assets)
+		}
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -223,7 +226,7 @@ func TestPublicationExactByteSequence(t *testing.T) {
 
 func TestPublicationEveryWriteFailureHoldsWithoutRetry(t *testing.T) {
 	dir, plan := publicationFixture(t)
-	for fail := 1; fail <= len(plan.Assets)+3; fail++ {
+	for fail := 1; fail <= len(plan.Assets)+2; fail++ {
 		t.Run(strconv.Itoa(fail), func(t *testing.T) {
 			mock := newPublicationMock(plan)
 			mock.failWrite = fail
@@ -274,7 +277,7 @@ func TestPublicationReadbackAndPrestateNegatives(t *testing.T) {
 	// are checked from actual downloads, not provider digest assertions.
 	m := newPublicationMock(plan)
 	_, _ = m.CreateDraft(context.Background(), plan)
-	a := plan.Assets[0]
+	a := plan.Assets[1]
 	data, _ := os.ReadFile(filepath.Join(dir, filepath.FromSlash(a.Path)))
 	if err := m.Upload(context.Background(), 789, a, bytes.NewReader(data)); err != nil {
 		t.Fatal(err)
@@ -888,7 +891,7 @@ func TestPublicationGitHubAdapter(t *testing.T) {
 	if err := executePublication(context.Background(), g, plan, dir, filepath.Join(t.TempDir(), "attempt.jsonl")); err != nil {
 		t.Fatal(err)
 	}
-	if writeRequests != len(plan.Assets)+3 {
+	if writeRequests != len(plan.Assets)+2 {
 		t.Fatal("provider write count mismatch")
 	}
 }
@@ -1190,7 +1193,11 @@ func TestPublicationDownloadCompleteOriginalBundle(t *testing.T) {
 	a.EvidenceOrigin = "BOUND_LOCAL_COPY"
 	var bundle bytes.Buffer
 	writer := zip.NewWriter(&bundle)
-	for _, asset := range plan.Assets {
+	evidenceAssets, err := publicationEvidenceAssets(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, asset := range evidenceAssets {
 		entry, err := writer.Create(asset.Path)
 		if err != nil {
 			t.Fatal(err)

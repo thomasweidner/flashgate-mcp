@@ -88,8 +88,10 @@ uploaded assets, comprising four original verified Windows/Linux x64/ARM64
 ZIP/TAR.GZ archives and one shared `SHA256SUMS`. GitHub-generated source downloads
 are excluded. No sibling `.sha256` files, extra release-notes SHA-256 section,
 public build/test/provenance/SBOM evidence assets, additional public release
-manifest or separate permanent release ledger. The current publisher still
-uploads the complete bundle and publication manifest; this target is not implemented.
+manifest or separate permanent release ledger. The current publisher
+has been retrofitted locally to project five assets while retaining complete
+internal verification. Independent technical review and actual historical
+normalization acceptance remain outstanding; BL-364 stays Planned.
 
 Generate deterministic GNU-compatible, LF checksum records with exactly one
 entry per archive from the four original verified hashes. A consumer or installer

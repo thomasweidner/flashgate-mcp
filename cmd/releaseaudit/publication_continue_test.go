@@ -125,8 +125,8 @@ func publicationEmptyDraft(t *testing.T, plan publicationPlan) *publicationConti
 
 func TestPublicationContinuationExactOriginalManifest(t *testing.T) {
 	dir, plan := publicationFixture(t)
-	if len(plan.Assets)+1 != 40 {
-		t.Fatal("fixture must cover the full 40-asset contract")
+	if len(plan.Assets) != 5 {
+		t.Fatal("fixture must cover the exact five-asset contract")
 	}
 	original, _ := supplyJSON(plan)
 	m := publicationEmptyDraft(t, plan)
@@ -135,12 +135,12 @@ func TestPublicationContinuationExactOriginalManifest(t *testing.T) {
 	if err := executePublicationTarget(context.Background(), m, plan, dir, journal, 789, newAnchor); err != nil {
 		t.Fatal(err)
 	}
-	if m.creates != 0 || m.writes != 40+1 || m.publicReads != 40 || m.state.Release.Draft {
+	if m.creates != 0 || m.writes != 6 || m.publicReads != 5 || m.state.Release.Draft {
 		t.Fatal("continuation sequence drift", m.creates, m.writes, m.publicReads)
 	}
 	for _, a := range m.state.Release.Assets {
-		if a.Name == "publication-manifest.json" && !bytes.Equal(m.data[a.ID], original) {
-			t.Fatal("original manifest changed")
+		if a.Name == "publication-manifest.json" {
+			t.Fatal("internal publication manifest was uploaded")
 		}
 	}
 	data, err := os.ReadFile(journal)
@@ -212,7 +212,7 @@ func TestPublicationContinuationPrestateAndFailures(t *testing.T) {
 			}
 		})
 	}
-	for fail := 1; fail <= len(plan.Assets)+2; fail++ {
+	for fail := 1; fail <= len(plan.Assets)+1; fail++ {
 		m := publicationEmptyDraft(t, plan)
 		m.failWrite = fail
 		if err := executePublicationTarget(context.Background(), m, plan, dir, filepath.Join(t.TempDir(), "attempt.jsonl"), 789, supplyDigest([]byte("new-approval"))); err == nil || m.writes != fail || m.creates != 0 {

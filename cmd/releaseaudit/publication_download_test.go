@@ -276,7 +276,7 @@ func TestPublicationReadbackDownloadDiagnostics(t *testing.T) {
 				t.Fatal(err)
 			}
 			asset := plan.Assets[0]
-			mock.state.Release.Assets = []remotePublicationAsset{{ID: 1, Name: asset.Name, Size: asset.Size, State: "uploaded"}}
+			mock.state.Release.Assets = []remotePublicationAsset{{ID: 1, Name: asset.Name, Size: asset.Size, State: "uploaded", Digest: "sha256:" + asset.SHA256}}
 			provider := &publicationDownloadErrorProvider{mock, tc.err}
 			err = publicationReadback(context.Background(), provider, plan, id, true, []publicationAsset{asset})
 			if err == nil || err.Error() != tc.want || mock.writes != 1 {

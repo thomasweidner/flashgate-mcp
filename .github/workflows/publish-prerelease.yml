@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       authorization:
-        description: Externally approved create or empty-draft continuation authorization JSON
+        description: Externally approved five-asset create or empty-draft continuation authorization JSON
         required: true
         type: string
       authorization_sha256:
@@ -141,6 +141,24 @@ jobs:
             --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
             --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256" \
             --output "$FLASHGATE_WORK_ROOT/plan.json"
+
+      - name: Check five-asset plan before one-shot publication
+        shell: python
+        run: |
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['FLASHGATE_WORK_ROOT'])
+          original = root / 'original-plan.json'
+          plan = json.loads((original if original.exists() else root / 'plan.json').read_bytes())
+          version = plan['authorization']['version']
+          assets = plan['assets']
+          expected = {'SHA256SUMS'} | {
+              'flashgate-mcp_' + version + '_' + platform + '_' + arch + suffix
+              for platform, suffix in (('windows', '.zip'), ('linux', '.tar.gz'))
+              for arch in ('x64', 'arm64')
+          }
+          assert len(assets) == 5 and {a['name'] for a in assets} == expected
+          assert all(a['size'] > 0 and len(a['sha256']) == 64 and
+                     all(c in '0123456789abcdef' for c in a['sha256']) for a in assets)
 
       - name: Publish once after independent draft asset readback
         env:

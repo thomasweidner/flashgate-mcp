@@ -210,7 +210,7 @@ func publicationNotes(value, changelog []byte, a publicationAuthorization) (stri
 	return notes, nil
 }
 
-func publicationAssets(dir string) ([]publicationAsset, error) {
+func publicationEvidenceAssets(dir string) ([]publicationAsset, error) {
 	root, err := supplyOpen(dir)
 	if err != nil {
 		return nil, err
@@ -299,10 +299,11 @@ func preparePublicationWithSource(root, dir string, a publicationAuthorization, 
 }
 
 type remotePublicationAsset struct {
-	ID    int64
-	Name  string
-	Size  int64
-	State string
+	ID     int64
+	Name   string
+	Size   int64
+	State  string
+	Digest string
 }
 type remotePublicationRelease struct {
 	ID                      int64
@@ -403,9 +404,14 @@ func publicationParityError(codes []string, state remotePublicationState, plan p
 }
 
 func publicationReadback(ctx context.Context, p publicationProvider, plan publicationPlan, id int64, draft bool, assets []publicationAsset) error {
+	_, err := publicationReadbackState(ctx, p, plan, id, draft, assets)
+	return err
+}
+
+func publicationReadbackState(ctx context.Context, p publicationProvider, plan publicationPlan, id int64, draft bool, assets []publicationAsset) (remotePublicationState, error) {
 	state, err := p.InspectRelease(ctx, plan, id)
 	if err != nil {
-		return errors.New("provider readback failed")
+		return state, errors.New("provider readback failed")
 	}
 	r := state.Release
 	var codes []string
@@ -430,48 +436,73 @@ func publicationReadback(ctx context.Context, p publicationProvider, plan public
 		check(len(r.Assets) != len(assets), "ASSET_COUNT")
 	}
 	if len(codes) != 0 {
-		return publicationParityError(codes, state, plan, id, draft, len(assets))
+		return state, publicationParityError(codes, state, plan, id, draft, len(assets))
 	}
 	if draft && r.PublishedAt != "" {
-		return errors.New("draft has contradictory publication timestamp")
+		return state, errors.New("draft has contradictory publication timestamp")
 	}
 	if !draft {
 		if _, err := time.Parse(time.RFC3339, r.PublishedAt); err != nil {
-			return errors.New("remote publication timestamp unavailable")
+			return state, errors.New("remote publication timestamp unavailable")
 		}
 	}
 	seen := map[int64]bool{}
 	byName := map[string]remotePublicationAsset{}
 	for _, asset := range r.Assets {
 		if asset.ID < 1 || seen[asset.ID] || byName[asset.Name].ID != 0 || asset.State != "uploaded" {
-			return errors.New("remote asset conflict")
+			return state, errors.New("remote asset conflict")
 		}
 		seen[asset.ID] = true
 		byName[asset.Name] = asset
 	}
 	for _, expected := range assets {
 		actual, ok := byName[expected.Name]
-		if !ok || actual.Size != expected.Size {
-			return errors.New("remote asset inventory mismatch")
+		if !ok || actual.Size != expected.Size || actual.Digest != "sha256:"+expected.SHA256 {
+			return state, errors.New("remote asset inventory mismatch")
 		}
 		stream, err := p.ReadAsset(ctx, actual.ID)
 		if err != nil {
 			var status *publicationDownloadHTTPError
 			if errors.As(err, &status) {
-				return fmt.Errorf("remote asset readback unavailable: %w", status)
+				return state, fmt.Errorf("remote asset readback unavailable: %w", status)
 			}
-			return errors.New("remote asset readback unavailable")
+			return state, errors.New("remote asset readback unavailable")
 		}
 		digest, n, err := publicationHash(stream, expected.Size)
 		if err != nil || n != expected.Size || digest != expected.SHA256 {
-			return errors.New("remote asset byte parity failed")
+			return state, errors.New("remote asset byte parity failed")
 		}
 	}
-	return nil
+	return state, nil
 }
 
 // A journal is exclusively created before a write. Each intent is fsynced
 // before dispatch. No error path retries, rolls back or changes provider.
+func publicationJournal(name, planHash, attemptAnchor string) (*os.File, func(string, string, int64) error, error) {
+	if err := rejectSymlinkParents(filepath.Dir(name)); err != nil {
+		return nil, nil, err
+	}
+	log, err := os.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return nil, nil, errors.New("HOLD: publication attempt already consumed or journal unavailable")
+	}
+	intent := func(phase, action string, id int64) error {
+		data, err := json.Marshal(struct {
+			Plan, Phase, Action string
+			Authorization       string
+			ReleaseID           int64
+		}{planHash, phase, action, attemptAnchor, id})
+		if err != nil {
+			return err
+		}
+		if _, err := log.Write(append(data, '\n')); err != nil {
+			return err
+		}
+		return log.Sync()
+	}
+	return log, intent, nil
+}
+
 func executePublication(ctx context.Context, p publicationProvider, plan publicationPlan, dir, journal string) (result error) {
 	return executePublicationTarget(ctx, p, plan, dir, journal, 0, plan.AuthorizationSHA256)
 }
@@ -516,28 +547,11 @@ func executePublicationTarget(ctx context.Context, p publicationProvider, plan p
 		return err
 	}
 	planHash := supplyDigest(manifest)
-	if err := rejectSymlinkParents(filepath.Dir(journal)); err != nil {
+	log, intent, err := publicationJournal(journal, planHash, attemptAnchor)
+	if err != nil {
 		return err
 	}
-	log, err := os.OpenFile(journal, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return errors.New("HOLD: publication attempt already consumed or journal unavailable")
-	}
 	defer func() { result = errors.Join(result, log.Close()) }()
-	intent := func(phase, action string, id int64) error {
-		data, err := json.Marshal(struct {
-			Plan, Phase, Action string
-			Authorization       string
-			ReleaseID           int64
-		}{planHash, phase, action, attemptAnchor, id})
-		if err != nil {
-			return err
-		}
-		if _, err := log.Write(append(data, '\n')); err != nil {
-			return err
-		}
-		return log.Sync()
-	}
 	id := target
 	if target == 0 {
 		if err := intent("DRAFT_STAGING", "CREATE_ONCE", 0); err != nil {
@@ -551,30 +565,21 @@ func executePublicationTarget(ctx context.Context, p publicationProvider, plan p
 		return err
 	}
 	transferred := []publicationAsset{}
-	all := append(append([]publicationAsset{}, plan.Assets...), publicationAsset{"publication-manifest.json", "", int64(len(manifest)), planHash})
+	all := append([]publicationAsset{}, plan.Assets...)
 	for _, asset := range all {
 		if err := publicationReadback(ctx, p, plan, id, true, transferred); err != nil {
 			return fmt.Errorf("HOLD before transfer: %w", err)
 		}
-		var reader io.Reader = bytes.NewReader(manifest)
-		var file *os.File
-		if asset.Path != "" {
-			file, err = supplyRegularOpen(root, asset.Path, asset.Size)
-			if err != nil {
-				return errors.New("HOLD: frozen asset unavailable")
-			}
-			reader = io.LimitReader(file, asset.Size)
+		file, err := publicationAssetReader(root, asset, plan.Assets)
+		if err != nil {
+			return errors.New("HOLD: frozen asset unavailable")
 		}
 		if err := intent("EXACT_ASSET_TRANSFER", asset.Name, id); err != nil {
-			if file != nil {
-				_ = file.Close()
-			}
+			_ = file.Close()
 			return err
 		}
-		err = p.Upload(ctx, id, asset, reader)
-		if file != nil {
-			err = errors.Join(err, file.Close())
-		}
+		err = p.Upload(ctx, id, asset, io.LimitReader(file, asset.Size))
+		err = errors.Join(err, file.Close())
 		if err != nil {
 			var status *publicationUploadHTTPError
 			if errors.As(err, &status) && status != nil && status.statusCode >= 100 && status.statusCode <= 599 {

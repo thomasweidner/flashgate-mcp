@@ -571,7 +571,9 @@ retention. Missing evidence required for an operation still stops it.
 Preserve VERSION/source/artifact identity and exact lightweight-tag parity.
 BL-262/363 stay Completed. BL-364 requires no new signed provenance, keys or
 signing infrastructure and activates neither Artifact Attestations nor Immutable
-Releases. The current publisher has not migrated.
+Releases. The publisher now projects only five public assets and requires
+actual GitHub digests plus byte downloads for each. Full internal evidence
+verification remains mandatory.
 
 Historical normalization is a separate external boundary: independently verify
 original inventory/IDs/bytes/hashes, required identity bindings and provider state
@@ -584,8 +586,11 @@ or failed/ambiguous writes stop without bypass, blind retry or implicit recreati
 No permanent historical raw-evidence dataset is required. Preserve the true
 40-asset history and completed BL-363. The
 [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
-defines this future retrofit and requires independent review before technical
-implementation; this plan grants no external write or credential change.
+defines the retrofit. The implementation retains independent technical review;
+BL-364 remains Planned pending that review and historical normalization.
+Prepared normalization functions reuse existing verification, provider and journal
+controls; they grant no external write or credential change. Offline preparation
+is not actual provider-download evidence.
 
 Release-unassigned BL-366 owns future SBOM security management, reusing BL-262
 SPDX 2.3 inventory and existing Dependabot/GitHub security functions. Correlate

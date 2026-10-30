@@ -175,7 +175,8 @@ Primary owner: `BL-246`. Shared supporting scope: `BL-247`.
 **Status:** Accepted
 **Date:** 2026-07-21
 **Distribution amendment:** 2026-10-30, accepted target owned by Planned BL-364;
-the existing publisher is not yet migrated.
+the publisher retrofit is implemented locally, pending independent technical
+review and actual historical normalization acceptance.
 
 ### Single source of truth
 
@@ -334,10 +335,10 @@ identifiers.
 Do not include the tag's leading `v` in the product version or archive name.
 Archives contain the binary, `LICENSE`, `README.md`, and
 `THIRD-PARTY-NOTICES.md`. Candidate builders retain sibling SHA-256 checksum
-files for verification. The current BL-363 publisher uploads those files and
-the complete evidence bundle; v0.3.0 was accepted with 40 assets. The following
-BL-364 target supersedes that public layout only when separately implemented
-and accepted; it does not rewrite the original publication history.
+files for verification. BL-363 originally uploaded those files and the complete
+evidence bundle; v0.3.0 was accepted with 40 assets. The BL-364 retrofit now
+projects five public assets while retaining full verification. This local
+implementation does not normalize the existing release or rewrite its history.
 
 ### Accepted public distribution target
 
@@ -378,8 +379,8 @@ complete final five-asset provider and credential-free download parity. Preserve
 the true original 40-asset publication history and completed BL-363.
 See the [BL-364 binding](../planning/implementation-contract.md#bl-364-planning-binding)
 for exact checksum format, retrofit, tests, independent review and authorization
-gates. This amendment is planning only; BL-364 remains Planned until technical
-implementation, independent review and historical normalization are accepted.
+gates. BL-364 remains Planned until the technical implementation, independent
+review and actual historical normalization are accepted.
 
 ### Build verification retained
 

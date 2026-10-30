@@ -571,9 +571,9 @@ the first real publication and provider readback remain separate acceptance.
 
 #### BL-364 five-asset distribution target
 
-Planned BL-364 changes the target contract, not the current BL-363 test
-expectations. Separately authorized implementation must retrofit those tests and
-the existing BL-248/255/262/363 paths before activation:
+The BL-364 retrofit updates the existing publisher expectations and reuses the
+BL-248/255/262/363 paths. Local provider doubles exercise the five-asset target
+and prepared historical path; these tests do not establish hosted acceptance:
 
 - require exactly five uploaded assets: four original Windows/Linux x64/ARM64
   archives plus shared `SHA256SUMS`; exclude GitHub source downloads, reject
@@ -605,11 +605,19 @@ the existing BL-248/255/262/363 paths before activation:
   prerelease identity, provider digests and credential-free downloads; preserve
   original 40-asset history and completed BL-262/363.
 
-The material release/security plan requires independent release/security review before
-technical implementation, which itself retains independent review. Planning runs
-the documentation and semantic contract gates; it claims no future publisher or
-normalization tests already pass. BL-364 stays Planned until implementation,
-independent review and actual historical normalization are fully accepted. See
+The accepted material release/security plan preceded this implementation.
+The implementation retains independent terminal technical review. Run the
+publication suite first, then complete releaseaudit and both platform chains,
+including shell/workflow, documentation, product coverage and native Linux race.
+Normalization tests include every one of the 36 deletion failure positions,
+accepted-but-ambiguous upload/delete, read-only reconciliation, stale approvals,
+unsafe IDs, checksum-ID drift and final public-download failure. For each of the
+five target assets, unavailable, incomplete or tampered public downloads must
+HOLD before the first delete with zero delete calls. Successful public reads
+precede exactly 36 deletes and repeat at closure. Failures after deletion begins
+still stop without retry or compensation. The offline
+preflight CLI is tested without provider writes. BL-364 stays Planned until
+implementation, independent review and actual historical normalization are fully accepted. See
 the [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).
 
 #### Release-unassigned security validation
@@ -767,7 +775,7 @@ Empty-draft continuation regressions additionally bind a new approval and the
 unchanged original plan, reject reuse of the consumed original approval, and
 exercise positive-ID reads with hidden or conflicting list entries, HTTP
 403/404, transport deadline, malformed/duplicate JSON and mismatched identity.
-They reject nonempty drafts before upload, cover the full 40-asset sequence,
+They reject nonempty drafts before upload, cover the exact five-asset sequence,
 every consumed write failure and final/public download failure, and prove no
 recreate, write retry or credential-bearing public download. A missing or
 invalid publication timestamp also prevents success. These fixtures classify
