@@ -545,11 +545,13 @@ Historical normalization requires exact original/provider checks, separate
 authorizations for checksum upload and deletion of 36 existing additional assets,
 one-shot/readback, and unchanged four original archives/tag/source/prerelease
 identity. The original v0.3.0 40-asset publication remains history. The adapter
-now projects five public assets while retaining full internal evidence checks;
-its internal plan is not a public asset. Historical normalization is prepared
-behind separate upload/delete approvals, with no automatic workflow dispatch.
-BL-364 remains Planned pending independent technical review and actual historical
-normalization acceptance. See the
+projects five public assets while retaining full internal evidence checks;
+its internal plan is not a public asset. The implementation and independent
+technical review are accepted; actual historical normalization and public
+download parity are accepted, so BL-364 is Completed. The current release has
+five assets, and its separately approved cumulative notes retain a distinct
+[notes identity](prerelease-publication.md#implementation-and-availability).
+There is no automatic workflow dispatch or new mutation authority. See the
 [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
 and [release boundary](planning/release-scope.md#accepted-distribution-target-for-all-releases).
 

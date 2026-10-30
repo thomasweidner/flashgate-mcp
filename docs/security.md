@@ -586,11 +586,15 @@ or failed/ambiguous writes stop without bypass, blind retry or implicit recreati
 No permanent historical raw-evidence dataset is required. Preserve the true
 40-asset history and completed BL-363. The
 [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
-defines the retrofit. The implementation retains independent technical review;
-BL-364 remains Planned pending that review and historical normalization.
-Prepared normalization functions reuse existing verification, provider and journal
-controls; they grant no external write or credential change. Offline preparation
-is not actual provider-download evidence.
+defines the retrofit. Its implementation, independent technical review and
+historical normalization are accepted; BL-364 is Completed. Independent GitHub
+identity/digest checks and user-confirmed public downloads establish the actual
+five-asset state. The later cumulative notes were explicitly approved and have a
+[distinct current identity](prerelease-publication.md#implementation-and-availability);
+original publication evidence remains unchanged. Normalization functions retain
+the existing verification, provider and journal controls and grant no new
+external write or credential change. Offline preparation alone remains
+insufficient provider-download evidence.
 
 Release-unassigned BL-366 owns future SBOM security management, reusing BL-262
 SPDX 2.3 inventory and existing Dependabot/GitHub security functions. Correlate

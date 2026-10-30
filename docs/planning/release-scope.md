@@ -82,16 +82,16 @@ reusing the safe publication foundation after further development and closure.
 
 ## Accepted distribution target for all releases
 
-Planned BL-364 in SPR-048 owns the uniform public layout for every FlashGate
+Completed BL-364 in SPR-048 established the uniform public layout for every FlashGate
 GitHub Release, including existing v0.3.0 and stable Version 1.0: exactly five
 uploaded assets, comprising four original verified Windows/Linux x64/ARM64
 ZIP/TAR.GZ archives and one shared `SHA256SUMS`. GitHub-generated source downloads
 are excluded. No sibling `.sha256` files, extra release-notes SHA-256 section,
 public build/test/provenance/SBOM evidence assets, additional public release
 manifest or separate permanent release ledger. The current publisher
-has been retrofitted locally to project five assets while retaining complete
-internal verification. Independent technical review and actual historical
-normalization acceptance remain outstanding; BL-364 stays Planned.
+projects five assets while retaining complete internal verification. The
+implementation and independent technical review are accepted, and v0.3.0
+normalization has passed independent public acceptance and user download readback.
 
 Generate deterministic GNU-compatible, LF checksum records with exactly one
 entry per archive from the four original verified hashes. A consumer or installer
@@ -119,9 +119,12 @@ archive IDs/bytes and unchanged version/tag/source/prerelease identity, with ful
 provider and credential-free download parity. Preserve original 40-asset history
 and completed BL-363. This plan grants no mutation authority. See the
 [BL-364 binding](implementation-contract.md#bl-364-planning-binding).
-BL-364 remains Planned until technical implementation, independent review and
-actual historical normalization are fully accepted; BL-263 consumes this contract
-while retaining the stable Version 1.0 gate.
+BL-364 is Completed; its original 40-asset publication and later accepted
+five-asset state remain distinct. The separately approved cumulative notes
+retain the frozen CHANGELOG narrative with a
+[distinct current identity](../prerelease-publication.md#implementation-and-availability).
+BL-263 consumes this accepted distribution contract while retaining the stable
+Version 1.0 gate.
 
 ## Release-unassigned security work
 

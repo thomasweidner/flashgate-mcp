@@ -120,8 +120,11 @@ needs exact original/provider checks, separate one-shot checksum upload and
 36-asset deletion authorizations and readback; retain four original archive IDs/
 bytes and tag/source/prerelease identity, then prove five-asset parity. Preserve
 the original 40-asset history and completed BL-363; no permanent historical
-dataset is required. The local retrofit does not establish hosted normalization
-or independent acceptance; BL-364 remains Planned until both are accepted.
+dataset is required. Actual v0.3.0 normalization and independent acceptance are
+complete: GitHub metadata and user-confirmed public downloads establish five-asset
+parity with the original archives. The implementation and independent technical
+review are accepted; BL-364 is Completed. The separately approved cumulative
+notes retain a [distinct identity](prerelease-publication.md#implementation-and-availability).
 See the [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).
 
 The planned lane is `BL-248 verified artifact -> BL-255 immutable candidate

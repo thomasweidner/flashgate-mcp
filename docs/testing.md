@@ -616,8 +616,12 @@ five target assets, unavailable, incomplete or tampered public downloads must
 HOLD before the first delete with zero delete calls. Successful public reads
 precede exactly 36 deletes and repeat at closure. Failures after deletion begins
 still stop without retry or compensation. The offline
-preflight CLI is tested without provider writes. BL-364 stays Planned until
-implementation, independent review and actual historical normalization are fully accepted. See
+preflight CLI is tested without provider writes. BL-364 is Completed: the
+implementation and independent technical review are accepted, and actual
+historical normalization has independent five-asset GitHub acceptance plus
+user-confirmed public-download hash parity. Existing technical evidence remains
+valid; documentation/status-only closure runs the documentation regression gates
+and fresh metadata checks without repeating the full product matrix. See
 the [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).
 
 #### Release-unassigned security validation

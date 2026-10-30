@@ -124,7 +124,7 @@ This prerelease does not satisfy BL-263; stable publication remains BL-263.
 ## BL-364 planning binding
 
 Architecture role: release/distribution and validation, extending the existing
-publication adapter. Planned in SPR-048 after completed BL-363; hard prerequisites
+publication adapter. Completed in SPR-048 after completed BL-363; hard prerequisites
 are completed BL-245, BL-248, BL-255, BL-262 and BL-363. Reuse root VERSION,
 canonical CHANGELOG notes/tag parity, internal/version archive names, BL-248
 verification, BL-255 immutable candidate bytes, BL-262 complete externally anchored
@@ -235,13 +235,16 @@ Reuse BL-248/255/262/363 tests and applicable [testing gates](../testing.md), wi
 independent review of this material release/security plan before technical
 implementation, and independent review of the later implementation.
 
-The local implementation retrofits the existing publisher to project five
-assets, verify selected-platform downloads and prepare separately authorized
-historical upload/deletion. The old 40-asset publication remains true history;
-no historical provider mutation is implied. BL-364 remains Planned until the
-implementation, required independent review and actual historical normalization
-are fully accepted. At closure reconcile guidance, ADRs, tests/CI, candidate
-identities, distribution, migration, security and VERSION/CHANGELOG disposition.
+The publisher retrofit, selected-platform verification, required independent
+technical review and actual historical v0.3.0 normalization are accepted. BL-364
+is Completed: the current public release has four unchanged original archives
+and shared SHA256SUMS, with independently verified asset identities/digests and
+user-confirmed public-download hash parity. The original 40-asset publication
+remains true history. The later, explicitly approved cumulative notes contain
+the frozen CHANGELOG sections 0.1.0, 0.2.0 and 0.3.0 and have a distinct
+[notes identity](../prerelease-publication.md#implementation-and-availability).
+Guidance, ADRs and status are reconciled; existing tests/CI and candidate
+identities remain valid, with no product migration or deferred deliverable.
 This developer-tooling retrofit changes no product runtime or existing artifact
 identity and requires no VERSION increment or historical changelog rewrite.
 Git, provider/release/tag/asset, signing, permission, credential, installation and
