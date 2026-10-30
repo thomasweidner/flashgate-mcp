@@ -555,25 +555,54 @@ their own complete evidence.
 BL-263 retains the independent stable Version 1.0 gate and stable publication;
 pre-1.0 publication permits no stable/latest claim.
 
-The accepted BL-364 distribution target keeps the checks below while changing
-the public layout to four original platform archives for every release, including
-v0.3.0. Original trusted candidate checksums, generated notes values, actual GitHub
-asset digests and credential-free downloaded-byte hashes must agree; a provider
-digest alone authenticates no builder. Complete build/supply-chain evidence remains
-internally retained with independent verification and long-term retrieval, not in
-public release assets. Lightweight tags retain exact tag/commit/VERSION parity;
-BL-364 requires no signing keys/infrastructure, Artifact Attestations or Immutable
-Releases and implicitly activates none. The current publisher is not migrated.
+The accepted BL-364 target preserves full BL-248/255/262 verification while
+changing public distribution to exactly five assets for every release, including
+v0.3.0: four original verified platform archives plus shared `SHA256SUMS`.
+Deterministic GNU-compatible LF checksum records bind one entry per archive to
+its original verified hash. A selected-platform consumer needs only its archive
+and the checksum file. Original hashes, actual GitHub asset digests and
+credential-free downloaded-byte hashes must agree; verify checksum-file bytes
+too. Provider digests alone authenticate no builder. No sibling `.sha256` files,
+extra notes checksum section, public evidence assets, additional public release
+manifest or permanent release ledger. Complete verification and required temporary
+evidence remain, with no raw-evidence retention duty beyond regular Actions
+retention. Missing evidence required for an operation still stops it.
 
-Historical deletion is a separate destructive boundary: independently verify the
-original inventory/asset IDs/bytes/hashes, durable evidence disposition, notes and
-provider state first, then require exact authorization for the 36 extra v0.3.0
-assets. Preserve four original archive IDs/bytes, tag, source and prerelease
-identity; verify full remote and credential-free readback afterwards. Missing
-evidence, identity drift or failed/ambiguous writes stop without bypass, blind
-retry or implied recreation. Preserve original 40-asset history and completed
-BL-363. The [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
-defines this future retrofit; this plan grants no external write or credential.
+Preserve VERSION/source/artifact identity and exact lightweight-tag parity.
+BL-262/363 stay Completed. BL-364 requires no new signed provenance, keys or
+signing infrastructure and activates neither Artifact Attestations nor Immutable
+Releases. The current publisher has not migrated.
+
+Historical normalization is a separate external boundary: independently verify
+original inventory/IDs/bytes/hashes, required identity bindings and provider state
+before separately authorized upload of new `SHA256SUMS` and exact deletion of
+36 existing additional v0.3.0 assets. Each is one-shot with fresh prestate and
+readback. Preserve the four original archive IDs/bytes, version/tag/source and
+prerelease identity; prove complete final five-asset inventory, digest/checksum
+and credential-free download parity. Missing evidence, drift, provider restrictions
+or failed/ambiguous writes stop without bypass, blind retry or implicit recreation.
+No permanent historical raw-evidence dataset is required. Preserve the true
+40-asset history and completed BL-363. The
+[BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
+defines this future retrofit and requires independent review before technical
+implementation; this plan grants no external write or credential change.
+
+Release-unassigned BL-366 owns future SBOM security management, reusing BL-262
+SPDX 2.3 inventory and existing Dependabot/GitHub security functions. Correlate
+known advisories/CVEs, distinguish direct/transitive dependencies and product
+exposure, prioritize findings and support remediation or documented exceptions.
+No second generator or mandatory public SBOM asset; tool/provider decisions,
+CI/security gates and negative tests belong to later implementation.
+
+Release-unassigned BL-367 owns future signed GitHub-native build attestations for
+the four verified archives. Use Actions OIDC and short-lived workflow identity,
+automatic generation in later authorized release workflows, GitHub-native
+verification and minimal targeted permissions. No permanent keys, long-term
+credentials or extra release-download asset. Cover subject/source/repository/
+workflow mismatch, tampering, missing verification and excess permissions in
+security/negative tests. Neither BL-366 nor BL-367 has a sprint or release
+assignment or blocks any release; no activation or permission change occurs here.
+See their [bindings](planning/implementation-contract.md#release-unassigned-security-task-bindings).
 
 Version 1.0 requires:
 

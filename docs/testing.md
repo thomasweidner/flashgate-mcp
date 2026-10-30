@@ -569,38 +569,68 @@ the first real publication and provider readback remain separate acceptance.
   SemVer candidate version must match every canonical version surface;
 - reject stable/latest Version 1.0 claims; BL-363 success never passes BL-263.
 
-#### BL-364 four-archive distribution target
+#### BL-364 five-asset distribution target
 
-Planned BL-364 changes the release contract, not the currently implemented
-BL-363 test expectations. Its separately authorized implementation must retrofit
-those tests and the existing BL-248/255/262/363 paths before activation:
+Planned BL-364 changes the target contract, not the current BL-363 test
+expectations. Separately authorized implementation must retrofit those tests and
+the existing BL-248/255/262/363 paths before activation:
 
-- require exactly four manually uploaded Windows/Linux x64/ARM64 archives, full
-  archive/content inventories and unchanged candidate identities; exclude GitHub
-  source downloads, and reject separate checksum/evidence assets;
-- generate one exact four-entry release-notes SHA-256 section from independently
-  reviewed original candidate checksums, preserving frozen CHANGELOG narrative;
-- require actual GitHub digests, original anchored checksums, generated notes and
-  credential-free downloaded bytes to agree; reject absent/malformed/conflicting
-  metadata, tampered notes, unavailable downloads and version/tag/source drift;
-- independently prove complete internal evidence retention/retrieval beyond Actions
-  expiry and verification against original anchors; reject missing, extra, duplicate,
-  swapped, tampered or unbound evidence, without claiming signed build provenance;
-- preserve lightweight tags and exact tag/commit/VERSION binding; prove no implicit
-  signing/key infrastructure, Artifact Attestations or Immutable Releases activation;
-- for v0.3.0, independently bind the original 40 assets, IDs, bytes/hashes, durable
-  evidence disposition, generated notes and provider state before a separate exact
-  authorization for deletion of the 36 extras; reject unsafe, stale or archive-ID
-  deletion subjects, provider restrictions and failed/ambiguous deletion without
-  blind retry or implicit compensation;
-- afterwards verify the complete paginated remote inventory of exactly four
-  original archive IDs/bytes, unchanged tag/source/prerelease identity, notes/digests
-  and all credential-free downloads, retaining before/after history and BL-363 closure.
+- require exactly five uploaded assets: four original Windows/Linux x64/ARM64
+  archives plus shared `SHA256SUMS`; exclude GitHub source downloads, reject
+  sibling `.sha256`, public evidence and additional manifest assets;
+- generate exactly four GNU-compatible checksum records from original verified
+  hashes, deterministically ordered by canonical archive name with LF; test
+  duplicates, missing/extra/swapped/tampered entries, unsafe names, malformed
+  hashes, BOM/CRLF and final-newline drift against the canonical format;
+- verify a selected platform with only its archive plus `SHA256SUMS`, without
+  downloading the other three archives; test missing/duplicate selected entries,
+  changed bytes and unavailable selected downloads;
+- require actual GitHub digests, original archive hashes and credential-free
+  downloaded bytes to agree; bind and read back `SHA256SUMS` bytes too; reject
+  absent/malformed/conflicting digests, notes checksum sections and identity drift;
+- preserve full BL-248/255/262 verification, complete required temporary evidence
+  and externally trusted original anchors; retain missing/extra/duplicate/swapped/
+  tampered/unbound evidence negatives without a raw-evidence retention duty beyond
+  regular Actions retention or a permanent historical dataset;
+- preserve VERSION/source/artifact identity and lightweight tag parity; prove no
+  additional public release manifest, permanent release ledger, mandatory signed
+  provenance/key infrastructure or implicit Attestations/Immutable Releases activation;
+- for v0.3.0, independently bind exact original 40-asset inventory/IDs/bytes/hashes,
+  required identity anchors and provider state before separately authorized
+  checksum upload and deletion of exactly 36 existing additional assets; test
+  stale/unsafe/archive-ID deletion subjects, provider restrictions and failed or
+  ambiguous upload/delete without retry, implicit compensation or recreation;
+- afterwards verify complete paginated inventory of exactly five assets, the four
+  original archive IDs/bytes and new checksum file, unchanged tag/version/source/
+  prerelease identity, provider digests and credential-free downloads; preserve
+  original 40-asset history and completed BL-262/363.
 
-The material release/ADR plan and later implementation need independent review.
-Documentation-only planning runs the documentation and semantic contract gates;
-it does not claim these future publisher/deletion tests already pass. See the
-[BL-364 acceptance binding](planning/implementation-contract.md#bl-364-planning-binding).
+The material release/security plan requires independent release/security review before
+technical implementation, which itself retains independent review. Planning runs
+the documentation and semantic contract gates; it claims no future publisher or
+normalization tests already pass. BL-364 stays Planned until implementation,
+independent review and actual historical normalization are fully accepted. See
+the [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).
+
+#### Release-unassigned security validation
+
+BL-366 and BL-367 are independent Planned owners without a sprint or release
+assignment; they block no release. Their later authorized implementations require
+focused security/negative tests, relevant CI/security gates, documentation and
+independent review under their [bindings](planning/implementation-contract.md#release-unassigned-security-task-bindings):
+
+- BL-366 reuses BL-262 SPDX 2.3 inventory and existing Dependabot/GitHub security
+  functions for advisory/CVE correlation, direct/transitive classification,
+  product exposure, prioritization, remediation and documented exceptions. Test
+  missing/stale/mismatched inventory or advisory data, false classification and
+  unjustified exceptions. Select tools/providers later; no second SBOM generator
+  or mandatory public SBOM asset.
+- BL-367 creates signed GitHub-native build attestations for four verified archives
+  through Actions OIDC and short-lived workflow identity in later authorized
+  workflows, verified with GitHub-native methods. Test wrong repository/workflow/
+  source/subject identity, swapped/tampered/missing subjects, unavailable
+  verification and excess permissions. No permanent keys, long-term credentials
+  or extra release-download asset. No activation or permission change in this plan.
 
 #### Existing and Version 1.0 artifact gates
 
