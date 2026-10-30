@@ -174,9 +174,9 @@ Primary owner: `BL-246`. Shared supporting scope: `BL-247`.
 
 **Status:** Accepted
 **Date:** 2026-07-21
-**Distribution amendment:** 2026-10-30, accepted target owned by Planned BL-364;
-the publisher retrofit is implemented locally, pending independent technical
-review and actual historical normalization acceptance.
+**Distribution amendment:** 2026-10-30, implemented and accepted under Completed
+BL-364, including independent technical review and actual historical v0.3.0
+normalization with public-download hash parity.
 
 ### Single source of truth
 
@@ -336,9 +336,10 @@ Do not include the tag's leading `v` in the product version or archive name.
 Archives contain the binary, `LICENSE`, `README.md`, and
 `THIRD-PARTY-NOTICES.md`. Candidate builders retain sibling SHA-256 checksum
 files for verification. BL-363 originally uploaded those files and the complete
-evidence bundle; v0.3.0 was accepted with 40 assets. The BL-364 retrofit now
-projects five public assets while retaining full verification. This local
-implementation does not normalize the existing release or rewrite its history.
+evidence bundle; v0.3.0 was originally accepted with 40 assets. The BL-364
+retrofit projects five public assets while retaining full verification. The
+subsequent historical normalization is complete and accepted, preserving the
+four original archives and the original publication history.
 
 ### Accepted public distribution target
 
@@ -379,8 +380,10 @@ complete final five-asset provider and credential-free download parity. Preserve
 the true original 40-asset publication history and completed BL-363.
 See the [BL-364 binding](../planning/implementation-contract.md#bl-364-planning-binding)
 for exact checksum format, retrofit, tests, independent review and authorization
-gates. BL-364 remains Planned until the technical implementation, independent
-review and actual historical normalization are accepted.
+gates. BL-364 is Completed: technical implementation, independent review and
+actual historical normalization are accepted. Its later, explicitly approved
+cumulative notes contain the frozen 0.1.0, 0.2.0 and 0.3.0 CHANGELOG sections
+with a [distinct current identity](../prerelease-publication.md#implementation-and-availability).
 
 ### Build verification retained
 

@@ -15,10 +15,24 @@ repackages binaries.
 [Version 0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0)
 is a public prerelease, published on 2026-10-25 from frozen source
 `fa4082ce575f43b4b43c9aaa9e9fe71e3019bdb5`. Independent publication acceptance
-confirmed all 40 uploaded assets: the original 39 files plus the unchanged
-publication manifest. Credential-free public downloads matched every original
-size and SHA-256, totaling 4,866,296 bytes. This establishes availability for
-that release; each future publication still requires its own authorization and
+confirmed all 40 originally uploaded assets: the original 39 files plus the
+unchanged publication manifest. Credential-free public downloads matched every
+original size and SHA-256, totaling 4,866,296 bytes. This remains the original
+publication history.
+
+BL-364 subsequently completed the accepted five-asset normalization: the four
+original archive IDs/bytes are retained, the 36 additional assets are removed,
+and one shared 414-byte SHA256SUMS is published. Independent GitHub readback
+confirmed all five IDs, sizes and SHA-256 digests; the user also downloaded all
+five public files and confirmed every expected hash. Version, tag, frozen source
+and prerelease identity are unchanged. BL-364 is Completed.
+
+A later, explicitly approved cumulative release-notes update contains the complete
+frozen CHANGELOG sections 0.1.0, 0.2.0 and 0.3.0. Its current SHA-256 is
+`f1779c5aa7156bb93967fdbc7569595f660186ab333bce6c807fd67a70f54952`.
+That hash identifies the approved amendment; original publication evidence retains
+its own notes identity. Normal publication validation continues to bind frozen
+source notes. Each future publication requires its own authorization and
 readback. Stable Version 1.0 and its release gate remain BL-263.
 
 ## Prepare the frozen candidate
@@ -46,17 +60,18 @@ Independently review this material plan before separately authorized technical
 implementation and review the changed publisher before use. See the
 [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).
 
-Historical v0.3.0 normalization is required for BL-364 closure. Independently
-verify exact original inventory/IDs/bytes/hashes, required identity anchors and
+Historical v0.3.0 normalization is complete and accepted. Its controls require
+independent verification of exact original inventory/IDs/bytes/hashes, identity anchors and
 provider state before separately authorizing upload of new `SHA256SUMS` and
 deletion of exactly the 36 existing additional assets. Each mutation is one-shot
 with fresh prestate and readback. Retain the four original archive IDs/bytes,
 tag/version/source/prerelease identity and prove complete final five-asset
 provider/digest/credential-free download parity. No permanent historical
 raw-evidence dataset is required. The original 40-asset publication remains
-history; BL-363 stays Completed. The current publisher implements no deletion
-path. This plan authorizes no provider action and BL-364 remains Planned until
-technical implementation, independent review and historical normalization pass.
+history; BL-363 stays Completed. The accepted implementation includes separately
+authorized historical normalization controls. Implementation, independent review
+and public normalization acceptance are complete; this documentation authorizes
+no further provider action.
 
 1. Finalize canonical VERSION and its nonempty dated CHANGELOG section before
    candidate freeze. The date records intended publication, not its completion.
@@ -401,9 +416,11 @@ and exactly one corresponding record are present.
 ## Historical v0.3.0 normalization preparation
 
 The accepted original v0.3.0 publication had 40 assets. Its history and BL-363
-completion remain unchanged. This implementation alone does not normalize it.
-BL-364 remains Planned pending independent technical review and separate
-authorization, execution and acceptance of the historical normalization.
+completion remain unchanged. The subsequent normalization and independent
+acceptance are complete; BL-364 is Completed. The preparation commands below
+retain the original prestate bindings as historical reference. No additional
+v0.3.0 normalization is required. The separately approved cumulative notes have
+the current identity recorded under [availability](#implementation-and-availability).
 
 The historical path reuses the existing evidence verifier, confined file reads,
 provider readback/download checks and fsynced one-shot journal. It cannot create
