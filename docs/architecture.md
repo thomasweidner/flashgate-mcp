@@ -522,7 +522,7 @@ Version 1.0 release evidence includes:
 
 ### Build identity and native metadata
 
-Accepted distribution target, not yet implemented: Planned BL-364 extends the
+The BL-364 distribution retrofit extends the
 completed BL-363 publisher to exactly five uploaded assets for every release,
 including existing v0.3.0: four original verified platform archives plus shared
 `SHA256SUMS`. The checksum file uses deterministic GNU-compatible LF records
@@ -544,8 +544,12 @@ are release-unassigned and block no release; see their
 Historical normalization requires exact original/provider checks, separate
 authorizations for checksum upload and deletion of 36 existing additional assets,
 one-shot/readback, and unchanged four original archives/tag/source/prerelease
-identity. The original v0.3.0 40-asset publication remains history. The current
-adapter still uploads the full bundle and publication manifest. See the
+identity. The original v0.3.0 40-asset publication remains history. The adapter
+now projects five public assets while retaining full internal evidence checks;
+its internal plan is not a public asset. Historical normalization is prepared
+behind separate upload/delete approvals, with no automatic workflow dispatch.
+BL-364 remains Planned pending independent technical review and actual historical
+normalization acceptance. See the
 [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
 and [release boundary](planning/release-scope.md#accepted-distribution-target-for-all-releases).
 

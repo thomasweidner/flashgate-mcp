@@ -235,14 +235,17 @@ Reuse BL-248/255/262/363 tests and applicable [testing gates](../testing.md), wi
 independent review of this material release/security plan before technical
 implementation, and independent review of the later implementation.
 
-The current publisher still uploads all bundle files plus its publication
-manifest; this target is not implemented. BL-364 remains Planned until technical
+The local implementation retrofits the existing publisher to project five
+assets, verify selected-platform downloads and prepare separately authorized
+historical upload/deletion. The old 40-asset publication remains true history;
+no historical provider mutation is implied. BL-364 remains Planned until the
 implementation, required independent review and actual historical normalization
 are fully accepted. At closure reconcile guidance, ADRs, tests/CI, candidate
 identities, distribution, migration, security and VERSION/CHANGELOG disposition.
-This planning task changes no runtime, Go code, workflow, VERSION or changelog
-narrative and authorizes no Git, release/tag/asset, signing, permission, credential,
-installation or cleanup action.
+This developer-tooling retrofit changes no product runtime or existing artifact
+identity and requires no VERSION increment or historical changelog rewrite.
+Git, provider/release/tag/asset, signing, permission, credential, installation and
+cleanup actions retain separate authorization boundaries.
 
 ## Closure
 

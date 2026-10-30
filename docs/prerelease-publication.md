@@ -23,8 +23,8 @@ readback. Stable Version 1.0 and its release gate remain BL-263.
 
 ## Prepare the frozen candidate
 
-The procedures below describe the current BL-363 publisher. The accepted BL-364
-target is not implemented: every release, including v0.3.0, targets exactly five
+The BL-364 retrofit projects the fully verified internal bundle into exactly five
+public assets. Every release, including the historical v0.3.0 target, uses five
 uploaded assets, the four original verified platform archives plus shared
 `SHA256SUMS`. GitHub-generated source downloads are excluded. Generate four
 deterministic GNU-compatible LF checksum records from original verified hashes,
@@ -118,8 +118,8 @@ Numbers above are placeholders. Digest values are 64 lowercase hexadecimal
 characters. The authorization binds the complete action sequence and exact
 asset inventory, not merely a version label. It is a human-governed assertion;
 a JSON file or its checksum cannot authenticate human approval. Keep references
-public-safe: the publication manifest carries the binding, not secrets or private
-paths. originalApproval is a unique 1-96 character reference using ASCII letters,
+public-safe: the internal publication plan carries the binding, not secrets or
+private paths. The plan is retained as workflow evidence, never a release asset. originalApproval is a unique 1-96 character reference using ASCII letters,
 digits, dots, underscores and hyphens, beginning with a letter or digit. It
 identifies the original human approval across JSON representations and must
 never be reused after dispatch. Hash the exact externally approved bytes independently.
@@ -164,8 +164,11 @@ DRAFT STAGING creates a prerelease draft. Its positive response ID is then read
 directly through `GET /releases/{release_id}`. The paginated release list still
 detects visible conflicts, but omission from that list is not treated as proof
 that a known draft is absent. A failed direct-ID read never triggers another
-create or an alternate read route. EXACT ASSET TRANSFER uploads every original file once.
-INDEPENDENT READBACK downloads all assets and checks names, sizes and SHA-256
+create or an alternate read route. EXACT ASSET TRANSFER uploads the four original archives and generated
+`SHA256SUMS` once each. No evidence file or publication manifest is uploaded.
+INDEPENDENT READBACK requires each actual GitHub digest to equal
+`sha256:<original lowercase SHA-256>` and downloads all five assets to check
+names, sizes and SHA-256
 before PUBLICATION sets draft=false, prerelease=true and make_latest=false.
 FINAL READBACK repeats tag/release/asset parity, requires a valid publication
 timestamp and rejects a latest-release claim. Every asset is then downloaded
@@ -178,7 +181,9 @@ An exclusively created local journal records and fsyncs each write intent before
 the request. The workflow retains the plan and journal as diagnostic artifacts.
 Transport failures, ambiguous responses, conflicts, incomplete drafts, upload
 failures and readback failures all HOLD. No write retry, provider fallback,
-automatic rollback, asset replacement or deletion is implemented. A workflow
+automatic rollback or asset replacement is implemented in the publisher.
+Historical deletion is isolated behind the separate normalization authorizations
+[below](#historical-v030-normalization-preparation). A workflow
 rerun cannot resume a partial attempt. Final readback failure may occur after
 publication; HOLD then means the actual remote state must be reconciled, not
 that publication was rolled back.
@@ -211,7 +216,8 @@ publication may proceed only through a separately authorized manual operation:
 1. Preserve the consumed approval, plan, journal and failure. Reconcile the exact
    release ID, existing tag/source, name, notes, draft/prerelease flags and latest
    state. Download and verify the entire asset inventory against the unchanged
-   original manifest, including the original publication manifest itself. Any
+   original plan. The old v0.3.0 inventory also included the original publication
+   manifest; a new five-asset plan does not upload it. Any
    missing, extra or mismatching asset prevents this path.
 2. Verify that an already authorized normal CLI session has the required provider
    capability. Obtain a new human decision binding the exact release ID, executor,
@@ -267,8 +273,8 @@ be used as a continuation. Local `publication-preflight` repeats the original
 source/evidence verification and reconstructs the original plan byte for byte.
 Its new output is a `flashgate-publication-continuation-plan/v1` containing the
 new authorization and its transport SHA-256. This execution plan is distinct
-from the unchanged original `publication-manifest.json` uploaded as the final
-asset. No new product build, inventory replacement or plan rebinding occurs.
+from the unchanged original publication plan retained as internal workflow
+evidence. The release contains exactly five assets, with no public manifest. No new product build, inventory replacement or plan rebinding occurs.
 
 After independent review and separate dispatch approval, supply the exact
 original plan bytes in the workflow's `publication_manifest` input as well as
@@ -372,3 +378,99 @@ trusted publication/evidence bindings, then run the existing
 anchors and expected VERSION/commit. An untrusted publication manifest alone
 is not authenticity proof. Evidence remains explicitly unsigned, with no SLSA
 or build-attestation claim. See [artifact verification](artifact-verification.md).
+
+## Selected-platform download verification
+
+Download the canonical archive for the required platform and architecture and
+`SHA256SUMS` from the same release. No other platform archive is required.
+For example, from a directory containing only those two files:
+
+~~~text
+releaseaudit publication-verify --dir <downloads> --version <VERSION> --platform windows --architecture x64
+~~~
+
+Use `linux` or `windows` and `x64` or `arm64` as appropriate. The checker
+requires exactly four ordinally sorted canonical GNU records, lowercase hashes,
+two spaces, LF, no BOM and a final newline, then hashes only the selected archive.
+A checksum obtained with an archive detects mismatch; independently establish
+the release's authenticity through the trusted publication channel. It is not
+a signature. On GNU systems, `sha256sum --ignore-missing -c SHA256SUMS` can also
+check an available archive after confirming that the selected canonical name
+and exactly one corresponding record are present.
+
+## Historical v0.3.0 normalization preparation
+
+The accepted original v0.3.0 publication had 40 assets. Its history and BL-363
+completion remain unchanged. This implementation alone does not normalize it.
+BL-364 remains Planned pending independent technical review and separate
+authorization, execution and acceptance of the historical normalization.
+
+The historical path reuses the existing evidence verifier, confined file reads,
+provider readback/download checks and fsynced one-shot journal. It cannot create
+or publish a release. An old 39-file authorization cannot authorize a new
+five-asset publication or either normalization action.
+
+Offline preparation requires the complete original verified bundle, independently
+trusted original publication-plan hash and complete provider snapshot. It grants
+no provider authority and makes no network request:
+
+~~~text
+releaseaudit publication-normalization-preflight --dir <original-bundle> --publication-manifest <original-publication-manifest.json> --publication-manifest-sha256 <trusted-original-SHA256> --state <provider-snapshot.json> --release-id <original-positive-ID> --output <new-normalization-plan.json>
+~~~
+
+The snapshot uses the existing provider-state JSON shape: `TagCommit`,
+`LatestID` and `Release`; the release includes `ID`, `Tag`, `Target`,
+`Name`, `Body`, `Draft`, `Prerelease`, `PublishedAt` and complete `Assets`.
+Each asset contains `ID`, `Name`, `Size`, `State` and `Digest`. Missing
+metadata, duplicate IDs, digest mismatch or original evidence drift fails closed.
+Offline preparation compares snapshot metadata with bound local original bytes;
+it does not prove actual provider downloads. Execution repeats verification
+against the actual provider and downloads before any write.
+
+The resulting `flashgate-publication-normalization/v1` plan binds the original
+plan, release identity and publication timestamp, all 40 original IDs, names,
+lengths and hashes, the four retained archives, exactly 36 deletion subjects and
+the generated checksum bytes. Review that exact plan and its SHA-256. Obtain
+two separate human approvals using these exact authorization fields:
+
+~~~json
+{
+  "schema": "flashgate-publication-normalization-authorization/v1",
+  "action": "UPLOAD_SHA256SUMS",
+  "repository": "thomasweidner/flashgate-mcp",
+  "releaseId": 123,
+  "planSha256": "<reviewed canonical plan SHA-256>",
+  "prestateSha256": "<canonical fresh complete provider-snapshot SHA-256>",
+  "originalApproval": "new-unique-human-action-approval"
+}
+~~~
+
+The upload authorization permits one checksum upload and its 41-asset readback,
+with no deletion. Afterwards, obtain a fresh full readback and separately approve
+`DELETE_ADDITIONAL_ASSETS` with that new prestate hash and a different unique
+approval. Canonical snapshot bytes are produced with the existing JSON encoder
+after sorting assets ordinally by name; never hash an arbitrary presentation.
+Neither file nor hash authenticates human approval.
+
+The prepared `publication-normalization-execute` command takes `--dir`,
+`--plan`, `--plan-sha256`, `--authorization`, `--authorization-sha256` and
+a new `--output` journal. It retains the existing trusted main/manual/first-attempt
+provider context and consumed-approval history gates. Historical execution is
+not wired into the publication workflow; selecting and authorizing its executor
+is a separate operational boundary, with no credential or permission fallback.
+
+Before the first irreversible deletion, download all five target assets through
+the credential-free public route and verify each original length and SHA-256.
+Unavailable, incomplete or differing public bytes HOLD with zero deletes. Record
+the successful gate before any delete intent; retain the final public-download
+check because availability can change after deletion begins.
+
+Each deletion has fresh full prestate, a durable intent and readback. Original
+archive IDs/bytes and the new checksum ID remain bound throughout. Failure or
+ambiguity stops immediately without retry, compensation or recreation. The
+read-only `publication-normalization-reconcile` command accepts the same bound
+plan/authorization arguments and a new output path. It recognizes the original
+40 assets, verified checksum upload or a deletion prefix; it never resumes writes.
+Any subsequent action requires a newly reviewed scope and approval. Final
+acceptance requires five exact assets, unchanged tag/source/version/notes/
+prerelease identity, actual provider digests and credential-free byte downloads.

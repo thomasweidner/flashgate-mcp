@@ -22,7 +22,8 @@ const githubAPI = "https://api.github.com"
 const githubUploads = "https://uploads.github.com"
 
 // Only this adapter knows the provider or reads a job credential. It has no
-// retry, delete, asset replacement, tag creation or provider-fallback method.
+// retry, asset replacement, tag creation or provider-fallback method.
+// Asset deletion is only consumed by the separately authorized normalization path.
 type githubPublication struct {
 	client       *http.Client
 	token        string
@@ -116,10 +117,11 @@ type githubRelease struct {
 	PublishedAt string `json:"published_at"`
 }
 type githubAsset struct {
-	ID    int64  `json:"id"`
-	Name  string `json:"name"`
-	Size  int64  `json:"size"`
-	State string `json:"state"`
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	Size   int64  `json:"size"`
+	State  string `json:"state"`
+	Digest string `json:"digest"`
 }
 
 func (g *githubPublication) tagCommit(ctx context.Context, tag string) (string, error) {
@@ -308,6 +310,23 @@ func (g *githubPublication) Upload(ctx context.Context, id int64, asset publicat
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusCreated {
 		return &publicationUploadHTTPError{statusCode: res.StatusCode}
+	}
+	return nil
+}
+
+// The only delete consumer is the separately authorized historical path.
+// A failed/redirected/ambiguous request is consumed and is never retried here.
+func (g *githubPublication) DeleteAsset(ctx context.Context, id int64) error {
+	if id < 1 {
+		return errors.New("positive asset ID required")
+	}
+	res, err := g.request(ctx, "DELETE", g.endpoint(fmt.Sprintf("/releases/assets/%d", id)), "application/vnd.github+json", "", nil, 0)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusNoContent {
+		return errors.New("provider asset delete failed or ambiguous; consumed")
 	}
 	return nil
 }
