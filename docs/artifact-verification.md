@@ -104,18 +104,25 @@ continued absence of the delayed survivor marker.
 ### Public publication handoff
 
 Current implementation: BL-363 uploads the full verified bundle plus its
-publication manifest. Accepted future target: Planned BL-364 limits every public
-release, including existing v0.3.0, to four unchanged platform archives. Original
-candidate checksums stay in the internal verification/evidence bundle; generated
-release-note checksums must agree with actual GitHub digests and hashes of
-credential-free downloads. Complete evidence remains internally retained and
-independently verifiable beyond Actions expiry. No separate checksum/evidence
-assets, mandatory signing, Artifact Attestations or Immutable Releases are implied.
-Historical removal of 36 extra v0.3.0 assets needs independently verified evidence
-disposition and separate exact deletion approval; retain four original archives,
-tag/source/prerelease identity and the original 40-asset history. The current
-procedure below remains applicable until the separately reviewed implementation
-is accepted. See the [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding).
+publication manifest; v0.3.0 was accepted with 40 assets. Accepted future target:
+Planned BL-364 changes every release, including v0.3.0, to exactly five uploaded
+assets, four unchanged original verified archives and shared `SHA256SUMS`.
+Deterministic GNU-compatible LF records use the four original archive hashes,
+one entry each. A consumer downloads only its platform archive and this file.
+Actual GitHub digests and credential-free downloaded bytes must match original
+hashes; checksum-file byte parity is also required. No sibling `.sha256`, extra
+notes checksum section, public evidence assets, additional public release
+manifest or permanent release ledger. Full BL-248/255/262 verification and
+required temporary evidence remain, without raw-evidence retention beyond regular
+Actions retention. BL-262 stays Completed; no mandatory signed provenance, keys
+or implicit Attestations/Immutable Releases activation. Historical normalization
+needs exact original/provider checks, separate one-shot checksum upload and
+36-asset deletion authorizations and readback; retain four original archive IDs/
+bytes and tag/source/prerelease identity, then prove five-asset parity. Preserve
+the original 40-asset history and completed BL-363; no permanent historical
+dataset is required. The procedure below remains the current implementation
+until the separately authorized and independently reviewed retrofit is accepted.
+See the [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).
 
 The planned lane is `BL-248 verified artifact -> BL-255 immutable candidate
 identity -> BL-262 evidence -> BL-363 publication`. BL-248 remains the sole

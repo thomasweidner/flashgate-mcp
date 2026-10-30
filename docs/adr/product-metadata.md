@@ -174,7 +174,7 @@ Primary owner: `BL-246`. Shared supporting scope: `BL-247`.
 
 **Status:** Accepted
 **Date:** 2026-07-21
-**Distribution amendment:** 2026-10-28, accepted target owned by Planned BL-364;
+**Distribution amendment:** 2026-10-30, accepted target owned by Planned BL-364;
 the existing publisher is not yet migrated.
 
 ### Single source of truth
@@ -341,35 +341,45 @@ and accepted; it does not rewrite the original publication history.
 
 ### Accepted public distribution target
 
-For every GitHub Release, including existing v0.3.0, upload exactly the four
-platform archives in the table above. GitHub-generated source downloads are
-excluded. Do not upload separate .sha256, SHA256SUMS, build, test, provenance
-or other evidence assets. Complete build/supply-chain evidence remains internally
-retained, traceable and independently verifiable against original trusted anchors,
-outside the public asset list and beyond Actions retention.
+For every GitHub Release, including existing v0.3.0, upload exactly five assets:
+the four original verified platform archives above and one shared `SHA256SUMS`.
+Exclude GitHub-generated source downloads. No sibling `.sha256` files, additional
+SHA-256 release-notes section or public build/test/provenance/SBOM evidence assets.
+The existing `VERSION + SourceCommitSHA + ArtifactSHA256` binding remains; add no
+public release manifest or separate permanent release ledger.
 
-Publish the four independently reviewed original candidate SHA-256 values in one
-generated release-notes section, bound to the exact archive names. Require equality
-with actual GitHub asset digests and hashes of credential-free downloaded bytes;
-missing or conflicting values fail closed. CHANGELOG.md alone owns narrative
-notes from the frozen source. Generated checksum data creates no second narrative
-authority, no new candidate identity and no claim that a provider digest authenticates
-an unsigned builder.
+Generate `SHA256SUMS` deterministically from the four original verified archive
+hashes: GNU-compatible records, LF and exactly one entry per canonical archive
+basename. A consumer or installation script must be able to download and verify
+only its selected platform archive and this checksum file. Actual GitHub asset
+digests remain mandatory release-pipeline checks against original archive hashes
+and credential-free downloaded bytes; verify the checksum-file bytes as well.
+CHANGELOG.md alone owns the frozen narrative notes. Hashes prove integrity under
+trusted bindings, not authentication of an unsigned builder.
 
-Lightweight tags remain standard. Exact tag/commit/VERSION binding is mandatory;
-annotated/signed tags, new signing keys or signing infrastructure are not required.
-Artifact Attestations and Immutable Releases are not prerequisites and are not
-implicitly activated. Existing BL-248/255/262 verification/evidence remains required.
+Full BL-248/255/262 verification and required temporary evidence remain mandatory
+outside public release assets. There is no raw-evidence retention duty beyond
+regular Actions retention and no permanent historical evidence dataset as an
+acceptance requirement. BL-262 remains Completed with its original unsigned scope.
+Lightweight tags retain exact tag/commit/VERSION parity. BL-364 requires no new
+signed provenance, signing keys or signing infrastructure, and activates neither
+Artifact Attestations nor Immutable Releases. Release-unassigned BL-366 separately
+owns SBOM security management; release-unassigned BL-367 separately owns future
+GitHub-native signed build attestations with OIDC and short-lived workflow identity,
+no permanent keys/credentials and no extra download asset. Both are non-blocking
+and require later implementation authorization.
 
-BL-364 includes v0.3.0 normalization after independently verified original
-inventory, asset IDs/bytes/hashes, durable internal evidence disposition, notes
-checksums and provider state. Deleting the 36 additional assets requires separate
-exact remote-delete authorization. Retain the four original archives unchanged,
-including IDs/bytes, tag, source commit and prerelease identity, and prove complete
-remote and credential-free download parity afterwards. Preserve the true original
-40-asset publication evidence and completed BL-363. See the canonical
-[BL-364 implementation binding](../planning/implementation-contract.md#bl-364-planning-binding)
-for retrofit, tests and authorization gates. This amendment is planning only.
+BL-364 includes actual v0.3.0 normalization: first independently verify original
+inventory/IDs/bytes/hashes, required identity bindings and provider state; then
+separately authorize one-shot upload of new `SHA256SUMS` and deletion of exactly
+the 36 existing additional assets, with fresh prestate and readback. Retain the
+four original archive IDs/bytes, version/tag/source/prerelease identity and prove
+complete final five-asset provider and credential-free download parity. Preserve
+the true original 40-asset publication history and completed BL-363.
+See the [BL-364 binding](../planning/implementation-contract.md#bl-364-planning-binding)
+for exact checksum format, retrofit, tests, independent review and authorization
+gates. This amendment is planning only; BL-364 remains Planned until technical
+implementation, independent review and historical normalization are accepted.
 
 ### Build verification retained
 

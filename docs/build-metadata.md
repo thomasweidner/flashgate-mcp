@@ -254,10 +254,16 @@ Each archive contains exactly one top-level directory with:
 Each candidate archive has a sibling `.sha256` file for build verification.
 The current BL-363 publisher uploads those checksums and the complete evidence
 set. Planned BL-364 retains these internal verification inputs but changes the
-public layout for every release, including v0.3.0, to four archive assets only,
-with independently bound original SHA-256 values in a generated release-notes
-section and complete internally retained evidence. GitHub digests and credential-free
-download hashes must match those originals. This target is not implemented;
+public layout for every release, including v0.3.0, to exactly five assets: four
+original verified archives plus shared `SHA256SUMS`. Deterministic GNU-compatible
+LF records use the four original archive hashes, exactly one entry per archive.
+Consumers verify only their platform archive plus this file. Original hashes,
+GitHub digests and credential-free downloaded bytes must agree; verify the checksum
+file bytes too. No sibling public checksum files, extra notes checksum section,
+public evidence assets, additional public release manifest or permanent release
+ledger. Complete BL-248/255/262 verification and required temporary evidence remain
+without raw-evidence retention beyond regular Actions retention. This target is
+not implemented;
 see the [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
 for historical disposition, separate mutation authorizations and acceptance.
 Archive creation and validation are implemented in:

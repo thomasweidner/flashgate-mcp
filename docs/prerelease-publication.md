@@ -23,28 +23,40 @@ readback. Stable Version 1.0 and its release gate remain BL-263.
 
 ## Prepare the frozen candidate
 
-The procedures in this document describe the current BL-363 publisher. The
-accepted BL-364 target is not implemented: all releases, including v0.3.0, will
-have exactly four original Windows/Linux x64/ARM64 archives and no separate
-checksum/evidence assets; GitHub-generated source downloads are excluded. One
-generated release-notes section will carry independently reviewed original
-archive SHA-256 values, checked against actual GitHub digests and credential-free
-downloaded bytes. CHANGELOG.md remains the sole narrative source; complete
-build/supply-chain evidence stays internally retained and independently verifiable
-beyond Actions expiry. Lightweight tags retain exact version/source parity;
-signing infrastructure, Artifact Attestations and Immutable Releases are not
-required or implicitly activated. Implement and independently review the
-[BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
-before changing these procedures or invoking a changed publisher.
+The procedures below describe the current BL-363 publisher. The accepted BL-364
+target is not implemented: every release, including v0.3.0, targets exactly five
+uploaded assets, the four original verified platform archives plus shared
+`SHA256SUMS`. GitHub-generated source downloads are excluded. Generate four
+deterministic GNU-compatible LF checksum records from original verified hashes,
+one per canonical archive name. A consumer can verify only its selected platform
+archive plus `SHA256SUMS` without the other three archives. Original hashes,
+actual GitHub asset digests and credential-free downloaded bytes must agree in
+the pipeline; read back the checksum file bytes too. No sibling `.sha256` files,
+extra release-notes SHA-256 section, public evidence assets, additional public
+release manifest or permanent release ledger. CHANGELOG.md alone owns narrative
+notes; VERSION/source/artifact identity stays unchanged.
 
-Historical v0.3.0 normalization is required for BL-364 closure, after independent
-verification of original inventory, asset IDs/bytes/hashes, long-term evidence
-disposition, generated notes and provider state. Release-note writes need scoped
-authorization; deletion of the 36 additional assets needs separate exact approval.
-The existing publisher implements no deletion path. Retain four original archives,
-tag/source/prerelease identity and independently verify full remote and credential-free
-download parity afterwards. The original 40-asset publication remains history and
-BL-363 remains Completed. This plan authorizes no provider action.
+Complete BL-248/255/262 verification and required temporary evidence remain
+mandatory, without a raw-evidence retention duty beyond regular Actions retention.
+BL-262 remains Completed and unsigned. Lightweight tags retain exact version/
+source parity. BL-364 adds no mandatory signed provenance/keys and activates no
+Artifact Attestations or Immutable Releases. Independent release-unassigned
+security owners BL-366/367 block no release and authorize no current activation.
+Independently review this material plan before separately authorized technical
+implementation and review the changed publisher before use. See the
+[BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).
+
+Historical v0.3.0 normalization is required for BL-364 closure. Independently
+verify exact original inventory/IDs/bytes/hashes, required identity anchors and
+provider state before separately authorizing upload of new `SHA256SUMS` and
+deletion of exactly the 36 existing additional assets. Each mutation is one-shot
+with fresh prestate and readback. Retain the four original archive IDs/bytes,
+tag/version/source/prerelease identity and prove complete final five-asset
+provider/digest/credential-free download parity. No permanent historical
+raw-evidence dataset is required. The original 40-asset publication remains
+history; BL-363 stays Completed. The current publisher implements no deletion
+path. This plan authorizes no provider action and BL-364 remains Planned until
+technical implementation, independent review and historical normalization pass.
 
 1. Finalize canonical VERSION and its nonempty dated CHANGELOG section before
    candidate freeze. The date records intended publication, not its completion.
