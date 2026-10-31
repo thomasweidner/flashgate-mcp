@@ -134,7 +134,7 @@ and separate implementation authorization are available.
 
 BL-368 is an independent Planned development-tooling owner, with no sprint,
 Version 1.0 or Post-1.0 assignment and no release-blocking role. BL-365 remains
-Planned in SPR-048; neither is a hard predecessor of the other. Registration
+the separate onboarding owner in SPR-048; neither is a hard predecessor of the other. Registration
 implements no generator, README change or CI behavior.
 
 | Requirement / authority | Owner BL | Hard predecessors | Reuse / later consumers | Current retrofit target | Validation / gate | Target closure |

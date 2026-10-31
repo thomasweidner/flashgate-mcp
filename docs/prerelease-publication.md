@@ -379,20 +379,31 @@ historical cause of a provider HTTP 415 response.
 
 After an actual verified publication, select its exact `v<VERSION>` on the
 repository's [Releases page](https://github.com/thomasweidner/flashgate-mcp/releases).
-Choose the Windows x64/ARM64 ZIP or Linux x64/ARM64 TAR.GZ and its sibling
-`.sha256`. GitHub's generated Source code ZIP/TAR.GZ files are separate source
-archives, not the verified uploaded platform assets.
+Choose the Windows x64/ARM64 ZIP or Linux x64/ARM64 TAR.GZ for your machine
+and shared `SHA256SUMS` from that same release. The current public layout has
+exactly five uploaded assets: those four archives and `SHA256SUMS`.
+GitHub-generated Source code ZIP/TAR.GZ downloads are separate source archives.
+Only your selected archive and `SHA256SUMS` are needed for
+[selected-platform verification](#selected-platform-download-verification);
+there are no public sibling `.sha256`, evidence, SBOM, or manifest assets.
+The [README](../README.md#download-and-verify) provides PowerShell and GNU
+checksum commands before extraction.
 
-publication-manifest.json maps all original evidence paths to public asset names,
-sizes and hashes. Candidate files keep their basenames; source paths become
-`evidence--source--...`, and collisions fail closed. Download all mapped assets
-to reconstruct the original complete bundle, rejecting unsafe paths, links,
-duplicates and extra files. Verify every mapped hash against independently
-trusted publication/evidence bindings, then run the existing
-`releaseaudit supply-chain-verify` with independently trusted manifest/index
-anchors and expected VERSION/commit. An untrusted publication manifest alone
-is not authenticity proof. Evidence remains explicitly unsigned, with no SLSA
-or build-attestation claim. See [artifact verification](artifact-verification.md).
+SHA-256 establishes byte agreement with the chosen reference hash, not a
+signature or independent publisher authentication. Establish trust in the
+release channel separately. Complete internal BL-248/255/262 verification and
+required temporary evidence remain unchanged; see
+[artifact verification](artifact-verification.md#native-supply-chain-evidence).
+End users do not need to reconstruct that internal evidence bundle.
+
+The original v0.3.0 publication had 40 uploaded assets, including a
+`publication-manifest.json` mapping the original evidence paths to public
+names, sizes, and hashes. That is historical publication information, not the
+current download procedure. The later accepted BL-364 normalization retains
+the four original archives and replaces the additional public inventory with
+shared `SHA256SUMS`; original publication and candidate evidence remain
+unchanged. See [availability](#implementation-and-availability) and
+[normalization history](#historical-v030-normalization-preparation).
 
 ## Selected-platform download verification
 

@@ -2,709 +2,544 @@
 
 **Fast, secure and local-first host operations for MCP.**
 
-FlashGate MCP is a resource-efficient, cross-platform MCP server for controlled local host operations. Today it provides secure, root-confined filesystem access; Version 1.0 extends that foundation to bounded search, managed processes, typed command execution, and system information. Deterministic work stays local to reduce latency, payload size, model round trips, and token use.
+FlashGate MCP is an open-source, portable, native Go MCP server for controlled
+local host operations. Today it provides secure, root-confined filesystem access:
+connect an MCP client, choose a directory, and let the client list files, read
+text, or inspect metadata within that boundary.
 
-FlashGate MCP uses repository `thomasweidner/flashgate-mcp`, Go module
-`github.com/thomasweidner/flashgate-mcp`, binary `flashgate-mcp`, and MCP server
-implementation name (`serverInfo.name`) `flashgate`.
+Native Windows and Linux binaries run directly over STDIO without Node.js, npm,
+or a Go installation. FlashGate enforces configured path and operation boundaries
+on the server, with limits on requests, file operations, and responses. Its
+vendor-neutral core has no proprietary client or infrastructure dependency.
 
-It exposes secure filesystem operations to MCP-compatible clients through JSON-RPC over STDIO. The server is designed for predictable behavior, low operational overhead, clear security boundaries, and maintainable, auditable code.
+**Start with the [public prerelease downloads](https://github.com/thomasweidner/flashgate-mcp/releases).**
+[Version 0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0)
+is an available prerelease, not a stable Version 1.0 release. The examples below
+use that exact version. Set `MCP_READ_ONLY=true` explicitly for initial use;
+the current default otherwise exposes write-capable tools too.
 
-## Status
+## Contents
 
-The project currently implements the core MCP server loop, JSON-RPC routing and request validation, tool discovery, tool execution, MCP-conformant `CallToolResult` wrapping, filesystem abstraction, root-confined path handling, read-only tool gating, canonical build identity, native Windows/Linux metadata, deterministic release archives, reproducible resource/latency/payload benchmarks, tests, and documentation.
+- [Download and verify](#download-and-verify)
+- [Quickstart for Windows and Linux](#quickstart-for-windows-and-linux)
+- [Connect your MCP client](#connect-your-mcp-client)
+- [Try your first task](#try-your-first-task)
+- [Security by design](#security-by-design)
+- [Current capabilities](#current-capabilities)
+- [Documentation and roadmap](#documentation-and-roadmap)
+- [Development, testing, and contributing](#development-testing-and-contributing)
+- [License](#license)
 
-The current implemented scope is filesystem operations. Version 1.0 plans bounded search, process observation/management, typed allowlisted command execution, controlled system information, named roots, safe-default capability profiles, the Operations/Job Manager, payload-efficient large-result handling, reusable content fingerprints with bounded file/tree compare and expected-state verification, and optional local system-service deployment. These remain planned work.
+## Download and verify
 
-Implemented tools:
+Choose a release on the [Releases page](https://github.com/thomasweidner/flashgate-mcp/releases).
+Pre-1.0 releases are prereleases. Download **your platform archive and
+`SHA256SUMS` from the same release**, keeping their original filenames in one
+directory. You do not need the other three platform archives.
 
-```text
-list_directory
-read_file
-get_path_info
-write_file
-create_directory
-delete_path
-copy_path
-move_path
+For [v0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0),
+the five uploaded assets are:
+
+| Platform | Archive for v0.3.0 | Naming template |
+|---|---|---|
+| Windows x64 | `flashgate-mcp_0.3.0_windows_x64.zip` | `flashgate-mcp_<version>_windows_x64.zip` |
+| Windows ARM64 (Preview) | `flashgate-mcp_0.3.0_windows_arm64.zip` | `flashgate-mcp_<version>_windows_arm64.zip` |
+| Linux x64 | `flashgate-mcp_0.3.0_linux_x64.tar.gz` | `flashgate-mcp_<version>_linux_x64.tar.gz` |
+| Linux ARM64 (Preview) | `flashgate-mcp_0.3.0_linux_arm64.tar.gz` | `flashgate-mcp_<version>_linux_arm64.tar.gz` |
+| Shared checksums | `SHA256SUMS` | `SHA256SUMS` |
+
+In the naming templates, replace `<version>` with the product version without
+the leading `v` (for example, `0.3.0`).
+
+GitHub-generated **Source code** downloads are separate source archives.
+There are no individual public `.sha256` files or extra public manifest/SBOM
+assets. ARM64 archives are available, but cross-build/static verification does
+not establish native execution on an ARM64 host; see the
+[architecture validation targets](docs/adr/product-metadata.md#target-architectures).
+
+Verify the **archive bytes before extraction or execution**. SHA-256 checks
+that the archive matches the reference hash you use. A checksum downloaded
+alongside an archive is not a signature or independent publisher authentication;
+establish trust in the release channel separately.
+
+### Windows verification
+
+In PowerShell, from the directory containing the selected ZIP and `SHA256SUMS`:
+
+```powershell
+& {
+    $archive = 'flashgate-mcp_0.3.0_windows_x64.zip'
+    $pattern = '^[0-9a-f]{64}  ' + [regex]::Escape($archive) + '$'
+    $records = @(Get-Content -LiteralPath '.\SHA256SUMS' |
+        Where-Object { $_ -cmatch $pattern })
+    if ($records.Count -ne 1) { throw 'Expected exactly one selected-archive checksum.' }
+    $expected = $records[0].Substring(0, 64)
+    $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -cne $expected) { throw 'SHA-256 mismatch. Do not extract or run this archive.' }
+    "SHA-256 OK: $archive"
+}
 ```
 
-## Design Goals
+For Windows ARM64, change only the archive name to the matching table entry.
+Continue only after `SHA-256 OK`.
 
-- Secure-by-default filesystem access
-- Root-confined path handling
-- Deterministic MCP tool discovery
-- Cross-platform support for Windows and Linux
-- Single self-contained Go binary
-- Minimal runtime dependencies
-- Clear package boundaries
-- Comprehensive unit tests
-- Professional documentation for users and developers
-- No external MCP framework dependency
-- Measurable CPU, RAM, startup, latency, response-size, and token efficiency
-- Local deterministic operations instead of transferring file content through the model
-- Payload-heavy content transferred once with bounded result/resource handling
-- Reusable content identities and compact verification before unnecessary retransmission
-- Safe read-only profile as the Version 1.0 default when no higher-risk profile is selected
-- Separate caller authorization and effective service execution identity
-- No interpreter runtime for normal Windows/Linux operation
+### Linux verification
 
-## FlashGate Security Gate
+With GNU `sha256sum`, from a directory containing only your selected TAR.GZ
+and `SHA256SUMS`:
 
-“Gate” means a server-enforced boundary: policies, capabilities, roots, limits, path and process validation, redaction, and audit events control access below the MCP adapter. Tool annotations and tool visibility are not authorization.
-
-The current implementation enforces one configured root, optional read-only registration, path policies, hard limits, and redacted diagnostics. The Version 1.0 target adds multiple named roots and capability-based profiles while retaining server-side checks as authoritative. With valid roots but no explicit profile, the target default is safe read-only; write, process, and command capabilities require explicit activation.
-
-## Target Domains and Runtime
-
-Accepted future domains are filesystem, search, process, execution, and system information. An optional shared Operations/Job Manager is planned for bounded long-running or managed work, cancellation, deadlines, progress, TTL, cleanup, and leak protection. Short synchronous work may remain directly in domain services; the manager is not currently implemented and does not own domain logic.
-
-FlashGate MCP remains one repository and one primary native binary per platform unless benchmarks and threat models demonstrate a concrete benefit from splitting it. Version 1.0 keeps direct STDIO for non-admin users and adds optional Windows/Linux system-service roles through the same binary. The system service implements service-account roots; per-user workers are designed but deferred.
-
-Version 1.0 runtime roles:
-
-```text
-flashgate-mcp [no mode / --mode stdio]  direct MCP over STDIO
-flashgate-mcp --mode proxy              STDIO proxy to local service
-flashgate-mcp --mode auto               safe service discovery with fail-closed fallback
-flashgate-mcp --mode service            Windows SCM or Linux systemd host
+```bash
+(
+    set -eu
+    archive='flashgate-mcp_0.3.0_linux_x64.tar.gz'
+    test -f "$archive"
+    awk -v name="$archive" '$2 == name { count++ } END { exit(count != 1) }' SHA256SUMS
+    sha256sum --ignore-missing --check SHA256SUMS
+)
 ```
 
-The system service separates the authenticated caller from the effective OS execution backend. Version 1.0 uses a dedicated service-account backend for administratively granted roots. A later per-user worker backend is planned; in-process impersonation is excluded.
+For Linux ARM64, change only the archive name. Expect the selected archive's
+name followed by `OK` and exit status 0. Stop on a missing/duplicate selected
+record, missing archive, malformed checksums, or mismatch.
 
-Host-process lifecycle is also planned, not implemented. Direct and proxy/auto
-edge processes are session-scoped, while SCM/systemd services persist across
-client disconnects. ADR-017 defines the owner matrix, one bounded process-root
-shutdown coordinator, secret-safe instance/exit diagnostics, and the strict
-`SUSPECTED_STALE` versus `DEFINITELY_ORPHANED` boundary. BL-341 owns the later
-runtime implementation and BL-241 its integrated Windows/Linux validation.
-## Open-Source, Modules, and Protocol Extensions
+Contributors can also use the existing
+[selected-platform verifier](docs/prerelease-publication.md#selected-platform-download-verification).
+The [publication guide](docs/prerelease-publication.md#download-and-verify)
+explains current downloads and preserves the original publication history.
 
-FlashGate MCP is a general, vendor-neutral open-source project. Its core, public contracts, documentation, and optional agent guidance have no organization-specific infrastructure, private control-plane, machine-local workflow, proprietary credential or permission, or particular agent-product prerequisite. Consumer policies may compose FlashGate capabilities externally without becoming runtime or authorization dependencies.
+## Quickstart for Windows and Linux
 
-Optional FlashGate modules/providers from public, community, vendor, or organization-internal sources are post-Version-1.0 work. No module/provider contract or runtime model is part of the initial stable release, and future providers may not bypass central security or execution-identity controls.
+You need a matching verified binary and a local MCP client that can launch a
+STDIO server. The server itself needs no Node.js/npm runtime, interpreter,
+network listener, WSL, or administrator session. Building from source has
+[separate developer requirements](#development-testing-and-contributing).
 
-MCP protocol extensions are separate negotiated wire-protocol features. MCP `2025-11-25` remains the production-active and advertised initialization path. A separate MCP `2026-07-28` stateless adapter path is implemented and validated as a compiled-in candidate, but it is not enabled by default or advertised in the public support matrix. Public activation remains gated by BL-204, BL-212, and BL-219. FlashGate names protocol paths by exact revision so future revisions remain explicit. The project keeps its own Go MCP adapter; official MCP SDKs/specification artifacts are interoperability references, not a new runtime dependency. Deprecated MCP Roots is not the basis of FlashGate named roots.
+Each archive contains one versioned directory with the binary, `LICENSE`,
+`README.md`, and `THIRD-PARTY-NOTICES.md`. Extract to a user-writable location
+**outside the data directory**. The paths below are examples, not installation
+defaults; replace them with your actual absolute paths. Choose a small existing
+data directory containing a harmless text file such as `hello.txt` for the first
+test. Avoid granting an entire drive, home directory, or synchronized storage
+tree. See [root prerequisites](docs/client-setup.md#prerequisites).
 
-## Protocol and Transport
+### Windows quickstart
 
-`flashgate-mcp` communicates through MCP using JSON-RPC over STDIO.
+After verifying the Windows x64 ZIP, choose an absent destination under a
+directory you own. Replace the example destination below. Existing destinations
+are rejected, including a tree containing an older binary. Do not modify the
+destination concurrently while these checks run.
 
-Standard output is reserved for protocol messages. Diagnostic output must not be written to standard output because it would corrupt the JSON-RPC stream.
+**Requires PowerShell 7.6.x (`pwsh`).** Windows PowerShell 5.1 is not supported
+by this quickstart. The block checks the runtime before extraction.
 
-The server currently supports MCP methods such as:
-
-```text
-initialize
-tools/list
-tools/call
+```powershell
+& {
+    $destination = 'C:\Tools\FlashGate'
+    $process = $null
+    try {
+        if ($PSVersionTable.PSVersion.Major -ne 7 -or $PSVersionTable.PSVersion.Minor -ne 6) {
+            throw 'Use PowerShell 7.6.x (pwsh) for this quickstart.'
+        }
+        if (Test-Path -LiteralPath $destination -ErrorAction Stop) {
+            throw 'Destination already exists. Choose a new, absent directory.'
+        }
+        $archive = (Get-Item -LiteralPath '.\flashgate-mcp_0.3.0_windows_x64.zip' -ErrorAction Stop).FullName
+        New-Item -ItemType Directory -Path $destination -ErrorAction Stop | Out-Null
+        Expand-Archive -LiteralPath $archive -DestinationPath $destination -ErrorAction Stop
+        $binary = Join-Path $destination 'flashgate-mcp_0.3.0_windows_x64\flashgate-mcp.exe'
+        $binary = (Get-Item -LiteralPath $binary -ErrorAction Stop).FullName
+        foreach ($argument in @('--version', '--help')) {
+            $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+            $startInfo.FileName = $binary
+            $startInfo.UseShellExecute = $false
+            $startInfo.ArgumentList.Add($argument)
+            $process = [System.Diagnostics.Process]::new()
+            $process.StartInfo = $startInfo
+            if (-not $process.Start()) { throw 'Binary could not be started.' }
+            $process.WaitForExit()
+            $exitCode = $process.ExitCode
+            $process.Dispose()
+            $process = $null
+            if ($exitCode -ne 0) { throw "Binary $argument failed with exit code $exitCode." }
+        }
+        'Quickstart checks passed.'
+    }
+    catch {
+        throw
+    }
+    finally {
+        if ($null -ne $process) { $process.Dispose() }
+    }
+}
 ```
 
-The implemented `2026-07-28` candidate path is separate: it does not use the initialization handshake, requires per-request protocol/capability metadata, implements `server/discover`, and returns revision-specific result/cache metadata. It remains production-inactive and unadvertised until the remaining BL-204, BL-212, and BL-219 support gates pass.
+Continue only after `Quickstart checks passed.`, following `flashgate-mcp 0.3.0`
+and CLI help. Any error stops the block before later checks; a partial extraction
+must not be reused. The block adds no cleanup or permission command: inspect any
+remaining output and choose a different absent destination before retrying.
+For ARM64, use the ARM64 archive
+and versioned directory instead. No installer or service registration is needed.
 
-Filesystem operations are exposed as MCP tools and invoked through `tools/call`. Every currently implemented successful filesystem call is wrapped centrally as MCP `CallToolResult`: `content` contains one text block with compact JSON and `structuredContent` contains the same domain object. This is the present eight-tool contract. Version 1.0 will retain compact parity only for small metadata where justified; payload-heavy file, binary, search, and process content will be transmitted once with separate metadata or an opaque result/resource handle.
+Use that executable path and an existing data directory, for example
+`C:\FlashGateData\ReadOnlyRoot`, in a [client example](#connect-your-mcp-client).
+To inspect full build identity, add `--version --verbose`. Version/help modes
+exit without starting an MCP session.
 
-Runtime `outputSchema` is exposed for all eight tools and remains deeply equal to the catalog `resultSchema` values. These schemas describe successful `structuredContent`; expected failures of registered tools return `isError:true` with compact JSON `category` and `message` in one text block and no `structuredContent`. Request failures and unavailable names remain JSON-RPC errors; unexpected failures return generic Internal error. See the [error contract](docs/tools.md#machine-readable-tool-errors).
+### Linux quickstart
 
-JSON-RPC request envelopes are validated before dispatch. Unsupported batch requests, invalid protocol versions, missing or invalid methods, invalid IDs, and malformed method params are rejected with generic JSON-RPC errors. Parse errors and invalid requests without a valid request ID serialize `id:null`. Notifications do not receive responses; `notifications/initialized` is accepted as a no-op, and other notifications are not executed.
+After verifying the Linux x64 TAR.GZ, replace `/data/flashgate-example/tools` with an
+absent directory under an existing parent you own. `mkdir` intentionally has no
+`-p`: an existing destination, even one containing a binary, must stop the block.
+Do not modify the destination concurrently.
 
-JSON-RPC messages, tool arguments, filesystem payloads, and response sizes are bounded by configurable hard limits. A message that exceeds `MCP_MAX_JSONRPC_MESSAGE_BYTES` is rejected as an invalid request with `id:null` before tool dispatch. Oversized `tools/call` arguments return generic Invalid params errors, and filesystem limit violations return generic limit errors without host paths.
+The `/data/flashgate-example` prefix is a placeholder for an existing writable
+parent directory you own, not an installation default. Replace it consistently
+in the shell commands and client examples; use actual absolute paths.
 
-## Security Model
-
-All filesystem operations are constrained to a configured root directory.
-
-The root directory is configured through the `MCP_ROOT` environment variable:
-
-```text
-MCP_ROOT
+```bash
+(
+    set -eu
+    archive='flashgate-mcp_0.3.0_linux_x64.tar.gz'
+    destination='/data/flashgate-example/tools'
+    test -f "$archive"
+    mkdir -- "$destination"
+    tar -xzf "$archive" -C "$destination"
+    "$destination/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp" --version
+    "$destination/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp" --help
+    printf '%s\n' 'Quickstart checks passed.'
+)
 ```
 
-`MCP_ROOT` is required. Production roots must be absolute, exist, satisfy the current root policy, and resolve to a directory. Missing, empty, whitespace-only, relative, non-existent, file, or policy-denied roots fail before tool registration and JSON-RPC processing. Expected configuration failures exit with code `3`, leave stdout empty, and report only a safe category on stderr.
+Continue only after `Quickstart checks passed.`, following `flashgate-mcp 0.3.0`
+and CLI help. Extraction or binary failure aborts the subshell, with no later
+binary call or success message. Partial output is retained for inspection;
+choose a different absent destination before retrying. No cleanup or permission
+command is run. For ARM64, use its archive and directory. The extracted binary
+needs execute permission on a filesystem that
+allows execution; see [client setup](docs/client-setup.md#stdio-launch-contract).
 
-The process working directory is available for development only when both `MCP_ROOT=.` and `MCP_ALLOW_CWD_ROOT=true` are set exactly. This opt-in never supplies a missing root and never enables other relative roots. It emits one safe warning on stderr.
+For the Linux client examples below, the extracted directory is assumed to be
+at `/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64`, and the existing data
+directory at `/data/flashgate-example/flashgate-readonly-root`. Substitute your real
+absolute paths. These are native Linux examples; keep Windows paths separate.
 
-Tool arguments use relative paths below this root. Absolute paths, path traversal outside the configured root, and unsafe path forms are rejected by the filesystem and security layers.
+## Connect your MCP client
 
-Path validation uses two stages:
+The client launches the binary with **no arguments** and supplies its environment.
+Normal invocation waits for newline-delimited JSON-RPC on stdin; an idle terminal
+with no banner does not prove a successful MCP connection. Stdout is reserved
+for protocol messages; diagnostics use stderr.
 
-1. Lexical validation rejects absolute user paths and leading parent traversal such as `..` or `../secret.txt`.
-2. Effective path validation evaluates existing paths, and the nearest existing parent for create targets, to confirm the resulting filesystem location remains inside the configured root.
+Use one platform example for your client. Back up its existing configuration,
+add or update only the `flashgate` entry, and preserve unrelated settings and
+servers. The examples describe an operator-applied change, not an automatic
+registration. Never put the binary inside `MCP_ROOT`, use `MCP_ROOT=.`, or
+recommend a build/`go run` on every startup. Detailed acceptance and rollback
+remain in [client setup](docs/client-setup.md).
 
-Individual tools do not bypass the filesystem abstraction and do not call host filesystem APIs directly. This keeps path validation centralized and testable.
+### Codex: config.toml
 
-FlashGate enforces deny-by-default policy for hidden paths, UNC paths, symlinks, and Windows reparse points:
+Add the entry to your user `~/.codex/config.toml` (Windows:
+`%USERPROFILE%\.codex\config.toml`). Follow the official
+[Codex MCP guide](https://developers.openai.com/codex/mcp) and
+[configuration reference](https://developers.openai.com/codex/config-reference).
+The `command` is one absolute executable path; environment values are strings.
 
-```text
-MCP_ALLOW_HIDDEN_FILES=false
-MCP_ALLOW_UNC_PATHS=false
-MCP_FOLLOW_SYMLINKS=false
+**Windows x64 example** (TOML literal strings preserve backslashes):
+
+```toml
+[mcp_servers.flashgate]
+command = 'C:\Tools\FlashGate\flashgate-mcp_0.3.0_windows_x64\flashgate-mcp.exe'
+args = []
+
+[mcp_servers.flashgate.env]
+MCP_ROOT = 'C:\FlashGateData\ReadOnlyRoot'
+MCP_READ_ONLY = "true"
+MCP_ALLOW_CWD_ROOT = "false"
+MCP_ALLOW_HIDDEN_FILES = "false"
+MCP_ALLOW_UNC_PATHS = "false"
+MCP_FOLLOW_SYMLINKS = "false"
+MCP_DEBUG = "false"
 ```
 
-When hidden files are not allowed, dot-prefixed path components such as `.git/config` and Windows hidden-attribute paths are denied. `list_directory` filters hidden entries instead of failing the whole parent listing.
+**Linux x64 example** (alternative entry for a native Linux client):
 
-When UNC paths are not allowed, UNC roots and UNC-style user paths are rejected. When symlink following is not enabled, existing symlink components are denied and `list_directory` filters symlink or reparse entries. When symlink following is enabled, symlink targets are still constrained by effective root containment, and Windows junctions or non-symlink reparse points remain denied.
+```toml
+[mcp_servers.flashgate]
+command = "/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp"
+args = []
 
-Security and path denials are mapped to generic invalid-path tool errors without exposing host absolute paths.
-
-### Limits and diagnostics
-
-FlashGate applies conservative hard limits:
-
-| Environment variable | Default | Purpose |
-|---|---:|---|
-| `MCP_MAX_FILE_SIZE` | `10485760` | Maximum `read_file` bytes. Client `maxBytes` can only lower this cap. |
-| `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `16777216` | Maximum single JSON-RPC stdin message. |
-| `MCP_MAX_TOOL_ARGUMENT_BYTES` | `12582912` | Maximum `tools/call` params or arguments payload. |
-| `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum `write_file` content bytes. |
-| `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum policy-visible entries returned by `list_directory`. |
-| `MCP_MAX_COPY_BYTES` | `10485760` | Maximum `copy_path` source file size. |
-| `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries allowed for recursive `delete_path`. |
-| `MCP_MAX_RESPONSE_BYTES` | `16777216` | Safety net for serialized JSON-RPC responses. |
-
-All limit values must be positive integers.
-
-`MCP_DEBUG=true` enables minimal diagnostics on stderr. Diagnostics are redacted for common credentials, tokens, private-key markers, connection strings, and host paths. Normal MCP operation still writes only JSON-RPC protocol messages to stdout. No persistent logfiles are created.
-
-### Read-only mode
-
-FlashGate enforces read-only policy for MCP tool discovery and direct tool calls.
-
-Enable read-only mode with:
-
-```text
-MCP_READ_ONLY=true
+[mcp_servers.flashgate.env]
+MCP_ROOT = "/data/flashgate-example/flashgate-readonly-root"
+MCP_READ_ONLY = "true"
+MCP_ALLOW_CWD_ROOT = "false"
+MCP_ALLOW_HIDDEN_FILES = "false"
+MCP_ALLOW_UNC_PATHS = "false"
+MCP_FOLLOW_SYMLINKS = "false"
+MCP_DEBUG = "false"
 ```
 
-When read-only mode is enabled, only these tools are registered and returned by `tools/list`:
+Reload/restart the client as required by its version, then inspect its MCP
+server/tool list. In Codex CLI, `/mcp` shows active MCP servers. Continue with
+[the first task](#try-your-first-task) after `flashgate` connects.
 
-```text
-list_directory
-read_file
-get_path_info
+### Claude Desktop: claude_desktop_config.json
+
+Open **Settings → Developer → Edit Config** to locate
+`claude_desktop_config.json`. On Windows, the documented location is
+`%APPDATA%\Claude\claude_desktop_config.json`; see the official
+[local-server integration guide](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers).
+**Claude Desktop for Linux is in beta**, as documented in Anthropic's
+[installation and availability guide](https://support.claude.com/en/articles/10065433-install-claude-desktop).
+On Linux, use the file opened by **Edit Config** in your actual client version
+instead of assuming a fixed configuration path. These configuration examples
+have not been tested in a real Claude Desktop session.
+The MCP guide's Node.js-based filesystem-server example is a different server; FlashGate
+runs its own native executable.
+
+**Windows x64 example** (JSON backslashes must be escaped):
+
+```json
+{
+  "mcpServers": {
+    "flashgate": {
+      "command": "C:\\Tools\\FlashGate\\flashgate-mcp_0.3.0_windows_x64\\flashgate-mcp.exe",
+      "args": [],
+      "env": {
+        "MCP_ROOT": "C:\\FlashGateData\\ReadOnlyRoot",
+        "MCP_READ_ONLY": "true",
+        "MCP_ALLOW_CWD_ROOT": "false",
+        "MCP_ALLOW_HIDDEN_FILES": "false",
+        "MCP_ALLOW_UNC_PATHS": "false",
+        "MCP_FOLLOW_SYMLINKS": "false",
+        "MCP_DEBUG": "false"
+      }
+    }
+  }
+}
 ```
 
-Write-capable tools are not registered in read-only mode, so direct `tools/call` requests for `write_file`, `create_directory`, `delete_path`, `copy_path`, or `move_path` are rejected with a generic Invalid params error without revealing whether the tool exists in another mode.
+**Linux x64 example** (Claude Desktop for Linux beta):
 
-## Tool Documentation
-
-The MCP tool interface is documented in:
-
-```text
-docs/tools.md
+```json
+{
+  "mcpServers": {
+    "flashgate": {
+      "command": "/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp",
+      "args": [],
+      "env": {
+        "MCP_ROOT": "/data/flashgate-example/flashgate-readonly-root",
+        "MCP_READ_ONLY": "true",
+        "MCP_ALLOW_CWD_ROOT": "false",
+        "MCP_ALLOW_HIDDEN_FILES": "false",
+        "MCP_ALLOW_UNC_PATHS": "false",
+        "MCP_FOLLOW_SYMLINKS": "false",
+        "MCP_DEBUG": "false"
+      }
+    }
+  }
+}
 ```
 
-Tool implementation and naming conventions are documented in:
+These are complete minimal examples for an otherwise empty configuration; add
+the entry to your existing `mcpServers` object rather than replacing the file.
+Completely quit and restart Claude Desktop, then inspect FlashGate's available
+tools in its connector controls.
 
-```text
-docs/tool-conventions.md
-```
+## Try your first task
 
-A machine-readable MCP tool catalog is available at:
+A successful connection completes MCP `initialize`, reports
+`serverInfo.name=flashgate` and negotiated revision `2025-11-25`, and lets the
+client discover exactly these three tools in read-only mode, in order:
 
-```text
-docs/mcp-tool-catalog.json
-```
+1. `list_directory`
+2. `read_file`
+3. `get_path_info`
 
-See [client setup](docs/client-setup.md) for an explicit read-only root, client acceptance, troubleshooting, and rollback. Apply client configuration changes only with the operator's authorization.
+A client may display a server prefix on tool names. If write tools appear,
+check that this server entry explicitly sets `MCP_READ_ONLY=true` and reload it.
 
-The catalog contains tool names, descriptions, input schemas, domain `resultSchema` values, the central `CallToolResult` envelope description, and common error behavior. Runtime output schemas are exposed for the current tools. Version 1.0 also adds profile-specific catalog/instruction budgets, deterministic ordering, and catalog fingerprints.
+Ask your client:
 
-## Documentation and planning
+> Use FlashGate to list the files in the configured directory and show
+> information about one file. Do not modify anything.
 
-The [documentation index](docs/README.md) separates user guidance, reference,
-architecture decisions, contributor checks, and accepted future plans.
+For a harmless text file named `hello.txt` already inside the root, follow with:
 
+> Read hello.txt through FlashGate, with a maximum of 4096 bytes.
+> Do not modify anything.
 
-Planned work is tracked in:
+The corresponding current tool calls are:
 
-```text
-BACKLOG.md
-```
+| Tool | Arguments | Check |
+|---|---|---|
+| `list_directory` | `{"path":"."}` | `entries` lists policy-visible names relative to the root. |
+| `get_path_info` | `{"path":"hello.txt"}` | `exists:true`, filename, type, and size match your file. |
+| `read_file` | `{"path":"hello.txt","maxBytes":4096}` | `content` matches the text; `size` reports returned bytes. |
 
-The backlog is the authoritative planning document for upcoming filesystem, process, command execution, system information, security, CI, release, and documentation work.
+Choose a small file no larger than 4096 bytes for this example. All arguments are
+relative to `MCP_ROOT`, not absolute host paths. In a protocol trace, successful
+`tools/call` results have one JSON text block in MCP `content[]` and the same
+domain object in `structuredContent`. A missing metadata path returns
+`exists:false`; that alone does not verify a real-file read.
 
-Narrative release notes are maintained only in:
+Confirm the client actually used FlashGate and that the data directory is
+unchanged. A direct CLI/version check alone is not an end-to-end client test.
+For startup categories, missing tools, or path denials, use
+[startup troubleshooting](docs/client-setup.md#startup-troubleshooting),
+[acceptance checks](docs/client-setup.md#acceptance-checks), and
+[rollback](docs/client-setup.md#rollback). Tool arguments and errors are detailed
+in the [tool reference](docs/tools.md).
 
-```text
-CHANGELOG.md
-```
+## Security by design
 
-`README.md`, `CHANGELOG.md`, and `BACKLOG.md` should be kept current as part of the normal sprint workflow.
+- **Explicit root:** `MCP_ROOT` must be an existing absolute directory that
+  passes policy. Missing, relative, nonexistent, file, or denied roots fail
+  before tool registration. Expected configuration failures exit with code 3,
+  leave stdout empty, and report a safe category on stderr.
+- **Server-side confinement:** relative tool paths pass lexical and effective
+  containment checks. Traversal, absolute tool paths, and out-of-root resolution
+  are rejected. Tools use the central filesystem abstraction and path guard.
+- **Explicit read-only operation:** `MCP_READ_ONLY=true` registers only the
+  three read tools. Write-capable names are unavailable even when called
+  directly. Tool annotations and visibility are not authorization.
+- **Restrictive path policy:** the examples deny hidden files, UNC paths,
+  symlinks, junctions, and other reparse access. Listing filters denied entries.
+  Enabling symlink following still cannot authorize an out-of-root target.
+- **Bounded work and disclosure:** configurable limits cap JSON-RPC messages,
+  arguments, reads/writes, listings, copies, recursive deletes, and responses.
+  Errors are generic; optional diagnostics are redacted and use stderr.
+  `MCP_DEBUG=false` keeps initial operation quiet. Current diagnostics create no
+  persistent logfiles.
 
-Architecture and security references:
+FlashGate runs under the launching OS account. Root and operation checks are
+application controls, not OS process isolation or protection from a compromised
+client/account. Grant only the data access you intend. Read the
+[security model](docs/security.md) for limits, policy details, residual races,
+and current-versus-target controls.
 
-- [Architecture](docs/architecture.md)
-- [Version 1.0 scope and release boundary](docs/planning/release-scope.md)
-- [Efficiency improvement plan](docs/planning/efficiency.md)
-- [Execution identity backends](docs/execution-identity-backends.md)
-- [Native runtime and service plan](docs/planning/runtime-modes.md)
-- [Security model](docs/security.md)
-- [Code coverage](docs/development/code-coverage.md)
-- [Protocol and local transport](docs/protocol.md)
-- [Version 1.0 product and technical specification](docs/specification.md)
-- [Architecture decisions](docs/adr/README.md)
-- [Authoritative backlog](BACKLOG.md)
-- [High-level roadmap](docs/roadmap.md)
-- [Project identity](docs/project-identity.md)
-- [Documentation quality gate](docs/documentation-quality-gate.md)
+## Current capabilities
 
-## Project Structure
+The available filesystem tools are:
 
-```text
-cmd/
-  server/               Application entry point
+| Tool | Behavior | In read-only mode |
+|---|---|---|
+| `list_directory` | List one directory; no recursive search or pagination. | Yes |
+| `read_file` | Read bounded text; no range-read interface. | Yes |
+| `get_path_info` | Inspect existence, name, type, and size. | Yes |
+| `write_file` | Write text; overwrite requires `overwrite:true`. | No |
+| `create_directory` | Create a directory and missing parents. | No |
+| `delete_path` | Delete a file/directory; nonempty directories require `recursive:true`. | No |
+| `copy_path` | Copy a file; directory copy is unsupported. | No |
+| `move_path` | Move/rename on the same volume; no cross-volume copy/delete fallback. | No |
 
-internal/
-  config/               Runtime configuration
-  diagnostics/          Redacted stderr diagnostics helpers
-  fs/                   Filesystem abstraction and implementation
-  mcp/                  MCP server, router, handlers, transport, and tools
-  protocol/             JSON-RPC and MCP protocol types
-  security/             Root-confined path validation
-  version/              Build and release metadata
+All tools remain subject to path policies and resource limits. See
+[tools](docs/tools.md), the [machine-readable catalog](docs/mcp-tool-catalog.json),
+and [tool conventions](docs/tool-conventions.md) for exact schemas and behavior.
 
-docs/
-  architecture.md       Current and Version 1.0 target architecture
-  version-1-scope-and-release-boundary.md
-                        Version 1.0 versus post-Version-1.0 scope
-  efficiency-improvement-plan.md
-                        Payload, token, RAM, CPU, and native-adapter plan
-  execution-identity-backends.md
-                        Service-account and future user-worker architecture
-  native-multi-mode-runtime-and-service-plan.md
-                        STDIO/proxy/auto/system-service plan
-  protocol.md           MCP and local IPC protocol architecture
-  specification.md      Consolidated Version 1.0 requirements
-  coding-style.md       Go, native adapter, lifecycle, and payload rules
-  development/
-    code-coverage.md  Windows/Linux coverage gates and maintenance rules
-  mcp-tool-catalog.json Machine-readable MCP tool catalog
-  tool-conventions.md   Tool implementation and interface conventions
-  tools.md              Human-readable MCP tool reference
-```
+The production policy enables and advertises only MCP `2025-11-25` over direct
+STDIO. The compiled-in `2026-07-28` adapter is an internally validated candidate,
+disabled and unadvertised pending BL-204, BL-212, and BL-219. See
+[the protocol reference](docs/protocol.md) and
+[advertised revision matrix](docs/mcp-protocol-matrix.json).
 
-## Requirements
+**Planned, not currently available:** Version 1.0 extends that foundation with
+bounded search, managed processes, typed allowlisted execution, system
+information, named roots/profiles, Operations/Jobs, payload-efficient large
+results, and optional local service/proxy/auto roles. Generic shell/terminal
+execution, remote MCP, installers, and automatic updates are not provided.
+Future modules/providers are post-Version-1.0 work, separate from MCP protocol
+extensions. Planned runtime flags are not current CLI arguments.
 
-- Go version required by `go.mod` (currently Go 1.26.4 or newer)
+## Documentation and roadmap
 
-## Building
+The [documentation index](docs/README.md) is the main route to detailed guidance.
 
-Clone the repository:
+| Topic | Reference |
+|---|---|
+| Client acceptance, troubleshooting, rollback | [Client setup](docs/client-setup.md) |
+| Tool input/output and errors | [Tools](docs/tools.md) and [catalog](docs/mcp-tool-catalog.json) |
+| MCP and transport | [Protocol](docs/protocol.md) |
+| Roots, policies, limits, threat models | [Security](docs/security.md) |
+| Compatibility and early integrations | [Migration](docs/migration.md) |
+| Architecture and rationale | [Architecture](docs/architecture.md) and [ADRs](docs/adr/README.md) |
+| Product identifiers and vendor-neutral scope | [Project identity](docs/project-identity.md) |
+| Release history | [Changelog](CHANGELOG.md) |
+| Authoritative work status and sequence | [Backlog](BACKLOG.md) and [roadmap](docs/roadmap.md) |
+| Initial stable release boundary | [Version 1.0 scope](docs/planning/release-scope.md) |
+| Payload/resource targets and measurement | [Efficiency plan](docs/planning/efficiency.md) |
+| Future runtime and execution identity | [Runtime plan](docs/planning/runtime-modes.md) and [identity backends](docs/execution-identity-backends.md) |
+| Consolidated target requirements | [Specification](docs/specification.md) |
+
+The backlog owns task status and milestones. Planned features and accepted ADRs
+do not establish current availability. Stable Version 1.0 publication has its
+own BL-263 gate; a prerelease does not pass it.
+
+## Development, testing, and contributing
+
+To build from source, use the Go version declared in [go.mod](go.mod)
+(currently Go 1.26.4 or newer). Go is a developer requirement, not a requirement
+for running verified binaries.
 
 ```bash
 git clone https://github.com/thomasweidner/flashgate-mcp.git
 cd flashgate-mcp
-```
-
-Build the server:
-
-```bash
 go build -o build/flashgate-mcp ./cmd/server
 ```
 
-On Windows, the common build command is:
+On Windows, use `go build -o build/flashgate-mcp.exe ./cmd/server`.
+Direct development builds report `0.0.0-dev`. Controlled builds and release
+identity use root [VERSION](VERSION); see [build metadata](docs/build-metadata.md).
+The repository is `thomasweidner/flashgate-mcp`, the Go module is
+`github.com/thomasweidner/flashgate-mcp`, the executable is `flashgate-mcp`,
+and MCP `serverInfo.name` is `flashgate`. The project maintains its own Go MCP
+adapter without an external MCP framework.
 
-```powershell
-go build -o build/flashgate-mcp.exe ./cmd/server
-```
+The application entry point is `cmd/server`. Runtime packages separate
+configuration (`internal/config`), redacted diagnostics (`internal/diagnostics`),
+filesystem operations (`internal/fs`), path enforcement (`internal/security`),
+MCP routing/tools/transport (`internal/mcp`), wire types (`internal/protocol`),
+and build identity (`internal/version`). `docs/` contains the references above.
 
-Direct `go build` is intended for development. Controlled metadata and release builds use `scripts/build.ps1` or `scripts/build.sh`; see [Build and release metadata](docs/build-metadata.md).
-
-Version identity is available without starting the MCP STDIO loop:
-
-```text
-flashgate-mcp --version
-flashgate-mcp --version --verbose
-```
-
-## Testing and Quality Checks
-
-FlashGate's public checkout contains the normal product, security, release,
-metadata, platform, shell, and documentation validation gates. Start with the
-directly affected checks and finish with the applicable repository-wide chain
-below. No private development environment is required.
-
-Run the documentation consistency gate with PowerShell 7.6.x (Major 7, Minor 6):
-
-```powershell
-.\scripts\Test-DocumentationConsistency.ps1
-```
-
-The detailed checklist and exit-code contract are documented in [docs/documentation-quality-gate.md](docs/documentation-quality-gate.md).
-
-Validate the complete PowerShell and Bash entry-point inventory on Windows
-with the required PowerShell 7.6 LTS line and Git Bash runtimes:
-
-```powershell
-& {
-    $workRoot = $env:FLASHGATE_WORK_ROOT
-    if ([string]::IsNullOrWhiteSpace($workRoot)) { throw 'Bind FLASHGATE_WORK_ROOT first.' }
-    .\scripts\Test-ShellScripts.ps1
-    .\scripts\Test-ShellScripts.Tests.ps1 -WorkingPath $workRoot
-}
-```
-
-Native Ubuntu CI runs the matching `/usr/bin/bash`
-`scripts/test-shell-scripts.sh` and `scripts/test-shell-scripts.tests.sh`
-gates. The full policy, negative-test matrix, and fallback when optional
-linters are unavailable are documented in [Testing](docs/testing.md#shell-script-validation).
-The bounded subprocess helper verifies termination after a timeout and never
-waits indefinitely for redirected streams after an unconfirmed process-tree
-termination. The persistent PowerShell harness covers 21 focused cases; the
-native Bash harness also verifies fail-closed cleanup reporting with exactly
-one terminal result block.
-
-Run the standard validation chain:
+Start validation in the affected area. For documentation changes:
 
 ```bash
-go fmt ./...
-go vet ./...
-go test ./...
-golangci-lint run
+go test ./cmd/doccheck
+go run ./cmd/doccheck
 ```
 
-Build after validation:
-
-```bash
-go build -o build/flashgate-mcp ./cmd/server
-```
-
-On Windows:
-
-```powershell
-go build -o build/flashgate-mcp.exe ./cmd/server
-```
-
-Relevant platform, build, test, lint, workflow, filesystem, and security-boundary
-changes require the native Linux checks described in
-[Testing](docs/testing.md#native-linux-validation). Run those checks in a native
-Linux checkout; do not treat a Windows-mounted filesystem as native Linux
-evidence.
-
-### Code Coverage
-
-FlashGate enforces separate production-server Go statement-coverage gates for Windows and Linux. The current minimum values are:
-
-| Platform | Minimum |
-|---|---:|
-| Windows | 90.0% |
-| Linux | 90.0% |
-
-Run the Windows coverage gate with PowerShell 7.6.x (Major 7, Minor 6):
-
-```powershell
-.\scripts\Test-GoCoverage.ps1 -PlatformName windows -MinimumCoverage 90.0
-```
-
-Run the Linux gate with PowerShell 7 on the native Linux validation environment:
-
-```bash
-pwsh -NoLogo -NoProfile -File ./scripts/Test-GoCoverage.ps1 -PlatformName linux -MinimumCoverage 90.0
-```
-
-Each run writes `coverage.out`, `coverage.txt`, `coverage.html`, `test.log`, `product-packages.txt`, and `summary.json` below `build/coverage/<platform>/`. GitHub Actions uploads separate Windows and Linux artifacts for 14 days.
-
-The technically authoritative thresholds are maintained in `.github/workflows/ci.yml`. Windows and Linux values are evaluated independently and must not be averaged. Detailed operation and baseline-maintenance rules are documented in [docs/development/code-coverage.md](docs/development/code-coverage.md).
-
-Run the JSON-RPC smoke test on Windows:
-
-```powershell
-.\scripts\smoke-jsonrpc.ps1
-```
-
-Run the same smoke test in Windows read-only mode:
-
-```powershell
-$env:MCP_READ_ONLY = "true"
-.\scripts\smoke-jsonrpc.ps1
-Remove-Item Env:\MCP_READ_ONLY
-```
-
-On Linux, build the non-`.exe` binary and run:
-
-```bash
-bash scripts/smoke-jsonrpc.sh
-MCP_READ_ONLY=true bash scripts/smoke-jsonrpc.sh
-```
-
-The default smoke test starts the built server binary and sends JSON-RPC requests through STDIO. It verifies that the server responds to:
-
-```text
-initialize
-tools/list
-```
-
-The script also validates the negotiated protocol version, the registered MCP tool list, and every positive `tools/call` result as text-plus-`structuredContent` with deterministic semantic parity.
-
-Run the negative JSON-RPC smoke test on Windows:
-
-```powershell
-.\scripts\smoke-jsonrpc-negative.ps1
-```
-
-Run fail-closed startup validation:
-
-```powershell
-.\scripts\smoke-startup-negative.ps1
-```
-
-On Linux:
-
-```bash
-bash scripts/smoke-jsonrpc-negative.sh
-```
-
-Linux startup validation uses:
-
-```bash
-bash scripts/smoke-startup-negative.sh
-```
-
-The negative smoke test verifies malformed JSON, unknown methods, invalid `tools/call` params, and notification no-response behavior.
-
-The smoke scripts create per-run JSONL request and response files under `build/` and remove them before exit. Script status output goes to the shell or CI log; the server process still writes only JSON-RPC protocol data to its redirected stdout stream.
-
-## Resource, Latency, and Payload Benchmarks
-
-The versioned local benchmark system measures process startup, end-to-end workflow latency, idle and peak working set, process CPU time, Go allocations, request/result/response sizes, filesystem counters, `tools/list` size, MCP call counts, and a coarse byte-based token orientation.
-
-Run the standard Windows benchmark after normal validation:
-
-```powershell
-& ".\scripts\benchmark.ps1"
-```
-
-Use the 10-repetition quick mode during development:
-
-```powershell
-& ".\scripts\benchmark.ps1" -Quick
-```
-
-On Linux:
-
-```bash
-bash scripts/benchmark.sh
-bash scripts/benchmark.sh --quick
-```
-
-The standard diagnostic mode records one `first_process_start` and 30 `subsequent_process_start` samples. Quick mode records one first and 10 subsequent samples. The first label means the first process started by that benchmark command; it does not claim an enforced OS cold cache.
-
-Detailed counter semantics, platform behavior, reference workflows, result schema, baseline, and hard-versus-soft budgets are documented in [`benchmarks/README.md`](benchmarks/README.md). The approximation `approx_tokens_bytes4 = ceil(UTF-8 bytes / 4)` is not model-specific and is not suitable for billing.
-
-Versioned baselines are recorded only from clean isolated checkouts of the same implementation commit using the documented two-phase prebuilt workflow. Validation and builds finish before a minimum 180-second quiet period, one authoritative three-block host preflight, direct measurement with prepared binaries, an intermediate gate, and a final host gate. The caller supplies an explicit task-bound Windows workspace on local nonsynchronized storage; native Linux work remains under `/home`. No personal global benchmark path is project authority. The legacy `-RecordBaseline` and `--record-baseline` wrapper flags fail closed and cannot create baselines. Ordinary local runs may use a dirty tree and record that provenance explicitly.
-
-`cmd/benchmark` is development-only. Diagnostic wrappers build it locally; authoritative runs invoke a separately prepared binary. It is not included in release artifacts.
-
-## Release Builds
-
-Root `VERSION` is the single editable product SemVer source. Controlled builds
-use it for CLI, native metadata, build manifests, and artifact names. Ordinary
-direct `go build` reports `0.0.0-dev` and Windows file version `0.0.0.0`.
-Explicit SemVer overrides are for metadata validation fixtures. Release mode
-requires a clean tree, an exact `v<VERSION>` tag on the built commit, and a
-dated, nonempty `CHANGELOG.md` section for `VERSION`. The changelog is the
-single narrative release-notes source; generated notes are derived from it.
-The `0.1.0` seed in `VERSION` does not represent a published release.
-
-The tag-gated `.github/workflows/release-build.yml` workflow builds and validates:
-
-```text
-flashgate-mcp_<version>_windows_x64.zip
-flashgate-mcp_<version>_windows_arm64.zip
-flashgate-mcp_<version>_linux_x64.tar.gz
-flashgate-mcp_<version>_linux_arm64.tar.gz
-```
-
-Each internal candidate archive has a sibling `.sha256` file and exactly one top-level directory containing the platform binary, `LICENSE`, `README.md`, and `THIRD-PARTY-NOTICES.md`. Windows artifacts carry `VERSIONINFO`, an embedded machine-readable build manifest, and the canonical FlashGate icon; Linux artifacts carry matching CLI, embedded-manifest, Go/VCS, ELF architecture, and Go build-ID metadata. Before upload, every matrix path builds independently twice, validates metadata and exact archive contents, compares binary, archive, checksum-file, and inventory identities, and performs a machine-readable host/credential leak scan.
-
-Build workflows upload validated outputs as time-limited GitHub Actions artifacts with `contents: read`. The separate manual `publish-prerelease.yml` entry and `releaseaudit` publication commands implement the BL-363 draft, exact-byte transfer, independent readback and prerelease publication path. [v0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0) is publicly available as a prerelease; independent acceptance confirmed all 40 original assets and their credential-free public download bytes. The BL-364 publisher retrofit projects four original platform archives plus shared `SHA256SUMS`; internal verification still consumes the complete evidence bundle. For that five-asset layout, download only the required archive and `SHA256SUMS`, then use `releaseaudit publication-verify` as described in [download verification](docs/prerelease-publication.md#selected-platform-download-verification). BL-364 normalization is complete and accepted: v0.3.0 now publishes exactly those five assets, retaining the four original archive IDs/bytes; independent GitHub verification and user public-download readback confirmed their hashes. The original 40-asset publication remains history. The later, explicitly approved cumulative notes contain the frozen 0.1.0, 0.2.0 and 0.3.0 CHANGELOG sections under the distinct identity recorded in the publication guidance. See [prerelease publication](docs/prerelease-publication.md) for preparation, authorization and recovery. Stable Version 1.0 publication and its release gate remain owned by BL-263.
-
-The separate `current-version-candidate.yml` workflow checks a pull request's
-exact head against its base and runs the four-platform BL-248 artifact gates
-when root `VERSION` changes or the workflow is absent from that exact base
-commit. This bootstrap exception verifies the first PR introducing the workflow
-even with unchanged `VERSION`; later unchanged-version PRs skip the matrix.
-An input-free manual dispatch on `refs/heads/main` always reverifies root
-`VERSION` at the validated current main commit, including finalized notes/date
-with an unchanged version. Non-main branch and tag dispatches are skipped
-before checkout. Every dispatch job explicitly checks out main; a main SHA
-change between jobs fails closed. Both event paths upload temporary target
-evidence and a strict four-target candidate manifest. `releaseaudit candidate-promote` can copy that
-verified bundle to a local immutable identity with SHA-256 readback; its optional
-`current` file is only a mutable alias. The initial hosted four-target candidate run passed for PR #303 before its
-2026-10-11 merge, completing BL-255. Future candidate identities still need
-their applicable hosted verification. The workflow does not publish a
-GitHub Release.
-
-An ordinary canonical version such as `0.4.0` keeps that version in artifacts
-and tag `v0.4.0`; GitHub `prerelease=true` identifies the pre-1.0 publication
-channel without inventing a SemVer suffix. See the [release
-boundaries](docs/planning/release-scope.md#public-pre-10-prerelease-publication).
-
-Detailed build inputs, architecture naming, reproducibility rules, local commands, and manual Explorer validation are documented in [Build and release metadata](docs/build-metadata.md), [Artifact verification](docs/artifact-verification.md), and [Manual metadata validation](docs/metadata-validation.md).
-
-Historical project and release milestones remain available in `BACKLOG.md` and
-`CHANGELOG.md`; they do not add private prerequisites to the current public
-build and release process.
-
-## Basic Usage
-
-Set the filesystem root:
-
-```powershell
-$env:MCP_ROOT = "C:\Path\To\Allowed\Root"
-```
-
-The value must be an explicit absolute directory. For development only, `MCP_ROOT=.` additionally requires `MCP_ALLOW_CWD_ROOT=true`; client activation examples do not use that opt-in.
-
-For read-only operation:
-
-```powershell
-$env:MCP_READ_ONLY = "true"
-```
-
-Run the server:
-
-```powershell
-.\build\flashgate-mcp.exe
-```
-
-The process expects JSON-RPC messages on standard input and writes JSON-RPC responses to standard output.
-
-## CLI Help and Version Information
-
-The binary supports a dedicated help mode:
-
-```powershell
-.\build\flashgate-mcp.exe --help
-```
-
-Short form:
-
-```powershell
-.\build\flashgate-mcp.exe -h
-```
-
-Example output:
-
-```text
-flashgate-mcp
-
-Usage:
-  flashgate-mcp
-  flashgate-mcp --version
-  flashgate-mcp --help
-
-Environment:
-  MCP_ROOT             Required absolute root directory exposed to MCP clients
-  MCP_READ_ONLY        Set to true to expose only read-only filesystem tools
-  MCP_ALLOW_CWD_ROOT   Development only: set to true with MCP_ROOT=.
-```
-
-The binary also supports a dedicated version mode:
-
-```powershell
-.\build\flashgate-mcp.exe --version
-```
-
-A direct development build without controlled linker values prints:
-
-```text
-flashgate-mcp 0.0.0-dev
-```
-
-Controlled builds report the effective SemVer in compact output. Verbose output
-also reports the numeric file version, Git commit SHA, and UTC source time:
-
-```text
-flashgate-mcp 0.1.0
-```
-
-The `--version` mode is intended for diagnostics and artifact traceability. Normal MCP operation still communicates exclusively through JSON-RPC over STDIO.
-
-## Example JSON-RPC Request
-
-Example `tools/list` request:
-
-```json
-{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}
-```
-
-On Windows, a simple smoke test can be executed with a JSONL file:
-
-```powershell
-$json = '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-[System.IO.File]::WriteAllText("$PWD\request-tools-list.jsonl", $json + "`n", [System.Text.UTF8Encoding]::new($false))
-cmd /c ".\build\flashgate-mcp.exe < request-tools-list.jsonl"
-Remove-Item request-tools-list.jsonl
-```
-
-## Development Workflow
-
-The project uses small, focused feature branches.
-
-Typical workflow:
-
-```bash
-git checkout -b feature-sprint-name
-go fmt ./...
-go vet ./...
-go test ./...
-golangci-lint run
-go build -o build/flashgate-mcp ./cmd/server
-git add .
-git commit -m "Describe focused change"
-git checkout main
-git merge feature-sprint-name
-git branch -d feature-sprint-name
-git push
-```
-
-Each feature should include:
-
-- focused implementation
-- unit tests
-- documentation updates when interfaces change
-- successful formatting, vetting, tests, linting, and build
-
-## Implemented MCP Tools
-
-| Tool | Description |
-|---|---|
-| `list_directory` | Lists files and directories below the configured filesystem root. |
-| `read_file` | Reads a text file below the configured filesystem root. |
-| `get_path_info` | Returns existence and metadata; missing paths return `exists:false`. |
-| `write_file` | Writes a text file. |
-| `create_directory` | Creates a directory and reports whether it was newly created. |
-| `delete_path` | Deletes a file or directory. |
-| `copy_path` | Copies a file. Directory copy is currently unsupported. |
-| `move_path` | Moves or renames a file or directory on the same volume. |
-
-When `MCP_READ_ONLY=true`, only `list_directory`, `read_file`, and `get_path_info` are exposed.
-
-## Roadmap
-
-Planned work is maintained authoritatively in [BACKLOG.md](BACKLOG.md). [docs/roadmap.md](docs/roadmap.md) contains only the high-level sequence.
-
-The backlog covers Version 1.0 filesystem, search, process, typed command, system, security, payload-efficiency, hybrid identity, service, CI, supply-chain, release, and documentation work. Human status describes execution state. The separate Post-1.0 workstream table identifies accepted work beyond the initial stable release.
+Then run `scripts/Test-DocumentationConsistency.ps1` with PowerShell 7.6.x.
+The compatibility gate checks major 7/minor 6; record the actual patch and
+maintain the latest serviced patch in that line. See
+[documentation quality](docs/documentation-quality-gate.md) for automated and
+editorial checks.
+
+The normal code chain is `go fmt ./...`, `go vet ./...`, `go test ./...`,
+`golangci-lint run`, and the platform build above. Follow
+[Contributing](CONTRIBUTING.md) and [Testing](docs/testing.md) for applicable
+Windows/Linux smoke, race, coverage, shell, and CI gates. Shell changes require
+the documented deterministic shell-validation pair. Test scratch requires a
+caller-bound `FLASHGATE_WORK_ROOT` outside the source tree.
+
+Further contributor references:
+
+- [Coding style](docs/coding-style.md) and [tool conventions](docs/tool-conventions.md).
+- [Product coverage](docs/development/code-coverage.md): separate Windows/Linux
+  hard gates of at least 90.0%, with a 95.0% target.
+- [Benchmarks](benchmarks/README.md): startup, CPU/RAM, latency, payload/catalog,
+  and approximate-token methodology; diagnostic runs and authoritative baselines
+  have different workspace/preflight requirements.
+- [Artifact verification](docs/artifact-verification.md) and
+  [manual metadata checks](docs/metadata-validation.md): deterministic archives,
+  repeated builds, native metadata, hashes, and leak checks.
+- [Prerelease publication](docs/prerelease-publication.md): frozen version/source/
+  artifact identity, five public assets, complete internal unsigned evidence,
+  and separately authorized publication/recovery.
+
+Release workflows and immutable candidates are contributor controls, not extra
+end-user runtime prerequisites. No automatic update or installation is performed.
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0.
-
-See `LICENSE` for details.
-
-## PowerShell 7.6 LTS patch contract
-
-Compatibility requires PowerShell major version 7 and minor version 6. `ObservedPowerShellVersion` records the actual patch. `MinimumPowerShellVersion` is `null` unless a specific fix establishes and justifies a minimum patch. `ServicingTarget=LatestServicedPatchWithin7.6` is the maintenance target. Exact patch, path, or hash bindings are allowed only for historical evidence, bug reproduction, installer/download/SBOM/supply-chain provenance, or a documented minimum-patch fix; each exception must be explicitly classified.
-
-## Candidate supply-chain evidence
-
-The existing releaseaudit tool generates and verifies a separate unsigned
-SPDX source inventory, four artifact-bound provenance statements and compact
-index from a complete verified four-target candidate. The bundle carries original
-candidate files for later consumers; checksums require external trust anchors.
-See [artifact verification](docs/artifact-verification.md#native-supply-chain-evidence)
-for commands, scope, retention, signing boundaries and rollback limitations.
-This tooling creates no public release, installation or automatic update.
+FlashGate MCP is licensed under the GNU General Public License v3.0.
+See [LICENSE](LICENSE) and [third-party notices](THIRD-PARTY-NOTICES.md).

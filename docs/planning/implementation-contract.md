@@ -88,9 +88,10 @@ is available; there is no outstanding hard prerequisite.
 Inspect and reuse `cmd/doccheck` heading, fence, duplicate-anchor, explicit-anchor
 and local-link handling, its fixtures, and `scripts/Test-DocumentationConsistency.ps1`
 before adding behavior. Extend these owners rather than creating a second
-general documentation engine. BL-365 remains Planned in SPR-048 and may change
-the README shape later; neither BL is a hard predecessor of the other, and
-neither may block the other's completion. No sprint, Version 1.0 or Post-1.0
+general documentation engine. BL-365 is the separate onboarding owner in SPR-048;
+its manual README navigation can change without this tooling. Neither BL is a
+hard predecessor of the other, and neither may block the other's completion.
+No sprint, Version 1.0 or Post-1.0
 commitment or release gate is introduced.
 
 **Retrofits and public contract.** Later separately authorized implementation
