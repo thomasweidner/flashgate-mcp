@@ -70,6 +70,73 @@ controls, and `BL-308` remains the architecture and ADR owner.
 | Release, artifacts, and validation — BL-203–BL-204, BL-215–BL-216, BL-241–BL-263, BL-305–BL-315, BL-363, BL-364, BL-366, BL-367 | Reuse root `VERSION`, BL-245 changelog/tag semantics, BL-248 verification and current CI gates. BL-255 builds/verifies candidates, then promotes the exact bytes locally with immutable identity and no additional remote publication. BL-262 supplies evidence/rollback controls. BL-363 consumes verified candidates and evidence for explicit persistent public pre-1.0 GitHub prereleases with `prerelease=true`, exact version/source/artifact identity, no publication-time rebuild or silent asset replacement, minimal separate release-write permissions, and remote readback. Finalize release-relevant source and dated changelog notes before public candidate freeze. BL-263 separately requires stable Version 1.0 traceability/gate closure and reuses the publication foundation; prerelease success never passes that gate. Retrofit the tag-gated build/validation path, transient Actions-artifact handoff and public download guidance. BL-364 owns the accepted five-asset distribution target for all releases including v0.3.0: four original archives and shared SHA256SUMS, preserving complete verification and required temporary evidence within regular Actions retention. Release-unassigned BL-366 owns SBOM security management; release-unassigned BL-367 owns GitHub-native signed attestations. Neither blocks a release or is implicitly implemented here; see the task bindings below. |
 | Response and benchmark quality — BL-172–BL-173, BL-177–BL-179, BL-205, BL-317–BL-323, BL-325–BL-329, BL-331–BL-332 | Reuse current benchmark schemas, deterministic workflow/corpus controls, host/platform evidence, and documentation gates. Strengthen checks at their existing owners without weakening result, supply-chain, platform, or public documentation truth; no benchmark result itself authorizes product behavior. |
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
+| Documentation navigation tooling — BL-368 | Independent release-unassigned development tooling, outside the product runtime and release-security owners. Reuse completed documentation validation and extend its local/read-only CI consumers under the [BL-368 binding](#bl-368-documentation-navigation); no hard dependency on BL-365 or release obligation. |
+
+## BL-368 documentation navigation
+
+**Role and authorities.** BL-368 owns future deterministic README navigation
+generation and drift validation in development tooling, outside `cmd/server`.
+[BACKLOG.md](../../BACKLOG.md#release-unassigned-documentation-tooling) owns its
+Planned status and release-unassigned placement; the
+[traceability row](architecture-traceability.md#release-unassigned-documentation-tooling)
+maps reuse, retrofits and closure. The [documentation quality gate](../documentation-quality-gate.md),
+[documentation style](../documentation-style.md) and [testing requirements](../testing.md)
+govern public-document rules and validation. This registration implements nothing.
+
+**Prerequisites and reuse.** The existing documentation-validation foundation
+is available; there is no outstanding hard prerequisite.
+Inspect and reuse `cmd/doccheck` heading, fence, duplicate-anchor, explicit-anchor
+and local-link handling, its fixtures, and `scripts/Test-DocumentationConsistency.ps1`
+before adding behavior. Extend these owners rather than creating a second
+general documentation engine. BL-365 remains Planned in SPR-048 and may change
+the README shape later; neither BL is a hard predecessor of the other, and
+neither may block the other's completion. No sprint, Version 1.0 or Post-1.0
+commitment or release gate is introduced.
+
+**Retrofits and public contract.** Later separately authorized implementation
+must integrate a reusable local generation command with one clearly marked
+README ToC region and extend the existing documentation/CI gate and contributor
+guidance. Reconcile the then-current README shape, including any BL-365 changes,
+without taking over its onboarding scope. Navigation derives from actual Markdown
+headings in stable document order. Resolve GitHub-compatible heading and anchor
+rules consistently with existing validators, including normalization, Unicode,
+punctuation, duplicate headings, explicit anchors and fenced code. No MCP tool,
+schema, configuration, runtime, binary, product-version or release delta is planned.
+
+**Representation and safety.** The local generator may change only one
+unambiguously delimited managed region. Preserve every byte outside it and the
+existing UTF-8 encoding, BOM state, LF/CRLF representation and final newline.
+Repeated generation must produce identical bytes; no silent whole-file rewrite
+or data loss. Missing, duplicate, malformed or ambiguous markers fail closed
+before writing. Bound document/input size and processing resources using the
+existing checker limits; preserve local-first behavior and public portability
+without private workflow dependencies, credentials, installations or permissions.
+
+**CI and excluded alternatives.** The existing documentation gate must compute
+the expected bytes without mutating the checkout and fail with actionable
+diagnostics on drift, invalid anchors, missing/invalid links or unexpected changes
+outside the managed region. A targeted local command may update that region.
+CI commits, pushes or automatic PR creation require a separate later architecture
+decision and authorization; no extra GitHub write rights are implied. Exclude
+manual link maintenance as the permanent solution, a competing documentation
+engine, a documentation website and new external dependencies without a later
+decision. Registration changes no README, generator, executable CI or permissions.
+
+**Validation and completion.** Later implementation requires focused positive
+and negative fixtures for normal/normalized headings and GitHub anchors,
+duplicates, Unicode and punctuation, fenced code, explicit anchors, valid/invalid
+links and targets, added/removed/renamed headings, missing/duplicate/malformed
+markers, stable order, repeated byte-identical generation, LF/CRLF and UTF-8/BOM/
+final-newline preservation, and unchanged bytes outside the managed region.
+Prove Windows/Linux and CI parity, read-only drift failure and the applicable
+documentation and implementation gates. Reconcile backlog, this binding and the
+traceability row with actual generator, validator, README and guidance retrofits;
+disposition documentation, CHANGELOG/VERSION, tests/CI, candidates,
+release/distribution, migration and security, with any residual dual-bound to one
+concrete successor. The present registration closes only its planning action;
+BL-368 remains Planned until separately authorized implementation and validation
+complete. It creates no product/release artifact, migration or active security
+change and leaves BL-365 and completed owners unchanged.
 
 ## BL-363 implementation binding
 

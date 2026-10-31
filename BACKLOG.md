@@ -124,6 +124,7 @@ backlog owner. Registration activates no security tool, attestation or permissio
 |---|---|---|
 | Dependency security management | BL-366 | Reuse the existing SPDX inventory and dependency-security functions for advisory triage and remediation or documented exceptions |
 | GitHub-native build authentication | BL-367 | Signed archive attestations with OIDC and short-lived workflow identity, without permanent keys or an extra download asset |
+| Documentation navigation tooling | BL-368 | Deterministic README navigation generation and read-only CI drift validation, reusing existing documentation checks; independent of BL-365 |
 
 ## Canonical task catalog
 
@@ -614,6 +615,12 @@ These tasks originate in the independent review of PR #15. They are intentionall
 | BL-366 | **Planned** | Add SBOM security management | Independent release-unassigned security owner; no sprint, release assignment or blocker obligation. Hard prerequisites: completed BL-262 and BL-324. Reuse the BL-262 SPDX 2.3 source dependency inventory and existing Dependabot/GitHub security functions; no second SBOM generator or mandatory public SBOM release asset. Correlate dependencies with known advisories/CVEs, distinguish direct/transitive dependencies and actual product exposure, assess/prioritize findings and support remediation or documented exceptions. Retrofit existing inventory consumers, dependency-security triage, relevant CI/security gates, negative tests and guidance under the implementation-contract binding and architecture-traceability row. Respect current inventory limitations; source dependency inventory is not full platform-binary composition. Choose tools and external providers only in a later implementation task. Require focused missing/stale/mismatched-data, classification and exception negatives, independent security review and normal closure dispositions. Registration creates no automatic Version 1.0 obligation and enables no implementation, tool, provider, permission or credential change. |
 | BL-367 | **Planned** | Add GitHub Artifact Attestations | Independent release-unassigned future security owner; no sprint, release assignment or blocker obligation. Hard prerequisites: completed BL-248/255/262/363. Reuse verified immutable identities for the four platform archives and existing release workflows; coordinate with BL-364 distribution without making either owner a prerequisite of the other. Automatically create signed GitHub-native build attestations in later authorized release workflows using GitHub Actions OIDC and short-lived workflow identity, and verify through GitHub-native methods. No permanent signing keys, long-term credentials or additional release-download asset. Retrofit targeted workflow generation/verification, minimal permissions, security/negative tests and guidance under the implementation-contract binding and architecture-traceability row. Cover missing/tampered/swapped subjects, wrong repository/workflow/source identity, unavailable verification and excessive permissions. Preserve BL-262 unsigned evidence history. Independent review and a later implementation authorization must precede activation or workflow-permission changes. This registration implements and activates nothing and blocks no release. |
 
+### Release-unassigned documentation tooling
+
+| ID | Status | Task | Scope and acceptance notes |
+|---|---|---|---|
+| BL-368 | **Planned** | Generate and validate documentation navigation automatically | Independent release-unassigned documentation-tooling owner; no sprint, Version 1.0 or Post-1.0 assignment and no release blocker. No outstanding hard prerequisite: reuse cmd/doccheck, scripts/Test-DocumentationConsistency.ps1 and existing GitHub-Markdown anchor/link rules. BL-365 remains Planned in SPR-048; neither owner is a hard predecessor of the other. Later implementation generates navigation from actual README headings, changes only one explicitly marked managed ToC region, preserves all other bytes and UTF-8/BOM/LF/CRLF/final-newline representation, and is deterministic and idempotent. Fail closed on missing, duplicate or malformed markers. Retrofit the local documentation command and existing read-only CI gate to reject drift, invalid anchors/links or unexpected deltas without repository mutation or extra GitHub write rights. Follow the [implementation binding](docs/planning/implementation-contract.md#bl-368-documentation-navigation) and [traceability row](docs/planning/architecture-traceability.md#release-unassigned-documentation-tooling) for heading/anchor edge cases, focused positive/negative Windows/Linux/CI tests and full closure. This registration implements no generator, workflow, README change, dependency, runtime, permission, credential, version or release behavior; later implementation requires separate authorization. |
+
 ### Metadata validation follow-up
 
 These tasks originate in the independent security and release review of PR #16. They are intentionally not implemented by the two-Major-finding correction and are scheduled as separate work after PR #16 is merged.
@@ -667,7 +674,7 @@ These tasks originate in the final independent review of PR #21. They are accept
 BL-333 through BL-340 and BL-342 through BL-344 remain `Completed`. BL-344 is `Completed`. BL-341 remains `Planned` in SPR-060 for host-process lifecycle implementation; its planning completion does not imply runtime implementation. Historical execution and review evidence is kept outside the active public
 documentation tree. Task status is not inferred from retiring a report.
 
-The highest assigned backlog identifier is `BL-367`.
+The highest assigned backlog identifier is `BL-368`.
 
 ## Cross-epic rules
 
