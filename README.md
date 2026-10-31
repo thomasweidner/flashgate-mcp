@@ -40,13 +40,16 @@ directory. You do not need the other three platform archives.
 For [v0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0),
 the five uploaded assets are:
 
-| Platform | Archive |
-|---|---|
-| Windows x64 | `flashgate-mcp_0.3.0_windows_x64.zip` |
-| Windows ARM64 (Preview) | `flashgate-mcp_0.3.0_windows_arm64.zip` |
-| Linux x64 | `flashgate-mcp_0.3.0_linux_x64.tar.gz` |
-| Linux ARM64 (Preview) | `flashgate-mcp_0.3.0_linux_arm64.tar.gz` |
-| Shared checksums | `SHA256SUMS` |
+| Platform | Archive for v0.3.0 | Naming template |
+|---|---|---|
+| Windows x64 | `flashgate-mcp_0.3.0_windows_x64.zip` | `flashgate-mcp_<version>_windows_x64.zip` |
+| Windows ARM64 (Preview) | `flashgate-mcp_0.3.0_windows_arm64.zip` | `flashgate-mcp_<version>_windows_arm64.zip` |
+| Linux x64 | `flashgate-mcp_0.3.0_linux_x64.tar.gz` | `flashgate-mcp_<version>_linux_x64.tar.gz` |
+| Linux ARM64 (Preview) | `flashgate-mcp_0.3.0_linux_arm64.tar.gz` | `flashgate-mcp_<version>_linux_arm64.tar.gz` |
+| Shared checksums | `SHA256SUMS` | `SHA256SUMS` |
+
+In the naming templates, replace `<version>` with the product version without
+the leading `v` (for example, `0.3.0`).
 
 GitHub-generated **Source code** downloads are separate source archives.
 There are no individual public `.sha256` files or extra public manifest/SBOM
@@ -126,11 +129,17 @@ directory you own. Replace the example destination below. Existing destinations
 are rejected, including a tree containing an older binary. Do not modify the
 destination concurrently while these checks run.
 
+**Requires PowerShell 7.6.x (`pwsh`).** Windows PowerShell 5.1 is not supported
+by this quickstart. The block checks the runtime before extraction.
+
 ```powershell
 & {
     $destination = 'C:\Tools\FlashGate'
     $process = $null
     try {
+        if ($PSVersionTable.PSVersion.Major -ne 7 -or $PSVersionTable.PSVersion.Minor -ne 6) {
+            throw 'Use PowerShell 7.6.x (pwsh) for this quickstart.'
+        }
         if (Test-Path -LiteralPath $destination -ErrorAction Stop) {
             throw 'Destination already exists. Choose a new, absent directory.'
         }
@@ -178,16 +187,20 @@ exit without starting an MCP session.
 
 ### Linux quickstart
 
-After verifying the Linux x64 TAR.GZ, replace `/home/example/tools` with an
+After verifying the Linux x64 TAR.GZ, replace `/data/flashgate-example/tools` with an
 absent directory under an existing parent you own. `mkdir` intentionally has no
 `-p`: an existing destination, even one containing a binary, must stop the block.
 Do not modify the destination concurrently.
+
+The `/data/flashgate-example` prefix is a placeholder for an existing writable
+parent directory you own, not an installation default. Replace it consistently
+in the shell commands and client examples; use actual absolute paths.
 
 ```bash
 (
     set -eu
     archive='flashgate-mcp_0.3.0_linux_x64.tar.gz'
-    destination='/home/example/tools'
+    destination='/data/flashgate-example/tools'
     test -f "$archive"
     mkdir -- "$destination"
     tar -xzf "$archive" -C "$destination"
@@ -206,8 +219,8 @@ needs execute permission on a filesystem that
 allows execution; see [client setup](docs/client-setup.md#stdio-launch-contract).
 
 For the Linux client examples below, the extracted directory is assumed to be
-at `/home/example/tools/flashgate-mcp_0.3.0_linux_x64`, and the existing data
-directory at `/home/example/flashgate-readonly-root`. Substitute your real
+at `/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64`, and the existing data
+directory at `/data/flashgate-example/flashgate-readonly-root`. Substitute your real
 absolute paths. These are native Linux examples; keep Windows paths separate.
 
 ## Connect your MCP client
@@ -253,11 +266,11 @@ MCP_DEBUG = "false"
 
 ```toml
 [mcp_servers.flashgate]
-command = "/home/example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp"
+command = "/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp"
 args = []
 
 [mcp_servers.flashgate.env]
-MCP_ROOT = "/home/example/flashgate-readonly-root"
+MCP_ROOT = "/data/flashgate-example/flashgate-readonly-root"
 MCP_READ_ONLY = "true"
 MCP_ALLOW_CWD_ROOT = "false"
 MCP_ALLOW_HIDDEN_FILES = "false"
@@ -312,10 +325,10 @@ runs its own native executable.
 {
   "mcpServers": {
     "flashgate": {
-      "command": "/home/example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp",
+      "command": "/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp",
       "args": [],
       "env": {
-        "MCP_ROOT": "/home/example/flashgate-readonly-root",
+        "MCP_ROOT": "/data/flashgate-example/flashgate-readonly-root",
         "MCP_READ_ONLY": "true",
         "MCP_ALLOW_CWD_ROOT": "false",
         "MCP_ALLOW_HIDDEN_FILES": "false",
