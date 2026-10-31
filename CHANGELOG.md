@@ -27,6 +27,7 @@ for publication; the date alone does not prove that a release was published.
 
 ### Changed
 
+- Reworked README onboarding with prerelease downloads, selected-archive SHA-256 verification, Windows/Linux quickstarts, explicit read-only Codex and Claude Desktop configuration, and a first filesystem task. Corrected the public download procedure to use four platform archives plus shared SHA256SUMS while preserving publication history; product VERSION and release bytes are unchanged.
 - Migrated human backlog and sprint status to the canonical six-status lifecycle while retaining Post-1.0 placement in a separate workstream table; added deterministic status, Markdown status-cell rendering, and placement validation.
 - Standardized public documentation in English with stable topic-based filenames, consolidated client and migration guidance, and separated historical execution reports from product documentation.
 
