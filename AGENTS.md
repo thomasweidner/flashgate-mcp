@@ -42,3 +42,13 @@ before retiring a document.
 The public repository must remain sufficient to build, test, release,
 contribute to, and understand FlashGate without access to a private development
 control plane.
+
+
+## Review continuity and temporary resources
+
+Technical implementation retains its required independent terminal review. Pure
+documentation follows the actual risk decision; a valid review may be reused for
+unchanged content, modes, scope and relevant dependencies. Commit or context changes
+alone do not require another quality review. Existing Git, provider and platform
+authorizations remain separate. State the explicit disposition of task-owned temporary
+resources at closure; accepted delivery and physical cleanup are separate facts.
