@@ -596,12 +596,21 @@ the existing verification, provider and journal controls and grant no new
 external write or credential change. Offline preparation alone remains
 insufficient provider-download evidence.
 
-Release-unassigned BL-366 owns future SBOM security management, reusing BL-262
+Release-unassigned BL-366 owns SBOM security management, reusing BL-262
 SPDX 2.3 inventory and existing Dependabot/GitHub security functions. Correlate
 known advisories/CVEs, distinguish direct/transitive dependencies and product
 exposure, prioritize findings and support remediation or documented exceptions.
-No second generator or mandatory public SBOM asset; tool/provider decisions,
-CI/security gates and negative tests belong to later implementation.
+The local `releaseaudit security-assess` implementation uses bounded read-only
+OSV queries or an inventory-bound offline snapshot, conservative exposure,
+exact-identity exceptions and deterministic reports. See
+[dependency security assessment](security-assessment.md). Real provider calls
+need separate authorization; development uses only offline/local HTTP fixtures.
+Candidate and confirmed-success publisher assessments are separate informative
+steps, without publication credentials or added permissions. All severities,
+missing fixes and provider errors remain visible and nonblocking. Existing
+integrity/build/test gates remain binding. No second generator or mandatory
+public SBOM asset. Local tests and workflow regressions cover this consumer;
+independent review, integration and authorized hosted execution remain separate.
 
 Release-unassigned BL-367 owns future signed GitHub-native build attestations for
 the four verified archives. Use Actions OIDC and short-lived workflow identity,
@@ -610,7 +619,8 @@ verification and minimal targeted permissions. No permanent keys, long-term
 credentials or extra release-download asset. Cover subject/source/repository/
 workflow mismatch, tampering, missing verification and excess permissions in
 security/negative tests. Neither BL-366 nor BL-367 has a sprint or release
-assignment or blocks any release; no activation or permission change occurs here.
+assignment or blocks any release; BL-367 remains inactive and BL-366 adds no
+permission change.
 See their [bindings](planning/implementation-contract.md#release-unassigned-security-task-bindings).
 
 Version 1.0 requires:

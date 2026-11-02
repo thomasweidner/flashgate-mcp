@@ -626,8 +626,8 @@ the [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding
 
 #### Release-unassigned security validation
 
-BL-366 and BL-367 are independent Planned owners without a sprint or release
-assignment; they block no release. Their later authorized implementations require
+BL-366 and BL-367 are independent owners without a sprint or release
+assignment; they block no release. Their implementations require
 focused security/negative tests, relevant CI/security gates, documentation and
 independent review under their [bindings](planning/implementation-contract.md#release-unassigned-security-task-bindings):
 
@@ -635,8 +635,21 @@ independent review under their [bindings](planning/implementation-contract.md#re
   functions for advisory/CVE correlation, direct/transitive classification,
   product exposure, prioritization, remediation and documented exceptions. Test
   missing/stale/mismatched inventory or advisory data, false classification and
-  unjustified exceptions. Select tools/providers later; no second SBOM generator
-  or mandatory public SBOM asset.
+  unjustified exceptions. The local `security-assess` consumer uses OSV snapshots
+  and bounded querybatch/detail reads. Run `go test -mod=vendor ./cmd/releaseaudit
+  -run '^TestSecurity'` first, then Supply/Publication/workflow regressions and
+  both platform quality chains. Fixtures cover exact external anchors, carried
+  go.mod markers, build/runtime/UNKNOWN roles, wrong module/version/ID bindings,
+  none/one/multiple advisories, reciprocal and conflicting aliases, unknown
+  severity/fixes, malformed/oversized/truncated/paginated provider responses,
+  timeout and incomplete queries, stale snapshots, exact/invalid/expired
+  exceptions, deterministic replay and task-confined CLI outputs. All severity
+  classes remain informative. Workflow mutations prove provider/assessment
+  failure is visible without blocking successful candidate/publication steps,
+  while existing integrity gates remain blocking. Use only controlled offline
+  inputs and local HTTP servers; no live provider or Actions dispatch belongs
+  to local validation. See [the assessment contract](security-assessment.md).
+  No second SBOM generator, dependency or public SBOM asset is introduced.
 - BL-367 creates signed GitHub-native build attestations for four verified archives
   through Actions OIDC and short-lived workflow identity in later authorized
   workflows, verified with GitHub-native methods. Test wrong repository/workflow/

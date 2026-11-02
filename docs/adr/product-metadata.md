@@ -368,8 +368,10 @@ signed provenance, signing keys or signing infrastructure, and activates neither
 Artifact Attestations nor Immutable Releases. Release-unassigned BL-366 separately
 owns SBOM security management; release-unassigned BL-367 separately owns future
 GitHub-native signed build attestations with OIDC and short-lived workflow identity,
-no permanent keys/credentials and no extra download asset. Both are non-blocking
-and require later implementation authorization.
+no permanent keys/credentials and no extra download asset. Both are non-blocking. BL-366 now has a local informative OSV assessment
+implementation pending independent review and integration; actual provider use
+remains separately authorized. BL-367 still requires later implementation
+authorization. See [dependency security assessment](../security-assessment.md).
 
 BL-364 includes actual v0.3.0 normalization: first independently verify original
 inventory/IDs/bytes/hashes, required identity bindings and provider state; then

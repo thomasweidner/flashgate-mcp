@@ -55,7 +55,11 @@ mandatory, without a raw-evidence retention duty beyond regular Actions retentio
 BL-262 remains Completed and unsigned. Lightweight tags retain exact version/
 source parity. BL-364 adds no mandatory signed provenance/keys and activates no
 Artifact Attestations or Immutable Releases. Independent release-unassigned
-security owners BL-366/367 block no release and authorize no current activation.
+security owners BL-366/367 block no release. BL-366 adds a separate informative
+assessment after confirmed publication, with no release write, credential
+forwarding or new permission. Its errors cannot turn publication success into
+failure. See [dependency security assessment](security-assessment.md); actual
+provider use remains separately authorized, and BL-367 remains inactive.
 Independently review this material plan before separately authorized technical
 implementation and review the changed publisher before use. See the
 [BL-364 binding](planning/implementation-contract.md#bl-364-planning-binding).

@@ -537,7 +537,7 @@ raw-evidence retention duty beyond regular Actions retention. Preserve
 
 GitHub-generated source downloads are excluded. Lightweight tags retain exact
 version/source parity. BL-364 adds no mandatory signed provenance or signing keys
-and activates no Artifact Attestations or Immutable Releases. Independent future
+and activates no Artifact Attestations or Immutable Releases. Independent
 owners BL-366 (SBOM security management) and BL-367 (GitHub Artifact Attestations)
 are release-unassigned and block no release; see their
 [bindings](planning/implementation-contract.md#release-unassigned-security-task-bindings).
@@ -679,3 +679,12 @@ are preserved. Consumer verification requires externally pinned digest anchors.
 BL-363 consumes this authority for prerelease publication; BL-263 owns stable
 release closure. Signing providers and deployment/service rollback are separate
 boundaries. See [artifact verification](artifact-verification.md#native-supply-chain-evidence).
+
+BL-366 extends the same CLI with four small consumer responsibilities: a
+verified inventory/source reader, bounded OSV advisory transport and snapshots,
+deterministic offline correlation, and report/exception consumption. It reuses
+the complete verifier rather than generating another SBOM. Candidate and
+confirmed-success publisher steps are informative and preserve existing
+integrity gates, credentials, permissions and five-asset distribution. No
+runtime dependency or finding-state service is introduced. See
+[dependency security assessment](security-assessment.md).

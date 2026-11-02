@@ -47,10 +47,23 @@ func validatePublicationWorkflow(contents string) error {
 			return errors.New("missing publication workflow boundary")
 		}
 	}
-	for _, item := range []string{"  push:", "  pull_request:", "workflow_run:", "write-all", "issues:", "pull-requests:", "administration:", "continue-on-error:", "retry", "gh release", "curl ", "git tag ", "New-ReleaseArtifact", "new-release-artifact", "./cmd/server", "make_latest: true", "secrets."} {
+	for _, item := range []string{"  push:", "  pull_request:", "workflow_run:", "write-all", "issues:", "pull-requests:", "administration:", "retry", "gh release", "curl ", "git tag ", "New-ReleaseArtifact", "new-release-artifact", "./cmd/server", "make_latest: true", "secrets."} {
 		if strings.Contains(contents, item) {
 			return errors.New("forbidden publication workflow alternative")
 		}
+	}
+	// Only the separate informative security assessment and its consumers may
+	// tolerate failure. Every existing publication gate stays blocking.
+	for _, block := range strings.Split(contents, "      - name: ") {
+		if strings.Contains(block, "continue-on-error:") {
+			name, _, _ := strings.Cut(block, "\n")
+			if name != "Informative security assessment after confirmed publication" && name != "Summarize informative post-publication security result" && name != "Retain temporary post-publication security assessment" {
+				return errors.New("publication gate made nonblocking")
+			}
+		}
+	}
+	if err := validateSecurityWorkflow(contents, true); err != nil {
+		return err
 	}
 	if strings.Count(contents, "permissions:") != 2 || strings.Count(contents, "contents: write") != 1 || strings.Count(contents, "GH_TOKEN: ${{ github.token }}") != 2 || strings.Count(contents, "persist-credentials: false") != 2 {
 		return errors.New("publication permission/credential scope drift")
