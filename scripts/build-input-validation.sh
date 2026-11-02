@@ -89,8 +89,47 @@ flashgate_validate_source_date_epoch() {
 }
 
 flashgate_source_time_from_epoch() {
+    local LC_ALL=C
     local value="$1"
+    local date_tool
+    local source_time
+    local timestamp_pattern
+    local probe
+    local compatible
 
     flashgate_validate_source_date_epoch "$value" || return 1
-    date -u -d "@$FLASHGATE_SOURCE_DATE_EPOCH" '+%Y-%m-%dT%H:%M:%SZ'
+    # Some date implementations cannot represent the full accepted epoch range.
+    # Prefer GNU's separate executable when installed, then probe the host date.
+    for date_tool in gnudate date; do
+        command -v "$date_tool" > /dev/null 2>&1 || continue
+        compatible=true
+        for probe in '0|1970-01-01T00:00:00Z' \
+            '1704067200|2024-01-01T00:00:00Z' \
+            '253402300799|9999-12-31T23:59:59Z'; do
+            if ! source_time="$("$date_tool" -u -d "@${probe%%|*}" \
+                '+%Y-%m-%dT%H:%M:%SZ' 2> /dev/null)" ||
+                [[ "$source_time" != "${probe#*|}" ]]; then
+                compatible=false
+                break
+            fi
+        done
+        [[ "$compatible" == true ]] || continue
+
+        if ! source_time="$("$date_tool" -u -d "@$FLASHGATE_SOURCE_DATE_EPOCH" \
+            '+%Y-%m-%dT%H:%M:%SZ' 2> /dev/null)"; then
+            printf 'Source epoch conversion failed with %s\n' "$date_tool" >&2
+            return 1
+        fi
+        timestamp_pattern='^(19[7-9][0-9]|[2-9][0-9]{3})-(0[1-9]|1[0-2])-'
+        timestamp_pattern+='(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):'
+        timestamp_pattern+='[0-5][0-9]:[0-5][0-9]Z$'
+        if [[ ! "$source_time" =~ $timestamp_pattern ]]; then
+            printf 'Unexpected source epoch output from %s\n' "$date_tool" >&2
+            return 1
+        fi
+        printf '%s\n' "$source_time"
+        return 0
+    done
+    printf 'No compatible gnudate or date for the accepted source epoch range\n' >&2
+    return 1
 }
