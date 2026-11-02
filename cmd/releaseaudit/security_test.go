@@ -238,6 +238,183 @@ func TestSecurityAliasesAndDeterminism(t *testing.T) {
 	}
 }
 
+func TestSecurityAliasFixConsistency(t *testing.T) {
+	const module = "example.org/a"
+	modules := []securityModule{{module, "v1.2.3", "DIRECT", "BUILD"}}
+	makeAdvisory := func(id, fix string) osvAdvisory {
+		a := securityTestAdvisory(id, module, modules[0].Version, "HIGH")
+		if fix != "" {
+			a.Affected[0].Versions = nil
+			a.Affected[0].Ranges = []osvRange{{Type: "SEMVER", Events: []osvEvent{{Introduced: "0"}, {Fixed: fix}}}}
+		}
+		return a
+	}
+	pair := func(first, second string) []osvAdvisory {
+		a, b := makeAdvisory("GO-2026-1000", first), makeAdvisory("GHSA-aaaa-bbbb-cccc", second)
+		a.Aliases, b.Aliases = []string{b.ID}, []string{a.ID}
+		return []osvAdvisory{a, b}
+	}
+	unknown := pair("", "")
+	for i := range unknown {
+		unknown[i].Affected[0].Ranges = []osvRange{{Type: "GIT", Events: []osvEvent{{Introduced: "0"}}}}
+	}
+	malformed := pair("", "")
+	for i := range malformed {
+		malformed[i].Affected[0].Ranges = []osvRange{{Type: "SEMVER", Events: []osvEvent{{Introduced: "1.4.0"}, {Fixed: "1.3.0"}}}}
+	}
+	chain := pair("1.3.0", "")
+	c := makeAdvisory("CVE-2026-12345", "1.4.0")
+	chain[1].Aliases = append(chain[1].Aliases, c.ID)
+	c.Aliases = []string{chain[1].ID}
+	chain = append(chain, c)
+	consistentChain := pair("1.3.0", "1.3.0")
+	c = makeAdvisory("CVE-2026-12345", "1.3.0")
+	consistentChain[1].Aliases = append(consistentChain[1].Aliases, c.ID)
+	c.Aliases = []string{consistentChain[1].ID}
+	consistentChain = append(consistentChain, c)
+	explicitConflict := pair("1.3.0", "")
+	explicitConflict[1].Affected[0].Versions = append(explicitConflict[1].Affected[0].Versions, "v1.3.0")
+	equivalentConflict := pair("1.3.0", "")
+	equivalentConflict[1].Affected[0].Versions = append(equivalentConflict[1].Affected[0].Versions, "1.3.0+build")
+	missingEvidence := pair("1.3.0", "")
+	missingEvidence[1].Affected = append(missingEvidence[1].Affected, osvAffected{Package: osvPackage{module, "Go"}})
+	for _, tc := range []struct {
+		name       string
+		advisories []osvAdvisory
+		status     string
+		count      int
+		quality    string
+	}{
+		{"conflicting interval fixes", pair("1.3.0", "1.4.0"), "INCOMPLETE", 2, "ALIAS_FIX_CONFLICT"},
+		{"identical interval fixes", pair("1.3.0", "1.3.0"), "COMPLETE", 1, ""},
+		{"missing fix is not a contradiction", pair("1.3.0", ""), "COMPLETE", 1, ""},
+		{"equivalent semver fix spellings", pair("v1.3.0", "1.3.0+build"), "COMPLETE", 1, ""},
+		{"explicit affected fix", explicitConflict, "INCOMPLETE", 2, "ALIAS_FIX_CONFLICT"},
+		{"semver equivalent affected fix", equivalentConflict, "INCOMPLETE", 2, "ALIAS_FIX_CONFLICT"},
+		{"missing version evidence", missingEvidence, "INCOMPLETE", 2, "ALIAS_FIX_EVIDENCE_UNKNOWN"},
+		{"unsupported range", unknown, "INCOMPLETE", 2, "ALIAS_FIX_EVIDENCE_UNKNOWN"},
+		{"invalid range", malformed, "INCOMPLETE", 2, "ALIAS_FIX_EVIDENCE_UNKNOWN"},
+		{"transitive fix conflict", chain, "INCOMPLETE", 3, "ALIAS_FIX_CONFLICT"},
+		{"consistent reciprocal chain", consistentChain, "COMPLETE", 1, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var first []byte
+			for _, reverseAdvisories := range []bool{false, true} {
+				for _, reverseQueries := range []bool{false, true} {
+					s := securityTestSnapshot(securityIdentity{}, modules)
+					s.Advisories = append([]osvAdvisory{}, tc.advisories...)
+					for _, a := range tc.advisories {
+						s.Queries[0].Advisories = append(s.Queries[0].Advisories, a.ID)
+					}
+					if reverseAdvisories {
+						for i, j := 0, len(s.Advisories)-1; i < j; i, j = i+1, j-1 {
+							s.Advisories[i], s.Advisories[j] = s.Advisories[j], s.Advisories[i]
+						}
+					}
+					if reverseQueries {
+						for i, j := 0, len(s.Queries[0].Advisories)-1; i < j; i, j = i+1, j-1 {
+							s.Queries[0].Advisories[i], s.Queries[0].Advisories[j] = s.Queries[0].Advisories[j], s.Queries[0].Advisories[i]
+						}
+					}
+					before, _ := supplyJSON(s)
+					r := securityTestAssess(modules, s)
+					if r.Status != tc.status || !r.Informational || len(r.Findings) != tc.count || tc.quality != "" && !containsString(r.Quality, tc.quality) || tc.quality == "" && len(r.Quality) != 0 {
+						t.Fatalf("status=%s quality=%v findings=%+v", r.Status, r.Quality, r.Findings)
+					}
+					if tc.count > 1 {
+						for _, f := range r.Findings {
+							for _, a := range tc.advisories {
+								if a.ID != f.Advisory {
+									continue
+								}
+								status, fixes, severity := securityAffected(a, modules[0])
+								if !reflect.DeepEqual(f.Records, []string{a.ID}) || !reflect.DeepEqual(f.Aliases, a.Aliases) || !reflect.DeepEqual(f.FixVersions, fixes) || f.Affected != status || f.Severity != severity || f.Priority != securityPriority(severity) {
+									t.Fatalf("original record provenance changed: %+v", f)
+								}
+							}
+						}
+						e := securityException{tc.advisories[0].ID, module, modules[0].Version, "Controlled build inputs; review upgrade.", "maintainer", "2026-12-01T00:00:00Z"}
+						excepted := assessSecurity(s.Identity, modules, s, securityTriage{"flashgate-security-triage/v1", []securityException{e}}, securityTestNow)
+						matched := 0
+						for _, f := range excepted.Findings {
+							if f.Exception != nil {
+								matched++
+								if f.Advisory != e.Advisory || f.Disposition != "DOCUMENTED_EXCEPTION_REVIEW_REQUIRED" {
+									t.Fatal("exception crossed original record identity", f)
+								}
+							}
+						}
+						if matched != 1 || excepted.Status != "INCOMPLETE" || !containsString(excepted.Quality, tc.quality) {
+							t.Fatal("exception suppressed conflicting evidence", excepted)
+						}
+					} else {
+						ids, fixes := []string{}, []string{}
+						for _, a := range tc.advisories {
+							ids = append(ids, a.ID)
+							_, af, _ := securityAffected(a, modules[0])
+							fixes = securityUnion(fixes, af)
+						}
+						if !reflect.DeepEqual(r.Findings[0].Records, securityUnion(nil, ids)) || !reflect.DeepEqual(r.Findings[0].FixVersions, fixes) {
+							t.Fatalf("consistent record evidence lost: %+v", r.Findings[0])
+						}
+					}
+					after, _ := supplyJSON(s)
+					if !bytes.Equal(before, after) {
+						t.Fatal("original snapshot mutated")
+					}
+					got, _ := supplyJSON(r)
+					if first != nil && !bytes.Equal(first, got) {
+						t.Fatal("advisory or query order changed assessment")
+					}
+					first = got
+				}
+			}
+		})
+	}
+}
+
+func TestSecurityAliasDispositionAndSeverity(t *testing.T) {
+	modules := []securityModule{{"example.org/a", "v1.2.3", "DIRECT", "BUILD"}}
+	for _, severity := range []string{"CRITICAL", "HIGH", "MODERATE", "MEDIUM", "LOW", ""} {
+		t.Run("severity_"+severity, func(t *testing.T) {
+			for _, mode := range []string{"active", "withdrawn", "mixed-withdrawn", "exception"} {
+				a := securityTestAdvisory("GO-2026-1000", modules[0].Name, modules[0].Version, severity)
+				b := securityTestAdvisory("GHSA-aaaa-bbbb-cccc", modules[0].Name, modules[0].Version, "")
+				a.Aliases, b.Aliases = []string{b.ID}, []string{a.ID}
+				if mode == "withdrawn" || mode == "mixed-withdrawn" {
+					a.Withdrawn = "2026-11-01T10:00:00Z"
+				}
+				if mode == "withdrawn" {
+					b.Withdrawn = a.Withdrawn
+				}
+				s := securityTestSnapshot(securityIdentity{}, modules)
+				s.Advisories, s.Queries[0].Advisories = []osvAdvisory{a, b}, []string{a.ID, b.ID}
+				triage := securityTriage{"flashgate-security-triage/v1", []securityException{}}
+				if mode == "exception" {
+					triage.Exceptions = []securityException{{a.ID, modules[0].Name, modules[0].Version, "Controlled build inputs; review upgrade.", "maintainer", "2026-12-01T00:00:00Z"}}
+				}
+				r := assessSecurity(s.Identity, modules, s, triage, securityTestNow)
+				if !r.Informational {
+					t.Fatal("severity changed reporting-only policy")
+				}
+				if mode == "mixed-withdrawn" {
+					if r.Status != "INCOMPLETE" || len(r.Findings) != 2 {
+						t.Fatal("withdrawn mismatch was merged", r)
+					}
+					continue
+				}
+				if r.Status != "COMPLETE" || len(r.Findings) != 1 || r.Findings[0].Severity != securitySeverity(severity) || r.Findings[0].Priority != securityPriority(securitySeverity(severity)) {
+					t.Fatalf("mode=%s: severity/priority changed or findings became blocking: %+v", mode, r)
+				}
+				f := r.Findings[0]
+				if mode == "withdrawn" && f.Disposition != "WITHDRAWN_REVIEW_REQUIRED" || mode == "exception" && (f.Disposition != "DOCUMENTED_EXCEPTION_REVIEW_REQUIRED" || f.Exception == nil || f.Exception.Advisory != a.ID) {
+					t.Fatalf("mode=%s: original identity disposition lost: %+v", mode, f)
+				}
+			}
+		})
+	}
+}
+
 func TestSecurityRangesAndVersions(t *testing.T) {
 	for _, pair := range []struct {
 		a, b string

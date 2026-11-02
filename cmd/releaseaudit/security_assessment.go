@@ -132,34 +132,14 @@ func assessSecurity(identity securityIdentity, modules []securityModule, snapsho
 			}
 			current = append(current, f)
 		}
-		// Consolidate only mutually declared IDs with matching impact. A shared
-		// alias alone is insufficient; conflicting claims stay visible separately.
+		// Validate original records before merging any aliases; otherwise a
+		// transitive merge can hide a conflicting record's fix provenance.
 		sort.Slice(current, func(i, j int) bool { return current[i].Advisory < current[j].Advisory })
-		for x := 0; x < len(current); x++ {
-			for y := x + 1; y < len(current); y++ {
-				a, b := current[x], current[y]
-				if !securityAliasOverlap(a, b) {
-					continue
-				}
-				if containsString(a.Aliases, b.Advisory) && containsString(b.Aliases, a.Advisory) && a.Affected == b.Affected && a.Disposition == b.Disposition {
-					current[x].Records = securityUnion(a.Records, b.Records)
-					current[x].Aliases = securityUnion(securityUnion(a.Aliases, b.Aliases), b.Records)
-					current[x].FixVersions = securityUnion(a.FixVersions, b.FixVersions)
-					if securityRank(b.Severity) > securityRank(a.Severity) {
-						current[x].Severity = b.Severity
-						current[x].Priority = b.Priority
-					}
-					if len(current[x].FixVersions) > 0 {
-						current[x].Remediation = "REVIEW_UPGRADE_OR_DOCUMENT_EXCEPTION"
-					}
-					current = append(current[:y], current[y+1:]...)
-					y--
-				} else {
-					quality("ALIAS_AMBIGUOUS_OR_CONFLICTING")
-				}
-			}
-			r.Findings = append(r.Findings, current[x])
+		current, codes := securityConsolidateAliases(current, advisories)
+		for _, code := range codes {
+			quality(code)
 		}
+		r.Findings = append(r.Findings, current...)
 	}
 	if len(used) != len(advisories) {
 		quality("UNQUERIED_ADVISORY_DETAIL")
@@ -245,6 +225,93 @@ func securityUnion(a, b []string) []string {
 func securityAliasOverlap(a, b securityFinding) bool {
 	return len(securityUnion(append(append([]string{}, a.Aliases...), a.Advisory), append(append([]string{}, b.Aliases...), b.Advisory))) < len(securityUnion(a.Aliases, []string{a.Advisory}))+len(securityUnion(b.Aliases, []string{b.Advisory}))
 }
+
+func securityConsolidateAliases(current []securityFinding, advisories map[string]osvAdvisory) ([]securityFinding, []string) {
+	reciprocal := func(a, b securityFinding) bool {
+		return containsString(a.Aliases, b.Advisory) && containsString(b.Aliases, a.Advisory) && a.Affected == b.Affected && a.Disposition == b.Disposition
+	}
+	quality := []string{}
+	groups := [][]int{}
+	component := make([]int, len(current))
+	seen := make([]bool, len(current))
+	for start := range current {
+		if seen[start] {
+			continue
+		}
+		// Form groups using only original reciprocal edges, never aliases
+		// accumulated by a partial merge. Check the entire group first.
+		group := []int{start}
+		seen[start] = true
+		for at := 0; at < len(group); at++ {
+			for j := range current {
+				if !seen[j] && reciprocal(current[group[at]], current[j]) {
+					seen[j] = true
+					group = append(group, j)
+				}
+			}
+		}
+		sort.Ints(group)
+		for _, i := range group {
+			component[i] = len(groups)
+		}
+		groups = append(groups, group)
+	}
+	for x, a := range current {
+		for y := x + 1; y < len(current); y++ {
+			if component[x] != component[y] && securityAliasOverlap(a, current[y]) {
+				quality = append(quality, "ALIAS_AMBIGUOUS_OR_CONFLICTING")
+			}
+		}
+	}
+	result := []securityFinding{}
+	for _, group := range groups {
+		conflict, unknown := false, false
+		fixes := []string{}
+		if len(group) > 1 {
+			for _, i := range group {
+				fixes = securityUnion(fixes, current[i].FixVersions)
+				unknown = unknown || current[i].Affected != "AFFECTED"
+			}
+			for _, fix := range fixes {
+				for _, i := range group {
+					m := current[i].Module
+					m.Version = "v" + strings.TrimPrefix(fix, "v")
+					status, _, _, conclusive := securityVersionEvidence(advisories[current[i].Advisory], m)
+					conflict = conflict || status == "AFFECTED"
+					unknown = unknown || !conclusive
+				}
+			}
+		}
+		if conflict || unknown {
+			if conflict {
+				quality = append(quality, "ALIAS_FIX_CONFLICT")
+			}
+			if unknown {
+				quality = append(quality, "ALIAS_FIX_EVIDENCE_UNKNOWN")
+			}
+			for _, i := range group {
+				result = append(result, current[i])
+			}
+			continue
+		}
+		merged := current[group[0]]
+		for _, i := range group[1:] {
+			b := current[i]
+			merged.Records = securityUnion(merged.Records, b.Records)
+			merged.Aliases = securityUnion(securityUnion(merged.Aliases, b.Aliases), b.Records)
+			merged.FixVersions = securityUnion(merged.FixVersions, b.FixVersions)
+			if securityRank(b.Severity) > securityRank(merged.Severity) {
+				merged.Severity, merged.Priority = b.Severity, b.Priority
+			}
+		}
+		if len(merged.FixVersions) > 0 {
+			merged.Remediation = "REVIEW_UPGRADE_OR_DOCUMENT_EXCEPTION"
+		}
+		result = append(result, merged)
+	}
+	return result, securityUnion(nil, quality)
+}
+
 func securityRank(s string) int {
 	switch s {
 	case "CRITICAL":
@@ -285,17 +352,36 @@ func securitySeverity(label string) string {
 // Only explicit OSV database severity labels are classified. Unknown stays
 // unknown when a provider supplies only a vector, an unsupported scale or no data.
 func securityAffected(a osvAdvisory, m securityModule) (string, []string, string) {
+	status, fixes, severity, _ := securityVersionEvidence(a, m)
+	return status, fixes, severity
+}
+
+// Keep the installed-version UNKNOWN contract, while distinguishing supported
+// evidence that excludes a proposed fix from evidence we cannot evaluate.
+func securityVersionEvidence(a osvAdvisory, m securityModule) (string, []string, string, bool) {
 	status, fixes, severity := "UNKNOWN", []string{}, securitySeverity(a.Database.Severity)
-	invalid := false
+	invalid, conclusive, missing := false, false, false
 	for _, f := range a.Affected {
 		if f.Package.Ecosystem != "Go" || f.Package.Name != m.Name {
 			continue
 		}
-		entryMatches := containsString(f.Versions, strings.TrimPrefix(m.Version, "v")) || containsString(f.Versions, m.Version)
+		entryMatches := false
+		for _, version := range f.Versions {
+			c, err := securityCompare(m.Version, version)
+			if err != nil {
+				invalid = true
+			} else if c == 0 {
+				entryMatches = true
+			}
+		}
+		conclusive = conclusive || len(f.Versions) > 0
+		missing = missing || len(f.Versions) == 0 && len(f.Ranges) == 0
 		for _, r := range f.Ranges {
 			matched, fixed, err := securityRange(m.Version, r)
 			if err != nil {
 				invalid = true
+			} else {
+				conclusive = true
 			}
 			if err == nil && matched {
 				entryMatches = true
@@ -310,9 +396,9 @@ func securityAffected(a osvAdvisory, m securityModule) (string, []string, string
 		}
 	}
 	if invalid {
-		return "UNKNOWN", []string{}, severity
+		return "UNKNOWN", []string{}, severity, false
 	}
-	return status, securityUnion(nil, fixes), severity
+	return status, securityUnion(nil, fixes), severity, conclusive && !missing
 }
 
 var securitySemver = regexp.MustCompile(`^v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
