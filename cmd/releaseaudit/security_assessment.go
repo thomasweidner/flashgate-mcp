@@ -226,11 +226,52 @@ func securityAliasOverlap(a, b securityFinding) bool {
 	return len(securityUnion(append(append([]string{}, a.Aliases...), a.Advisory), append(append([]string{}, b.Aliases...), b.Advisory))) < len(securityUnion(a.Aliases, []string{a.Advisory}))+len(securityUnion(b.Aliases, []string{b.Advisory}))
 }
 
+// Validate each original record even when it has no aliases. The installed
+// version's impact is independent of whether a proposed upgrade is confirmed.
+func securityValidateFixes(f securityFinding, a osvAdvisory) (securityFinding, []string) {
+	_, _, _, conclusive := securityVersionEvidence(a, f.Module)
+	conflict, unknown := false, !conclusive
+	confirmed := []string{}
+	for _, fix := range f.FixVersions {
+		m := f.Module
+		m.Version = "v" + strings.TrimPrefix(fix, "v")
+		status, _, _, known := securityVersionEvidence(a, m)
+		if status == "AFFECTED" {
+			conflict = true
+		}
+		if !known {
+			unknown = true
+		}
+		if status != "AFFECTED" && known {
+			confirmed = append(confirmed, fix)
+		}
+	}
+	f.FixVersions = securityUnion(nil, confirmed)
+	if len(f.FixVersions) == 0 {
+		f.Remediation = "NO_CONFIRMED_FIX_REVIEW_MITIGATION"
+	}
+	quality := []string{}
+	if conflict {
+		quality = append(quality, "ADVISORY_FIX_CONFLICT")
+	}
+	if unknown {
+		quality = append(quality, "ADVISORY_FIX_EVIDENCE_UNKNOWN")
+	}
+	return f, quality
+}
+
 func securityConsolidateAliases(current []securityFinding, advisories map[string]osvAdvisory) ([]securityFinding, []string) {
 	reciprocal := func(a, b securityFinding) bool {
 		return containsString(a.Aliases, b.Advisory) && containsString(b.Aliases, a.Advisory) && a.Affected == b.Affected && a.Disposition == b.Disposition
 	}
 	quality := []string{}
+	blocked := make([]bool, len(current))
+	for i := range current {
+		validated, codes := securityValidateFixes(current[i], advisories[current[i].Advisory])
+		current[i] = validated
+		blocked[i] = len(codes) > 0
+		quality = append(quality, codes...)
+	}
 	groups := [][]int{}
 	component := make([]int, len(current))
 	seen := make([]bool, len(current))
@@ -266,6 +307,10 @@ func securityConsolidateAliases(current []securityFinding, advisories map[string
 	result := []securityFinding{}
 	for _, group := range groups {
 		conflict, unknown := false, false
+		keepSeparate := false
+		for _, i := range group {
+			keepSeparate = keepSeparate || blocked[i]
+		}
 		fixes := []string{}
 		if len(group) > 1 {
 			for _, i := range group {
@@ -282,7 +327,7 @@ func securityConsolidateAliases(current []securityFinding, advisories map[string
 				}
 			}
 		}
-		if conflict || unknown {
+		if conflict || unknown || keepSeparate {
 			if conflict {
 				quality = append(quality, "ALIAS_FIX_CONFLICT")
 			}

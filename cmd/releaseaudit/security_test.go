@@ -415,6 +415,131 @@ func TestSecurityAliasDispositionAndSeverity(t *testing.T) {
 	}
 }
 
+func TestSecurityIntraAdvisoryFixConsistency(t *testing.T) {
+	const module = "example.org/a"
+	modules := []securityModule{{module, "v1.2.3", "DIRECT", "BUILD"}}
+	interval := func(fix string) osvRange {
+		return osvRange{Type: "SEMVER", Events: []osvEvent{{Introduced: "0"}, {Fixed: fix}}}
+	}
+	entry := func(ranges ...osvRange) osvAffected {
+		return osvAffected{Package: osvPackage{module, "Go"}, Ranges: ranges}
+	}
+	explicit := entry(interval("1.3.0"))
+	explicit.Versions = []string{"1.3.0+build"}
+	disjoint := osvRange{Type: "SEMVER", Events: []osvEvent{{Introduced: "2.0.0"}, {Fixed: "2.1.0"}}}
+	unsupported := osvRange{Type: "ECOSYSTEM", Events: []osvEvent{{Introduced: "0"}, {Fixed: "1.4.0"}}}
+	invalid := osvRange{Type: "SEMVER", Events: []osvEvent{{Introduced: "1.4.0"}, {Fixed: "1.3.0"}}}
+	last := osvRange{Type: "SEMVER", Events: []osvEvent{{Introduced: "0"}, {LastAffected: "1.3.0"}}}
+	limit := osvRange{Type: "SEMVER", Events: []osvEvent{{Introduced: "0"}, {Limit: "1.3.0"}}}
+	irrelevant := osvAffected{Package: osvPackage{"example.org/other", "Go"}, Ranges: []osvRange{unsupported}}
+	for _, tc := range []struct {
+		name, status, affected, quality string
+		entries                         []osvAffected
+		fixes                           []string
+	}{
+		{"overlapping ranges", "INCOMPLETE", "AFFECTED", "ADVISORY_FIX_CONFLICT", []osvAffected{entry(interval("1.3.0"), interval("1.4.0"))}, []string{"1.4.0"}},
+		{"overlapping entries", "INCOMPLETE", "AFFECTED", "ADVISORY_FIX_CONFLICT", []osvAffected{entry(interval("1.3.0")), entry(interval("1.4.0"))}, []string{"1.4.0"}},
+		{"explicit affected fix", "INCOMPLETE", "AFFECTED", "ADVISORY_FIX_CONFLICT", []osvAffected{explicit}, nil},
+		{"inclusive last affected boundary", "INCOMPLETE", "AFFECTED", "ADVISORY_FIX_CONFLICT", []osvAffected{entry(interval("1.3.0"), last)}, nil},
+		{"disjoint intervals", "COMPLETE", "AFFECTED", "", []osvAffected{entry(interval("1.3.0"), disjoint)}, []string{"1.3.0"}},
+		{"identical fixes", "COMPLETE", "AFFECTED", "", []osvAffected{entry(interval("1.3.0"), interval("1.3.0"))}, []string{"1.3.0"}},
+		{"equivalent fixes", "COMPLETE", "AFFECTED", "", []osvAffected{entry(interval("v1.3.0"), interval("1.3.0+build"))}, []string{"1.3.0+build", "v1.3.0"}},
+		{"exclusive limit boundary", "COMPLETE", "AFFECTED", "", []osvAffected{entry(interval("1.3.0"), limit)}, []string{"1.3.0"}},
+		{"unsupported range", "INCOMPLETE", "UNKNOWN", "ADVISORY_FIX_EVIDENCE_UNKNOWN", []osvAffected{entry(interval("1.3.0"), unsupported)}, nil},
+		{"invalid range", "INCOMPLETE", "UNKNOWN", "ADVISORY_FIX_EVIDENCE_UNKNOWN", []osvAffected{entry(interval("1.3.0"), invalid)}, nil},
+		{"missing matching evidence", "INCOMPLETE", "AFFECTED", "ADVISORY_FIX_EVIDENCE_UNKNOWN", []osvAffected{entry(interval("1.3.0")), entry()}, nil},
+		{"irrelevant module evidence", "COMPLETE", "AFFECTED", "", []osvAffected{entry(interval("1.3.0")), irrelevant}, []string{"1.3.0"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var first []byte
+			for _, reverse := range []bool{false, true} {
+				a := securityTestAdvisory("GO-2026-1000", module, modules[0].Version, "HIGH")
+				a.Affected = append([]osvAffected{}, tc.entries...)
+				if reverse {
+					for i := range a.Affected {
+						a.Affected[i].Ranges = append([]osvRange{}, a.Affected[i].Ranges...)
+						for x, y := 0, len(a.Affected[i].Ranges)-1; x < y; x, y = x+1, y-1 {
+							a.Affected[i].Ranges[x], a.Affected[i].Ranges[y] = a.Affected[i].Ranges[y], a.Affected[i].Ranges[x]
+						}
+					}
+					for i, j := 0, len(a.Affected)-1; i < j; i, j = i+1, j-1 {
+						a.Affected[i], a.Affected[j] = a.Affected[j], a.Affected[i]
+					}
+				}
+				s := securityTestSnapshot(securityIdentity{}, modules)
+				s.Advisories, s.Queries[0].Advisories = []osvAdvisory{a}, []string{a.ID}
+				before, _ := supplyJSON(s)
+				r := securityTestAssess(modules, s)
+				if r.Status != tc.status || !r.Informational || len(r.Findings) != 1 || tc.quality != "" && !containsString(r.Quality, tc.quality) || tc.quality == "" && len(r.Quality) != 0 {
+					t.Fatalf("reverse=%v: status=%s quality=%v findings=%+v", reverse, r.Status, r.Quality, r.Findings)
+				}
+				f := r.Findings[0]
+				if f.Affected != tc.affected || f.Severity != "HIGH" || f.Priority != "P2" || !reflect.DeepEqual(f.Records, []string{a.ID}) || !reflect.DeepEqual(f.FixVersions, securityUnion(nil, tc.fixes)) {
+					t.Fatalf("fix validation lost installed impact or exposed unconfirmed fix: %+v", f)
+				}
+				if len(tc.fixes) == 0 && f.Remediation != "NO_CONFIRMED_FIX_REVIEW_MITIGATION" {
+					t.Fatal("unconfirmed fix still offered for upgrade", f)
+				}
+				after, _ := supplyJSON(s)
+				if !bytes.Equal(before, after) {
+					t.Fatal("original provider evidence mutated")
+				}
+				got, _ := supplyJSON(r)
+				if first != nil && !bytes.Equal(first, got) {
+					t.Fatal("affected-entry/range order changed assessment")
+				}
+				first = got
+			}
+		})
+	}
+}
+
+func TestSecurityIntraAdvisoryConflictPreventsAliasMerge(t *testing.T) {
+	modules := []securityModule{{"example.org/a", "v1.2.3", "DIRECT", "BUILD"}}
+	for _, severity := range []string{"CRITICAL", "HIGH", "MEDIUM", "LOW", ""} {
+		var first []byte
+		for _, reverse := range []bool{false, true} {
+			s := securityTestSnapshot(securityIdentity{}, modules)
+			ids := []string{"GO-2026-1000", "GHSA-aaaa-bbbb-cccc", "CVE-2026-12345"}
+			for i, id := range ids {
+				a := securityTestAdvisory(id, modules[0].Name, modules[0].Version, severity)
+				a.Affected[0].Versions = nil
+				a.Affected[0].Ranges = []osvRange{{Type: "SEMVER", Events: []osvEvent{{Introduced: "0"}, {Fixed: "1.4.0"}}}}
+				if i == 0 {
+					a.Affected[0].Ranges = append(a.Affected[0].Ranges, osvRange{Type: "SEMVER", Events: []osvEvent{{Introduced: "0"}, {Fixed: "1.3.0"}}})
+				}
+				for _, other := range ids {
+					if other != id {
+						a.Aliases = append(a.Aliases, other)
+					}
+				}
+				s.Advisories = append(s.Advisories, a)
+				s.Queries[0].Advisories = append(s.Queries[0].Advisories, id)
+			}
+			if reverse {
+				s.Advisories[0], s.Advisories[2] = s.Advisories[2], s.Advisories[0]
+				s.Queries[0].Advisories[0], s.Queries[0].Advisories[2] = s.Queries[0].Advisories[2], s.Queries[0].Advisories[0]
+			}
+			before, _ := supplyJSON(s)
+			r := securityTestAssess(modules, s)
+			if r.Status != "INCOMPLETE" || !r.Informational || len(r.Findings) != len(ids) || !containsString(r.Quality, "ADVISORY_FIX_CONFLICT") {
+				t.Fatal("internal conflict was hidden by alias merge", r)
+			}
+			for _, f := range r.Findings {
+				if !reflect.DeepEqual(f.Records, []string{f.Advisory}) || !reflect.DeepEqual(f.FixVersions, []string{"1.4.0"}) || f.Affected != "AFFECTED" || f.Severity != securitySeverity(severity) || f.Priority != securityPriority(securitySeverity(severity)) {
+					t.Fatal("original record identity or impact changed", f)
+				}
+			}
+			after, _ := supplyJSON(s)
+			got, _ := supplyJSON(r)
+			if !bytes.Equal(before, after) || first != nil && !bytes.Equal(first, got) {
+				t.Fatal("snapshot mutation or nondeterministic report")
+			}
+			first = got
+		}
+	}
+}
+
 func TestSecurityRangesAndVersions(t *testing.T) {
 	for _, pair := range []struct {
 		a, b string
