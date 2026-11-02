@@ -351,7 +351,7 @@ independent review; publication and provider/signing decisions remain separate.
 
 ## Release-unassigned security task bindings
 
-BL-366 and BL-367 are independent Planned owners with no sprint, release milestone
+BL-366 and BL-367 are independent owners with no sprint, release milestone
 or release-blocking obligation. They may be scheduled whenever their prerequisites
 and a separate implementation authorization are satisfied. Their registration
 activates no tool, external provider, workflow permission or credential change.
@@ -372,8 +372,27 @@ direct/transitive dependencies and actual product exposure, and assess/prioritiz
 findings with remediation or documented exceptions. Include security/negative
 tests for missing/stale or mismatched inventory/advisory data, classification
 errors and unjustified exceptions. Do not claim the existing source inventory
-proves full platform binary composition. Select tools and external providers
-only in a later implementation task. Add no second SBOM generator, mandatory
+proves full platform binary composition. The authorized local implementation
+extends `cmd/releaseaudit` with a verified inventory reader, bounded read-only
+OSV transport/snapshot capture, deterministic offline assessment and a report/
+exception consumer. Reuse `verifySupply` with independent version, commit,
+manifest and index anchors; reconcile carried `source/go.mod` indirect markers
+with SPDX dependency and use relationships. Preserve UNKNOWN/INCOMPLETE on
+contradictions or missing evidence. OSV querybatch is positional and paginated;
+ID detail reads are separate. No provider call is authorized by local development.
+Use offline fixtures and local HTTP servers for validation. Existing Dependabot
+remains complementary without an alert API, new scopes or credentials.
+
+Candidate verification and confirmed successful prerelease publication each
+invoke a separate informative assessment. The existing candidate dispatch and
+local CLI are the manual routes. Findings of every severity and provider errors
+create no commit, PR, merge or release gate; existing integrity/build/test gates
+remain blocking. Assessment errors are visible as INCOMPLETE/ERROR and cannot
+reclassify successful publication. Outputs remain temporary run evidence and
+Actions summaries, outside the five public assets. No workflow permission or
+credential forwarding change, dependency mutation, new runtime dependency,
+database or persistent finding lifecycle. Versioned exact-identity triage retains
+findings and flags invalid/expired exceptions. Add no second SBOM generator, mandatory
 public SBOM asset or runtime/MCP contract. Close only with accepted triage,
 gates, tests and current guidance; disposition VERSION/CHANGELOG, CI, artifacts,
 release, migration and security under the shared closure contract.

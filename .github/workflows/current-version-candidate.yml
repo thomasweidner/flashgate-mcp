@@ -473,6 +473,7 @@ jobs:
             --output build/candidate-bundle/candidate-manifest.json
 
       - name: Generate and independently verify supply-chain evidence
+        id: supply
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -489,6 +490,7 @@ jobs:
             --commit '${{ needs.prepare.outputs.source_commit }}' \
             --manifest-sha256 "$manifest_hash" --index-sha256 "$index_hash" "${arguments[@]}"
           printf 'SupplyChainIndexSHA256: %s\nCandidateManifestSHA256: %s\n' "$index_hash" "$manifest_hash" >> "$GITHUB_STEP_SUMMARY"
+          printf 'index_sha256=%s\nmanifest_sha256=%s\n' "$index_hash" "$manifest_hash" >> "$GITHUB_OUTPUT"
 
       - name: Upload complete verified supply-chain bundle
         uses: actions/upload-artifact@v7
@@ -504,4 +506,42 @@ jobs:
           name: candidate-manifest-${{ needs.prepare.outputs.source_commit }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: build/candidate-bundle/candidate-manifest.json
           if-no-files-found: error
+          retention-days: 14
+
+      - name: Informative dependency security assessment
+        id: security
+        continue-on-error: true
+        shell: bash
+        env:
+          FLASHGATE_WORK_ROOT: ${{ runner.temp }}
+          SECURITY_INDEX_SHA256: ${{ steps.supply.outputs.index_sha256 }}
+          SECURITY_MANIFEST_SHA256: ${{ steps.supply.outputs.manifest_sha256 }}
+        run: |
+          go -C . run -mod=vendor ./cmd/releaseaudit security-assess \
+            --dir build/supply-chain --version '${{ needs.prepare.outputs.version }}' \
+            --commit '${{ needs.prepare.outputs.source_commit }}' \
+            --manifest-sha256 "$SECURITY_MANIFEST_SHA256" --index-sha256 "$SECURITY_INDEX_SHA256" \
+            --online --triage docs/security-triage.json --output "$FLASHGATE_WORK_ROOT/security-assessment"
+
+      - name: Summarize informative security result
+        if: always() && steps.supply.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        env:
+          SECURITY_RESULT: ${{ runner.temp }}/security-assessment
+        run: |
+          if [[ -f "$SECURITY_RESULT/summary.md" ]]; then
+            cat "$SECURITY_RESULT/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Security assessment ERROR/unavailable; informative only. Candidate verification result is unchanged.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Retain temporary security assessment
+        if: always() && steps.supply.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: candidate-security-${{ needs.prepare.outputs.source_commit }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/security-assessment/
+          if-no-files-found: warn
           retention-days: 14

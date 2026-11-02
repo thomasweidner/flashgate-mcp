@@ -84,7 +84,7 @@ func (values *stringList) Set(value string) error {
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: releaseaudit inventory|compare|scan|scan-file|source|candidate-record|candidate-manifest|candidate-promote|supply-chain-generate|supply-chain-verify|publication-inventory|publication-preflight|publication-download|publication-publish|publication-verify|publication-normalization-preflight|publication-normalization-execute|publication-normalization-reconcile")
+		fmt.Fprintln(os.Stderr, "usage: releaseaudit inventory|compare|scan|scan-file|source|security-assess|candidate-record|candidate-manifest|candidate-promote|supply-chain-generate|supply-chain-verify|publication-inventory|publication-preflight|publication-download|publication-publish|publication-verify|publication-normalization-preflight|publication-normalization-execute|publication-normalization-reconcile")
 		os.Exit(2)
 	}
 
@@ -100,6 +100,8 @@ func main() {
 		err = runScanFile(os.Args[2:])
 	case "source":
 		err = runSource(os.Args[2:])
+	case "security-assess":
+		err = runSecurity(os.Args[2:])
 	case "publication-verify":
 		err = runPublicationVerify(os.Args[2:])
 	case "publication-normalization-preflight":

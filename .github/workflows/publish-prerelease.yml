@@ -161,6 +161,7 @@ jobs:
                      all(c in '0123456789abcdef' for c in a['sha256']) for a in assets)
 
       - name: Publish once after independent draft asset readback
+        id: publication
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -176,6 +177,48 @@ jobs:
             --authorization "$FLASHGATE_WORK_ROOT/authorization.json" \
             --authorization-sha256 "$FLASHGATE_AUTHORIZATION_SHA256" \
             --output "$FLASHGATE_WORK_ROOT/attempt.jsonl"
+
+      - name: Informative security assessment after confirmed publication
+        if: success() && steps.publication.outcome == 'success'
+        continue-on-error: true
+        shell: python
+        run: |
+          import json, os, pathlib, subprocess
+          root = pathlib.Path(os.environ['FLASHGATE_WORK_ROOT'])
+          original = root / 'original-plan.json'
+          if original.exists():
+              auth = json.loads(original.read_bytes())['authorization']
+          else:
+              auth = json.loads((root / 'authorization.json').read_bytes())
+          subprocess.run([
+              str(root / 'releaseaudit'), 'security-assess',
+              '--dir', str(root / 'evidence'), '--version', auth['version'],
+              '--commit', auth['sourceCommit'],
+              '--manifest-sha256', auth['manifestSha256'], '--index-sha256', auth['indexSha256'],
+              '--online', '--triage', str(pathlib.Path('publisher/docs/security-triage.json').resolve()),
+              '--output', str(root / 'security-assessment'),
+          ], check=True)
+
+      - name: Summarize informative post-publication security result
+        if: always() && steps.publication.outcome == 'success'
+        continue-on-error: true
+        shell: python
+        run: |
+          import os, pathlib
+          report = pathlib.Path(os.environ['FLASHGATE_WORK_ROOT']) / 'security-assessment' / 'summary.md'
+          text = report.read_text(encoding='utf-8') if report.is_file() else 'Security assessment ERROR/unavailable; publication remains successful.\n'
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as output:
+              output.write(text)
+
+      - name: Retain temporary post-publication security assessment
+        if: always() && steps.publication.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: publication-security-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.FLASHGATE_WORK_ROOT }}/security-assessment/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Retain plan and one-shot journal for reconciliation
         if: always() && steps.workspace.outcome == 'success'

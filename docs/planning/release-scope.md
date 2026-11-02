@@ -129,14 +129,18 @@ Version 1.0 gate.
 ## Release-unassigned security work
 
 BL-366 (SBOM security management) and BL-367 (GitHub Artifact Attestations) are
-accepted independent Planned owners with no sprint or release assignment. They
+accepted independent owners with no sprint or release assignment. They
 may be scheduled at any time subject to technical prerequisites and separate
 implementation authorization. Neither blocks Version 1.0, another release or
 BL-364. SBOM management reuses BL-262 inventory and existing dependency-security
-functions; tool/provider selection remains for implementation. Attestations use
+functions. Its locally implemented OSV assessment is informative after verified
+candidates and confirmed publication, with no gate based on findings or provider
+availability; see [dependency security assessment](../security-assessment.md).
+Independent review and integration precede activation. Attestations use
 GitHub-native OIDC and short-lived identity for the four archives, without
-permanent keys or an extra release-download asset. No current workflow, permission
-or security-tool activation is authorized. Their detailed contracts and retrofit
+permanent keys or an extra release-download asset. BL-367 remains inactive.
+BL-366 adds no permissions or credentials; actual provider calls remain separately
+authorized. Their detailed contracts and retrofit
 obligations are in [implementation bindings](implementation-contract.md#release-unassigned-security-task-bindings)
 and [traceability](architecture-traceability.md#release-unassigned-security-contracts).
 

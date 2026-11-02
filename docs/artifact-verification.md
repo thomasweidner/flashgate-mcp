@@ -364,6 +364,20 @@ publication. Never rebuild or regenerate from unrelated source after expiry.
 The existing release-build.yml remains tag-gated validation and transient upload;
 BL-363 owns its later safe publication retrofit, consuming this single authority.
 
+### Informative security assessment
+
+BL-366 consumes this complete verified evidence set through
+`releaseaudit security-assess`, with the same external version, commit, manifest
+and index anchors. It reads the hash-bound SPDX and carried `go.mod` markers,
+then correlates an OSV snapshot with exact inventoried Go modules. It does not
+mutate or regenerate evidence or claim full platform-binary coverage. See
+[dependency security assessment](security-assessment.md) for CLI parameters,
+freshness, conservative classification, exceptions and quality status.
+Candidate and confirmed-success publisher steps keep the output in summaries
+and temporary run evidence; no public release asset is added. Findings and
+assessment/provider failure are nonblocking, while missing or invalid BL-262
+evidence remains blocking for its existing candidate/publication consumers.
+
 ### Signing boundaries
 
 Current evidence and candidate bytes are unsigned. Windows Authenticode would
