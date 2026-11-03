@@ -107,6 +107,7 @@ Version 1.0 is reached only after `SPR-061` and the release gate in `BL-263`. Th
 | Future filesystem and storage capabilities | BL-345, BL-347–BL-348, BL-351, BL-354, BL-359 | Local cloud-placeholder semantics, filesystem watch, archives, content/path compression, encryption state, path security, and extended metadata |
 | Future system and platform capabilities | BL-349, BL-355–BL-358, BL-361–BL-362 | Platform configuration, system logs, service/scheduler control, audit integrity/query, and user-session clipboard/notification capabilities |
 | Future agent guidance | BL-350 | Portable public FlashGate agent skill |
+| Future MCP transport | BL-370 | Post-1.0 Streamable HTTP MCP transport, its own ADR/threat model and per-revision conformance/activation gates; no current HTTP listener or Version 1.0 dependency |
 
 `SPR-044` replaces the former `SPR-041` Codex preparation plan and must use the FlashGate technical names established in `SPR-042` and the cleaned tool names created in `SPR-043`.
 
@@ -125,6 +126,7 @@ backlog owner. Registration activates no security tool, attestation or permissio
 | Dependency security management | BL-366 | Reuse the existing SPDX inventory and dependency-security functions for advisory triage and remediation or documented exceptions |
 | GitHub-native build authentication | BL-367 | Signed archive attestations with OIDC and short-lived workflow identity, without permanent keys or an extra download asset |
 | Documentation navigation tooling | BL-368 | Deterministic README navigation generation and read-only CI drift validation, reusing existing documentation checks; independent of BL-365 |
+| Release quality reporting | BL-369 | Persistent human-readable candidate/release quality summaries aggregating existing MCP, CI, security, SBOM, supply-chain and artifact evidence without adding a release asset or new release gate |
 
 ## Canonical task catalog
 
@@ -415,7 +417,7 @@ These Post-1.0 workstream owners are accepted future work, not current MCP tools
 | BL-201 | Completed | Add MCP `CallToolResult` foundation and `structuredContent` | All eight successful filesystem tools use one central text-plus-structured wrapper with deterministic parity, strict decoder/wire tests, corrected smokes, and no runtime `outputSchema` |
 | BL-202 | Completed | Review MCP tool annotations | Implemented accurate MCP `2025-11-25` discovery annotations for all eight filesystem tools with explicit read-only, destructive, idempotent, and open-world members including `false`; runtime/catalog/wire parity is enforced and annotations remain non-authoritative for registration, profiles, capabilities, path/security checks, execution identity, and authorization. |
 | BL-203 | Completed | Define normalized machine-readable errors | Stable categories including safe unsupported-capability/content-not-local/indeterminate outcomes where needed, without raw OS/backend/provider leakage; diagnostic detail remains separately gated |
-| BL-204 | **Planned** | Evaluate official MCP conformance testing and add schema snapshots | Add conformance/schema coverage for every advertised revision; `SPR-046` already provides runtime/catalog output-schema parity and `tools/list` wire coverage, while final `2026-07-28` conformance plus complete input/output snapshots remain required before support is advertised; preserve exact-revision conformance ownership and keep unsupported revision state unadvertised until BL-212/219 gates pass |
+| BL-204 | **Planned** | Evaluate official MCP conformance testing and add schema snapshots | Add conformance/schema coverage for every advertised revision; `SPR-046` already provides runtime/catalog output-schema parity and `tools/list` wire coverage, while final `2026-07-28` conformance plus complete input/output snapshots remain required before support is advertised; preserve exact-revision conformance ownership and keep unsupported revision state unadvertised until BL-212/219 gates pass; reusable checks must detect missing contracts/snapshots when tools, revisions or capabilities change, with later owners extending those checks rather than reopening BL-204; provide readable MCP conformance summaries for future BL-369 reporting |
 | BL-205 | **Planned** | Add response-size regression tests | `SPR-046` measures `tools/list` payload impact without setting a persistent budget; success/error regression gates remain planned |
 | BL-206 | Completed | Document local deterministic work principle | Documented the canonical rule in `docs/planning/efficiency.md`: prefer bounded typed local copy/edit/hash/search and related deterministic work over model retransmission when the applicable contract exists; distinguish implemented primitives from accepted Version 1.0 operations and preserve authorization and boundedness |
 | BL-207 | Completed | Define Version 1.0 MCP protocol matrix | Keep the core version-independent and publish an exact revision matrix. Version 1.0 target: preserve the initialization-based `2025-11-25` path and add the final `2026-07-28` revision only after implementation; every advertised revision gets its own wire-path tests, negotiation/error contract, and breaking-upgrade coverage. Use exact revision identifiers rather than generic generation labels so later revisions can be added explicitly. |
@@ -472,6 +474,7 @@ The open prepared PRs #60, #69, and #149 remain inputs to these later tasks only
 | BL-242 | **Planned** | Add Windows/Linux CI and release validation for all modes | Build native artifacts, test STDIO/proxy/service adapters where CI permits, verify no interpreter dependency, validate service assets, and retain existing gates |
 | BL-243 | **Planned** | Document installation, removal, operation, and non-admin deployment | System service, user service/host, portable STDIO, proxy/auto configuration, troubleshooting, rollback, permissions, and explicit current-versus-planned status |
 | BL-244 | **Planned** | Benchmark direct, proxy, and service modes and define release gate | Startup, steady-state latency, memory, CPU, payload overhead, concurrency, and evidence-based acceptance thresholds before recommending managed mode broadly |
+| BL-370 | **Planned** | Design, implement and activate Streamable HTTP MCP transport | Accepted Post-Version-1.0 transport owner; before implementation decide network exposure, service/host role, endpoints, authentication, OS principal mapping, TLS/trust, origin/DNS-rebinding/CSRF and request/session/stream limits in its own ADR and threat model. Reuse the existing transport-neutral Go core, revision policies, BL-204 conformance/snapshots, BL-212 schema validation, and applicable context/security/CI contracts; no second MCP stack, unapproved runtime dependency or HTTP-to-STDIO production bridge. Validate the real HTTP endpoint with applicable official MCP server conformance scenarios for every advertised exact revision, transport-specific security/negative/lifecycle tests and Windows/Linux CI. Maintain an explicit revision-by-transport support matrix and fail closed on missing tests or state drift. No HTTP endpoint, network permission, publication, profile change or activation before those gates and separate authorizations; no Version 1.0 scope expansion or BL-204 reopening. |
 
 ### CI, release, and quality epic
 
@@ -608,6 +611,12 @@ These tasks originate in the independent review of PR #15. They are intentionall
 |---|---|---|---|
 | BL-324 | Completed | Configure Dependabot security and version updates | Completed Dependabot security and weekly version-update configuration for Go modules and GitHub Actions. |
 
+### Release-unassigned quality reporting
+
+| ID | Status | Task | Scope and acceptance notes |
+|---|---|---|---|
+| BL-369 | **Planned** | Generate durable human-readable Release Quality Reports | Independent release-unassigned reporting owner. For each verified release candidate, aggregate existing version/source/artifact identity, Windows/Linux validation and CI, MCP revision/transport conformance and snapshots (BL-204/212/257 as available), security and CVE assessment (BL-366), SPDX SBOM and provenance (BL-262), artifact verification (BL-248/255), performance and other relevant gates into a readable Markdown summary and GitHub Actions Job Summary. Show actual PASS/WARNING/FAIL/NOT_RUN/NOT_APPLICABLE/UNVERIFIED states, actionable findings, dependencies, exceptions, source/run links and release-readiness conclusions, without treating informational findings as new blockers. After separately confirmed publication, allow a separately authorized persistent public per-version GitHub Markdown report with publication/readback identity; keep raw machine reports available as linked evidence within their actual retention bounds, not as the sole human deliverable. Reuse existing producers; fail closed on missing/conflicting/mismatched provenance and avoid inventing test results, a second evidence authority, long-term raw-evidence ledger, a sixth GitHub Release asset, VERSION/CHANGELOG or frozen-candidate modification, credentials or extra GitHub write rights. Registration changes no workflow, publication gate, existing release or permission; separately approved implementation and later publication are required. |
+
 ### Release-unassigned supply-chain security
 
 | ID | Status | Task | Scope and acceptance notes |
@@ -674,7 +683,7 @@ These tasks originate in the final independent review of PR #21. They are accept
 BL-333 through BL-340 and BL-342 through BL-344 remain `Completed`. BL-344 is `Completed`. BL-341 remains `Planned` in SPR-060 for host-process lifecycle implementation; its planning completion does not imply runtime implementation. Historical execution and review evidence is kept outside the active public
 documentation tree. Task status is not inferred from retiring a report.
 
-The highest assigned backlog identifier is `BL-368`.
+The highest assigned backlog identifier is `BL-370`.
 
 ## Cross-epic rules
 
