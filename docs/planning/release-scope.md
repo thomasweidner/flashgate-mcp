@@ -330,13 +330,26 @@ These Post-1.0 workstream owners do not enlarge the Version 1.0 release gate. Th
 
 The following remain outside the accepted local Version 1.0 architecture and require separate ADRs and threat models:
 
-- remote TCP/HTTP access;
+- remote TCP/HTTP access (Post-1.0 BL-370; requires its own ADR/threat model, real HTTP MCP conformance, per-revision transport activation gates and separate authorization);
 - cloud-hosted FlashGate;
 - automatic privilege elevation;
 - independently released portable and service products;
 - interpreter-based core adapters;
 - arbitrary script or workflow languages;
 - unrestricted plugin loading.
+
+## Release-unassigned human-readable release quality reporting
+
+BL-369 is a separate accepted Planned reporting capability, not an implicit
+Version 1.0 or prerelease gate. It will reuse existing candidate/CI/MCP
+conformance/security/SBOM/advisory/provenance/artifact/performance evidence to
+generate a human-readable Markdown and GitHub Actions Job Summary with clear
+pass/fail/warning/not-run/unverified facts and evidence links. After confirmed
+publication, separately authorized Git publication may retain a public
+version-specific report. It creates no new release asset, modifies no frozen
+candidate or canonical CHANGELOG notes, and does not reinterpret informational
+BL-366 findings as blocking. Availability and release-gate adoption require
+separate future implementation/authorization decisions.
 
 ## Version 1.0 release gate
 
