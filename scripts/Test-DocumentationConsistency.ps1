@@ -371,7 +371,7 @@ $expectedPostIds = [string[]]@(
     'BL-185', 'BL-186', 'BL-187', 'BL-188', 'BL-217', 'BL-232', 'BL-240',
     'BL-313', 'BL-345', 'BL-347', 'BL-348', 'BL-349', 'BL-350', 'BL-351',
     'BL-354', 'BL-355', 'BL-356', 'BL-357', 'BL-358', 'BL-359', 'BL-360',
-    'BL-361', 'BL-362'
+    'BL-361', 'BL-362', 'BL-370'
 )
 $statusModel = Test-HumanStatusModel -BacklogText $backlog -ExpectedPostIds $expectedPostIds
 Add-Check -Id 'BACKLOG-HUMAN-STATUS-AND-POST-PLACEMENT' -Passed $statusModel.Passed -Message (

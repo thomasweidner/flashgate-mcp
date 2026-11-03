@@ -119,6 +119,28 @@ canonical completion transition; SPR-048 and stable BL-263 closure remain separa
 | Stable Version 1.0 architecture/release closure (R, T) | BL-263 | BL-242, BL-243, BL-244, BL-249, BL-250, BL-261, BL-262, BL-363, BL-364 | Audit every Version 1.0 row plus BL-305/306/308/315 controls; reuse BL-363 safe publication and accepted BL-364 five-asset distribution/temporary-evidence contract | Every retained implementation/public contract in matrix | BL-263, including BL-364 implementation and historical v0.3.0 acceptance | No ownerless requirement or retrofit except approved waiver; stable Version 1.0 publication only after its gate with four original archive assets plus shared SHA256SUMS, original/digest/download parity and required verification evidence within regular Actions retention; BL-363 prerelease success does not satisfy it; release-unassigned BL-366/367 do not block it |
 
 
+## Release-unassigned human-readable release reporting
+
+BL-369 is a separate Planned presentation owner with no sprint/release
+assignment or automatic release-blocking effect. Its production inputs retain
+their original authorities; it does not create a second verifier or a sixth
+release asset.
+
+| Requirement / authority | Owner BL | Hard predecessors | Reuse / later consumers | Current retrofit target | Validation / gate | Target closure |
+|---|---|---|---|---|---|---|
+| Readable candidate/release quality report (R, T; [binding](implementation-contract.md#bl-369-human-readable-release-quality-reporting)) | BL-369 | BL-248, BL-255, BL-262 | Reuse BL-204/212/257 MCP, BL-366 advisory, BL-367 attestation when available, existing CI/performance/security, source and published release identities | Existing machine-only/ephemeral CI evidence and summary fields, not a new test or release authority | Fail on incorrect/stale/missing identity and unresolved required evidence; visible pass/warn/fail/not-run/not-applicable/unverified distinctions, redaction, links and deterministic Markdown output | Readable Actions candidate summary and separately authorized optional persistent public version report; no sixth asset, raw-evidence archive, new release blocker or silent publication |
+
+## Future HTTP MCP transport
+
+BL-370 is explicitly Post-Version-1.0. Its later implementation must decide
+HTTP-facing architecture and security separately, reuse the conformance test
+contract and block activation until every advertised revision/transport pair
+passes.
+
+| Requirement / authority | Owner BL | Hard predecessors | Reuse / later consumers | Current retrofit target | Validation / gate | Target closure |
+|---|---|---|---|---|---|---|
+| Streamable HTTP MCP transport, conformance and activation (A, S, T, R; [binding](implementation-contract.md#bl-370-future-streamable-http-mcp-transport)) | BL-370 | BL-204, BL-212, BL-219, BL-224 | Existing Go core, exact revision policy, schema/snapshot tests, BL-239 context binding and protocol/host-lifecycle testing | No current HTTP MCP listener; later isolated HTTP adapter and explicit public transport/revision support matrix | Independent ADR/threat-model decision; HTTP security and Windows/Linux negative tests; official server conformance against real HTTP endpoint; automatic coverage completeness and activation denial on drift | Only explicitly authorized HTTP support after every technical and publication gate; BL-204 stays closed |
+
 ## Release-unassigned security contracts
 
 These independent owners have no sprint or release assignment and block no release.

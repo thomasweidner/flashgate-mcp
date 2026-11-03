@@ -66,11 +66,65 @@ controls, and `BL-308` remains the architecture and ADR owner.
 | Process — BL-113–BL-135, BL-162, BL-165, BL-252–BL-254 | Reuse execution context and Operations for owned handles, bounded output, cancellation, and cleanup. External PID control is separate Post-1.0 scope. Do not use a PID alone as authority. |
 | Typed execution and Native Tool adapters — BL-136–BL-152, BL-167–BL-170, BL-220, BL-353 | Resolve server-approved command IDs to executables and typed argv, with limits, redaction, and OS isolation. Native Tool adapters are optional, policy-constrained accelerators, never public aliases or interpreter/raw-shell passthrough. |
 | System information — BL-062, BL-153–BL-158 | Expose only scoped, explicitly released facts through domain and OS adapters; filter environment and identity data, bound results, and retain Post-1.0 network/administrative decisions outside Version 1.0. |
-| Runtime and service modes — BL-221–BL-231, BL-234–BL-238, BL-240–BL-244, BL-341 | Keep one core behind direct STDIO and local proxy/service transports. BL-233 owns configuration precedence; BL-236 owns backend-neutral dispatch. Variant A service account is the Version 1.0 backend; unsupported user-worker selection fails closed. Preserve host ownership and stdout purity. |
-| Release, artifacts, and validation — BL-203–BL-204, BL-215–BL-216, BL-241–BL-263, BL-305–BL-315, BL-363, BL-364, BL-366, BL-367 | Reuse root `VERSION`, BL-245 changelog/tag semantics, BL-248 verification and current CI gates. BL-255 builds/verifies candidates, then promotes the exact bytes locally with immutable identity and no additional remote publication. BL-262 supplies evidence/rollback controls. BL-363 consumes verified candidates and evidence for explicit persistent public pre-1.0 GitHub prereleases with `prerelease=true`, exact version/source/artifact identity, no publication-time rebuild or silent asset replacement, minimal separate release-write permissions, and remote readback. Finalize release-relevant source and dated changelog notes before public candidate freeze. BL-263 separately requires stable Version 1.0 traceability/gate closure and reuses the publication foundation; prerelease success never passes that gate. Retrofit the tag-gated build/validation path, transient Actions-artifact handoff and public download guidance. BL-364 owns the accepted five-asset distribution target for all releases including v0.3.0: four original archives and shared SHA256SUMS, preserving complete verification and required temporary evidence within regular Actions retention. Release-unassigned BL-366 owns SBOM security management; release-unassigned BL-367 owns GitHub-native signed attestations. Neither blocks a release or is implicitly implemented here; see the task bindings below. |
+| Runtime and service modes — BL-221–BL-231, BL-234–BL-238, BL-240–BL-244, BL-341, BL-370 | Keep one core behind direct STDIO and local proxy/service transports. BL-233 owns configuration precedence; BL-236 owns backend-neutral dispatch. Variant A service account is the Version 1.0 backend; unsupported user-worker selection fails closed. Preserve host ownership and stdout purity. |
+| Release, artifacts, and validation — BL-203–BL-204, BL-215–BL-216, BL-241–BL-263, BL-305–BL-315, BL-363, BL-364, BL-366, BL-367, BL-369 | Reuse root `VERSION`, BL-245 changelog/tag semantics, BL-248 verification and current CI gates. BL-255 builds/verifies candidates, then promotes the exact bytes locally with immutable identity and no additional remote publication. BL-262 supplies evidence/rollback controls. BL-363 consumes verified candidates and evidence for explicit persistent public pre-1.0 GitHub prereleases with `prerelease=true`, exact version/source/artifact identity, no publication-time rebuild or silent asset replacement, minimal separate release-write permissions, and remote readback. Finalize release-relevant source and dated changelog notes before public candidate freeze. BL-263 separately requires stable Version 1.0 traceability/gate closure and reuses the publication foundation; prerelease success never passes that gate. Retrofit the tag-gated build/validation path, transient Actions-artifact handoff and public download guidance. BL-364 owns the accepted five-asset distribution target for all releases including v0.3.0: four original archives and shared SHA256SUMS, preserving complete verification and required temporary evidence within regular Actions retention. Release-unassigned BL-366 owns SBOM security management; release-unassigned BL-367 owns GitHub-native signed attestations. Neither blocks a release or is implicitly implemented here; see the task bindings below. |
 | Response and benchmark quality — BL-172–BL-173, BL-177–BL-179, BL-205, BL-317–BL-323, BL-325–BL-329, BL-331–BL-332 | Reuse current benchmark schemas, deterministic workflow/corpus controls, host/platform evidence, and documentation gates. Strengthen checks at their existing owners without weakening result, supply-chain, platform, or public documentation truth; no benchmark result itself authorizes product behavior. |
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
 | Documentation navigation tooling — BL-368 | Independent release-unassigned development tooling, outside the product runtime and release-security owners. Reuse completed documentation validation and extend its local/read-only CI consumers under the [BL-368 binding](#bl-368-documentation-navigation); no hard dependency on BL-365 or release obligation. |
+
+## BL-369 human-readable release quality reporting
+
+**Architecture role and prerequisites.** Independent release-unassigned
+presentation/aggregation owner; reuse completed BL-248/255/262 verification and
+canonical VERSION/source/asset identity. MCP BL-204/212/257, security BL-366,
+future attestation BL-367 and benchmark/CI owners remain evidence producers, not
+a hard prerequisite graph or a replacement release gate. Architecture and status
+follow the actual producer contracts and [release scope](release-scope.md).
+
+**Target and boundaries.** Render an actionable human-readable Markdown report
+and GitHub Actions Job Summary for a verified candidate, with optional later
+version-specific public GitHub Markdown after separately confirmed publication.
+Show a release summary, version/commit/artifact IDs, platform and MCP coverage,
+quality/security/SBOM/advisory/reproducibility/performance findings, outstanding
+exceptions, differentiated pass/fail/not-run/not-applicable/unverified states,
+links to real producer evidence and its retention, and the actual decision owner.
+The report never invents PASS on absent or expired evidence, silently overrides
+BL-366 informational findings, creates its own vulnerability/SBOM/conformance
+engine, or grants release authority. Use deterministic redacted bounded rendering
+and exact source/attempt bindings; test missing, stale, contradictory, and
+misbound inputs. Review whether Markdown under docs/releases/ is an appropriate
+durable public location during implementation; do not add a sixth Release asset
+or change the existing five-asset distribution and CHANGELOG release notes.
+
+**Scope/closure.** Reuse the existing CI and verified producer outputs, with no
+product runtime, VERSION, frozen artifact or new GitHub write/permission effect.
+Publishing a version-specific permanent report is a separate authorized Git
+operation with poststate readback. Until a separate release-gate decision, this
+release-unassigned owner does not block existing prereleases or stable BL-263.
+
+## BL-370 future Streamable HTTP MCP transport
+
+**Architecture role and prerequisites.** Separate accepted Post-1.0
+transport/host/security implementation owner. Reuse BL-224 transport/core
+separation, BL-204 exact-revision conformance/snapshot tests, BL-212 schema
+validation and, when effective state is involved, BL-219/239 bindings. Before
+implementation, explicitly decide listener/network exposure, endpoint,
+authentication and principal binding, TLS/origin/DNS-rebinding/CSRF,
+limits/stream lifetime, host lifecycle and platform threat model through its
+own ADR and security review. No Version 1.0 release prerequisite or premature
+HTTP support advertisement.
+
+**Target and acceptance.** Implement the actual supported Streamable HTTP MCP
+transport by adapting the existing Go core, never as a second MCP engine.
+Extend the existing conformance/snapshot contract for each exposed pair of
+exact protocol revision and HTTP transport, including official HTTP server
+conformance against the real isolated test listener plus negative security,
+protocol, lifecycle and Windows/Linux tests. Require deterministic automatic
+missing-coverage detection and explicit public revision/transport support
+matrix updates; a missing/failed gate prevents HTTP activation. No production
+HTTP-to-STDIO bridge, uncontrolled remote listener, new dependency, permission
+or service change without its own decision and authorization. Future additions
+belong to this transport owner, not a reopening of BL-204.
 
 ## BL-368 documentation navigation
 
