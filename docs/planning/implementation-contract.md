@@ -78,11 +78,41 @@ report later; BL-370 retains HTTP transport. Neither is implemented here.
 No release, distribution or migration behavior changes; test-only work leaves
 `VERSION` unchanged. Independent terminal technical review remains required.
 
+## BL-371 MCP `ping` receiver for `2025-11-25`
+
+**Role and authority.** BL-371 is a revision-specific MCP-adapter implementation
+owner in SPR-048, separate from the BL-204 conformance/snapshot candidate.
+Use the official `2025-11-25` ping utility and request/schema specification,
+ADR-013 and the final `2026-07-28` changelog removing `ping`. Completed
+BL-207/208 are the hard predecessors; BL-204 gap evidence is coordination,
+not an implementation or hard-prerequisite owner. No BL-257 hard edge is added.
+
+**Reuse and retrofit.** Extend the existing Go `internal/mcp/router`,
+`internal/mcp/server`, request validation and exact `internal/mcp/revision`
+policy, not the filesystem/domain core or a second protocol stack. The current
+initialized `2025-11-25` receiver has no `ping` handler; decide support and,
+if accepted, return JSON-RPC `result: {}` with the unchanged request ID.
+Leave `2026-07-28` disabled in production and keep valid enabled-revision
+`ping` calls rejected as method-not-found (`-32601`). Do not add any
+`tools/list` entry, network/ICMP probe, automatic heartbeat, external MCP SDK,
+new dependency, protocol matrix entry or release/version change.
+
+**Safety, tests and closure.** Honor the real revision request-params contract,
+including valid optional metadata; reject malformed inputs through the existing
+JSON-RPC boundary without leaking internal errors. Preserve the existing
+limits, cancellation, notification no-response, diagnostics redaction and
+stdout purity. Exercise actual STDIO positive and negative wire cases, IDs,
+invalid params, notifications, unknown methods, ordinary post-initialize
+behavior and injected `2026-07-28` revision isolation. Complete applicable
+Windows/native Linux, CI/coverage, documentation and independent terminal
+review gates. Record the support decision and actual result in BL-371; do not
+claim full official conformance or change BL-204's already reviewed bytes.
+
 ## Inherited contract families
 
 | Family and BL binding | Required reuse, target boundary, and retrofit |
 |---|---|
-| MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
+| MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258, BL-371 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
 | Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Migrate `MCP_ROOT`, `MCP_READ_ONLY`, current path controls, and direct MCP-to-filesystem dispatch. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
 | Capability and authorization verification — BL-100, BL-171 | Keep functional rights distinct from profile and risk classification; verify MCP annotations never grant authority. Reuse the central BL-159 decision and its negative tests. |
 | Filesystem — BL-036–BL-067, BL-346 | Extend `internal/fs` and the existing `internal/security` path guard. Use named root IDs and relative paths, bounded reads/writes/trees, existing hash and tree primitives, and the shared result lifecycle. Migrate the current eight-tool contracts where their owners require it. |
