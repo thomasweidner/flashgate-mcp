@@ -53,6 +53,31 @@ controls, and `BL-308` remains the architecture and ADR owner.
 
 `SPR-048` defines release/protocol/payload/native policy contracts that can be built before profiles and Jobs. `SPR-053` establishes configuration and named-root/profile contracts, then BL-236 context, BL-159 authorization, BL-110 effective catalog, BL-166 audit/correlation, and BL-239 state binding; it completes BL-216/219/256 against those contracts. `SPR-049` builds BL-084–BL-089 lifecycle, then BL-090 storage, then dependent Operations, BL-210 Tasks mapping, BL-218 MCP resource handoff, and BL-258 payload/resource CI. Later domains consume these foundations. BL-213 single-transmission work does not require BL-090; BL-218 does. BL-220 defines early native/no-interpreter policy; BL-163 and typed-execution owners implement it later. Exact hard edges and validation/retrofit owners are maintained in [architecture traceability](architecture-traceability.md).
 
+## BL-204 conformance binding
+
+BL-204 owns test and validation code at the MCP adapter and STDIO boundary.
+It reuses completed BL-200/201/202 output schemas, result contracts and explicit
+annotations, BL-207/208 revision policy and dispatch, the runtime registry,
+native filesystem guards and existing wire harnesses. The current controls in
+`cmd/server`, `internal/mcp`, `internal/protocol` and `internal/mcptest` remain
+authoritative; this task adds no transport, runtime dependency or product tool.
+
+Acceptance covers native contracts and deterministic complete snapshots for
+`2025-11-25` and the test-policy-only `2026-07-28` candidate, each under default
+and read-only profiles. Registry, profile, capability and revision inventories
+must have explicit executable coverage; mutations must prove drift detection.
+The official suite is evaluated at a pinned upstream commit, with scored and
+not-scored server scenarios mapped individually and execution limits stated.
+The native validation report is reproducible from the focused tests and their
+JSON output. Snapshot updates require an explicit test flag and review.
+
+The public protocol matrix remains unchanged. BL-212 retains full JSON Schema
+2020-12 validation; BL-219 retains fingerprints/cache implementation; BL-257
+retains dedicated CI drift enforcement. BL-369 may consume this task's focused
+report later; BL-370 retains HTTP transport. Neither is implemented here.
+No release, distribution or migration behavior changes; test-only work leaves
+`VERSION` unchanged. Independent terminal technical review remains required.
+
 ## Inherited contract families
 
 | Family and BL binding | Required reuse, target boundary, and retrofit |

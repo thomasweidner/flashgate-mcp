@@ -1,0 +1,1195 @@
+{
+  "calls": {
+    "copy_path": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"source\":\"seed.txt\",\"target\":\"copied.txt\",\"copied\":true}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "copied": true,
+          "source": "seed.txt",
+          "target": "copied.txt"
+        }
+      }
+    },
+    "create_directory": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"path\":\"new-directory\",\"created\":true}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "created": true,
+          "path": "new-directory"
+        }
+      }
+    },
+    "delete_path": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"path\":\"seed.txt\",\"deleted\":true}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "deleted": true,
+          "path": "seed.txt"
+        }
+      }
+    },
+    "get_path_info": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"path\":\"seed.txt\",\"exists\":true,\"name\":\"seed.txt\",\"isDir\":false,\"size\":4}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "exists": true,
+          "isDir": false,
+          "name": "seed.txt",
+          "path": "seed.txt",
+          "size": 4
+        }
+      }
+    },
+    "list_directory": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"entries\":[{\"name\":\"seed.txt\",\"isDir\":false,\"size\":4}]}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "entries": [
+            {
+              "isDir": false,
+              "name": "seed.txt",
+              "size": 4
+            }
+          ]
+        }
+      }
+    },
+    "move_path": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"source\":\"seed.txt\",\"target\":\"moved.txt\",\"moved\":true}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "moved": true,
+          "source": "seed.txt",
+          "target": "moved.txt"
+        }
+      }
+    },
+    "read_file": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"content\":\"seed\",\"size\":4}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "content": "seed",
+          "size": 4
+        }
+      }
+    },
+    "write_file": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"path\":\"written.txt\",\"size\":3,\"written\":true}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "path": "written.txt",
+          "size": 3,
+          "written": true
+        }
+      }
+    }
+  },
+  "definitions": [
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Copies a file below the configured filesystem root. Directory copy is not supported.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "overwrite": {
+            "description": "Whether an existing target may be overwritten. Defaults to false.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Relative source file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "target": {
+            "description": "Relative target file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "type": "object"
+      },
+      "name": "copy_path",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "copied": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "copied"
+        ],
+        "type": "object"
+      },
+      "title": "Copy Path"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Creates a directory and any missing parents below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "create_directory",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "created"
+        ],
+        "type": "object"
+      },
+      "title": "Create Directory"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Deletes a file or directory below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "recursive": {
+            "description": "Whether a non-empty directory may be deleted recursively. Defaults to false.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "delete_path",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "deleted"
+        ],
+        "type": "object"
+      },
+      "title": "Delete Path"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "get_path_info",
+      "outputSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "exists": {
+                "const": false
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "exists"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "exists": {
+                "const": true
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      },
+      "title": "Get Path Info"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Lists files and directories below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_directory",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "isDir": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "name",
+                "isDir",
+                "size"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
+      "title": "List Directory"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Moves or renames a file or directory on the same volume below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "overwrite": {
+            "description": "Whether an existing target may be overwritten. Defaults to false.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Relative source file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          },
+          "target": {
+            "description": "Relative target file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target"
+        ],
+        "type": "object"
+      },
+      "name": "move_path",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "moved": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "moved"
+        ],
+        "type": "object"
+      },
+      "title": "Move Path"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Reads a text file below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "maxBytes": {
+            "description": "Maximum number of bytes to read. Defaults to the configured maximum file size.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "description": "Relative file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "read_file",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content",
+          "size"
+        ],
+        "type": "object"
+      },
+      "title": "Read File"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Writes a text file below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "description": "Text content to write. An empty string is allowed.",
+            "type": "string"
+          },
+          "overwrite": {
+            "description": "Whether an existing file may be overwritten. Defaults to false.",
+            "type": "boolean"
+          },
+          "path": {
+            "description": "Relative file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "write_file",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "written": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "size",
+          "written"
+        ],
+        "type": "object"
+      },
+      "title": "Write File"
+    }
+  ],
+  "entry": {
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "flashgate",
+        "version": "conformance-fixture"
+      }
+    },
+    "cacheScope": "private",
+    "capabilities": {
+      "tools": {}
+    },
+    "resultType": "complete",
+    "supportedVersions": [
+      "2026-07-28"
+    ],
+    "ttlMs": 0
+  },
+  "format": "flashgate-mcp-contract/v1",
+  "productionRevisions": [
+    "2025-11-25"
+  ],
+  "profile": "default",
+  "revision": "2026-07-28",
+  "toolsList": {
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "flashgate",
+        "version": "conformance-fixture"
+      }
+    },
+    "cacheScope": "private",
+    "resultType": "complete",
+    "tools": [
+      {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true
+        },
+        "description": "Lists files and directories below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_directory",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "entries": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "isDir": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "isDir",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "entries"
+          ],
+          "type": "object"
+        },
+        "title": "List Directory"
+      },
+      {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true
+        },
+        "description": "Reads a text file below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "maxBytes": {
+              "description": "Maximum number of bytes to read. Defaults to the configured maximum file size.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "description": "Relative file path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "content",
+            "size"
+          ],
+          "type": "object"
+        },
+        "title": "Read File"
+      },
+      {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true
+        },
+        "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Relative file or directory path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "get_path_info",
+        "outputSchema": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "exists": {
+                  "const": false
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "exists"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "exists": {
+                  "const": true
+                },
+                "isDir": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "path",
+                "exists",
+                "name",
+                "isDir",
+                "size"
+              ],
+              "type": "object"
+            }
+          ],
+          "type": "object"
+        },
+        "title": "Get Path Info"
+      },
+      {
+        "annotations": {
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false,
+          "readOnlyHint": false
+        },
+        "description": "Writes a text file below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "description": "Text content to write. An empty string is allowed.",
+              "type": "string"
+            },
+            "overwrite": {
+              "description": "Whether an existing file may be overwritten. Defaults to false.",
+              "type": "boolean"
+            },
+            "path": {
+              "description": "Relative file path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "write_file",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            },
+            "written": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path",
+            "size",
+            "written"
+          ],
+          "type": "object"
+        },
+        "title": "Write File"
+      },
+      {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": false
+        },
+        "description": "Creates a directory and any missing parents below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Relative directory path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "create_directory",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "created": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "created"
+          ],
+          "type": "object"
+        },
+        "title": "Create Directory"
+      },
+      {
+        "annotations": {
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": false
+        },
+        "description": "Deletes a file or directory below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Relative file or directory path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "recursive": {
+              "description": "Whether a non-empty directory may be deleted recursively. Defaults to false.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "delete_path",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "deleted": {
+              "type": "boolean"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "deleted"
+          ],
+          "type": "object"
+        },
+        "title": "Delete Path"
+      },
+      {
+        "annotations": {
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false,
+          "readOnlyHint": false
+        },
+        "description": "Copies a file below the configured filesystem root. Directory copy is not supported.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "overwrite": {
+              "description": "Whether an existing target may be overwritten. Defaults to false.",
+              "type": "boolean"
+            },
+            "source": {
+              "description": "Relative source file path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "target": {
+              "description": "Relative target file path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "target"
+          ],
+          "type": "object"
+        },
+        "name": "copy_path",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "copied": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string"
+            },
+            "target": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "target",
+            "copied"
+          ],
+          "type": "object"
+        },
+        "title": "Copy Path"
+      },
+      {
+        "annotations": {
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": false
+        },
+        "description": "Moves or renames a file or directory on the same volume below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "overwrite": {
+              "description": "Whether an existing target may be overwritten. Defaults to false.",
+              "type": "boolean"
+            },
+            "source": {
+              "description": "Relative source file or directory path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "target": {
+              "description": "Relative target file or directory path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "target"
+          ],
+          "type": "object"
+        },
+        "name": "move_path",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "moved": {
+              "type": "boolean"
+            },
+            "source": {
+              "type": "string"
+            },
+            "target": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source",
+            "target",
+            "moved"
+          ],
+          "type": "object"
+        },
+        "title": "Move Path"
+      }
+    ],
+    "ttlMs": 0
+  }
+}

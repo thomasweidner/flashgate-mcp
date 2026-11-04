@@ -1,0 +1,509 @@
+{
+  "calls": {
+    "get_path_info": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"path\":\"seed.txt\",\"exists\":true,\"name\":\"seed.txt\",\"isDir\":false,\"size\":4}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "exists": true,
+          "isDir": false,
+          "name": "seed.txt",
+          "path": "seed.txt",
+          "size": 4
+        }
+      }
+    },
+    "list_directory": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"entries\":[{\"name\":\"seed.txt\",\"isDir\":false,\"size\":4}]}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "entries": [
+            {
+              "isDir": false,
+              "name": "seed.txt",
+              "size": 4
+            }
+          ]
+        }
+      }
+    },
+    "read_file": {
+      "denied": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"category\":\"invalid_path\",\"message\":\"filesystem error: invalid path\"}",
+            "type": "text"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      },
+      "success": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"content\":\"seed\",\"size\":4}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "content": "seed",
+          "size": 4
+        }
+      }
+    }
+  },
+  "definitions": [
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative file or directory path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "get_path_info",
+      "outputSchema": {
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "exists": {
+                "const": false
+              },
+              "path": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "path",
+              "exists"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "exists": {
+                "const": true
+              },
+              "isDir": {
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "exists",
+              "name",
+              "isDir",
+              "size"
+            ],
+            "type": "object"
+          }
+        ],
+        "type": "object"
+      },
+      "title": "Get Path Info"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Lists files and directories below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_directory",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "entries": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "isDir": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "name",
+                "isDir",
+                "size"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "type": "object"
+      },
+      "title": "List Directory"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Reads a text file below the configured filesystem root.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "maxBytes": {
+            "description": "Maximum number of bytes to read. Defaults to the configured maximum file size.",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "description": "Relative file path below the configured filesystem root.",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "read_file",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content",
+          "size"
+        ],
+        "type": "object"
+      },
+      "title": "Read File"
+    }
+  ],
+  "entry": {
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "flashgate",
+        "version": "conformance-fixture"
+      }
+    },
+    "cacheScope": "private",
+    "capabilities": {
+      "tools": {}
+    },
+    "resultType": "complete",
+    "supportedVersions": [
+      "2026-07-28"
+    ],
+    "ttlMs": 0
+  },
+  "format": "flashgate-mcp-contract/v1",
+  "productionRevisions": [
+    "2025-11-25"
+  ],
+  "profile": "read-only",
+  "revision": "2026-07-28",
+  "toolsList": {
+    "_meta": {
+      "io.modelcontextprotocol/serverInfo": {
+        "name": "flashgate",
+        "version": "conformance-fixture"
+      }
+    },
+    "cacheScope": "private",
+    "resultType": "complete",
+    "tools": [
+      {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true
+        },
+        "description": "Lists files and directories below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_directory",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "entries": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "isDir": {
+                    "type": "boolean"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "name",
+                  "isDir",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "entries"
+          ],
+          "type": "object"
+        },
+        "title": "List Directory"
+      },
+      {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true
+        },
+        "description": "Reads a text file below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "maxBytes": {
+              "description": "Maximum number of bytes to read. Defaults to the configured maximum file size.",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "description": "Relative file path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file",
+        "outputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "size": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "content",
+            "size"
+          ],
+          "type": "object"
+        },
+        "title": "Read File"
+      },
+      {
+        "annotations": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false,
+          "readOnlyHint": true
+        },
+        "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+        "inputSchema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Relative file or directory path below the configured filesystem root.",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "get_path_info",
+        "outputSchema": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "exists": {
+                  "const": false
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "exists"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "exists": {
+                  "const": true
+                },
+                "isDir": {
+                  "type": "boolean"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "path",
+                "exists",
+                "name",
+                "isDir",
+                "size"
+              ],
+              "type": "object"
+            }
+          ],
+          "type": "object"
+        },
+        "title": "Get Path Info"
+      }
+    ],
+    "ttlMs": 0
+  }
+}

@@ -11,6 +11,13 @@ for publication; the date alone does not prove that a release was published.
 
 ## [Unreleased]
 
+### Validation
+
+- Add native MCP revision/profile conformance contracts, complete runtime/wire
+  schema snapshots, completeness mutations and a focused reproducible report.
+  The official suite remains unexecuted; the candidate revision stays disabled
+  and product behavior and VERSION are unchanged.
+
 ### Release tooling
 
 - Added an explicit manual pre-1.0 publication workflow and releaseaudit adapter consuming the existing verified four-target candidate and complete supply-chain bundle. Publication binds externally approved source, notes, evidence and asset hashes, stages a draft, transfers exact bytes once, downloads every asset before publishing, and confirms the final prerelease. Conflicts and failed or ambiguous writes hold for read-only reconciliation. This records local implementation, not an actual public release; product VERSION is unchanged.
