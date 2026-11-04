@@ -1,0 +1,101 @@
+# MCP conformance validation
+
+Native Go tests cover production revision `2025-11-25` and the compiled
+`2026-07-28` candidate under an injected test policy, each with default and
+read-only profiles. The candidate remains disabled in production. The
+[protocol matrix](protocol.md) and [ADR-013](adr/mcp-compatibility.md) retain
+their existing activation gates.
+
+## Run and report
+
+From the repository root:
+
+```bash
+go test -mod=vendor ./cmd/server ./cmd/mcpcheck -run 'Test(MCPConformance|Report|Stateless|ProtocolRevision|Filesystem.*Wire|ToolsListWire)' -count=1
+go run ./cmd/mcpcheck -report /absolute/output-directory/mcp-conformance.md
+```
+
+For the report, supply an existing caller-controlled directory outside the
+source tree; Windows callers use an absolute Windows path. Both the Markdown
+output and adjacent `.tests.jsonl` log paths must be new. The tool runs focused
+server tests, rejects failures, skips, missing mandatory families and source
+drift, then writes the report. A failed run can leave its actual JSON log but
+writes no PASS report. Source must remain quiescent during validation.
+
+The report binds HEAD, a deterministic hash of tracked and nonignored source
+bytes, snapshot hashes, individual tests and official requirement mappings.
+It does not replace repository-wide gates, native Linux validation or
+independent review. BL-369 may consume this focused evidence later; this is
+not a general release-report generator.
+
+## Snapshots and completeness
+
+Four snapshots under `cmd/server/testdata/mcp` bind actual startup-registry
+definitions, including name, title, description, complete input/output schemas
+and every explicit boolean annotation. They also bind actual `tools/list`
+wire results, initialization/discovery capabilities, revision metadata, and
+successful and denied calls for every exposed tool in each profile.
+
+Definitions are sorted by name; wire lists preserve their actual stable
+registration order. Object keys are canonical, UTF-8 and indented, with LF
+and a final newline. Fixtures use fixed content, relative names and fixed
+server identity; no host paths, timestamps or secrets are recorded. Ordinary
+tests only compare bytes. Deliberate updates require an explicit flag:
+
+```bash
+go test -mod=vendor ./cmd/server -run '^TestMCPConformanceSnapshots$' -count=1 -args -update-mcp-snapshots
+git diff -- cmd/server/testdata/mcp
+```
+
+Review the complete diff, including new untracked snapshots, then rerun normal
+tests without the flag. New tool owners add functional success/security cases
+to `mcpToolCases`, update affected snapshots and the catalog, and extend exact
+revision coverage. This does not reopen BL-204. Updating snapshots cannot
+satisfy missing executable cases or approve capabilities/profiles/revisions.
+`docs/mcp-tool-catalog.json` remains the product catalog; snapshots are test
+baselines of runtime/wire behavior, not another product catalog.
+
+Mutation tests register an additional tool and reject both missing coverage
+and snapshot drift. They also reject changed input/output schemas or descriptive
+metadata, missing explicit-false annotations, missing tools, changed profile
+membership, activated/announced revisions and unknown capabilities/members.
+New capabilities require explicit tests or justified non-applicability.
+
+## Wire coverage
+
+The real parser, STDIO transport, router and serializers process requests.
+Child-process tests also run real startup/environment loading under both
+profiles, enforce protocol-only stdout, verify write authorization and reject
+production candidate requests. No candidate CLI/environment switch is added.
+
+Native contracts cover negotiation, notifications, unknown methods, malformed
+envelopes, strict arguments, result/error shape, traversal and read-only denial.
+Candidate tests cover `server/discover`, calls before discovery, per-request
+metadata, `UnsupportedProtocolVersion`, `serverInfo`, `resultType`, conservative
+`ttlMs:0`/`cacheScope:"private"` hints and cross-revision behavior. Client
+metadata and extensions grant no authorization.
+
+## Official evaluation and limits
+
+The [official suite](https://github.com/modelcontextprotocol/conformance/tree/c37eec888e1c6ff140af79987a40008548b7cc5f)
+is pinned to `c37eec888e1c6ff140af79987a40008548b7cc5f`
+(`0.2.0-alpha.12`). Its [2025-11-25 requirements](https://github.com/modelcontextprotocol/conformance/blob/c37eec888e1c6ff140af79987a40008548b7cc5f/requirements/2025-11-25.yaml)
+and [2026-07-28 requirements](https://github.com/modelcontextprotocol/conformance/blob/c37eec888e1c6ff140af79987a40008548b7cc5f/requirements/2026-07-28.yaml)
+use anchor `0.2.0-alpha.10`. The older set was reconstructed at that anchor;
+the newer set was frozen at release. Each revision needs a separate run.
+
+`official-requirements.json` maps all 83 server entries, preserving scored and
+not-scored membership and upstream reasons. Client-leg scenarios are not
+applicable to this server. Applicability, official execution and native subset
+evidence remain distinct. Every official scenario is `NOT_RUN`: the pinned
+runner connects to HTTP and expects named fixture behavior. No installation,
+runtime dependency or HTTP bridge is used. Native PASS is never an official
+suite PASS. Full MCP conformance is not claimed.
+
+Absent resources, prompts, completion, Tasks, media, MRTR and HTTP/SSE behavior
+is explicitly classified. Legacy `ping` is an applicable existing gap: it is
+not registered, and no native PASS is reported for it. BL-204 does not silently
+add a product method. Full JSON Schema 2020-12 validation remains BL-212,
+fingerprints/cache semantics BL-219, dedicated CI drift enforcement BL-257,
+general release reporting BL-369 and HTTP transport BL-370. Snapshot success
+does not activate the candidate or close those owners.

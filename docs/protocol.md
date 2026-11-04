@@ -217,6 +217,8 @@ The supported protocol/extension matrix is a released artifact. A specification 
 
 ## Related documents
 
+- [MCP conformance validation and snapshots](mcp-conformance.md)
+
 - [Architecture](architecture.md)
 - [Version 1.0 scope](planning/release-scope.md)
 - [Efficiency plan](planning/efficiency.md)

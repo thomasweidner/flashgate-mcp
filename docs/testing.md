@@ -27,6 +27,12 @@ version `0.0.0.0`.
 
 ## Test Commands
 
+For native MCP revision/profile contracts, complete schema/wire snapshots,
+completeness mutations and a reproducible focused report, see
+[MCP conformance validation](mcp-conformance.md). Official execution limits are
+reported separately from native results; this does not claim full conformance
+or activate the candidate revision.
+
 Run all tests:
 
 ```bash
