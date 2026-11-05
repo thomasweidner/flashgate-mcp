@@ -262,9 +262,67 @@ namespace FlashGate.Validation
             }
             if (!IsDescendantOf(childProcessId, rootProcess.Id))
             {
+                // The child may exit during the ancestry walk. Keep the
+                // identity mismatch result for a still-live child or reused PID.
+                if (!TryGetLiveIdentity(childProcessId, out actualIdentity))
+                {
+                    return "ReadyChildNotAlive";
+                }
                 return "ReadyChildIdentityMismatch";
             }
             return "";
+        }
+
+        private static string WaitForChildExitBeforeRelease(
+            ControlledProcessIdentity identity,
+            Stopwatch readyClock,
+            int readyTimeoutMilliseconds)
+        {
+            Process child;
+            try
+            {
+                child = Process.GetProcessById(identity.ProcessId);
+            }
+            catch (ArgumentException)
+            {
+                return "ReadyChildNotAlive";
+            }
+            catch (Exception)
+            {
+                return "ReadyChildIdentityMismatch";
+            }
+
+            using (child)
+            {
+                try
+                {
+                    if (child.HasExited)
+                    {
+                        return "ReadyChildNotAlive";
+                    }
+                    // Pin the handle used for both identity and exit checks.
+                    _ = child.SafeHandle;
+                    if (child.StartTime.ToUniversalTime().Ticks !=
+                        identity.StartTimeUtcTicks)
+                    {
+                        return "ReadyChildIdentityMismatch";
+                    }
+                    int remainingMilliseconds = (int)Math.Max(
+                        0, readyTimeoutMilliseconds - readyClock.ElapsedMilliseconds);
+                    return child.HasExited ||
+                        (remainingMilliseconds > 0 && child.WaitForExit(remainingMilliseconds))
+                        ? "ReadyChildNotAlive"
+                        : "ReadyTimeout";
+                }
+                catch (InvalidOperationException) when (child.HasExited)
+                {
+                    return "ReadyChildNotAlive";
+                }
+                catch (Exception)
+                {
+                    return "ReadyChildIdentityMismatch";
+                }
+            }
         }
 
         private static string ReadPidRecord(
@@ -567,6 +625,14 @@ namespace FlashGate.Validation
                                 "parent-identity-mismatch-after-ready")
                         {
                             rootIdentity.StartTimeUtcTicks++;
+                        }
+
+                        if (barrierMode == "exit-before-release")
+                        {
+                            barrierResult.BarrierFailureReason =
+                                WaitForChildExitBeforeRelease(
+                                    childIdentity, readyClock, readyTimeoutMilliseconds);
+                            return barrierResult.BarrierFailureReason;
                         }
 
                         Thread.Sleep(75);
