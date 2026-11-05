@@ -111,7 +111,12 @@ if accepted, return JSON-RPC `result: {}` with the unchanged request ID.
 Leave `2026-07-28` disabled in production and keep valid enabled-revision
 `ping` calls rejected as method-not-found (`-32601`). Do not add any
 `tools/list` entry, network/ICMP probe, automatic heartbeat, external MCP SDK,
-new dependency, protocol matrix entry or release/version change.
+new dependency or protocol matrix entry. This registration-only change leaves
+`VERSION` and `CHANGELOG.md` unchanged. If the later BL-371 handler introduces
+externally observable MCP behavior, its implementation must update the canonical
+`VERSION` and corresponding versioned `CHANGELOG.md` section in the same
+change under BL-245 and `CONTRIBUTING.md`. Subsequent candidate verification
+and release/publication gates remain separately applicable and authorized.
 
 **Safety, tests and closure.** Honor the real revision request-params contract,
 including valid optional metadata; reject malformed inputs through the existing
