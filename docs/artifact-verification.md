@@ -296,7 +296,8 @@ cryptographic author or builder authentication.
 
 The SBOM describes the current source dependency set, not an exhaustive inventory
 of each platform binary. goversioninfo and rsrc are build-only Windows resource
-generators. The current server has no external Go runtime module dependency.
+generators. `jsonschema/v6` and `golang.org/x/text` are vendored test-only
+dependencies. The current server has no external Go runtime module dependency.
 The pinned Font Awesome Free SVG and derived ICO are separately identified
 third-party branding assets with actual file SHA-256 and CC-BY-4.0 attribution.
 Go standard library, compiler, OS libraries, runner tools and their transitive
@@ -309,8 +310,10 @@ Go h1 values identify normalized module directory or go.mod checksums; they are
 recorded as Go-specific facts and never labeled ordinary archive SHA-256.
 Active module requirements, versions, both h1 entries, vendor module headers,
 explicit markers and package ownership must agree. SPDX relationships bind the
-application, both build dependencies, their dependency edge and branding
-derivation. filesAnalyzed=false limits the package claim to source metadata.
+application, its build and test dependencies, the module-to-module edges and
+branding derivation. Test modules use `TEST_DEPENDENCY_OF`. Previously issued
+two-module bundles retain their original inventory representation.
+`filesAnalyzed=false` limits the package claim to source metadata.
 
 The four unsigned in-toto Statement/v1 subjects each name exactly one platform
 archive with its exact SHA-256. Their project-specific Candidate-Verification

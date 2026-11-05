@@ -34,6 +34,14 @@ type requirementMap struct {
 	} `json:"scenarios"`
 }
 
+var requiredNativeFamilies = []string{
+	"TestMCPConformanceSnapshots", "TestMCPConformanceSchema202012",
+	"TestMCPConformanceCompletenessMutations", "TestMCPConformanceWireNegatives",
+	"TestMCPConformanceLegacyNegotiation", "TestMCPConformanceCrossRevisionStateless",
+	"TestMCPConformanceSTDIOProcess", "TestMCPConformanceInventory",
+	"TestStatelessCandidateWire", "TestStatelessMetadataAndProductionGate",
+}
+
 func main() {
 	report := flag.String("report", "", "new output Markdown path outside the source tree (required)")
 	flag.Parse()
@@ -44,12 +52,15 @@ func main() {
 }
 
 func sourceIdentity() (string, error) {
-	command := exec.Command("git", "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+	command := exec.Command("git", "ls-files", "-z", "-t", "--cached", "--others", "--deleted", "--exclude-standard")
 	raw, err := command.Output()
 	if err != nil {
 		return "", errors.New("Git source inventory unavailable")
 	}
-	paths := strings.Split(strings.TrimSuffix(string(raw), "\x00"), "\x00")
+	paths, err := sourcePaths(raw)
+	if err != nil {
+		return "", err
+	}
 	sort.Strings(paths)
 	hash := sha256.New()
 	for _, path := range paths {
@@ -65,6 +76,33 @@ func sourceIdentity() (string, error) {
 		fmt.Fprintf(hash, "%s\x00%x\n", path, digest)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func sourcePaths(raw []byte) ([]string, error) {
+	present, deleted := make(map[string]bool), make(map[string]bool)
+	for record := range strings.SplitSeq(strings.TrimSuffix(string(raw), "\x00"), "\x00") {
+		tag, path, ok := strings.Cut(record, " ")
+		if !ok || path == "" {
+			return nil, errors.New("invalid Git source inventory")
+		}
+		switch tag {
+		case "H", "S", "?":
+			present[path] = true
+		case "R":
+			deleted[path] = true
+		default:
+			return nil, fmt.Errorf("unexpected Git source inventory tag %q", tag)
+		}
+	}
+	// Git lists an unstaged deletion both as cached and as removed. Hash the
+	// candidate's actual source files, excluding those absent tracked paths.
+	var paths []string
+	for path := range present {
+		if !deleted[path] {
+			paths = append(paths, path)
+		}
+	}
+	return paths, nil
 }
 
 // A skipped or failed contract cannot be rendered as a successful native run.
@@ -95,7 +133,7 @@ func testResults(raw []byte) (map[string]string, error) {
 	if !packagePass {
 		return nil, errors.New("missing package completion evidence")
 	}
-	for _, name := range []string{"TestMCPConformanceSnapshots", "TestMCPConformanceCompletenessMutations", "TestMCPConformanceWireNegatives", "TestMCPConformanceLegacyNegotiation", "TestMCPConformanceCrossRevisionStateless", "TestMCPConformanceSTDIOProcess", "TestMCPConformanceInventory", "TestStatelessCandidateWire", "TestStatelessMetadataAndProductionGate"} {
+	for _, name := range requiredNativeFamilies {
 		if results[name] != "PASS" {
 			return nil, fmt.Errorf("missing native contract evidence: %s", name)
 		}
@@ -218,7 +256,7 @@ func run(reportPath string) error {
 		}
 		fmt.Fprintf(&report, "| %s | %s | %s %s | %s | %s | %s |\n", row.Revision, row.Scenario, row.Scoring, row.UpstreamReason, row.Applicability, row.OfficialStatus, coverage)
 	}
-	fmt.Fprintln(&report, "\n## Limitations\n\nThe official suite was not executed. Legacy ping is not registered; that applicable existing gap prevents any full-conformance claim. Full JSON Schema 2020-12 validation remains BL-212; fingerprints/cache semantics remain BL-219; dedicated CI drift enforcement remains BL-257. Candidate production activation still requires all its owner gates. No release approval or independent terminal review is implied.")
+	fmt.Fprintln(&report, "\n## Limitations\n\nThe official suite was not executed. Legacy ping is not registered; that applicable existing gap prevents any full-conformance claim. The native run includes offline Draft 2020-12 tool schema and instance checks. Fingerprints/cache semantics remain BL-219; dedicated CI drift enforcement remains BL-257. Candidate production activation still requires all its owner gates. No release approval or independent terminal review is implied.")
 	return writeNew(absolute, []byte(report.String()))
 }
 

@@ -306,7 +306,12 @@ GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative 
 
 Limit and redaction behavior is primarily covered by Go unit tests. Additional limit-negative smoke coverage can be added later if it can be done without broad smoke-script refactoring.
 
-Focused contract tests compare runtime tool definitions with `docs/mcp-tool-catalog.json` for name, title, description, complete input schema, deeply equal runtime `outputSchema`/catalog `resultSchema`, and the exact eight-tool annotation matrix. The catalog gate parses annotations structurally, requires all four members even when their value is `false`, and includes a negative mutation proving that deletion of one explicit-false member fails. Targeted tests require exactly eight runtime output schemas, object roots, valid required/property relationships, expected project property types, representative successful `structuredContent`, both `get_path_info` variants, the `read_file` outer-array/inner-string distinction, fail-closed unknown annotation lookup, and explicit false serialization. The tests-only structural checker covers only `type`, `properties`, `required`, `additionalProperties`, `items`, `oneOf`, and `const` as currently emitted; it is not a complete JSON Schema 2020-12 validator.
+The [MCP conformance gate](mcp-conformance.md) compiles both schemas for every
+registered tool and checks functional inputs and successful wire results in
+each revision/profile. The same run compares the full registry to the catalog,
+including complete input/output schemas and explicit boolean annotations.
+Unit tests retain representative result variants and the distinction between
+outer MCP content and the inner `read_file` content string.
 
 The `tools/list` JSON-RPC wire test checks schema and annotation exposure for both profiles, requires all four annotation members in the real wire object, verifies the exact annotation values, and records deterministic UTF-8 JSONL response/result sizes. The current BL-202 measurements are 2446/2411 bytes for read-only and 6492/6457 bytes for default (response/result). The test and `benchmarks/budgets.json` pin them as deterministic contract values; no timing, CPU, RAM, or performance baseline is recalibrated.
 
@@ -329,7 +334,7 @@ The matrix contains current support, not planned revisions.
 
 The production-enabled protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, pre-`CallToolResult` unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the normalized tool-error contract. The decoder intentionally validates the exact FlashGate-emitted `2025-11-25` subset (one text block; success requires object `structuredContent` with text parity; error requires `isError:true` and absent `structuredContent`; no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
 
-The `2026-07-28` candidate has separate wire tests using the production server and an injected revision policy. They cover `server/discover`, per-request metadata, optional self-reported `clientInfo`, response identity, `UnsupportedProtocolVersion`, complete results, private zero-TTL list hints, unavailable subscriptions, and the default production gate. The advertised matrix stays at `2025-11-25` until BL-204, BL-212, and BL-219 pass. Complete JSON Schema 2020-12 validation and official MCP conformance tooling remain planned.
+The `2026-07-28` candidate has separate wire tests using the production server and an injected revision policy. They cover `server/discover`, per-request metadata, optional self-reported `clientInfo`, response identity, `UnsupportedProtocolVersion`, complete results, private zero-TTL list hints, unavailable subscriptions, and the default production gate. The advertised matrix stays at `2025-11-25` until BL-204, BL-212, and BL-219 pass. Native Draft 2020-12 validation runs with the existing conformance tests. Official suite execution is tracked separately.
 
 ### Benchmarks
 
@@ -645,7 +650,7 @@ independent review under their [bindings](planning/implementation-contract.md#re
   and bounded querybatch/detail reads. Run `go test -mod=vendor ./cmd/releaseaudit
   -run '^TestSecurity'` first, then Supply/Publication/workflow regressions and
   both platform quality chains. Fixtures cover exact external anchors, carried
-  go.mod markers, build/runtime/UNKNOWN roles, wrong module/version/ID bindings,
+  go.mod markers, build/test/runtime/UNKNOWN roles, wrong module/version/ID bindings,
   none/one/multiple advisories, reciprocal and conflicting aliases, unknown
   severity/fixes, malformed/oversized/truncated/paginated provider responses,
   timeout and incomplete queries, stale snapshots, exact/invalid/expired

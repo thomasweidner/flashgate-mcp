@@ -3,6 +3,7 @@
 package main
 
 import (
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,10 +18,30 @@ import (
 // Windows records remain the existing synthetic fixture: this test proves the
 // Linux report contract, not Windows build provenance or native ARM64 execution.
 func TestLinuxPortableCandidateEvidence(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
+	// Exercise the current source and inventory bytes through the real
+	// committed-source gate, even before those bytes are committed to the
+	// product repository. Include only the portable build inputs.
+	source := os.DirFS(filepath.Join("..", ".."))
+	root := t.TempDir()
+	for _, dir := range []string{"assets/branding", "cmd/releaseaudit", "cmd/server", "cmd/versionmanifest", "internal", "scripts", "vendor"} {
+		subtree, err := fs.Sub(source, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.CopyFS(filepath.Join(root, filepath.FromSlash(dir)), subtree); err != nil {
+			t.Fatal(err)
+		}
 	}
+	for _, name := range []string{".gitattributes", ".gitignore", "VERSION", "LICENSE", "README.md", "THIRD-PARTY-NOTICES.md", "go.mod", "go.sum"} {
+		data, err := fs.ReadFile(source, name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(root, name), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	commit := commitSupplyFixture(t, root)
 	command := func(dir string, argv ...string) string {
 		t.Helper()
 		cmd := exec.Command(argv[0], argv[1:]...)
@@ -31,7 +52,6 @@ func TestLinuxPortableCandidateEvidence(t *testing.T) {
 		}
 		return string(output)
 	}
-	commit := strings.TrimSpace(command(root, "git", "--no-optional-locks", "rev-parse", "HEAD"))
 	stamp := strings.TrimSpace(command(root, "git", "--no-optional-locks", "show", "-s", "--format=%ct", "HEAD"))
 	sourceTime := strings.TrimSpace(command(root, "date", "-u", "-d", "@"+stamp, "+%Y-%m-%dT%H:%M:%SZ"))
 	modified := "false"

@@ -191,7 +191,7 @@ func TestSupplyDeterminismAndSPDX(t *testing.T) {
 		t.Fatal("invalid SPDX identity")
 	}
 	packages := sbom["packages"].([]any)
-	if len(packages) != 5 {
+	if len(packages) != 7 {
 		t.Fatal("incomplete source inventory")
 	}
 	ids := map[string]bool{"SPDXRef-DOCUMENT": true}
@@ -594,12 +594,29 @@ func TestSupplyModuleConsistency(t *testing.T) {
 	mod, _ := os.ReadFile(filepath.Join(root, "go.mod"))
 	sums, _ := os.ReadFile(filepath.Join(root, "go.sum"))
 	vendor, _ := os.ReadFile(filepath.Join(root, "vendor/modules.txt"))
-	if modules, err := supplyModules(mod, sums, vendor); err != nil || len(modules) != 2 {
+	if modules, err := supplyModules(mod, sums, vendor); err != nil || len(modules) != 4 {
 		t.Fatal("valid inventory rejected", err)
+	}
+	legacyMod := bytes.ReplaceAll(mod, []byte("require "+schemaModule+" v6.0.3\n"), nil)
+	legacyMod = bytes.ReplaceAll(legacyMod, []byte("require "+textModule+" v0.41.0 // indirect\n"), nil)
+	legacyVendor, _, found := bytes.Cut(vendor, []byte("# "+schemaModule+" "))
+	if modules, err := supplyModules(legacyMod, sums, legacyVendor); !found || err != nil || len(modules) != 2 {
+		t.Fatal("previously supported inventory rejected", err)
 	}
 	for name, mutate := range map[string]func() ([]byte, []byte, []byte){
 		"version": func() ([]byte, []byte, []byte) {
 			return bytes.ReplaceAll(mod, []byte("v1.7.0"), []byte("v1.8.0")), sums, vendor
+		},
+		"unreviewed test version": func() ([]byte, []byte, []byte) {
+			change := func(data []byte) []byte {
+				return bytes.ReplaceAll(data, []byte("v0.41.0"), []byte("v0.42.0"))
+			}
+			return change(mod), change(sums), change(vendor)
+		},
+		"incomplete test pair": func() ([]byte, []byte, []byte) {
+			m := bytes.ReplaceAll(mod, []byte("require "+textModule+" v0.41.0 // indirect\n"), nil)
+			v, _, _ := bytes.Cut(vendor, []byte("# "+textModule+" "))
+			return m, sums, v
 		},
 		"replacement": func() ([]byte, []byte, []byte) {
 			return append(bytes.Clone(mod), []byte("\nreplace x => y\n")...), sums, vendor
@@ -658,15 +675,19 @@ func TestSupplyRollbackSmoke(t *testing.T) {
 	}
 }
 
-func TestSupplyGenerationCommandSourceBinding(t *testing.T) {
-	dir, p, manifest := candidateFixture(t)
-	// Use a task-local committed fixture; the real working candidate can have
-	// modified inventory documentation and must not masquerade as HEAD bytes.
-	repo := supplySourceFixture(t)
+// commitSupplyFixture only operates on a disposable test repository. Product
+// source and its actual Git identity are never changed by these tests.
+func commitSupplyFixture(t *testing.T, repo string) string {
+	t.Helper()
 	fixtureGit := func(args ...string) []byte {
 		t.Helper()
 		command := exec.Command("git", append([]string{"-C", repo}, args...)...)
-		command.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull)
+		for _, entry := range os.Environ() {
+			if !strings.HasPrefix(strings.ToUpper(entry), "GIT_") {
+				command.Env = append(command.Env, entry)
+			}
+		}
+		command.Env = append(command.Env, "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull)
 		data, err := command.CombinedOutput()
 		if err != nil {
 			t.Fatalf("fixture git: %v: %s", err, data)
@@ -676,11 +697,15 @@ func TestSupplyGenerationCommandSourceBinding(t *testing.T) {
 	fixtureGit("init", "--quiet")
 	fixtureGit("add", "--", ".")
 	fixtureGit("-c", "user.name=Release audit fixture", "-c", "user.email=fixture@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "Supply source fixture")
-	commit, err := exec.Command("git", "-C", repo, "rev-parse", "HEAD").Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest.SourceCommitSHA = strings.TrimSpace(string(commit))
+	return strings.TrimSpace(string(fixtureGit("rev-parse", "HEAD")))
+}
+
+func TestSupplyGenerationCommandSourceBinding(t *testing.T) {
+	dir, p, manifest := candidateFixture(t)
+	// The working candidate can carry modified inventory inputs that must
+	// never be represented as the product checkout's committed bytes.
+	repo := supplySourceFixture(t)
+	manifest.SourceCommitSHA = commitSupplyFixture(t, repo)
 	for i := range manifest.Records {
 		r := &manifest.Records[i]
 		r.SourceCommitSHA = manifest.SourceCommitSHA

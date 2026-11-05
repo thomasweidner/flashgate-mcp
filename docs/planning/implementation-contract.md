@@ -78,6 +78,22 @@ report later; BL-370 retains HTTP transport. Neither is implemented here.
 No release, distribution or migration behavior changes; test-only work leaves
 `VERSION` unchanged. Independent terminal technical review remains required.
 
+## BL-212 schema conformance binding
+
+BL-212 extends the MCP adapter's test and validation boundary. It reuses
+BL-200/201 schemas and success results, BL-204 registration, revision/profile
+coverage, snapshots and report, and BL-289/291 strict arguments and catalog
+parity. The BL-262 inventory records the pinned validator and its transitive
+module as test dependencies while preserving verification of earlier bundles.
+
+The existing gate compiles registered input and output schemas as Draft
+2020-12 with offline reference resolution, validates successful wire instances,
+and tests schema, fixture, catalog and snapshot failures. Tool owners supply
+functional cases. BL-110 extends the shared matrix when effective profiles are
+implemented, and BL-257 owns dedicated CI drift enforcement. This change adds
+no wire fields, runtime checks, product dependencies, activation, or migration.
+Independent terminal review is required before closure.
+
 ## BL-371 MCP `ping` receiver for `2025-11-25`
 
 **Role and authority.** BL-371 is a revision-specific MCP-adapter implementation

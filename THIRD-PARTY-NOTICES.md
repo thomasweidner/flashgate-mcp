@@ -1,7 +1,7 @@
 # Third-party notices
 
 This file records third-party components and assets distributed with or used
-to build FlashGate MCP.
+to build or test FlashGate MCP.
 
 ## Font Awesome Free
 
@@ -31,6 +31,20 @@ attribution; the ICO is a deterministic raster derivative of that SVG.
 - Version: resolved through the pinned `goversioninfo` dependency
 - Purpose: Windows COFF resource generation
 - License: MIT
+
+## jsonschema
+
+- Module: `github.com/santhosh-tekuri/jsonschema/v6`
+- Version: `v6.0.3`
+- Purpose: Draft 2020-12 conformance tests
+- License: Apache 2.0
+
+## Go text
+
+- Module: `golang.org/x/text`
+- Version: `v0.41.0`
+- Purpose: transitive test dependency of the schema validator
+- License: BSD 3-Clause
 
 The exact Go dependency graph and checksums are recorded in `go.mod`,
 `go.sum`, and `vendor/modules.txt`.
