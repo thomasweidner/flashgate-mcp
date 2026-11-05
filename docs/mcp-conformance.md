@@ -61,6 +61,29 @@ metadata, missing explicit-false annotations, missing tools, changed profile
 membership, activated/announced revisions and unknown capabilities/members.
 New capabilities require explicit tests or justified non-applicability.
 
+## JSON Schema Draft 2020-12
+
+The snapshot run compiles every registered tool's input and output schema in
+each matrix entry, validates the functional success and security inputs and wire
+`structuredContent`, and checks complete runtime/catalog parity in the default
+profile. Input roots must be closed objects. Output roots describe success
+objects. Error responses follow the separate tool and JSON-RPC error tests.
+Future effective profiles extend the shared matrix under BL-110.
+
+The vendored test compiler pins Draft 2020-12 and rejects other dialect
+declarations. Published schemas omit `$schema`. Reference resolution uses
+the registered schema and embedded standard metaschemas. Missing external
+resources fail without host file or network access. Put local reference targets
+at standard schema positions such as `$defs`. The default dialect
+treats `format` as annotation. Patterns use Go's regular expression engine
+and its supported syntax. Schema validation does not model filesystem guards,
+configured limits, Go integer decoding, or authorization.
+
+`TestMCPConformanceSchema202012` exercises invalid metaschemas, dialect and
+reference failures, Draft 2020-12 keywords, strict arguments and output
+instance failures, and catalog mutations. `mcpcheck` requires this family and
+the snapshot and completeness families in its test evidence.
+
 ## Wire coverage
 
 The real parser, STDIO transport, router and serializers process requests.
@@ -95,7 +118,7 @@ suite PASS. Full MCP conformance is not claimed.
 Absent resources, prompts, completion, Tasks, media, MRTR and HTTP/SSE behavior
 is explicitly classified. Legacy `ping` is an applicable existing gap: it is
 not registered, and no native PASS is reported for it. BL-204 does not silently
-add a product method. Full JSON Schema 2020-12 validation remains BL-212,
-fingerprints/cache semantics BL-219, dedicated CI drift enforcement BL-257,
+add a product method. Fingerprints/cache semantics remain BL-219,
+dedicated CI drift enforcement BL-257,
 general release reporting BL-369 and HTTP transport BL-370. Snapshot success
 does not activate the candidate or close those owners.

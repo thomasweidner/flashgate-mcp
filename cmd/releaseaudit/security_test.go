@@ -32,11 +32,17 @@ func TestSecurityInventoryAnchors(t *testing.T) {
 	dir, mh, ih, manifest := supplyFixture(t)
 	id := securityIdentity{Version: manifest.Version, Commit: manifest.SourceCommitSHA, Manifest: mh, Index: ih}
 	bound, modules, err := readSecurityInventory(dir, id)
-	if err != nil || len(modules) != 2 || bound.GoMod == "" || bound.SBOM == "" {
+	if err != nil || bound.GoMod == "" || bound.SBOM == "" {
 		t.Fatal(bound, modules, err)
 	}
-	if modules[0].Dependency != "INDIRECT" || modules[1].Dependency != "DIRECT" || modules[0].Exposure != "BUILD" || modules[1].Exposure != "BUILD" {
-		t.Fatal(modules)
+	want := []securityModule{
+		{resourceModule, "v0.10.2", "INDIRECT", "BUILD"},
+		{versionInfoModule, "v1.7.0", "DIRECT", "BUILD"},
+		{schemaModule, "v6.0.3", "DIRECT", "TEST"},
+		{textModule, "v0.41.0", "INDIRECT", "TEST"},
+	}
+	if !reflect.DeepEqual(modules, want) {
+		t.Fatalf("module classification: got %+v, want %+v", modules, want)
 	}
 	for _, change := range []func(*securityIdentity){func(i *securityIdentity) { i.Version = "9.9.9" }, func(i *securityIdentity) { i.Commit = strings.Repeat("0", 40) }, func(i *securityIdentity) { i.Manifest = ih }, func(i *securityIdentity) { i.Index = mh }, func(i *securityIdentity) { i.Index = "" }} {
 		bad := id

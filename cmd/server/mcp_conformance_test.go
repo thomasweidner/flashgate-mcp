@@ -25,6 +25,10 @@ import (
 
 var updateMCPSnapshots = flag.Bool("update-mcp-snapshots", false, "explicitly replace reviewed MCP wire snapshots")
 
+// Effective profiles added by BL-110 must extend this shared snapshot matrix.
+var mcpConformanceVersions = []string{protocol.ProtocolVersion, revision.Stateless}
+var mcpConformanceProfiles = []string{"default", "read-only"}
+
 // Each entry is executable functional coverage, independent of snapshot updates.
 // A new registration requires an explicit success and security case here.
 type mcpToolCase struct {
@@ -102,10 +106,11 @@ func mcpWire(t *testing.T, r *router.Router, input string, count int) []map[stri
 }
 
 func mcpRequest(method, params, version string) string {
-	var values map[string]any
-	if err := json.Unmarshal([]byte(params), &values); err != nil {
+	value, err := mcptest.SchemaInstance([]byte(params))
+	if err != nil {
 		panic(err)
 	}
+	values := value.(map[string]any)
 	if version == revision.Stateless {
 		values["_meta"] = map[string]any{
 			"io.modelcontextprotocol/protocolVersion":    version,
@@ -138,8 +143,8 @@ func canonicalMCP(t *testing.T, value any) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var normalized any
-	if err := json.Unmarshal(encoded, &normalized); err != nil {
+	normalized, err := mcptest.SchemaInstance(encoded)
+	if err != nil {
 		t.Fatal(err)
 	}
 	encoded, err = json.MarshalIndent(normalized, "", "  ")
@@ -217,19 +222,32 @@ func mcpSnapshotDrift(accepted, current []byte) error {
 	return nil
 }
 
+func mcpDefinitions(registry *tools.Registry) []protocol.Tool {
+	var definitions []protocol.Tool
+	for _, tool := range registry.List() {
+		definitions = append(definitions, tool.Definition())
+	}
+	return definitions
+}
+
 func TestMCPConformanceSnapshots(t *testing.T) {
-	for _, version := range []string{protocol.ProtocolVersion, revision.Stateless} {
-		for _, profile := range []string{"default", "read-only"} {
+	cases := mcpToolCases()
+	for _, version := range mcpConformanceVersions {
+		for _, profile := range mcpConformanceProfiles {
 			t.Run(version+"/"+profile, func(t *testing.T) {
 				readOnly := profile == "read-only"
 				registry, root := mcpRegistry(t, readOnly)
 				r := mcpRouter(registry, version == revision.Stateless)
-				definitions := make([]protocol.Tool, 0)
-				for _, tool := range registry.List() {
-					definitions = append(definitions, tool.Definition())
+				definitions := mcpDefinitions(registry)
+				schemas, err := mcpCompileSchemas(definitions)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if profile == "default" {
+					mcpCheckCatalog(t, definitions)
 				}
 				sort.Slice(definitions, func(i, j int) bool { return definitions[i].Name < definitions[j].Name })
-				if err := mcpInventory(definitions, mcpToolCases(), readOnly); err != nil {
+				if err := mcpInventory(definitions, cases, readOnly); err != nil {
 					t.Fatal(err)
 				}
 				for _, definition := range definitions {
@@ -258,10 +276,12 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 				}
 				list := mcpResult(t, r, "tools/list", `{}`, version)
 				var listed []protocol.Tool
-				if err := json.Unmarshal(list["tools"], &listed); err != nil {
+				decoder := json.NewDecoder(bytes.NewReader(list["tools"]))
+				decoder.UseNumber()
+				if err := decoder.Decode(&listed); err != nil {
 					t.Fatal(err)
 				}
-				if err := mcpInventory(listed, mcpToolCases(), readOnly); err != nil {
+				if err := mcpInventory(listed, cases, readOnly); err != nil {
 					t.Fatal(err)
 				}
 				sort.Slice(listed, func(i, j int) bool { return listed[i].Name < listed[j].Name })
@@ -270,7 +290,8 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 				}
 				results := make(map[string]any)
 				for _, definition := range definitions {
-					test := mcpToolCases()[definition.Name]
+					test := cases[definition.Name]
+					schema := schemas[definition.Name]
 					outcomes := make(map[string]any)
 					for _, outcome := range []string{"success", "denied"} {
 						fresh, _ := mcpRegistry(t, readOnly)
@@ -278,6 +299,7 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 						if outcome == "denied" {
 							arguments = test.denied
 						}
+						mcpRequireSchemaInstance(t, definition.Name+"/"+outcome+"/inputSchema", schema.input, []byte(arguments))
 						result := mcpResult(t, mcpRouter(fresh, version == revision.Stateless), "tools/call", `{"name":"`+definition.Name+`","arguments":`+arguments+`}`, version)
 						mcpCheckRevisionResult(t, result, version, false)
 						outcomes[outcome] = result
@@ -291,9 +313,10 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 						}
 						decoded, err := mcptest.DecodeCallToolResult(canonicalMCP(t, base))
 						if err != nil || decoded.IsError != (outcome == "denied") {
-							t.Fatalf("%s/%s result contract: %v", definition.Name, outcome, err)
+							t.Fatalf("%s/%s result contract: %v, result: %s", definition.Name, outcome, err, canonicalMCP(t, result))
 						}
 						if outcome == "success" {
+							mcpRequireSchemaInstance(t, definition.Name+"/outputSchema", schema.output, result["structuredContent"])
 							value, ok := decoded.StructuredContent.(map[string]any)
 							if !ok || !reflect.DeepEqual(value[test.field], test.want) {
 								t.Fatalf("%s: functional assertion %s=%v failed: %#v", definition.Name, test.field, test.want, value)
@@ -362,10 +385,7 @@ func mcpCheckRevisionResult(t *testing.T, result map[string]json.RawMessage, ver
 
 func TestMCPConformanceCompletenessMutations(t *testing.T) {
 	registry, _ := mcpRegistry(t, false)
-	definitions := []protocol.Tool{}
-	for _, tool := range registry.List() {
-		definitions = append(definitions, tool.Definition())
-	}
+	definitions := mcpDefinitions(registry)
 	if err := mcpInventory(definitions, mcpToolCases(), false); err != nil {
 		t.Fatal(err)
 	}
@@ -375,9 +395,10 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 			t.Fatal("missing mutation seed")
 		}
 		registry.Register(mcpFutureTool{Tool: base})
-		mutated := []protocol.Tool{}
-		for _, tool := range registry.List() {
-			mutated = append(mutated, tool.Definition())
+		mutated := mcpDefinitions(registry)
+		schemas, err := mcpCompileSchemas(mutated)
+		if err != nil || schemas["future_tool"].input == nil || schemas["future_tool"].output == nil {
+			t.Fatalf("synthetic registration was not compiled: %v", err)
 		}
 		if mcpInventory(mutated, mcpToolCases(), false) == nil {
 			t.Fatal("new tool escaped contract completeness gate")
@@ -450,8 +471,8 @@ func TestMCPConformanceInventory(t *testing.T) {
 		t.Fatal(err)
 	}
 	expected := map[string]bool{"official-requirements.json": true}
-	for _, version := range []string{protocol.ProtocolVersion, revision.Stateless} {
-		for _, profile := range []string{"default", "read-only"} {
+	for _, version := range mcpConformanceVersions {
+		for _, profile := range mcpConformanceProfiles {
 			expected[version+"-"+profile+".json"] = true
 		}
 	}

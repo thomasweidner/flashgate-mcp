@@ -38,9 +38,16 @@ Each tool owns a compact definition containing:
 - closed success-only output schema for its `structuredContent` object;
 - all four MCP annotation members, including explicit `false` values.
 
-`docs/mcp-tool-catalog.json` is the static contract view. A focused contract test compares runtime and catalog name, title, description, complete input schema, and complete runtime `outputSchema`/catalog `resultSchema` parity without introducing a general schema engine.
+`docs/mcp-tool-catalog.json` is the static contract view. The
+[native conformance gate](mcp-conformance.md) compares the full registered
+definitions to it, including input schemas, runtime `outputSchema`/catalog
+`resultSchema`, and annotations.
 
-The catalog `resultSchema` values and runtime `outputSchema` values describe typed successful domain results only. They do not model the outer `CallToolResult.content[]` or the current JSON-RPC error contract. A tests-only structural checker covers the schema keywords emitted by this project; it is not a general JSON Schema 2020-12 validator.
+The catalog `resultSchema` and runtime `outputSchema` describe the successful
+domain object in `structuredContent`. The outer result envelope and errors
+have their own contracts. Authors use JSON Schema Draft 2020-12. The test
+compiler pins the dialect, so published definitions can omit `$schema`.
+The Go argument decoders and authorization checks still govern runtime calls.
 
 Every successful `tools/call` uses the central MCP adapter wrapper. The outer result is `CallToolResult` with exactly one `TextContent` block whose text is compact deterministic JSON and `structuredContent` containing the same object. No domain field is placed directly on the outer result. Productive results remain structs; Go's standard `encoding/json` provides deterministic struct-field output and sorted map keys if a map is ever used.
 
