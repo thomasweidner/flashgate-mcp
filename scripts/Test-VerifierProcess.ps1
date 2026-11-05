@@ -643,6 +643,19 @@ try {
         }
     }
 
+    # Exercise the exact release/exit race beyond the general race matrix.
+    foreach ($ReleaseRaceIteration in 4..10) {
+        $NegativeSpecifications.Add([pscustomobject]@{
+            Name = "exit-after-release-$ReleaseRaceIteration"
+            Mode = 'exit-after-release'
+            ExpectedReason = 'ReadyChildNotAliveAfterRelease'
+            RecordTarget = 'ready'
+            RecordVariant = 'valid'
+            ReadyTimeout = 15000
+            ReleaseWriteFailure = $false
+        })
+    }
+
     $NegativeResults = [System.Collections.Generic.List[object]]::new()
     foreach ($Specification in $NegativeSpecifications) {
         $InvokeArguments = @{
@@ -679,7 +692,19 @@ try {
                     -PathType Leaf)
             )
         }
+        $BeforeReleaseMarkersAbsent = (
+            $Specification.Mode -cne 'exit-before-release' -or
+            (
+                -not (Test-Path -LiteralPath $BarrierCase.ReleasePath) -and
+                -not (Test-Path -LiteralPath $BarrierCase.ReleasedPath) -and
+                -not (Test-Path `
+                    -LiteralPath $BarrierCase.TimeoutActivationProbePath) -and
+                -not (Test-Path -LiteralPath $BarrierCase.TimeoutActivatedPath) -and
+                -not (Test-Path -LiteralPath $BarrierCase.TimeoutFinalCheckPath)
+            )
+        )
         $NegativeCondition = (
+            $BeforeReleaseMarkersAbsent -and
             $ProcessResult.Attempted -and
             $ProcessResult.Status -ceq 'FAIL' -and
             -not $ProcessResult.TimedOut -and
@@ -698,6 +723,7 @@ try {
                 "TimedOut=$($ProcessResult.TimedOut);" +
                 "Reason=$($ProcessResult.FailureReason);" +
                 "Expected=$($Specification.ExpectedReason);" +
+                "BeforeReleaseMarkersAbsent=$BeforeReleaseMarkersAbsent;" +
                 "AfterReady=$($Barrier.TimeoutStartedAfterReady);" +
                 "ElapsedMs=$($BarrierCase.ElapsedMilliseconds);" +
                 "ChildPid=$($BarrierCase.ControlledChildPid);" +

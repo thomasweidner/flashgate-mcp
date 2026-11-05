@@ -13,6 +13,10 @@ for publication; the date alone does not prove that a release was published.
 
 ### Validation
 
+- Validate registered MCP tool inputs and successful structured results offline
+  with JSON Schema Draft 2020-12 in the existing BL-204 conformance gate. The
+  test-only validator adds no runtime checks or wire changes.
+
 - Add native MCP revision/profile conformance contracts, complete runtime/wire
   schema snapshots, completeness mutations and a focused reproducible report.
   The official suite remains unexecuted; the candidate revision stays disabled
