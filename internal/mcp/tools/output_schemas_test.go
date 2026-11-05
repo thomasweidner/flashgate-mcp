@@ -1,37 +1,13 @@
 package tools
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcptest"
 )
-
-func TestFilesystemRuntimeOutputSchemas(t *testing.T) {
-	fake := newFakeFileSystem()
-	runtimeTools := []Tool{
-		NewListDirectoryTool(fake), NewReadFileTool(fake, 1024), NewGetPathInfoTool(fake),
-		NewWriteFileTool(fake), NewCreateDirectoryTool(fake), NewDeletePathTool(fake),
-		NewCopyPathTool(fake), NewMovePathTool(fake),
-	}
-
-	if len(runtimeTools) != 8 {
-		t.Fatalf("expected exactly 8 runtime tools, got %d", len(runtimeTools))
-	}
-	for _, runtimeTool := range runtimeTools {
-		schema := normalizeSchema(t, runtimeTool.Definition().OutputSchema)
-		if schema == nil {
-			t.Fatalf("%s has no outputSchema", runtimeTool.Name())
-		}
-		if schema["type"] != "object" {
-			t.Fatalf("%s root outputSchema must have type object, got %#v", runtimeTool.Name(), schema["type"])
-		}
-		assertRequiredPropertiesExist(t, runtimeTool.Name(), schema)
-	}
-}
 
 func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 	tests := []struct {
@@ -55,8 +31,19 @@ func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 			if toolName == getPathInfoToolName+" existing" || toolName == getPathInfoToolName+" missing" {
 				toolName = getPathInfoToolName
 			}
-			value := normalizeResultValue(t, tc.result)
-			if err := validateProjectSchema(normalizeSchema(t, filesystemOutputSchema(toolName)), value); err != nil {
+			schema, err := mcptest.CompileToolSchema(filesystemOutputSchema(toolName), false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw, err := json.Marshal(tc.result)
+			if err != nil {
+				t.Fatal(err)
+			}
+			value, err := mcptest.SchemaInstance(raw)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := schema.Validate(value); err != nil {
 				t.Fatalf("structuredContent does not match outputSchema: %v", err)
 			}
 		})
@@ -128,132 +115,15 @@ func TestReadFileOutputSchemaSeparatesMCPContentFromDomainContent(t *testing.T) 
 	}
 }
 
-func assertRequiredPropertiesExist(t *testing.T, path string, schema map[string]any) {
+func normalizeSchema(t *testing.T, schema any) map[string]any {
 	t.Helper()
-	if required, ok := schema["required"].([]any); ok {
-		properties, ok := schema["properties"].(map[string]any)
-		if !ok {
-			t.Fatalf("%s has required fields without properties", path)
-		}
-		for _, rawName := range required {
-			name, ok := rawName.(string)
-			if !ok {
-				t.Fatalf("%s has non-string required field %#v", path, rawName)
-			}
-			if _, ok := properties[name]; !ok {
-				t.Fatalf("%s requires missing property %q", path, name)
-			}
-		}
-	}
-	if properties, ok := schema["properties"].(map[string]any); ok {
-		for name, rawProperty := range properties {
-			property, ok := rawProperty.(map[string]any)
-			if !ok {
-				continue
-			}
-			assertRequiredPropertiesExist(t, path+"."+name, property)
-		}
-	}
-	if items, ok := schema["items"].(map[string]any); ok {
-		assertRequiredPropertiesExist(t, path+"[]", items)
-	}
-	if variants, ok := schema["oneOf"].([]any); ok {
-		for index, rawVariant := range variants {
-			assertRequiredPropertiesExist(t, fmt.Sprintf("%s.oneOf[%d]", path, index), rawVariant.(map[string]any))
-		}
-	}
-}
-
-func normalizeResultValue(t *testing.T, value any) any {
-	t.Helper()
-	raw, err := json.Marshal(value)
+	raw, err := json.Marshal(schema)
 	if err != nil {
 		t.Fatal(err)
 	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
-	var result any
-	if err := decoder.Decode(&result); err != nil {
+	var result map[string]any
+	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
 	return result
-}
-
-// validateProjectSchema implements only the schema subset emitted by this package's tests.
-func validateProjectSchema(schema map[string]any, value any) error {
-	if expected, ok := schema["const"]; ok && !reflect.DeepEqual(value, expected) {
-		return fmt.Errorf("value %#v does not equal const %#v", value, expected)
-	}
-	if variants, ok := schema["oneOf"].([]any); ok {
-		matches := 0
-		for _, rawVariant := range variants {
-			if validateProjectSchema(rawVariant.(map[string]any), value) == nil {
-				matches++
-			}
-		}
-		if matches != 1 {
-			return fmt.Errorf("value matched %d oneOf variants", matches)
-		}
-	}
-
-	switch schema["type"] {
-	case nil:
-		return nil
-	case "object":
-		object, ok := value.(map[string]any)
-		if !ok {
-			return fmt.Errorf("expected object, got %T", value)
-		}
-		properties, _ := schema["properties"].(map[string]any)
-		if required, ok := schema["required"].([]any); ok {
-			for _, rawName := range required {
-				name := rawName.(string)
-				if _, ok := object[name]; !ok {
-					return fmt.Errorf("missing required property %q", name)
-				}
-			}
-		}
-		for name, child := range object {
-			rawProperty, known := properties[name]
-			if !known {
-				if schema["additionalProperties"] == false {
-					return fmt.Errorf("unexpected property %q", name)
-				}
-				continue
-			}
-			if err := validateProjectSchema(rawProperty.(map[string]any), child); err != nil {
-				return fmt.Errorf("property %s: %w", name, err)
-			}
-		}
-	case "array":
-		array, ok := value.([]any)
-		if !ok {
-			return fmt.Errorf("expected array, got %T", value)
-		}
-		items := schema["items"].(map[string]any)
-		for index, item := range array {
-			if err := validateProjectSchema(items, item); err != nil {
-				return fmt.Errorf("item %d: %w", index, err)
-			}
-		}
-	case "string":
-		if _, ok := value.(string); !ok {
-			return fmt.Errorf("expected string, got %T", value)
-		}
-	case "boolean":
-		if _, ok := value.(bool); !ok {
-			return fmt.Errorf("expected boolean, got %T", value)
-		}
-	case "integer":
-		number, ok := value.(json.Number)
-		if !ok {
-			return fmt.Errorf("expected integer, got %T", value)
-		}
-		if _, err := number.Int64(); err != nil {
-			return fmt.Errorf("expected integer: %w", err)
-		}
-	default:
-		return fmt.Errorf("unsupported test schema type %#v", schema["type"])
-	}
-	return nil
 }

@@ -147,6 +147,15 @@ func supplyOpen(dir string) (*os.Root, error) {
 	return os.OpenRoot(abs)
 }
 
+const (
+	resourceModule    = "github.com/akavel/rsrc"
+	versionInfoModule = "github.com/josephspurrier/goversioninfo"
+	schemaModule      = "github.com/santhosh-tekuri/jsonschema/v6"
+	textModule        = "golang.org/x/text"
+	buildDependency   = "BUILD_DEPENDENCY_OF"
+	testDependency    = "TEST_DEPENDENCY_OF"
+)
+
 type supplyModule struct{ path, version, h1, modH1 string }
 
 // This parser intentionally accepts the current simple pinned module contract.
@@ -266,15 +275,15 @@ func supplyModules(mod, sums, vendor []byte) ([]supplyModule, error) {
 	if len(seen) != len(required) {
 		return nil, errors.New("missing vendored module")
 	}
-	if len(required) != 2 {
-		return nil, errors.New("reviewed build dependency graph changed")
+	// Keep already issued two-module bundles verifiable. A source graph with
+	// the schema gate must carry both reviewed test modules at their exact pins.
+	if required[resourceModule] == "" || required[versionInfoModule] == "" ||
+		(len(required) != 2 && (len(required) != 4 ||
+			required[schemaModule] != "v6.0.3" || required[textModule] != "v0.41.0")) {
+		return nil, errors.New("reviewed dependency graph changed")
 	}
 	var result []supplyModule
 	for module, value := range required {
-		// These are the reviewed build-only resource generators in this product.
-		if module != "github.com/akavel/rsrc" && module != "github.com/josephspurrier/goversioninfo" {
-			return nil, errors.New("dependency purpose requires review")
-		}
 		m := supplyModule{module, value, checks[module+" "+value], checks[module+" "+value+"/go.mod"]}
 		if m.h1 == "" || m.modH1 == "" {
 			return nil, errors.New("missing active module checksums")
@@ -314,19 +323,30 @@ func supplyDocuments(manifest candidateManifest, manifestHash, sourceTime string
 	}
 	packages := []any{map[string]any{"SPDXID": "SPDXRef-FlashGate", "name": "flashgate-mcp", "versionInfo": manifest.Version, "downloadLocation": projectURI, "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "GPL-3.0-only", "copyrightText": "NOASSERTION", "primaryPackagePurpose": "APPLICATION"}}
 	relations := []any{map[string]string{"spdxElementId": "SPDXRef-DOCUMENT", "relationshipType": "DESCRIBES", "relatedSpdxElement": "SPDXRef-FlashGate"}}
+	moduleIDs := make(map[string]string, len(modules))
 	for i, m := range modules {
 		id := fmt.Sprintf("SPDXRef-GoModule-%d", i+1)
-		packages = append(packages, map[string]any{"SPDXID": id, "name": m.path, "versionInfo": m.version, "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "primaryPackagePurpose": "LIBRARY", "comment": "Build-only Windows resource generator. Go module content h1: " + m.h1 + "; go.mod h1: " + m.modH1 + ". Go h1 is a normalized module directory checksum, not an archive SHA-256."})
-		relations = append(relations, map[string]string{"spdxElementId": id, "relationshipType": "BUILD_DEPENDENCY_OF", "relatedSpdxElement": "SPDXRef-FlashGate"})
+		moduleIDs[m.path] = id
+		purpose, relation := "Build-only Windows resource generator.", buildDependency
+		if m.path == schemaModule || m.path == textModule {
+			purpose, relation = "Test-only JSON Schema validation dependency.", testDependency
+		}
+		packages = append(packages, map[string]any{"SPDXID": id, "name": m.path, "versionInfo": m.version, "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "primaryPackagePurpose": "LIBRARY", "comment": purpose + " Go module content h1: " + m.h1 + "; go.mod h1: " + m.modH1 + ". Go h1 is a normalized module directory checksum, not an archive SHA-256."})
+		relations = append(relations, map[string]string{"spdxElementId": id, "relationshipType": relation, "relatedSpdxElement": "SPDXRef-FlashGate"})
 	}
-	relations = append(relations, map[string]string{"spdxElementId": "SPDXRef-GoModule-2", "relationshipType": "DEPENDS_ON", "relatedSpdxElement": "SPDXRef-GoModule-1"})
+	relations = append(relations, map[string]string{"spdxElementId": moduleIDs[versionInfoModule], "relationshipType": "DEPENDS_ON", "relatedSpdxElement": moduleIDs[resourceModule]})
+	inventoryPurpose := "Go build dependencies"
+	if moduleIDs[schemaModule] != "" {
+		relations = append(relations, map[string]string{"spdxElementId": moduleIDs[schemaModule], "relationshipType": "DEPENDS_ON", "relatedSpdxElement": moduleIDs[textModule]})
+		inventoryPurpose = "Go build and test dependencies"
+	}
 	for i, name := range []string{"assets/branding/fontawesome-bolt-lightning-solid.svg", "assets/branding/flashgate.ico"} {
 		id := fmt.Sprintf("SPDXRef-Branding-%d", i+1)
 		packages = append(packages, map[string]any{"SPDXID": id, "name": filepath.Base(name), "versionInfo": "Font-Awesome-Free-7.2.0", "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "CC-BY-4.0", "copyrightText": "Copyright 2026 Fonticons, Inc.", "primaryPackagePurpose": "SOURCE", "checksums": []any{map[string]string{"algorithm": "SHA256", "checksumValue": supplyDigest(inputs[name])}}, "comment": "Third-party branding asset; ICO is a repository-generated derivative used by Windows builds."})
 		relations = append(relations, map[string]string{"spdxElementId": "SPDXRef-FlashGate", "relationshipType": "CONTAINS", "relatedSpdxElement": id})
 	}
 	relations = append(relations, map[string]string{"spdxElementId": "SPDXRef-Branding-2", "relationshipType": "GENERATED_FROM", "relatedSpdxElement": "SPDXRef-Branding-1"})
-	sbom := map[string]any{"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT", "name": "FlashGate source dependency inventory", "documentNamespace": projectURI + "/sbom/" + manifest.SourceCommitSHA + "/" + manifestHash, "creationInfo": map[string]any{"creators": []string{"Tool: flashgate-releaseaudit"}, "created": sourceTime, "comment": "Deterministic source commit timestamp, not wall-clock generation or build invocation time."}, "documentComment": "Source inventory of active vendored Go build dependencies and third-party branding. Current server has no external Go runtime module dependency. Standard library, compiler, OS libraries, CI utilities and platform binary composition are not exhaustively inventoried. Carried go.sum includes retained test/historical checksum entries, which are not active vendored or shipped dependencies.", "packages": packages, "relationships": relations}
+	sbom := map[string]any{"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT", "name": "FlashGate source dependency inventory", "documentNamespace": projectURI + "/sbom/" + manifest.SourceCommitSHA + "/" + manifestHash, "creationInfo": map[string]any{"creators": []string{"Tool: flashgate-releaseaudit"}, "created": sourceTime, "comment": "Deterministic source commit timestamp, not wall-clock generation or build invocation time."}, "documentComment": "Source inventory of active vendored " + inventoryPurpose + " and third-party branding. Current server has no external Go runtime module dependency. Standard library, compiler, OS libraries, CI utilities and platform binary composition are not exhaustively inventoried. Carried go.sum includes retained test/historical checksum entries, which are not active vendored or shipped dependencies.", "packages": packages, "relationships": relations}
 	files[sbomName], err = supplyJSON(sbom)
 	if err != nil {
 		return nil, index, err

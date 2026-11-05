@@ -137,15 +137,18 @@ func classifySecurityModules(sbom, mod []byte) ([]securityModule, error) {
 		return nil, errors.New("SPDX_MODULE_MISSING")
 	}
 	edges := map[string][]string{}
-	build, runtime := map[string]bool{}, map[string]bool{}
+	build, test, runtime := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, r := range doc.Relationships {
 		from, to := ids[r.From], ids[r.To]
 		if r.Type == "DEPENDS_ON" && from != "" && to != "" {
 			edges[from] = append(edges[from], to)
 		}
 		if r.To == "SPDXRef-FlashGate" && from != "" {
-			if r.Type == "BUILD_DEPENDENCY_OF" {
+			if r.Type == buildDependency {
 				build[from] = true
+			}
+			if r.Type == testDependency {
+				test[from] = true
 			}
 			if r.Type == "RUNTIME_DEPENDENCY_OF" || r.Type == "DEPENDENCY_OF" {
 				runtime[from] = true
@@ -175,11 +178,13 @@ func classifySecurityModules(sbom, mod []byte) ([]securityModule, error) {
 		if m.Dependency == "INDIRECT" && !reached[name] || m.Dependency == "DIRECT" && reached[name] {
 			return nil, errors.New("SOURCE_RELATIONSHIP_CONFLICT")
 		}
-		if build[name] && !runtime[name] {
-			m.Exposure = "BUILD"
-		}
-		if runtime[name] {
+		switch {
+		case runtime[name]:
 			m.Exposure = "RUNTIME"
+		case build[name]:
+			m.Exposure = "BUILD"
+		case test[name]:
+			m.Exposure = "TEST"
 		}
 		result = append(result, m)
 	}
