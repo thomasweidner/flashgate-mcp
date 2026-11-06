@@ -488,8 +488,8 @@ go build -o build/flashgate-mcp ./cmd/server
 ```
 
 On Windows, use `go build -o build/flashgate-mcp.exe ./cmd/server`.
-Direct development builds report `0.0.0-dev`. Controlled builds and release
-identity use root [VERSION](VERSION); see [build metadata](docs/build-metadata.md).
+Direct and default script builds report `0.0.0-dev`. Verified candidates and
+releases use root [VERSION](VERSION). See [build metadata](docs/build-metadata.md).
 The repository is `thomasweidner/flashgate-mcp`, the Go module is
 `github.com/thomasweidner/flashgate-mcp`, the executable is `flashgate-mcp`,
 and MCP `serverInfo.name` is `flashgate`. The project maintains its own Go MCP

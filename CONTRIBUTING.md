@@ -77,27 +77,17 @@ Payload-heavy content must not be duplicated merely for convenience. Optional ac
 
 ## Product versioning
 
-A merge that adds a new externally observable FlashGate product capability, tool,
-protocol behavior, or other user-visible function must update the root `VERSION`
-in the same merge. Before Version 1.0, new product capability increments
-the SemVer minor component and resets patch to zero; a compatible product bug fix
-increments patch. A deliberate breaking pre-1.0 product change uses a new minor
-version together with the required changelog and migration notes. After Version
-1.0, normal SemVer major/minor/patch rules apply.
+Merge features and fixes with root `VERSION` unchanged. Record notable changes
+under `[Unreleased]` in `CHANGELOG.md`. Use Added for new public features and
+Breaking Changes for deliberate incompatibilities. Describe disabled or
+internal work according to its actual availability.
 
-Documentation-only, test-only, planning-only, and behavior-neutral refactoring
-changes do not require a product-version increment. Root `VERSION` is the one
-editable product-version source. `CHANGELOG.md` is the narrative release-notes
-source. Every `VERSION` change must create or update exactly one nonempty
-`## [<VERSION>]` section in the same change and place that version's notes there;
-version-specific notes must not remain only under `[Unreleased]`. An introduced
-but unpublished product version may use an undated version heading until
-preparation for public candidate freeze. `[Unreleased]`
-is reserved for notable changes not yet assigned to a product version. A public
-release requires the existing section dated as `## [<VERSION>] - YYYY-MM-DD`
-and the exact `v<VERSION>` tag on the built commit plus a clean working tree. A tag
-is parity evidence, not the product-version source. Ordinary direct `go build`
-remains `0.0.0-dev`; explicit build versions are for metadata validation fixtures.
+Only separately authorized release preparation assigns a new `VERSION`.
+Use MINOR for new public functionality, PATCH for compatible maintenance
+fixes, and a new MINOR for deliberate incompatibilities before 1.0. Include
+applicable migration notes. From 1.0 onward, apply SemVer major/minor/patch
+rules. See [build metadata](docs/build-metadata.md#product-versioning-policy) for the
+freeze procedure and maintenance-line rules.
 
 Planned public pre-1.0 GitHub prereleases belong to BL-363, after BL-255
 candidate verification/local promotion and BL-262 evidence; stable Version 1.0
@@ -108,13 +98,12 @@ Only an intentionally separate candidate version uses a suffix such as
 `0.4.0-rc.1`; then VERSION, `v0.4.0-rc.1`, the changelog version section and
 artifact names all carry it. A publisher never invents a version or suffix.
 
-For a public candidate, finalize release-relevant source bytes, including
-VERSION and the dated changelog version entry, before candidate freeze. The
-date is the intended release date and does not prove publication. Freeze
-binds SourceCommitSHA and ArtifactSHA256; `v<VERSION>` must target exactly that
-commit. Later identity-relevant edits, including a changed release date,
-require a new candidate build and verification. Publication consumes only
-those verified bytes and notes from that commit's canonical CHANGELOG.md.
+Finalize release-relevant source before candidate verification. The freeze
+commit assigns VERSION and introduces the matching dated notes while retaining
+Unreleased. Candidate verification binds SourceCommitSHA and ArtifactSHA256.
+The separately authorized `v<VERSION>` tag targets that exact commit. Publication
+consumes only verified bytes and notes. Once the version is tagged, any changed
+release requires a new version.
 
 
 ## Documentation changes

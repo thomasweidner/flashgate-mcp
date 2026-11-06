@@ -176,7 +176,10 @@ flashgate_read_repository_version "$root_path" ||
     fail "invalid or missing repository VERSION"
 repository_version="$FLASHGATE_REPOSITORY_VERSION"
 if [[ -z "$version" ]]; then
-    version="$repository_version"
+    version="0.0.0-dev"
+    if [[ "$release" == true ]]; then
+        version="$repository_version"
+    fi
 fi
 
 flashgate_validate_semver "$version" || fail "invalid semantic version: $version"
@@ -189,7 +192,7 @@ if [[ "$release" == true ]]; then
     git -C "$root_path" tag --points-at HEAD | grep -Fxq -- "$expected_tag" ||
         fail "release builds require exact tag '$expected_tag' on HEAD"
     go -C "$root_path" run -mod=vendor ./cmd/releaseaudit source \
-        --root "$root_path" --release >/dev/null ||
+        --root "$root_path" --release --tagged-freeze >/dev/null ||
         fail "release notes source validation failed"
 fi
 

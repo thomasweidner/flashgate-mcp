@@ -77,11 +77,13 @@ authorized historical normalization controls. Implementation, independent review
 and public normalization acceptance are complete; this documentation authorizes
 no further provider action.
 
-1. Finalize canonical VERSION and its nonempty dated CHANGELOG section before
-   candidate freeze. The date records intended publication, not its completion.
-   Under BL-245, release tooling alone does not increment the product version.
-2. Integrate those source bytes through the separately authorized Git process.
-   Reverify the exact current main commit through current-version-candidate.yml.
+1. Assign VERSION and introduce its nonempty dated CHANGELOG section in the
+   exact [release freeze](build-metadata.md#product-versioning-policy). The
+   date records intended publication. Release preparation is separately authorized.
+2. Verify that exact untagged commit through current-version-candidate.yml.
+   Use the candidate PR or a dispatch while the freeze is the current main SHA.
+   For a maintenance PATCH, use the isolated maintenance line and verify its full
+   delta from the previous release tag.
    Obtain the complete four-target evidence bundle and independently trusted
    manifest/index SHA-256 values from its reviewed run evidence. Never derive
    trust solely from hashes read from an untrusted downloaded bundle.

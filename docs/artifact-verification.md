@@ -157,19 +157,14 @@ verified uploaded assets. Local validation establishes no hosted publication.
 
 ### Current validation evidence
 
-BL-255 adds a current-version candidate workflow on pull requests to `main`.
-It compares root `VERSION` at the exact PR head with the event-bound base and
-skips the matrix when unchanged only if the candidate workflow already exists
-in that exact base commit. A missing base workflow enables the bootstrap matrix
-for the first PR introducing this lane; an existence-query error fails closed.
-An input-free `workflow_dispatch` on `refs/heads/main` always reverifies root
-`VERSION` at the validated current main commit, so finalized notes/date can be
-verified again without changing the version. Non-main branch and tag dispatches
-are skipped before checkout. Every dispatch job explicitly checks out main;
-a main SHA change between jobs fails closed. Both paths share the same
-record/manifest and BL-248 gates. For later BL-363 reverification, the finalized
-source must first be the current main state. A changed PR version, bootstrap PR or dispatch requires the four Windows/
-Linux x64/ARM64 targets. Each target runs the existing BL-248 platform verifier,
+The candidate workflow compares root `VERSION` at the exact PR head with the
+event-bound main or maintenance base. If VERSION is unchanged, the workflow
+validates the development changelog. A changed VERSION or an input-free dispatch
+on main requires the exact [release freeze](build-metadata.md#product-versioning-policy).
+The manual run checks out main and binds it to the event SHA before verifying
+source. Main movement between jobs fails the run. Non-main and tag dispatches
+skip before checkout. A valid untagged freeze enables the four Windows and Linux
+x64/ARM64 targets. Each target runs the existing BL-248 platform verifier,
 independent second build, `releaseaudit compare`, and `releaseaudit scan` before
 uploading its archive, sibling checksum, verifier output, audit reports, and
 strict target record as transient Actions evidence. A final job assembles a
