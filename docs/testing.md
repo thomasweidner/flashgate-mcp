@@ -191,6 +191,17 @@ On Windows, the build command is usually:
 go build -o build/flashgate-mcp.exe ./cmd/server
 ```
 
+### MCP conformance CI gate
+
+The Windows and Linux test jobs run `go run -mod=vendor ./cmd/mcpcheck`
+with a fresh `-report` path under the runner's temporary directory. This
+blocking step checks schema and catalog parity, exact snapshot bytes, and
+required executable evidence. The separate coverage step still runs the
+complete test suite. `TestMCPWorkflowPolicy` checks that CI runs the focused
+gate on both platforms with the compare-only command and propagates failure.
+Use the [MCP conformance guide](mcp-conformance.md) for local reproduction
+and intentional contract updates.
+
 ## Native Linux validation
 
 Run Linux validation from a native Linux checkout on a native filesystem. A
