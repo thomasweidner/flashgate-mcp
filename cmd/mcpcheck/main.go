@@ -42,6 +42,8 @@ var requiredNativeFamilies = []string{
 	"TestStatelessCandidateWire", "TestStatelessMetadataAndProductionGate",
 }
 
+const nativeTestPattern = "Test(MCPConformance|Stateless|ProtocolRevision|Filesystem.*Wire|ToolsListWire)"
+
 func main() {
 	report := flag.String("report", "", "new output Markdown path outside the source tree (required)")
 	flag.Parse()
@@ -182,7 +184,7 @@ func run(reportPath string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	command := exec.CommandContext(ctx, "go", "test", "-mod=vendor", "-count=1", "-json", "./cmd/server", "-run", "Test(MCPConformance|Stateless|ProtocolRevision|Filesystem.*Wire|ToolsListWire)")
+	command := exec.CommandContext(ctx, "go", "test", "-mod=vendor", "-count=1", "-json", "./cmd/server", "-run", nativeTestPattern, "-skip=^$")
 	command.WaitDelay = time.Second
 	var stdout, stderr bytes.Buffer
 	command.Stdout, command.Stderr = &stdout, &stderr
@@ -205,9 +207,8 @@ func run(reportPath string) error {
 		return errors.New("source changed during conformance validation")
 	}
 	var report strings.Builder
-	fmt.Fprintf(&report, "# MCP conformance validation\n\nNative contracts: PASS. Official suite: NOT_RUN. Full MCP conformance is not claimed.\n\nSource HEAD: `%s`\n\nSource inventory SHA-256: `%s` (Git tracked and nonignored new source bytes).\n\nUpstream conformance commit: `%s`. Requirements are pinned per revision; 2025-11-25 is a reconstruction, 2026-07-28 is the frozen release set.\n\n", strings.TrimSpace(string(head)), before, requirements.UpstreamCommit)
-	fmt.Fprintln(&report, "Production: 2025-11-25 only. Candidate: 2026-07-28 under injected test policy only. Profiles: default and read-only. Capabilities: tools only; no extensions, resources, prompts or change stream. Exact tool sets and counts are derived from the validated snapshots below.")
-	fmt.Fprintln(&report, "\n## Native evidence\n\nCommand: `go test -mod=vendor -count=1 -json ./cmd/server -run 'Test(MCPConformance|Stateless|ProtocolRevision|Filesystem.*Wire|ToolsListWire)'`.\n\nThe adjacent `.tests.jsonl` file is the actual Go test evidence. PASS requires no failed/skipped tests and all mandatory contract families. This report does not establish the repository-wide, platform, coverage or independent review gates.")
+	fmt.Fprintf(&report, "# MCP conformance validation\n\nNative contracts: PASS. Official suite: NOT_RUN. Full MCP conformance is not claimed.\n\nSource HEAD: `%s`\n\nSource inventory SHA-256: `%s` (Git tracked and nonignored new source bytes).\n\nUpstream conformance commit: `%s`. Requirements are pinned per revision.\n", strings.TrimSpace(string(head)), before, requirements.UpstreamCommit)
+	fmt.Fprintf(&report, "\n## Native evidence\n\nCommand: `go test -mod=vendor -count=1 -json ./cmd/server -run '%s' -skip=^$`.\n\nThe adjacent `.tests.jsonl` file is the actual Go test evidence. PASS requires every mandatory family and snapshot matrix row to pass, with no failed or skipped tests.\n", nativeTestPattern)
 	names := make([]string, 0, len(results))
 	for name := range results {
 		names = append(names, name)
@@ -228,21 +229,11 @@ func run(reportPath string) error {
 		}
 		fmt.Fprintf(&report, "\n- `%s`: `%x`", filepath.ToSlash(path), sha256.Sum256(data))
 		if filepath.Base(path) != "official-requirements.json" {
-			var snapshot struct {
-				Revision    string `json:"revision"`
-				Profile     string `json:"profile"`
-				Definitions []struct {
-					Name string `json:"name"`
-				} `json:"definitions"`
-			}
-			if err := json.Unmarshal(data, &snapshot); err != nil {
+			evidence, err := snapshotEvidence(path, data, results)
+			if err != nil {
 				return err
 			}
-			toolNames := make([]string, 0, len(snapshot.Definitions))
-			for _, definition := range snapshot.Definitions {
-				toolNames = append(toolNames, definition.Name)
-			}
-			fmt.Fprintf(&report, "; %s / %s: %d tools (%s)", snapshot.Revision, snapshot.Profile, len(toolNames), strings.Join(toolNames, ", "))
+			fmt.Fprint(&report, evidence)
 		}
 	}
 	fmt.Fprintln(&report, "\n\n## Official server requirements\n\nOfficial execution is NOT_RUN: the runner uses HTTP and named reference-fixture behaviors. No installation or HTTP bridge was used. NOT_APPLICABLE below describes absent transports/capabilities, not a suite PASS. Native coverage names indicate partial equivalent contracts, never execution of an official scenario. Client-leg scenarios are NOT_APPLICABLE to this server.\n\n| Revision | Scenario | Scoring | Applicability | Official | Native coverage / reason |\n|---|---|---|---|---|---|")
@@ -256,8 +247,34 @@ func run(reportPath string) error {
 		}
 		fmt.Fprintf(&report, "| %s | %s | %s %s | %s | %s | %s |\n", row.Revision, row.Scenario, row.Scoring, row.UpstreamReason, row.Applicability, row.OfficialStatus, coverage)
 	}
-	fmt.Fprintln(&report, "\n## Limitations\n\nThe official suite was not executed. Legacy ping is not registered; that applicable existing gap prevents any full-conformance claim. The native run includes offline Draft 2020-12 tool schema and instance checks. Fingerprints/cache semantics remain BL-219; dedicated CI drift enforcement remains BL-257. Candidate production activation still requires all its owner gates. No release approval or independent terminal review is implied.")
+	fmt.Fprintln(&report, "\n## Limitations\n\nThe official suite was not executed. See the requirement mapping above for applicability and known gaps. The native run includes offline Draft 2020-12 tool schema and instance checks. Repository-wide, platform, coverage, release, and independent review gates remain separate.")
 	return writeNew(absolute, []byte(report.String()))
+}
+
+func snapshotEvidence(path string, data []byte, results map[string]string) (string, error) {
+	var snapshot struct {
+		Revision    string `json:"revision"`
+		Profile     string `json:"profile"`
+		Definitions []struct {
+			Name string `json:"name"`
+		} `json:"definitions"`
+	}
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		return "", fmt.Errorf("%s: %w", path, err)
+	}
+	if snapshot.Revision == "" || snapshot.Profile == "" ||
+		filepath.Base(path) != snapshot.Revision+"-"+snapshot.Profile+".json" {
+		return "", fmt.Errorf("snapshot identity differs from matrix filename: %s", path)
+	}
+	name := "TestMCPConformanceSnapshots/" + snapshot.Revision + "/" + snapshot.Profile
+	if results[name] != "PASS" {
+		return "", fmt.Errorf("missing native contract evidence: %s", name)
+	}
+	toolNames := make([]string, 0, len(snapshot.Definitions))
+	for _, definition := range snapshot.Definitions {
+		toolNames = append(toolNames, definition.Name)
+	}
+	return fmt.Sprintf("; %s / %s: %d tools (%s)", snapshot.Revision, snapshot.Profile, len(toolNames), strings.Join(toolNames, ", ")), nil
 }
 
 func writeNew(path string, data []byte) error {

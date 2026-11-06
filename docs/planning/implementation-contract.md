@@ -129,6 +129,27 @@ Windows/native Linux, CI/coverage, documentation and independent terminal
 review gates. Record the support decision and actual result in BL-371; do not
 claim full official conformance or change BL-204's already reviewed bytes.
 
+## BL-257 CI enforcement binding
+
+BL-257 owns the blocking test and release-quality gate in SPR-048. It
+consumes the completed BL-204 and BL-212 contracts through the existing
+`cmd/mcpcheck` runner, server registry, catalog, and conformance matrix.
+Retrofit the Windows and Linux CI test job and its workflow policy tests.
+Keep the broad test and coverage jobs in place for their separate guarantees.
+
+Require executed snapshot evidence for every declared revision/profile
+combination, complete tool success and denial cases, schema and catalog
+parity, and no missing, failed, or skipped required evidence. The feature
+owner extends these contracts for future revisions, profiles, capabilities,
+tools, and parameters while the CI command stays stable. The gate tests
+implemented contracts. Coverage of specification requirements still needs
+owner assertions and independent review of intentional contract diffs.
+
+Acceptance requires positive and negative tests, both platform quality
+chains, and independent terminal review before Git integration. Snapshot
+updates remain explicit. This gate makes no product, activation, version,
+migration, or security-policy change and produces only temporary CI evidence.
+
 ## Inherited contract families
 
 | Family and BL binding | Required reuse, target boundary, and retrofit |

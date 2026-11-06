@@ -230,6 +230,21 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Check MCP conformance and snapshots
+        shell: bash
+        run: go run -mod=vendor ./cmd/mcpcheck -report "$RUNNER_TEMP/mcp-conformance.md"
+
+      - name: Upload MCP conformance evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: mcp-conformance-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/mcp-conformance.md
+            ${{ runner.temp }}/mcp-conformance.md.tests.jsonl
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Test with coverage
         shell: pwsh
         run: ./scripts/Test-GoCoverage.ps1 -PlatformName '${{ matrix.platform }}' -MinimumCoverage ${{ matrix.minimum_coverage }}

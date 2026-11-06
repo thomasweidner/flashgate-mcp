@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -28,6 +29,23 @@ var updateMCPSnapshots = flag.Bool("update-mcp-snapshots", false, "explicitly re
 // Effective profiles added by BL-110 must extend this shared snapshot matrix.
 var mcpConformanceVersions = []string{protocol.ProtocolVersion, revision.Stateless}
 var mcpConformanceProfiles = []string{"default", "read-only"}
+
+func mcpCandidatePolicy() revision.Policy {
+	return revision.NewPolicy(append(revision.ProductionPolicy().Supported(), revision.Stateless)...)
+}
+
+func mcpMatrixCoverage(versions, profiles []string) error {
+	policyVersions := mcpCandidatePolicy().Supported()
+	if !slices.Equal(slices.Sorted(slices.Values(versions)), policyVersions) {
+		return fmt.Errorf("snapshot revisions %v must cover production and candidate policy revisions %v exactly once", versions, policyVersions)
+	}
+	// These are the two startup modes selected by MCP_READ_ONLY. The owner
+	// of effective profiles must bind that replacement selector here.
+	if !slices.Equal(slices.Sorted(slices.Values(profiles)), []string{"default", "read-only"}) {
+		return fmt.Errorf("snapshot profiles %v must cover both startup modes exactly once", profiles)
+	}
+	return nil
+}
 
 // Each entry is executable functional coverage, independent of snapshot updates.
 // A new registration requires an explicit success and security case here.
@@ -69,7 +87,7 @@ func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
 	if !candidate {
 		return createRouter("flashgate", "conformance-fixture", registry)
 	}
-	r := router.NewWithPolicy("flashgate", "conformance-fixture", revision.NewPolicy(protocol.ProtocolVersion, revision.Stateless))
+	r := router.NewWithPolicy("flashgate", "conformance-fixture", mcpCandidatePolicy())
 	r.Register(initialize.NewHandler("flashgate", "conformance-fixture"))
 	r.Register(tools.NewListHandler(registry))
 	r.Register(tools.NewCallHandler(registry))
@@ -231,6 +249,9 @@ func mcpDefinitions(registry *tools.Registry) []protocol.Tool {
 }
 
 func TestMCPConformanceSnapshots(t *testing.T) {
+	if err := mcpMatrixCoverage(mcpConformanceVersions, mcpConformanceProfiles); err != nil {
+		t.Fatal(err)
+	}
 	cases := mcpToolCases()
 	for _, version := range mcpConformanceVersions {
 		for _, profile := range mcpConformanceProfiles {
@@ -417,6 +438,23 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 	t.Run("profile-drift", func(t *testing.T) {
 		if mcpInventory(definitions, mcpToolCases(), true) == nil {
 			t.Fatal("write tools escaped read-only profile gate")
+		}
+	})
+	t.Run("incomplete-matrix", func(t *testing.T) {
+		for _, test := range []struct {
+			versions, profiles []string
+		}{
+			{[]string{protocol.ProtocolVersion}, mcpConformanceProfiles},
+			{[]string{revision.Stateless}, mcpConformanceProfiles},
+			{[]string{protocol.ProtocolVersion, "future"}, mcpConformanceProfiles},
+			{mcpConformanceVersions, []string{"default"}},
+			{mcpConformanceVersions, []string{"read-only"}},
+			{mcpConformanceVersions, []string{"default", "default"}},
+			{mcpConformanceVersions, []string{"default", "unknown"}},
+		} {
+			if mcpMatrixCoverage(test.versions, test.profiles) == nil {
+				t.Fatalf("incomplete revision/profile matrix accepted: %v / %v", test.versions, test.profiles)
+			}
 		}
 	})
 	t.Run("missing-tool", func(t *testing.T) {

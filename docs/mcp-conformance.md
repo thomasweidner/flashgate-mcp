@@ -12,15 +12,21 @@ From the repository root:
 
 ```bash
 go test -mod=vendor ./cmd/server ./cmd/mcpcheck -run 'Test(MCPConformance|Report|Stateless|ProtocolRevision|Filesystem.*Wire|ToolsListWire)' -count=1
-go run ./cmd/mcpcheck -report /absolute/output-directory/mcp-conformance.md
+go run -mod=vendor ./cmd/mcpcheck -report /absolute/output-directory/mcp-conformance.md
 ```
 
 For the report, supply an existing caller-controlled directory outside the
 source tree; Windows callers use an absolute Windows path. Both the Markdown
 output and adjacent `.tests.jsonl` log paths must be new. The tool runs focused
-server tests, rejects failures, skips, missing mandatory families and source
-drift, then writes the report. A failed run can leave its actual JSON log but
-writes no PASS report. Source must remain quiescent during validation.
+server tests and requires passing evidence for every mandatory family and
+every snapshot revision/profile row. It rejects failures, skips, missing
+evidence, and source drift. A failed run can leave its actual JSON log.
+Source must remain quiescent during validation.
+
+The Windows and Linux CI test jobs run this command as a blocking step for
+pushes and pull requests to `main`. Each runner writes the report and log
+under `RUNNER_TEMP` and retains available evidence for 14 days. CI compares
+snapshot bytes and never supplies the explicit update flag.
 
 The report binds HEAD, a deterministic hash of tracked and nonignored source
 bytes, snapshot hashes, individual tests and official requirement mappings.
@@ -48,10 +54,17 @@ git diff -- cmd/server/testdata/mcp
 ```
 
 Review the complete diff, including new untracked snapshots, then rerun normal
-tests without the flag. New tool owners add functional success/security cases
-to `mcpToolCases`, update affected snapshots and the catalog, and extend exact
-revision coverage. This does not reopen BL-204. Updating snapshots cannot
-satisfy missing executable cases or approve capabilities/profiles/revisions.
+tests without the flag. Tool owners add functional success and denial cases
+to `mcpToolCases`, add assertions for new or changed parameter semantics, and
+update the catalog and affected snapshots. Capability, profile, and revision
+owners extend the existing discovery, revision/profile matrix, and wire
+contracts, including a snapshot for every supported combination. The CI entry
+point stays the same. Runtime and test declarations establish what the gate
+can verify. Feature specifications and independent review establish whether
+the declarations and assertions cover the intended behavior.
+
+An intentional snapshot update requires independent review of the diff.
+A technical PASS records executed coverage and accepted byte parity.
 `docs/mcp-tool-catalog.json` remains the product catalog; snapshots are test
 baselines of runtime/wire behavior, not another product catalog.
 
@@ -119,6 +132,5 @@ Absent resources, prompts, completion, Tasks, media, MRTR and HTTP/SSE behavior
 is explicitly classified. Legacy `ping` is an applicable existing gap: it is
 not registered, and no native PASS is reported for it. BL-204 does not silently
 add a product method. Fingerprints/cache semantics remain BL-219,
-dedicated CI drift enforcement BL-257,
 general release reporting BL-369 and HTTP transport BL-370. Snapshot success
 does not activate the candidate or close those owners.
