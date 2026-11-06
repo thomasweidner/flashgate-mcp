@@ -112,11 +112,10 @@ Leave `2026-07-28` disabled in production and keep valid enabled-revision
 `ping` calls rejected as method-not-found (`-32601`). Do not add any
 `tools/list` entry, network/ICMP probe, automatic heartbeat, external MCP SDK,
 new dependency or protocol matrix entry. This registration-only change leaves
-`VERSION` and `CHANGELOG.md` unchanged. If the later BL-371 handler introduces
-externally observable MCP behavior, its implementation must update the canonical
-`VERSION` and corresponding versioned `CHANGELOG.md` section in the same
-change under BL-245 and `CONTRIBUTING.md`. Subsequent candidate verification
-and release/publication gates remain separately applicable and authorized.
+`VERSION` and `CHANGELOG.md` unchanged. Record externally observable behavior
+from the later BL-371 handler under Unreleased. The
+[BL-372 binding](#bl-372-release-oriented-product-versioning) governs later
+release preparation and verification.
 
 **Safety, tests and closure.** Honor the real revision request-params contract,
 including valid optional metadata; reject malformed inputs through the existing
@@ -149,6 +148,26 @@ Acceptance requires positive and negative tests, both platform quality
 chains, and independent terminal review before Git integration. Snapshot
 updates remain explicit. This gate makes no product, activation, version,
 migration, or security-policy change and produces only temporary CI evidence.
+
+## BL-372 release-oriented product versioning
+
+BL-372 owns release governance and test controls in SPR-048. It reuses the
+BL-245 VERSION, changelog and tag contract, BL-248 artifact verification,
+BL-255 candidate and promotion identity, BL-262 supply-chain evidence, and
+BL-363/364 publication and distribution controls.
+
+Retrofit both build scripts, the candidate and tagged build workflows and
+their releaseaudit gates. Ordinary development builds use `0.0.0-dev` with
+existing provenance. Notable changes accumulate in Unreleased. A separately
+authorized freeze changes VERSION and adds dated, nonempty notes on the
+exact candidate commit. A PATCH from an older release uses an isolated
+maintenance line when main contains new public features.
+
+Acceptance covers consecutive development changes, MINOR and PATCH freezes,
+malformed notes, development artifact rejection, and published identity
+reuse, with Windows and native Linux validation and independent review.
+VERSION remains 0.3.0. Publication, tag creation and provider writes require
+separate authorization. The published v0.3.0 identity is retained.
 
 ## Inherited contract families
 

@@ -12,6 +12,7 @@ permissions:
 jobs:
   prepare:
     name: Validate release source
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.release.outputs.version }}
@@ -46,13 +47,13 @@ jobs:
           version="$FLASHGATE_REPOSITORY_VERSION"
           expected_tag="v$version"
 
-          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            [[ "$GITHUB_REF_NAME" == "$expected_tag" ]]
-          fi
+          [[ "$GITHUB_REF_TYPE" == 'tag' ]]
+          [[ "$GITHUB_REF_NAME" == "$expected_tag" ]]
+          [[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]
 
           mkdir -p build/audit
           go -C . run -mod=vendor ./cmd/releaseaudit source \
-            --root "$PWD" --release \
+            --root "$PWD" --release --tagged-freeze \
             --report build/audit/release-source.json \
             --notes-output build/audit/release-notes.md
 

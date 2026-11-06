@@ -54,9 +54,13 @@ func validateReleaseWorkflow(contents string) error {
 		"  workflow_dispatch:",
 		"permissions:\n  contents: read\n",
 		"flashgate_read_repository_version",
+		"if: github.ref_type == 'tag'",
 		"go -C . run -mod=vendor ./cmd/releaseaudit source",
+		"--release --tagged-freeze",
 		"git tag --points-at HEAD",
+		`[[ "$GITHUB_REF_TYPE" == 'tag' ]]`,
 		`[[ "$GITHUB_REF_NAME" == "$expected_tag" ]]`,
+		`[[ "$(git rev-parse HEAD)" == "$GITHUB_SHA" ]]`,
 		"status --porcelain=v1 --untracked-files=all",
 	}
 	for _, item := range required {
@@ -98,6 +102,8 @@ func TestReleaseWorkflowPolicy(t *testing.T) {
 		{"free version", "  workflow_dispatch:\n", "  workflow_dispatch:\n    inputs:\n      version:\n"},
 		{"tag version", "flashgate_read_repository_version", "GITHUB_REF_NAME#v"},
 		{"source gate", "go -C . run -mod=vendor ./cmd/releaseaudit source", "echo no-source-gate"},
+		{"missing freeze", "--release --tagged-freeze", "--release"},
+		{"branch dispatch", "if: github.ref_type == 'tag'", "if: true"},
 		{"tag gate", "git tag --points-at HEAD", "echo no-tag-gate"},
 		{"clean tree gate", "git status --porcelain=v1 --untracked-files=all", "echo no-clean-tree-gate"},
 	}
@@ -125,9 +131,14 @@ func validateCandidateWorkflow(contents string) error {
 		"CANDIDATE_COMMIT: ${{ github.event.pull_request.head.sha }}",
 		"[[ \"$CANDIDATE_REF\" == 'refs/heads/main' && \"$CANDIDATE_REF_TYPE\" == 'branch' ]]",
 		"CANDIDATE_COMMIT=\"$(git rev-parse refs/remotes/origin/main^{commit})\"",
-		"if [[ \"$CANDIDATE_EVENT\" == 'workflow_dispatch' ]]; then\n            echo 'run_candidate=true' >> \"$GITHUB_OUTPUT\"\n            echo 'Explicit current-version reverification at the validated current main commit.' >> \"$GITHUB_STEP_SUMMARY\"\n            exit 0\n          fi\n          [[ \"$CANDIDATE_EVENT\" == 'pull_request' ]]",
+		"DISPATCH_COMMIT: ${{ github.sha }}",
+		`[[ "$CANDIDATE_COMMIT" == "$DISPATCH_COMMIT" ]]`,
+		"if [[ \"$CANDIDATE_EVENT\" == 'workflow_dispatch' ]]; then\n            echo 'run_candidate=true' >> \"$GITHUB_OUTPUT\"",
+		"            exit 0\n          fi\n          [[ \"$CANDIDATE_EVENT\" == 'pull_request' ]]",
 
-		"  pull_request:\n    branches:\n      - main",
+		"  pull_request:\n    branches:\n      - main\n      - 'maintenance/*'",
+		`[[ "$PR_BASE_REF" == 'main' || "$PR_BASE_REF" =~ ^maintenance/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]`,
+		`[[ "$version" == "${PR_BASE_REF#maintenance/}."* ]]`,
 		"permissions:\n  contents: read\n",
 		"  workflow_dispatch:\n  pull_request:",
 		"[[ \"$(git rev-parse HEAD)\" == \"$CANDIDATE_COMMIT\" ]]",
@@ -135,7 +146,8 @@ func validateCandidateWorkflow(contents string) error {
 		"github.event.pull_request.base.ref",
 		"github.event.pull_request.base.sha",
 		"git rev-parse \"$base^{commit}\"",
-		"if git diff --quiet \"$base\" HEAD -- VERSION; then\n            base_workflow=\"$(git ls-tree --full-tree --name-only \"$base\" -- .github/workflows/current-version-candidate.yml)\"\n            if [[ -n \"$base_workflow\" ]]; then\n              [[ \"$base_workflow\" == '.github/workflows/current-version-candidate.yml' ]]\n              echo 'run_candidate=false' >> \"$GITHUB_OUTPUT\"\n              echo 'VERSION unchanged and candidate workflow exists in exact base; matrix skipped.' >> \"$GITHUB_STEP_SUMMARY\"\n              exit 0\n            fi\n            echo 'Candidate workflow absent from exact base; bootstrap matrix required.' >> \"$GITHUB_STEP_SUMMARY\"",
+		"if git diff --quiet \"$base\" HEAD -- VERSION; then\n            echo 'run_candidate=false' >> \"$GITHUB_OUTPUT\"",
+		"if: steps.candidate.outputs.run_candidate == 'false'\n        shell: bash\n        run: go -C . run -mod=vendor ./cmd/releaseaudit source --root \"$PWD\"\n",
 		"run_candidate=true",
 		"status=$?\n            [[ \"$status\" -eq 1 ]] || exit \"$status\"\n          fi\n          echo 'run_candidate=true'",
 		"if: needs.prepare.outputs.run_candidate == 'true'",
@@ -236,43 +248,39 @@ func TestCandidateEventGateExecution(t *testing.T) {
       else printf '%s\n' "$PR_BASE_SHA"; fi ;;
     status) [[ "$DIRTY" == false ]] || printf ' M VERSION\n' ;;
     diff) return "$DIFF_STATUS" ;;
-    ls-tree)
-      [[ "$2" == --full-tree && "$3" == --name-only && "$4" == "$PR_BASE_SHA" && "$5" == -- && "$6" == .github/workflows/current-version-candidate.yml ]] || return 99
-      if [[ "$WORKFLOW_STATUS" != 0 ]]; then return "$WORKFLOW_STATUS"; fi
-      [[ -z "$BASE_WORKFLOW" ]] || printf '%s\n' "$BASE_WORKFLOW"
-      return 0 ;;
     *) return 99 ;;
   esac
 }
 `
 	for _, tc := range []struct {
-		name, event, diff, head, base, dirty, workflow, workflowStatus, want string
-		fail                                                                 bool
+		name, event, diff, head, base, dirty, want string
+		fail                                       bool
 	}{
-		{"dispatch unchanged", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", "128", "run_candidate=true\n", false},
-		{"dispatch non-main branch", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", "0", "", true},
-		{"dispatch tag", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", "0", "", true},
-		{"dispatch main-shaped tag", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", "0", "", true},
-		{"dispatch main lookup failure", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", "0", "", true},
-		{"dispatch main invalid SHA", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", "0", "", true},
-		{"dispatch comparison unavailable", "workflow_dispatch", "2", testCandidateCommit, "", "false", "", "128", "run_candidate=true\n", false},
-		{"PR unchanged workflow present", "pull_request", "0", testCandidateCommit, testCandidateCommit, "false", ".github/workflows/current-version-candidate.yml", "0", "run_candidate=false\n", false},
-		{"PR unchanged bootstrap", "pull_request", "0", testCandidateCommit, testCandidateCommit, "false", "", "0", "run_candidate=true\n", false},
-		{"PR workflow query error", "pull_request", "0", testCandidateCommit, testCandidateCommit, "false", "", "128", "", true},
-		{"PR unexpected workflow query result", "pull_request", "0", testCandidateCommit, testCandidateCommit, "false", "unexpected/path", "0", "", true},
-		{"PR changed", "pull_request", "1", testCandidateCommit, testCandidateCommit, "false", "", "128", "run_candidate=true\n", false},
-		{"PR comparison error", "pull_request", "2", testCandidateCommit, testCandidateCommit, "false", "", "0", "", true},
-		{"dispatch wrong commit", "workflow_dispatch", "0", strings.Repeat("a", 40), "", "false", "", "0", "", true},
-		{"PR wrong commit", "pull_request", "0", strings.Repeat("a", 40), testCandidateCommit, "false", "", "0", "", true},
-		{"dispatch dirty", "workflow_dispatch", "0", testCandidateCommit, "", "true", "", "0", "", true},
-		{"PR invalid base", "pull_request", "0", testCandidateCommit, "invalid", "false", "", "0", "", true},
-		{"unknown event", "push", "1", testCandidateCommit, "", "false", "", "0", "", true},
+		{"dispatch requests freeze check", "workflow_dispatch", "0", testCandidateCommit, "", "false", "run_candidate=true\n", false},
+		{"dispatch non-main branch", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", true},
+		{"dispatch tag", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", true},
+		{"dispatch main-shaped tag", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", true},
+		{"dispatch main lookup failure", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", true},
+		{"dispatch main invalid SHA", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", true},
+		{"dispatch moved since event", "workflow_dispatch", "0", testCandidateCommit, "", "false", "", true},
+		{"PR unchanged", "pull_request", "0", testCandidateCommit, testCandidateCommit, "false", "run_candidate=false\n", false},
+		{"PR changed", "pull_request", "1", testCandidateCommit, testCandidateCommit, "false", "run_candidate=true\n", false},
+		{"maintenance PR changed", "pull_request", "1", testCandidateCommit, testCandidateCommit, "false", "run_candidate=true\n", false},
+		{"invalid maintenance line", "pull_request", "1", testCandidateCommit, testCandidateCommit, "false", "", true},
+		{"PR comparison error", "pull_request", "2", testCandidateCommit, testCandidateCommit, "false", "", true},
+		{"dispatch wrong commit", "workflow_dispatch", "0", strings.Repeat("a", 40), "", "false", "", true},
+		{"PR wrong commit", "pull_request", "0", strings.Repeat("a", 40), testCandidateCommit, "false", "", true},
+		{"dispatch dirty", "workflow_dispatch", "0", testCandidateCommit, "", "true", "", true},
+		{"PR invalid base", "pull_request", "0", testCandidateCommit, "invalid", "false", "", true},
+		{"unknown event", "push", "1", testCandidateCommit, "", "false", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			output := filepath.Join(dir, "output")
 			cmd := exec.Command(bash, "-c", gitFixture+strings.Join(lines, "\n"))
 			ref, refType, mainHead, mainStatus := "refs/heads/main", "branch", testCandidateCommit, "0"
+			dispatchCommit := testCandidateCommit
+			baseRef := "main"
 			switch tc.name {
 			case "dispatch non-main branch":
 				ref = "refs/heads/feature"
@@ -284,11 +292,17 @@ func TestCandidateEventGateExecution(t *testing.T) {
 				mainStatus = "128"
 			case "dispatch main invalid SHA":
 				mainHead = "invalid"
+			case "dispatch moved since event":
+				dispatchCommit = strings.Repeat("b", 40)
+			case "maintenance PR changed":
+				baseRef = "maintenance/0.3"
+			case "invalid maintenance line":
+				baseRef = "maintenance/0.03"
 			}
 			cmd.Env = append(os.Environ(), "CANDIDATE_EVENT="+tc.event, "CANDIDATE_COMMIT="+testCandidateCommit,
 				"OBSERVED_HEAD="+tc.head, "CANDIDATE_REF="+ref, "CANDIDATE_REF_TYPE="+refType,
-				"MAIN_HEAD="+mainHead, "MAIN_STATUS="+mainStatus, "PR_BASE_REF=main", "PR_BASE_SHA="+tc.base, "DIFF_STATUS="+tc.diff,
-				"BASE_WORKFLOW="+tc.workflow, "WORKFLOW_STATUS="+tc.workflowStatus,
+				"MAIN_HEAD="+mainHead, "MAIN_STATUS="+mainStatus, "PR_BASE_REF="+baseRef, "PR_BASE_SHA="+tc.base, "DIFF_STATUS="+tc.diff,
+				"DISPATCH_COMMIT="+dispatchCommit,
 				"DIRTY="+tc.dirty, "GITHUB_OUTPUT="+filepath.ToSlash(output), "GITHUB_STEP_SUMMARY="+filepath.ToSlash(filepath.Join(dir, "summary")))
 			log, err := cmd.CombinedOutput()
 			if (err != nil) != tc.fail {
@@ -337,10 +351,9 @@ func TestCandidateWorkflowPolicy(t *testing.T) {
 		{"wrong dispatch commit", "ref: refs/heads/main", "ref: ${{ github.ref }}"},
 		{"dispatch skipped", "if [[ \"$CANDIDATE_EVENT\" == 'workflow_dispatch' ]]; then\n            echo 'run_candidate=true'", "if [[ \"$CANDIDATE_EVENT\" == 'workflow_dispatch' ]]; then\n            echo 'run_candidate=false'"},
 		{"dispatch falls through PR comparison", "            exit 0\n          fi\n          [[ \"$CANDIDATE_EVENT\" == 'pull_request' ]]", "          fi\n          [[ \"$CANDIDATE_EVENT\" == 'pull_request' ]]"},
-		{"all unchanged PRs run", "if [[ -n \"$base_workflow\" ]]; then", "if false; then"},
-		{"bootstrap removed", "base_workflow=\"$(git ls-tree --full-tree --name-only \"$base\" -- .github/workflows/current-version-candidate.yml)\"", "base_workflow='.github/workflows/current-version-candidate.yml'"},
-		{"bootstrap query errors suppressed", "git ls-tree --full-tree --name-only \"$base\" -- .github/workflows/current-version-candidate.yml)", "git ls-tree --full-tree --name-only \"$base\" -- .github/workflows/current-version-candidate.yml || true)"},
-		{"bootstrap checks working tree", "git ls-tree --full-tree --name-only \"$base\"", "git ls-tree --full-tree --name-only HEAD"},
+		{"all unchanged PRs run", "echo 'run_candidate=false'", "echo 'run_candidate=true'"},
+		{"dispatch event binding removed", `[[ "$CANDIDATE_COMMIT" == "$DISPATCH_COMMIT" ]]`, "true"},
+		{"development validation removed", "source --root \"$PWD\"\n", "source --root \"$PWD\" --candidate\n"},
 		{"root version removed", "flashgate_read_repository_version", "flashgate_read_input_version"},
 		{"source commit check removed", "[[ \"$(git rev-parse HEAD)\" == \"$CANDIDATE_COMMIT\" ]]", "true"},
 		{"write permission", "contents: read", "contents: write"},

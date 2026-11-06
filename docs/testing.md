@@ -14,16 +14,13 @@ temporary evidence require an explicit caller-provided work root through
 path constraints documented by the invoked script.
 
 Build-input tests validate root `VERSION` as strict single-line SemVer in
-PowerShell, Bash, and Go. The backlog-item completion contract requires every
-`VERSION` change to carry one nonempty `## [<VERSION>]` changelog section in the
-same change; it may remain undated until preparation for public candidate
-freeze. `cmd/releaseaudit source`
-validates the changelog and requires that existing section to be dated as
-`## [<VERSION>] - YYYY-MM-DD` in release mode. The release workflow regression
-rejects job-level permission overrides, free manual versions, tag-derived
-versions, and missing source gates. A release requires `v<VERSION>` on HEAD and
-a clean tree; ordinary direct `go build` retains `0.0.0-dev` and Windows file
-version `0.0.0.0`.
+PowerShell, Bash, and Go. `cmd/releaseaudit source` validates the development
+changelog without requiring a VERSION increment. Candidate and tagged freeze
+modes require a new dated, nonempty `## [<VERSION>] - YYYY-MM-DD` section and
+verify the exact freeze commit. The release workflow regression rejects
+branch dispatches, job-level permission overrides, manual version inputs,
+tag-derived versions, and missing source gates. Direct and default script
+builds use `0.0.0-dev` and Windows file version `0.0.0.0`.
 
 ## Test Commands
 
@@ -535,18 +532,15 @@ rejection, nonregular `current` rejection before identity visibility, and alias
 update/cleanup rollback with both new and preexisting immutable identities.
 Workflow policy tests reject dispatch inputs, event-derived dispatch checkouts,
 missing main-only guards, altered PR-head binding, enabled or omitted Go caches,
-changed PR skip/run behavior, and publication/write rights. An input-free dispatch
-on `refs/heads/main` always verifies root `VERSION` at the validated current main
-commit, independently of a version diff. Non-main branch and tag dispatches skip
-before candidate code checkout. Build and manifest jobs explicitly check out
-main for dispatch and fail if its SHA has changed since source validation.
-An unchanged PR skips only when the workflow exists in its exact bound base.
-Actual Bash execution tests cover main-only dispatch, non-main branch/tag
-rejection before checkout, the first-PR bootstrap, failed/unexpected existence
-queries, and exact commit/base binding. They use native Bash on Linux and the
-required Git Bash on Windows; Windows execution does not replace the native
-Linux quality chain. Policy mutations reject removal of bootstrap or
-unconditional execution of all unchanged-version PRs.
+changed PR skip/run behavior, and publication/write rights. A main dispatch
+checks the event SHA and exact untagged freeze. Non-main and tag dispatches skip
+before candidate checkout. Build and manifest jobs check the prepared SHA.
+Unchanged-version PRs validate the development changelog without building
+release candidates. Actual Bash tests exercise main-only dispatch, maintenance
+PRs, exact commit and base binding, and failed Git observations. Freeze tests
+cover consecutive development changes, MINOR, isolated PATCH, missing or
+malformed notes, reused tags, and mismatched source. Git Bash on Windows and
+native Bash on Linux each run the workflow regression.
 The candidate workflow must run the existing BL-248 platform
 verifier, independent second build, `releaseaudit compare`, and leak scan for
 every target before producing a record. The hosted Windows/Linux x64/ARM64 run and independent review completed

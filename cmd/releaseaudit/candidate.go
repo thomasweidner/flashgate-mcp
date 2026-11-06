@@ -78,6 +78,9 @@ func candidateNames(value string, target candidateTarget) (string, string, strin
 }
 
 func validateCandidateIdentity(value, commit string) error {
+	if value == developmentVersion {
+		return errors.New("development version is reserved for non-release builds")
+	}
 	if _, err := version.WindowsFileVersion(value); err != nil {
 		return fmt.Errorf("invalid candidate VERSION: %w", err)
 	}

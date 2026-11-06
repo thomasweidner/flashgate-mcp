@@ -108,7 +108,7 @@ function Resolve-Version {
     )
 
     $RepositoryVersion = Get-FlashGateRepositoryVersion -RootPath $RootPath
-    $Resolved = $RepositoryVersion
+    $Resolved = if ($Release) { $RepositoryVersion } else { '0.0.0-dev' }
     if (-not [string]::IsNullOrEmpty($RequestedVersion)) {
         $Resolved = $RequestedVersion
     }
@@ -126,7 +126,7 @@ function Resolve-Version {
         }
         $null = Invoke-GoRequired -Arguments @(
             'run', '-mod=vendor', './cmd/releaseaudit', 'source',
-            '--root', $RootPath, '--release'
+            '--root', $RootPath, '--release', '--tagged-freeze'
         )
     }
 

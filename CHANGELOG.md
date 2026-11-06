@@ -3,11 +3,10 @@
 All notable changes to this project will be documented in this file.
 
 The format follows the spirit of [Keep a Changelog](https://keepachangelog.com/).
-FlashGate uses semantic product versions before its first public release. An
-undated `## [<VERSION>]` section records a product version introduced in the
-repository but not yet published as a release. Public-release preparation adds
-` - YYYY-MM-DD` to that existing section before freezing the candidate intended
-for publication; the date alone does not prove that a release was published.
+Notable development changes accumulate under Unreleased. Release preparation
+assigns the product version and adds its dated notes in the same freeze commit.
+Historical undated sections record prior repository versions. A date records
+the intended release date. Publication evidence is separate.
 
 ## [Unreleased]
 
@@ -23,6 +22,10 @@ for publication; the date alone does not prove that a release was published.
   and product behavior and VERSION are unchanged.
 
 ### Release tooling
+
+- Assign product versions at release preparation. Default script builds use
+  `0.0.0-dev`. Candidate verification requires a new version, dated notes,
+  and an exact freeze commit.
 
 - Added an explicit manual pre-1.0 publication workflow and releaseaudit adapter consuming the existing verified four-target candidate and complete supply-chain bundle. Publication binds externally approved source, notes, evidence and asset hashes, stages a draft, transfers exact bytes once, downloads every asset before publishing, and confirms the final prerelease. Conflicts and failed or ambiguous writes hold for read-only reconciliation. This records local implementation, not an actual public release; product VERSION is unchanged.
 

@@ -26,7 +26,7 @@ Controlled builds resolve these values once:
 
 | Value | Source |
 |---|---|
-| Product version | root `VERSION` for controlled builds and releases; explicit SemVer only for metadata validation fixtures; `0.0.0-dev` for uncontrolled development builds |
+| Product version | `0.0.0-dev` for direct and default script builds; root `VERSION` for verified candidates and releases; explicit SemVer for metadata fixtures |
 | Windows file version | `MAJOR.MINOR.PATCH.0` |
 | Commit | full 40-character Git revision |
 | Source time | `SOURCE_DATE_EPOCH`, otherwise Git commit time |
@@ -42,58 +42,55 @@ Local validation builds may be dirty and report `Modified: true`.
 
 ## Product versioning policy
 
-FlashGate uses Semantic Versioning for product identity. Root `VERSION` is the
-only editable product-version source. It begins at `0.1.0`; this seed is not a
-release announcement. Controlled builds use this value unless a metadata test
-passes an explicit SemVer fixture. Uncontrolled direct `go build` continues to
-report `0.0.0-dev` and Windows file version `0.0.0.0`. The release tag is an
-exact parity proof, never a source of the product version.
+Root `VERSION` is the only editable source of an assigned product version.
+Feature and fix merges leave it unchanged and collect notable entries under
+`[Unreleased]`. Both default build scripts preserve commit, source time and
+dirty state while using `0.0.0-dev` and Windows file version `0.0.0.0`.
+Explicit SemVer inputs remain available for metadata fixtures and verified
+candidate packaging. Development builds and fixtures are outside the release
+evidence chain.
 
-A functional merge and its `VERSION` change are one product change:
+Release preparation requires separate authorization.
 
-- before Version 1.0, a new externally observable capability, tool, protocol
-  behavior, or other user-visible function increments the SemVer minor component
-  and resets patch to zero;
-- before Version 1.0, a compatible product bug fix increments patch;
-- a deliberate breaking pre-1.0 product change uses a new minor version and the
-  required changelog/migration documentation;
-- from Version 1.0 onward, normal SemVer major/minor/patch rules apply;
-- documentation-only, test-only, planning-only, and behavior-neutral refactoring
-  changes do not require a product-version increment.
+1. Review the actual source delta and select the Unreleased entries that ship.
+   Describe disabled features according to their actual availability.
+2. Choose MINOR for new public features, PATCH for compatible fixes, and MINOR
+   for deliberate pre-1.0 incompatibilities with migration notes. Apply normal
+   SemVer rules from 1.0 onward.
+3. In one freeze commit, change VERSION and introduce exactly one nonempty
+   `## [<VERSION>] - YYYY-MM-DD` section. Retain Unreleased for subsequent
+   development and preserve historical sections, including undated ones.
+4. Verify that exact commit and record the version, full source SHA, and each
+   artifact SHA-256. Tag and publication require separate authorization.
 
-Build scripts, CLI output, Windows `VERSIONINFO`, Linux metadata, embedded
-manifests, archive names, checksums, and release validation consume `VERSION`.
-Every `VERSION` change must create or update exactly one nonempty
-`## [<VERSION>]` section in `CHANGELOG.md` in the same product change. The
-section may remain undated while that product version exists only as a repository
-or local candidate-build version; a public candidate requires dated notes before
-freeze. `[Unreleased]` holds notable changes not yet assigned
-to a product version. For public release, any passed version must equal `VERSION`;
-the existing version section must be dated as `## [<VERSION>] - YYYY-MM-DD`, the built
-commit must have the exact `v<VERSION>` tag, and its tree must be clean.
-`CHANGELOG.md` is the only manually maintained narrative release-notes source.
-`cmd/releaseaudit source --root . --release` validates the dated release section
-and may generate notes and a typed JSON report. No generated notes are added to
-binary archives. CI does not infer version bumps from diffs; the same-merge
-version/changelog rule is a contributor and completion-review contract. BL-255
-adds `releaseaudit source --candidate`, which requires one nonempty section for
-root `VERSION` and accepts an undated section for local candidate verification.
-The read-only candidate CI compares exact PR head and base `VERSION`, then runs
-the four-target BL-248 gates for a version change or when the candidate workflow
-is absent from that exact base commit. An unchanged-version PR skips only when
-the workflow already exists in its bound base; Git-query errors fail the gate.
-An input-free manual dispatch on `refs/heads/main` always runs those same
-gates for root `VERSION` at the validated current main commit, including
-unchanged versions with finalized release notes/date. Non-main branch and tag
-dispatches are skipped before checkout. Every dispatch job explicitly checks
-out main; a main SHA change between jobs fails closed. It records archive,
-checksum, verifier, reproduction, and leak hashes in a strict manifest. The
-tagged release path retains `--release`, dated notes and its clean-tree/tag
-gates.
+For a PATCH when main includes new features, base an isolated
+`maintenance/<major>.<minor>` line on the exact published tag. Port only
+compatible fixes and their notes. Use a candidate PR against that maintenance
+line and review the full delta from the published tag. Do not merge main into
+the maintenance line. Port relevant fixes back to main as development changes
+without the maintenance VERSION or release notes.
+
+The candidate workflow compares the exact PR head and base VERSION. An
+unchanged-version PR validates the development changelog without producing
+release artifacts. A changed version or input-free dispatch on main must
+pass `releaseaudit source --candidate` before the four-target verification
+matrix runs. The gate requires a version increment and new dated notes
+relative to the freeze commit's first parent. It rejects an existing version
+tag. PATCH also requires ancestry from the previous release tag and rejects
+new Added or Breaking Changes entries in pending or frozen notes. Review
+still verifies the actual compatibility of the shipped changes.
+
+A manual candidate dispatch binds the event SHA and current main. A later
+development commit with the same version cannot become a new candidate.
+The tagged build requires a clean tree, `--release --tagged-freeze`, and an
+exact event, tag, commit and VERSION match. The read-only `--release` mode
+also derives the canonical notes and can emit a typed JSON report. The
+publisher consumes the verified candidate bytes and notes. A tagged identity
+cannot be reassigned to changed source or artifact bytes.
 
 ### Pre-1.0 publication identity
 
-DEC-FP-002 and BL-245 remain the versioning authority. BL-363 implements public
+DEC-FP-002 defines the canonical version identity. BL-363 implements public
 pre-1.0 GitHub prereleases after `BL-255 -> BL-262`; it creates no second
 version source. Ordinary `0.x.y` remains a normal SemVer product version:
 `VERSION=0.4.0`, tag `v0.4.0`, artifact version `0.4.0`, and GitHub
@@ -108,8 +105,9 @@ Before freezing a candidate intended for public publication, finalize VERSION
 and all release-relevant source, including the dated, nonempty CHANGELOG entry.
 Its date records the intended release date, not evidence of publication. Bind
 `VERSION + SourceCommitSHA + ArtifactSHA256`; the exact `v<VERSION>` tag must
-point to SourceCommitSHA. A subsequent notes/date/version edit requires a new
-candidate build and verification. Publication uses only verified frozen bytes
+point to SourceCommitSHA. Revise and reverify the freeze before tagging if
+the notes or date change. Changes after tagging require a new product version.
+Publication uses only verified frozen bytes
 and notes derived from that commit's CHANGELOG.md, with no rebuild or repackaging.
 BL-263 alone retains stable Version 1.0 gate/publication ownership.
 

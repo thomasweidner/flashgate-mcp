@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - 'maintenance/*'
 
 permissions:
   contents: read
@@ -41,6 +42,7 @@ jobs:
         env:
           CANDIDATE_EVENT: ${{ github.event_name }}
           CANDIDATE_COMMIT: ${{ github.event.pull_request.head.sha }}
+          DISPATCH_COMMIT: ${{ github.sha }}
           CANDIDATE_REF: ${{ github.ref }}
           CANDIDATE_REF_TYPE: ${{ github.ref_type }}
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
@@ -50,29 +52,25 @@ jobs:
           if [[ "$CANDIDATE_EVENT" == 'workflow_dispatch' ]]; then
             [[ "$CANDIDATE_REF" == 'refs/heads/main' && "$CANDIDATE_REF_TYPE" == 'branch' ]]
             CANDIDATE_COMMIT="$(git rev-parse refs/remotes/origin/main^{commit})"
+            [[ "$CANDIDATE_COMMIT" == "$DISPATCH_COMMIT" ]]
           fi
           [[ "$CANDIDATE_COMMIT" =~ ^[0-9a-f]{40}$ ]]
           [[ "$(git rev-parse HEAD)" == "$CANDIDATE_COMMIT" ]]
           [[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]]
           if [[ "$CANDIDATE_EVENT" == 'workflow_dispatch' ]]; then
             echo 'run_candidate=true' >> "$GITHUB_OUTPUT"
-            echo 'Explicit current-version reverification at the validated current main commit.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Checking whether the exact dispatch commit is an untagged release freeze.' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           [[ "$CANDIDATE_EVENT" == 'pull_request' ]]
-          [[ "$PR_BASE_REF" == 'main' ]]
+          [[ "$PR_BASE_REF" == 'main' || "$PR_BASE_REF" =~ ^maintenance/(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           base="$PR_BASE_SHA"
           [[ "$base" =~ ^[0-9a-f]{40}$ ]]
           [[ "$(git rev-parse "$base^{commit}")" == "$base" ]]
           if git diff --quiet "$base" HEAD -- VERSION; then
-            base_workflow="$(git ls-tree --full-tree --name-only "$base" -- .github/workflows/current-version-candidate.yml)"
-            if [[ -n "$base_workflow" ]]; then
-              [[ "$base_workflow" == '.github/workflows/current-version-candidate.yml' ]]
-              echo 'run_candidate=false' >> "$GITHUB_OUTPUT"
-              echo 'VERSION unchanged and candidate workflow exists in exact base; matrix skipped.' >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            echo 'Candidate workflow absent from exact base; bootstrap matrix required.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'run_candidate=false' >> "$GITHUB_OUTPUT"
+            echo 'VERSION unchanged; validating development changelog without a release matrix.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           else
             status=$?
             [[ "$status" -eq 1 ]] || exit "$status"
@@ -93,14 +91,24 @@ jobs:
           TMPDIR: ${{ runner.temp }}
         run: go test -mod=vendor ./cmd/releaseaudit
 
+      - name: Validate development source
+        if: steps.candidate.outputs.run_candidate == 'false'
+        shell: bash
+        run: go -C . run -mod=vendor ./cmd/releaseaudit source --root "$PWD"
+
       - name: Validate candidate source
         if: steps.candidate.outputs.run_candidate == 'true'
         shell: bash
+        env:
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           set -Eeuo pipefail
           source scripts/build-input-validation.sh
           flashgate_read_repository_version "$PWD"
           version="$FLASHGATE_REPOSITORY_VERSION"
+          if [[ "$PR_BASE_REF" == maintenance/* ]]; then
+            [[ "$version" == "${PR_BASE_REF#maintenance/}."* ]]
+          fi
           mkdir -p build/audit
           go -C . run -mod=vendor ./cmd/releaseaudit source \
             --root "$PWD" --candidate --report build/audit/candidate-source.json
