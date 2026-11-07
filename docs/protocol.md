@@ -17,7 +17,7 @@ BL-204, BL-212, and BL-219 pass.
 The current server:
 
 - communicates through UTF-8 JSON-RPC messages over STDIO;
-- implements `initialize`, `tools/list`, and `tools/call` plus the accepted initialized notification behavior;
+- implements `initialize`, `ping`, `tools/list`, and `tools/call` plus the accepted initialized notification behavior;
 - advertises MCP revision `2025-11-25`;
 - uses deterministic tool ordering;
 - validates request envelopes and method parameters before dispatch;
@@ -43,6 +43,21 @@ The implemented `2025-11-25` annotation values are:
 These values are discovery metadata, not authorization. They do not affect registration, profile/capability decisions, root or path checks, security policy, or execution identity. `write_file` and `copy_path` remain non-idempotent at the tool level because their `overwrite:true` variants can replace existing targets.
 
 `flashgate-mcp --version` and `flashgate-mcp --version --verbose` are pre-protocol CLI exits. They print build identity and terminate before reading MCP input. During normal server operation, stdout remains reserved exclusively for JSON-RPC protocol messages.
+
+### Ping receiver
+
+The [MCP ping utility](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/ping)
+returns `result: {}` with the request's original ID on the `2025-11-25` STDIO
+path, before or after initialization and under either tool profile. The
+[revision schema](https://modelcontextprotocol.io/specification/2025-11-25/schema#pingrequest)
+allows omitted `params` or an object. Optional `_meta` is an object, and an
+optional `progressToken` is a string or integer. Malformed parameters return
+`-32602`. Notifications without an ID are ignored.
+
+The receiver runs independently of the tool catalog and does not emit
+progress notifications or initiate pings. Valid requests under the injected
+`2026-07-28` test policy return `-32601` because that revision
+[removed ping](https://modelcontextprotocol.io/specification/2026-07-28/changelog).
 
 ## Version 1.0 runtime transports
 

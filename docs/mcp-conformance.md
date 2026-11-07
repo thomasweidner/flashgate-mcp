@@ -106,6 +106,10 @@ production candidate requests. No candidate CLI/environment switch is added.
 
 Native contracts cover negotiation, notifications, unknown methods, malformed
 envelopes, strict arguments, result/error shape, traversal and read-only denial.
+BL-371 adds native `2025-11-25` ping tests for exact empty results, request IDs,
+optional metadata, invalid parameters, message limits, both tool profiles and
+tool-registry independence. The injected `2026-07-28` policy rejects the method
+even when the handler is registered.
 Candidate tests cover `server/discover`, calls before discovery, per-request
 metadata, `UnsupportedProtocolVersion`, `serverInfo`, `resultType`, conservative
 `ttlMs:0`/`cacheScope:"private"` hints and cross-revision behavior. Client
@@ -129,8 +133,7 @@ runtime dependency or HTTP bridge is used. Native PASS is never an official
 suite PASS. Full MCP conformance is not claimed.
 
 Absent resources, prompts, completion, Tasks, media, MRTR and HTTP/SSE behavior
-is explicitly classified. Legacy `ping` is an applicable existing gap: it is
-not registered, and no native PASS is reported for it. BL-204 does not silently
-add a product method. Fingerprints/cache semantics remain BL-219,
+is explicitly classified. The `2025-11-25` ping mapping points to BL-371's native
+STDIO test. Its official HTTP scenario retains `NOT_RUN`. Fingerprints/cache semantics remain BL-219,
 general release reporting BL-369 and HTTP transport BL-370. Snapshot success
 does not activate the candidate or close those owners.

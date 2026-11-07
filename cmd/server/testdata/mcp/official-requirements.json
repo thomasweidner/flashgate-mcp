@@ -39,9 +39,9 @@
       "transport": "HTTP (official runner); native equivalents use STDIO",
       "officialStatus": "NOT_RUN",
       "reason": "Official server runner requires an HTTP URL and fixture-specific behavior; no installation or HTTP bridge is in scope.",
-      "nativeCoverage": "",
+      "nativeCoverage": "TestMCPConformancePingSTDIO",
       "applicability": "APPLICABLE",
-      "nativeReason": "Legacy ping is not registered. This existing gap is visible; no full MCP conformance is claimed."
+      "nativeReason": "Native STDIO verifies the 2025-11-25 receiver under both profiles, including exact empty results and request ID parity."
     },
     {
       "revision": "2025-11-25",

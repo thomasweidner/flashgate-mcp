@@ -9,6 +9,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/initialize"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcp/ping"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	mcpserver "github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
@@ -25,6 +26,7 @@ func statelessRouter(t *testing.T) *router.Router {
 	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
 	r := router.NewWithPolicy("flashgate", "test-version", revision.NewPolicy(protocol.ProtocolVersion, revision.Stateless))
 	r.Register(initialize.NewHandler("flashgate", "test-version"))
+	r.Register(ping.Handler{})
 	r.Register(tools.NewListHandler(registry))
 	r.Register(tools.NewCallHandler(registry))
 	return r

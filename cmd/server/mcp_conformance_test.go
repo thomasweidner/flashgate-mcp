@@ -16,6 +16,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/initialize"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcp/ping"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	mcpserver "github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
@@ -89,6 +90,7 @@ func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
 	}
 	r := router.NewWithPolicy("flashgate", "conformance-fixture", mcpCandidatePolicy())
 	r.Register(initialize.NewHandler("flashgate", "conformance-fixture"))
+	r.Register(ping.Handler{})
 	r.Register(tools.NewListHandler(registry))
 	r.Register(tools.NewCallHandler(registry))
 	return r

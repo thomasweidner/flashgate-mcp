@@ -31,6 +31,9 @@ the intended release date. Publication evidence is separate.
 
 ### Added
 
+- Respond to MCP `ping` on the `2025-11-25` STDIO path with an empty result
+  and the original request ID under both tool profiles.
+
 - Extend releaseaudit with deterministic unsigned SPDX source inventory, four
   artifact-bound provenance statements and a compact verified supply-chain index;
   reuse the candidate workflow and exact-byte promotion for consumer handoff and
