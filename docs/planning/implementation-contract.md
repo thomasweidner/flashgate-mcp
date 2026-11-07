@@ -105,15 +105,15 @@ not an implementation or hard-prerequisite owner. No BL-257 hard edge is added.
 
 **Reuse and retrofit.** Extend the existing Go `internal/mcp/router`,
 `internal/mcp/server`, request validation and exact `internal/mcp/revision`
-policy, not the filesystem/domain core or a second protocol stack. The current
-initialized `2025-11-25` receiver has no `ping` handler; decide support and,
-if accepted, return JSON-RPC `result: {}` with the unchanged request ID.
+policy. The accepted design registers a dedicated stateless `ping` handler
+on the initialization-based `2025-11-25` path and returns JSON-RPC `result: {}`
+with the unchanged request ID. The server owns parameter validation, and the
+handler has no tool registry or domain dependency.
 Leave `2026-07-28` disabled in production and keep valid enabled-revision
 `ping` calls rejected as method-not-found (`-32601`). Do not add any
 `tools/list` entry, network/ICMP probe, automatic heartbeat, external MCP SDK,
-new dependency or protocol matrix entry. This registration-only change leaves
-`VERSION` and `CHANGELOG.md` unchanged. Record externally observable behavior
-from the later BL-371 handler under Unreleased. The
+new dependency or protocol matrix entry. Record the receiver under Unreleased
+and keep `VERSION` at the current release version. The
 [BL-372 binding](#bl-372-release-oriented-product-versioning) governs later
 release preparation and verification.
 

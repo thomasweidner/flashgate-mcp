@@ -21,15 +21,23 @@ func TestReportRejectsIncompleteOrFailedEvidence(t *testing.T) {
 		}
 	}
 	var complete strings.Builder
-	const schemaEvent = `{"Action":"pass","Test":"TestMCPConformanceSchema202012"}` + "\n"
-	for _, name := range []string{"TestMCPConformanceSnapshots", "TestMCPConformanceCompletenessMutations", "TestMCPConformanceWireNegatives", "TestMCPConformanceLegacyNegotiation", "TestMCPConformanceCrossRevisionStateless", "TestMCPConformanceSTDIOProcess", "TestMCPConformanceInventory", "TestStatelessCandidateWire", "TestStatelessMetadataAndProductionGate"} {
-		complete.WriteString(`{"Action":"pass","Test":"` + name + `"}` + "\n")
+	passEvent := func(name string) string { return `{"Action":"pass","Test":"` + name + `"}` + "\n" }
+	const schema = "TestMCPConformanceSchema202012"
+	const ping = "TestMCPConformancePingSTDIO"
+	for _, name := range requiredNativeFamilies {
+		if name != schema && name != ping {
+			complete.WriteString(passEvent(name))
+		}
 	}
 	complete.WriteString(`{"Action":"pass","Package":"server"}` + "\n")
-	if _, err := testResults([]byte(complete.String())); err == nil || !strings.Contains(err.Error(), "TestMCPConformanceSchema202012") {
+	if _, err := testResults([]byte(complete.String())); err == nil || !strings.Contains(err.Error(), schema) {
 		t.Fatalf("report accepted missing schema evidence: %v", err)
 	}
-	complete.WriteString(schemaEvent)
+	complete.WriteString(passEvent(schema))
+	if _, err := testResults([]byte(complete.String())); err == nil || !strings.Contains(err.Error(), ping) {
+		t.Fatalf("report accepted missing ping evidence: %v", err)
+	}
+	complete.WriteString(passEvent(ping))
 	if _, err := testResults([]byte(complete.String())); err != nil {
 		t.Fatal(err)
 	}

@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"strconv"
 	"strings"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -102,9 +103,68 @@ func validateMethodParams(method string, params json.RawMessage, maxArgumentByte
 		return nil, newRequestValidationError(nil, protocol.ErrInvalidParams, "invalid params")
 	case "tools/call":
 		return validateToolsCallParams(params, maxArgumentBytes)
+	case "ping":
+		if !validPingParams(params) {
+			return nil, newRequestValidationError(nil, protocol.ErrInvalidParams, "invalid params")
+		}
+		return params, nil
 	default:
 		return params, nil
 	}
+}
+
+func validPingParams(params json.RawMessage) bool {
+	if len(params) == 0 {
+		return true
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(params, &fields) != nil || fields == nil {
+		return false
+	}
+	rawMeta, exists := fields["_meta"]
+	if !exists {
+		return true
+	}
+	var meta map[string]json.RawMessage
+	if json.Unmarshal(rawMeta, &meta) != nil || meta == nil {
+		return false
+	}
+	token, exists := meta["progressToken"]
+	if !exists {
+		return true
+	}
+	switch token[0] {
+	case '"':
+		return true
+	case '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		return isIntegralJSONNumber(string(token))
+	default:
+		return false
+	}
+}
+
+// JSON Schema accepts any number with an integral value. Compare the decimal
+// scale without converting to float or allocating a power of ten.
+func isIntegralJSONNumber(number string) bool {
+	mantissa, exponent := number, "0"
+	if split := strings.IndexAny(number, "eE"); split >= 0 {
+		mantissa, exponent = number[:split], number[split+1:]
+	}
+	if strings.Trim(mantissa, "-0.") == "" {
+		return true
+	}
+	whole, fraction, _ := strings.Cut(mantissa, ".")
+	trailingZeros := len(fraction) - len(strings.TrimRight(fraction, "0"))
+	if trailingZeros == len(fraction) {
+		trailingZeros += len(whole) - len(strings.TrimRight(whole, "0"))
+	}
+	exp, err := strconv.Atoi(exponent)
+	if err != nil {
+		// The JSON syntax is already valid. An exponent outside the native
+		// integer range exceeds every possible mantissa length.
+		return exponent[0] != '-'
+	}
+	return exp >= len(fraction)-trailingZeros
 }
 
 func validateToolsCallParams(params json.RawMessage, maxArgumentBytes int64) (json.RawMessage, *requestValidationError) {
