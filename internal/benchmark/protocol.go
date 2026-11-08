@@ -14,6 +14,11 @@ type requestSpec struct {
 	Params any
 }
 
+type toolCallParams struct {
+	Arguments map[string]any `json:"arguments"`
+	Name      string         `json:"name"`
+}
+
 type notificationSpec struct {
 	Method string
 	Params any
@@ -162,10 +167,7 @@ func toolsListSpec() requestSpec {
 func toolCallSpec(name string, arguments map[string]any) requestSpec {
 	return requestSpec{
 		Method: "tools/call",
-		Params: map[string]any{
-			"name":      name,
-			"arguments": arguments,
-		},
+		Params: toolCallParams{Name: name, Arguments: arguments},
 	}
 }
 
@@ -198,28 +200,37 @@ func referenceWorkflows() []workflowDefinition {
 	}
 }
 
-func addResultCounters(method string, result json.RawMessage, counters *Counters) error {
-	if method != "tools/call" {
+func addResultCounters(spec requestSpec, result json.RawMessage, counters *Counters) error {
+	if spec.Method != "tools/call" {
 		return nil
+	}
+	params, ok := spec.Params.(toolCallParams)
+	if !ok {
+		return fmt.Errorf("missing tools/call parameters for result counters")
 	}
 
 	counters.Calls++
 	var envelope struct {
 		StructuredContent json.RawMessage `json:"structuredContent"`
+		IsError           bool            `json:"isError"`
 	}
-	if err := json.Unmarshal(result, &envelope); err != nil || len(envelope.StructuredContent) == 0 {
+	if err := json.Unmarshal(result, &envelope); err != nil || envelope.IsError || len(envelope.StructuredContent) == 0 {
 		return fmt.Errorf("decode tools/call result counters")
 	}
 
 	var shape struct {
 		Size    *uint64           `json:"size"`
-		Content *string           `json:"content"`
 		Entries []json.RawMessage `json:"entries"`
 	}
 	if err := json.Unmarshal(envelope.StructuredContent, &shape); err != nil {
 		return fmt.Errorf("decode structured result counters: %w", err)
 	}
-	if shape.Content != nil && shape.Size != nil {
+	// The read_file contract reports the raw byte count in size in both the
+	// legacy and split result. Other tools use size for different metadata.
+	if params.Name == "read_file" {
+		if shape.Size == nil {
+			return fmt.Errorf("read_file result counters require a size")
+		}
 		counters.ReadBytes += *shape.Size
 	}
 	if shape.Entries != nil {

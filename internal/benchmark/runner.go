@@ -254,7 +254,7 @@ func executeScenario(ctx context.Context, binaryPath string, root string, readOn
 		sample.counters.RequestBytes += record.requestBytes
 		sample.counters.ResponseBytes += record.responseBytes
 		sample.counters.ResultBytes += record.resultBytes
-		if err := addResultCounters(spec.Method, response.Result, &sample.counters); err != nil {
+		if err := addResultCounters(spec, response.Result, &sample.counters); err != nil {
 			return sample, err
 		}
 

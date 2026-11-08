@@ -98,14 +98,31 @@ func TestInitializedNotificationAndInitializeValidation(t *testing.T) {
 	}
 }
 
-func TestReadFileCountersDoNotCountScannedBytes(t *testing.T) {
-	result := json.RawMessage(`{"structuredContent":{"content":"FlashGate benchmark text.\n","size":26}}`)
-	var counters Counters
-	if err := addResultCounters("tools/call", result, &counters); err != nil {
-		t.Fatal(err)
-	}
-	if counters.ReadBytes != 26 || counters.ScannedBytes != 0 {
-		t.Fatalf("read=%d scanned=%d, want 26/0", counters.ReadBytes, counters.ScannedBytes)
+func TestToolResultCounters(t *testing.T) {
+	for _, tc := range []struct {
+		name, tool, result string
+		readBytes, entries uint64
+		wantError          bool
+	}{
+		{name: "split read", tool: "read_file", result: `{"content":[{"type":"text","text":"é\n"}],"structuredContent":{"size":3}}`, readBytes: 3},
+		{name: "legacy read", tool: "read_file", result: `{"structuredContent":{"content":"FlashGate benchmark text.\n","size":26}}`, readBytes: 26},
+		{name: "empty read", tool: "read_file", result: `{"content":[{"type":"text","text":""}],"structuredContent":{"size":0}}`},
+		{name: "path size", tool: "get_path_info", result: `{"structuredContent":{"exists":true,"size":26}}`},
+		{name: "write size", tool: "write_file", result: `{"structuredContent":{"path":"out.txt","size":26}}`},
+		{name: "directory entries", tool: "list_directory", result: `{"structuredContent":{"entries":[{"name":"a.txt"},{"name":"b.txt"}]}}`, entries: 2},
+		{name: "read missing size", tool: "read_file", result: `{"structuredContent":{}}`, wantError: true},
+		{name: "read tool error", tool: "read_file", result: `{"isError":true,"structuredContent":{"size":26}}`, wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var counters Counters
+			err := addResultCounters(toolCallSpec(tc.tool, nil), json.RawMessage(tc.result), &counters)
+			if (err != nil) != tc.wantError {
+				t.Fatalf("error = %v, wantError %v", err, tc.wantError)
+			}
+			if counters.Calls != 1 || counters.ReadBytes != tc.readBytes || counters.ScannedBytes != 0 || counters.Entries != tc.entries {
+				t.Fatalf("counters = %+v, want one call, %d read bytes, zero scanned bytes and %d entries", counters, tc.readBytes, tc.entries)
+			}
+		})
 	}
 }
 
