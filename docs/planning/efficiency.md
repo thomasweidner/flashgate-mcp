@@ -173,16 +173,18 @@ and:
 approx_token_cost_per_useful_byte = approx_tokens_bytes4 / useful_payload_bytes
 ```
 
-For metadata-only operations, useful payload is the canonical compact domain result. For content operations, it is the requested raw text/binary range before transport encoding.
+Useful payload is verified against independent fixture data. For metadata-only
+results it is zero. The compact domain object is reported separately and
+absolute budgets apply. For text and binary it is the delivered UTF-8 or raw
+binary bytes. For structured payload it is compact canonical JSON at the
+declared domain location. Additional compatibility representations contribute
+overhead without increasing useful bytes.
 
-The benchmark also records:
-
-- serialization count and avoidable copies where measurable;
-- base64 amplification;
-- result/response bytes;
-- useful bytes;
-- cursor/page overhead;
-- proxy/service IPC overhead.
+The [benchmark wire gate](../../benchmarks/README.md#deterministic-wire-efficiency)
+checks result and response bytes, escaping, Base64, revision metadata, explicit
+serialization operations and copy sites for executable tool contracts. Pages,
+resources, events and chunks have synthetic examples. Their producer owners
+bind real delivery frames when those mechanisms become available.
 
 ## Large-result and resource abstraction
 

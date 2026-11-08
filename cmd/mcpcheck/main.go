@@ -41,6 +41,7 @@ var requiredNativeFamilies = []string{
 	"TestMCPConformanceSTDIOProcess", "TestMCPConformanceInventory",
 	"TestMCPConformancePingSTDIO", "TestMCPConformancePingRevisionIsolation",
 	"TestMCPConformancePingRegistryIndependence",
+	"TestMCPConformanceWireEfficiency", "TestMCPConformanceWireEfficiencyGateMutations",
 	"TestStatelessCandidateWire", "TestStatelessMetadataAndProductionGate",
 }
 

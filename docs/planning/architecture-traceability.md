@@ -34,7 +34,7 @@ also inherits its owner's focused tests and `T`.
 | JSON Schema 2020-12 validation (A, R, ADR MCP compatibility) | BL-212 | BL-200, BL-201, BL-204 | Reuse BL-289/291 arguments/catalog and BL-262 source inventory; BL-110 extends the profile matrix; BL-257 consumes evidence | BL-204 registry, wire snapshots and report; BL-262 dependency classification | [BL-212 binding](implementation-contract.md#bl-212-schema-conformance-binding) | Offline Draft 2020-12 and instance checks, drift mutations, pinned test-only dependencies, unchanged wire snapshots |
 | MCP contract enforcement in CI (T, R) | BL-257 | BL-204, BL-212 | Reuse `mcpcheck`, registry and catalog parity, schema validation, and the owner-maintained conformance matrix | Existing Windows/Linux test job and workflow policy checks | [BL-257 binding](implementation-contract.md#bl-257-ci-enforcement-binding) | Missing executable coverage, failed/skipped checks, or unaccepted contract drift blocks CI; intentional diffs require independent review |
 | Typed result contracts and single transmission (A, R, ADR efficiency contracts) | BL-213 | BL-201, BL-204, BL-212, BL-257 | BL-214 metrics and BL-218 handoff consume the contract. BL-090 supplies storage to BL-218 | Tool interface, registry, result adapter, `read_file`, `list_directory`, and six metadata tools | [BL-213 binding](implementation-contract.md#bl-213-tool-result-contract), per-variant wire coverage and existing CI gate | Adapter-derived payload metadata, lossless UTF-8, pre-serialization bounds, bounded metadata parity, and fail-closed registration |
-| Useful-byte and wire-amplification metrics (A, T) | BL-214 | BL-213 | BL-258 later enforces measurements | Existing response serialization and benchmarks | BL-214, BL-258 | Hard budgets and useful-byte measurements exist |
+| Useful-byte and wire-amplification metrics (A, T) | BL-214 | BL-213 | Reuse BL-189–BL-199 and BL-204/212/257. BL-258 extends enforcement to resource delivery | Existing MCP conformance harness, serializers and benchmarks | BL-214, BL-258 | Exact executable variant, profile, revision, fixture and budget parity in ordinary Go tests |
 | Catalog and initialization budget definitions (A, R, TA) | BL-215 | — | BL-216 instructions and BL-256 CI consume budgets | `tools/list` and initialization-size baseline | BL-215, BL-256 | Version 1.0 profile-specific limits defined |
 | Early Native Tool/no-interpreter policy (A, S, TA) | BL-220 | — | BL-163 and typed-command owners later implement policy; no early command engine | Current native Go runtime and future adapter selection | BL-220, BL-163 | Typed no-shell selection, executable identity and evidence gate defined |
 | Current-version candidate and exact-byte local promotion (R, T) | BL-255 | BL-245, BL-248 | BL-262 later consumes verified identity; `current` is an optional alias | `current-version-candidate.yml`, existing BL-248 verifiers and `cmd/releaseaudit` record/manifest/promotion commands; release workflow naming parity | Focused source, matrix, report-binding and exact-byte tests; local quality gates; hosted four-target run and independent review passed for PR #303 | Verified VERSION/commit/hash bytes promoted unchanged; local step makes no additional remote/public upload |
@@ -194,6 +194,26 @@ delivery mechanisms and their acceptance in the backlog.
 | Negotiated event/stream forwarding and transport tests | BL-225, BL-228, BL-241, BL-370 |
 | Watch domain events | BL-347 |
 | Useful-byte measurement and resource efficiency CI | BL-214, BL-258 |
+
+Each successor integrates the [BL-214 measurement contract](implementation-contract.md#bl-214-wire-measurement-and-coverage)
+for the routes or outputs it actually implements. These are acceptance bindings
+to the existing sprint and release placements in the backlog. Early or
+independently scheduled owners can provide the bindings within their own scope.
+
+| Owner | Measurement acceptance |
+|---|---|
+| BL-037–BL-039, BL-049, BL-079 | Per-page and complete retrieval, cursor overhead, continuation order, projections and single transmission |
+| BL-044, BL-045 | Range bytes, chunks, bounded copies, text/media encoding, MIME, inline thresholds and fallback |
+| BL-089, BL-090 | Distinct domain/I/O and delivery counters, stored content identity and retrieval sizes |
+| BL-103, BL-110 | Effective profile composition and executable catalog/variant coverage |
+| BL-215, BL-216, BL-219, BL-256 | Discovery, initialization, instructions and catalog budgets with revision, profile, cache and fingerprint parity |
+| BL-209, BL-210, BL-211 | Selected task/status/event routes, synchronous fallback and capability errors |
+| BL-218, BL-258 | Distinct link/read accounting, full retrieval, bounded fallback and integrated CI across activated delivery paths |
+| BL-239 | Effective context binding and zero useful bytes on cross-context denial |
+| BL-225, BL-228, BL-241, BL-370 | Measured IPC, proxy, stream/event and HTTP framing and payload forwarding on exercised routes |
+| BL-249, BL-250 | Deterministic gates before host-sensitive CI and comparisons using compatible measurement versions |
+| BL-347 | Actual watch event routes, batch/overflow/resume frames and distinct delivered event bytes |
+| BL-356, BL-359 | Per-platform log pages and cursor costs, and actual ADS/xattr payload representations |
 
 For each completed row, the owning BL records focused test/CI evidence,
 migrated paths/contracts, and any residual dual-bound to one successor. BL-315

@@ -851,8 +851,8 @@ This inventory is a planning contract, not a current-runtime claim.
 
 Use the shared [BL-213 result contract](implementation-contract.md#bl-213-tool-result-contract).
 Each registered variant needs an executable wire fixture and a matching
-structured schema. Domain events and transport streams follow the relevant
-feature's notification and streaming acceptance.
+structured schema. Bind it to the [BL-214 gate](implementation-contract.md#bl-214-wire-measurement-and-coverage)
+for each effective profile and exact revision where it can execute.
 
 Before a future tool is advertised, its owner must provide:
 
@@ -866,7 +866,8 @@ Before a future tool is advertised, its owner must provide:
 - state ownership/TTL/cleanup for handles;
 - MCP annotations as hints only;
 - catalog/schema/instruction budget measurement;
-- wire/payload efficiency measurement for material results;
+- semantic reference payloads, observed placement and hard BL-214 budgets for
+  every material result variant or delivery change;
 - Windows/Linux tests where both are in scope;
 - no-interpreter/native-adapter gate;
 - documentation and current-vs-planned truth.

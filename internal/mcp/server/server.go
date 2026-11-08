@@ -86,7 +86,7 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 
 		response := s.handleRequest(ctx, request)
-		if err := s.writeResponse(request.id, response); err != nil {
+		if err := s.writeResponse(ctx, request.id, response); err != nil {
 			return err
 		}
 	}
@@ -132,8 +132,8 @@ func (s *Server) handleRequest(ctx context.Context, request validatedRequest) (r
 	}
 }
 
-func (s *Server) writeResponse(id json.RawMessage, response protocol.Response) error {
-	if err := s.transport.WriteMessage(response); err != nil {
+func (s *Server) writeResponse(ctx context.Context, id json.RawMessage, response protocol.Response) error {
+	if err := s.transport.WriteMessageContext(ctx, response); err != nil {
 		if errors.Is(err, transport.ErrResponseTooLarge) {
 			s.logDebug("jsonrpc response limit exceeded")
 			return s.writeError(id, protocol.ErrInternalError, "internal error")

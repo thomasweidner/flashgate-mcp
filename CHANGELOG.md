@@ -12,6 +12,10 @@ the intended release date. Publication evidence is separate.
 
 ### Validation
 
+- Check exact MCP wire bytes, semantic payload placement, observed response
+  operations and hard budgets for registered variants in the ordinary Go
+  test suite. Include candidate-policy and synthetic delivery fixtures.
+
 - Validate registered MCP tool inputs and successful structured results offline
   with JSON Schema Draft 2020-12 in the existing BL-204 conformance gate. The
   test-only validator adds no runtime checks or wire changes.

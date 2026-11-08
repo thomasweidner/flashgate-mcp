@@ -2,9 +2,11 @@ package transport
 
 import (
 	"bufio"
-	"encoding/json"
+	"context"
 	"errors"
 	"io"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
 var (
@@ -64,16 +66,21 @@ func (t *Transport) ReadMessage() ([]byte, error) {
 
 // WriteMessage writes a single JSON message.
 func (t *Transport) WriteMessage(value any) error {
-	return t.writeMessage(value, true)
+	return t.WriteMessageContext(context.Background(), value)
+}
+
+// WriteMessageContext passes a request-scoped serialization observer, if any.
+func (t *Transport) WriteMessageContext(ctx context.Context, value any) error {
+	return t.writeMessage(ctx, value, true)
 }
 
 // WriteMessageUnbounded writes a JSON message without applying the response size limit.
 func (t *Transport) WriteMessageUnbounded(value any) error {
-	return t.writeMessage(value, false)
+	return t.writeMessage(context.Background(), value, false)
 }
 
-func (t *Transport) writeMessage(value any, enforceLimit bool) error {
-	payload, err := json.Marshal(value)
+func (t *Transport) writeMessage(ctx context.Context, value any, enforceLimit bool) error {
+	payload, err := wiretrace.Marshal(ctx, value)
 	if err != nil {
 		return err
 	}

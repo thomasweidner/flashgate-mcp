@@ -68,7 +68,7 @@ func (r *Router) DispatchRevision(request revision.Request, method string, ctx h
 	}
 	if version == revision.Stateless {
 		if method == "server/discover" {
-			return revision.Complete(discovery.Result(r.policy), method, r.name, r.version)
+			return revision.CompleteContext(ctx.Context, discovery.Result(r.policy), method, r.name, r.version)
 		}
 		if method != "tools/list" && method != "tools/call" {
 			return nil, &protocol.Error{Code: protocol.ErrMethodNotFound, Message: "method not found"}
@@ -89,5 +89,5 @@ func (r *Router) DispatchRevision(request revision.Request, method string, ctx h
 	if rpcErr != nil || version == protocol.ProtocolVersion {
 		return result, rpcErr
 	}
-	return revision.Complete(result, method, r.name, r.version)
+	return revision.CompleteContext(ctx.Context, result, method, r.name, r.version)
 }

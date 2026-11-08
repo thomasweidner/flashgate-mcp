@@ -177,6 +177,34 @@ Unreleased notes with the wire delta. Require independent review before closure.
 The successor owners retain paging, resource delivery, notifications, jobs,
 streaming, and efficiency budgets.
 
+## BL-214 wire measurement and coverage
+
+BL-214 is the SPR-048 test and benchmark contract for the MCP adapter and
+transport boundary. It builds on BL-189–BL-199 benchmark infrastructure,
+BL-213 typed variants and single transmission, and the BL-204/212/257
+registry, revision, profile, schema and wire tests. Use the existing server
+test harness to capture actual frames and compare their decoded content with
+independent fixture data. Measure explicit conversion and serialization sites
+through a request-scoped observer used by tests. Production passes no observer.
+
+The ordinary Go suite matches each executable registry variant to a semantic
+case and each measured fixture to a hard budget for its actual revision and
+profile. The benchmark package measures ordered payload locations and aggregates
+the frames of a logical delivery. A producer can add fixture references,
+placement and budget bindings without changing the measurement algorithm.
+Retain the historical benchmark and allocation contracts. Synthetic cases
+exercise future delivery shapes without enabling registration, routes or
+capabilities. Preserve schema, redaction, limits, profile enforcement and the
+single transmitted representation for heavy payloads.
+
+The [successor matrix](architecture-traceability.md#result-delivery-successors)
+binds later producers, profile and catalog owners, transports and CI consumers
+to their existing milestones. A non-tool owner must identify its actual route,
+prove the negotiated profile/revision/transport and feature availability, and
+exercise real output through the common measurement and budget gate. Closure
+requires executable coverage mutations, unchanged historical artifact semantics,
+applicable native gates and independent review before integration.
+
 ## BL-372 release-oriented product versioning
 
 BL-372 owns release governance and test controls in SPR-048. It reuses the

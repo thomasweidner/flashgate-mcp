@@ -13,5 +13,5 @@ type Counters struct {
 }
 
 func approxTokensBytes4(utf8Bytes uint64) uint64 {
-	return (utf8Bytes + 3) / 4
+	return utf8Bytes/4 + (utf8Bytes%4+3)/4
 }
