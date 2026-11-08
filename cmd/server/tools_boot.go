@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 )
@@ -15,21 +17,21 @@ func capabilitiesFromReadOnly(readOnly bool) toolCapabilities {
 	}
 }
 
-func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilities toolCapabilities) *tools.Registry {
+func createToolRegistry(filesystem fs.FileSystem, maxFileSize int64, capabilities toolCapabilities) (*tools.Registry, error) {
 	toolRegistry := tools.NewRegistry()
-	toolRegistry.Register(tools.NewListDirectoryTool(filesystem))
-	toolRegistry.Register(tools.NewReadFileTool(filesystem, maxFileSize))
-	toolRegistry.Register(tools.NewGetPathInfoTool(filesystem))
-
-	if !capabilities.filesystemWrite {
-		return toolRegistry
+	enabled := []tools.Tool{
+		tools.NewListDirectoryTool(filesystem),
+		tools.NewReadFileTool(filesystem, maxFileSize),
+		tools.NewGetPathInfoTool(filesystem),
 	}
-
-	toolRegistry.Register(tools.NewWriteFileTool(filesystem))
-	toolRegistry.Register(tools.NewCreateDirectoryTool(filesystem))
-	toolRegistry.Register(tools.NewDeletePathTool(filesystem))
-	toolRegistry.Register(tools.NewCopyPathTool(filesystem))
-	toolRegistry.Register(tools.NewMovePathTool(filesystem))
-
-	return toolRegistry
+	if capabilities.filesystemWrite {
+		enabled = append(enabled, tools.NewWriteFileTool(filesystem), tools.NewCreateDirectoryTool(filesystem),
+			tools.NewDeletePathTool(filesystem), tools.NewCopyPathTool(filesystem), tools.NewMovePathTool(filesystem))
+	}
+	for _, tool := range enabled {
+		if err := toolRegistry.Register(tool); err != nil {
+			return nil, fmt.Errorf("register %s: %w", tool.Name(), err)
+		}
+	}
+	return toolRegistry, nil
 }

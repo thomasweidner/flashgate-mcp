@@ -23,6 +23,51 @@ type DecodedCallToolResult struct {
 // FlashGate. Success requires text/structured parity; expected errors require
 // isError:true and no structuredContent. Optional fields such as _meta are rejected.
 func DecodeCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
+	return decodeCallToolResult(raw, nil)
+}
+
+// DecodeSplitCallToolResult checks the single plain-text block and independent
+// structured object emitted by the current split filesystem result contracts.
+func DecodeSplitCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
+	var plainText string
+	result, err := decodeCallToolResult(raw, func(blocks []json.RawMessage) error {
+		if len(blocks) != 1 {
+			return errors.New("content must contain exactly one text block")
+		}
+		var err error
+		plainText, err = decodeTextBlock(blocks[0])
+		return err
+	})
+	if err == nil && !result.IsError {
+		result.TextContent = plainText
+	}
+	return result, err
+}
+
+// DecodeDeclaredCallToolResult compares every payload block against the exact
+// ordered array expected by a conformance fixture.
+func DecodeDeclaredCallToolResult(raw, expectedBlocks json.RawMessage) (DecodedCallToolResult, error) {
+	want, err := decodeJSONValue(expectedBlocks)
+	if err != nil {
+		return DecodedCallToolResult{}, err
+	}
+	return decodeCallToolResult(raw, func(blocks []json.RawMessage) error {
+		got := make([]any, 0, len(blocks))
+		for _, block := range blocks {
+			value, err := decodeJSONValue(block)
+			if err != nil {
+				return err
+			}
+			got = append(got, value)
+		}
+		if !reflect.DeepEqual(got, want) {
+			return errors.New("content blocks differ from the declared fixture")
+		}
+		return nil
+	})
+}
+
+func decodeCallToolResult(raw json.RawMessage, checkParts func([]json.RawMessage) error) (DecodedCallToolResult, error) {
 	if !isJSONObject(raw) {
 		return DecodedCallToolResult{}, errors.New("call tool result must be an object")
 	}
@@ -47,28 +92,8 @@ func DecodeCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
 	if err := json.Unmarshal(contentRaw, &blocks); err != nil {
 		return DecodedCallToolResult{}, errors.New("content must be an array")
 	}
-	if len(blocks) != 1 {
-		return DecodedCallToolResult{}, errors.New("content must contain exactly one block")
-	}
-
-	var textContent any
-	for index, blockRaw := range blocks {
-		block, err := decodeTextBlock(blockRaw)
-		if err != nil {
-			return DecodedCallToolResult{}, fmt.Errorf("content block %d: %w", index, err)
-		}
-		decodedText, err := decodeJSONValue([]byte(block))
-		if err != nil {
-			return DecodedCallToolResult{}, fmt.Errorf("content block %d text: %w", index, err)
-		}
-		if !isObjectValue(decodedText) {
-			return DecodedCallToolResult{}, fmt.Errorf("content block %d text must encode an object", index)
-		}
-		if index == 0 {
-			textContent = decodedText
-		} else if !reflect.DeepEqual(textContent, decodedText) {
-			return DecodedCallToolResult{}, errors.New("text content blocks disagree")
-		}
+	if len(blocks) == 0 {
+		return DecodedCallToolResult{}, errors.New("content must contain a block")
 	}
 
 	isError := false
@@ -77,6 +102,22 @@ func DecodeCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
 			return DecodedCallToolResult{}, errors.New("isError must be a boolean")
 		}
 		isError = string(raw) == "true"
+	}
+	var textContent any
+	if isError || checkParts == nil {
+		if len(blocks) != 1 {
+			return DecodedCallToolResult{}, errors.New("content must contain exactly one block")
+		}
+		block, err := decodeTextBlock(blocks[0])
+		if err != nil {
+			return DecodedCallToolResult{}, err
+		}
+		textContent, err = decodeJSONValue([]byte(block))
+		if err != nil || !isObjectValue(textContent) {
+			return DecodedCallToolResult{}, errors.New("content block text must encode an object")
+		}
+	} else if err := checkParts(blocks); err != nil {
+		return DecodedCallToolResult{}, err
 	}
 	if isError {
 		if _, present := fields["structuredContent"]; present {
@@ -101,22 +142,14 @@ func DecodeCallToolResult(raw json.RawMessage) (DecodedCallToolResult, error) {
 	if !isObjectValue(structured) {
 		return DecodedCallToolResult{}, errors.New("structuredContent must be an object")
 	}
-	if !reflect.DeepEqual(textContent, structured) {
+	if checkParts == nil && !reflect.DeepEqual(textContent, structured) {
 		return DecodedCallToolResult{}, errors.New("text and structuredContent differ")
 	}
-	decoded := DecodedCallToolResult{
+	return DecodedCallToolResult{
 		TextContent:          textContent,
 		StructuredContent:    structured,
 		HasStructuredContent: true,
-	}
-
-	if isErrorRaw, ok := fields["isError"]; ok {
-		if err := json.Unmarshal(isErrorRaw, &decoded.IsError); err != nil {
-			return DecodedCallToolResult{}, errors.New("isError must be a boolean")
-		}
-	}
-
-	return decoded, nil
+	}, nil
 }
 
 func decodeTextBlock(raw json.RawMessage) (string, error) {
@@ -137,7 +170,7 @@ func decodeTextBlock(raw json.RawMessage) (string, error) {
 		return "", errors.New("type must be exactly text")
 	}
 	var text string
-	if rawText, ok := fields["text"]; !ok || json.Unmarshal(rawText, &text) != nil {
+	if rawText := fields["text"]; len(rawText) == 0 || rawText[0] != '"' || json.Unmarshal(rawText, &text) != nil {
 		return "", errors.New("text must be a string")
 	}
 	return text, nil

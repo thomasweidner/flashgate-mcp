@@ -73,28 +73,36 @@ func (t *WriteFileTool) Definition() protocol.Tool {
 	}
 }
 
+func (t *WriteFileTool) ResultContract() ResultContract {
+	return metadataContract(defaultVariant)
+}
+
 // Execute writes the requested file.
-func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments writeFileArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return nil, rpcErr
+		return ToolResult{}, rpcErr
 	}
 
 	if !isNonBlank(arguments.Path) {
-		return nil, invalidArgumentsError()
+		return ToolResult{}, invalidArgumentsError()
+	}
+
+	if err := validateReceiptPaths(arguments.Path); err != nil {
+		return ToolResult{}, err
 	}
 
 	content := []byte(arguments.Content)
 
 	if err := t.filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return writeFileResult{
+	return NewToolResult(defaultVariant, writeFileResult{
 		Path:    arguments.Path,
 		Size:    int64(len(content)),
 		Written: true,
-	}, nil
+	}), nil
 }
 
 type writeFileArguments struct {

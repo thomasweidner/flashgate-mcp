@@ -33,7 +33,7 @@ func TestProtocolRevisionWire(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+			registry := requireToolRegistry(t, noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
 			var stdout bytes.Buffer
 			server := mcpserver.New(strings.NewReader(tc.request+"\n"), &stdout, createRouter("flashgate", "test-version", registry))
 			if err := server.Run(context.Background()); err != nil {

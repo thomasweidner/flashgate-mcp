@@ -22,7 +22,8 @@ The current server:
 - uses deterministic tool ordering;
 - validates request envelopes and method parameters before dispatch;
 - writes protocol messages only to stdout;
-- returns successful filesystem results as one compact JSON text block plus the same object in `structuredContent`;
+- uses a typed result contract for every registered tool and transmits file
+  text and directory entries once;
 - exposes successful `outputSchema` definitions for the current eight tools;
 - exposes explicit `readOnlyHint`, `destructiveHint`, `idempotentHint`, and `openWorldHint` annotations for every current tool;
 - returns expected registered-tool failures as `isError:true` results with one compact JSON text block containing only `category` and `message`, and no `structuredContent`; request failures, unavailable names, and internal failures remain JSON-RPC errors. See the [error contract](tools.md#machine-readable-tool-errors).
@@ -147,15 +148,36 @@ The catalog fingerprint changes whenever that tuple changes. On the `2026-07-28`
 
 ## Tool result classes
 
-Version 1.0 defines representation by payload class instead of applying one envelope pattern to all data:
+Each tool declares its successful variants at registration. The contract
+separates the metadata, structured, text, and binary/media payload kinds
+from transfer mode (inline, paged, or resource) and lifecycle state
+(complete, partial, or pending). The current adapter enables complete inline
+variants. It rejects unimplemented modes and states at registration.
 
-- small metadata may use compact text/structured parity within budget;
-- structured pages use typed entries, counters, and cursors with no duplicated page payload;
-- text payload appears once plus compact metadata;
-- binary/media payload uses bounded inline representation or an opaque result/resource handle;
-- long-running work returns an operation/job handle and bounded status/result pages.
+The central adapter serializes the declared object and ordered content parts.
+Small metadata can be duplicated as compact JSON within 8 KiB. Larger
+metadata and structured collections use a fixed text summary with the object
+in `structuredContent`. Text and inline image/audio parts appear once in
+`content`. The adapter derives their separate `{"size":…}` object from the
+aggregate raw byte count. The current filesystem tools emit UTF-8 text and
+structured objects. See [filesystem tools](tools.md#successful-mcp-result-envelope)
+for their precise wire locations.
 
-Wire encoding is revision-specific. The current `2025-11-25` result envelope remains unchanged until its own contract changes. Every successful `2026-07-28` result carries the required `resultType` (normally `"complete"`; `"input_required"` only for the revision's Multi Round-Trip Requests pattern), plus revision-defined result `_meta` such as server identity. Shared domain result objects do not acquire protocol-version fields.
+Object shapes are closed and their encoded sizes are checked before
+serialization. Raw payload limits apply before wire encoding. The
+transport applies its independent encoded-response limit to the full envelope.
+Over-limit results fail closed. Compatibility text never raises a limit or
+repeats file text, entries, or media. `outputSchema` describes the successful
+structured object and is checked against actual result variants by CI.
+
+Wire encoding is revision-specific. The candidate `2026-07-28` adds its
+`resultType` and result `_meta` in the revision adapter. Its
+`"input_required"` value belongs to the revision's Multi Round-Trip Requests
+pattern. Domain result objects remain revision-independent.
+
+Notifications and true streaming use separate revision and transport
+mechanisms. Tool domains supply data or events. Feature owners add negotiated
+delivery and end-to-end tests before advertising support.
 
 All handles are opaque, random, expiring, and bound to principal, root, profile, capability set, execution backend, service instance, and operation ownership. Host absolute paths are never encoded into public URIs.
 

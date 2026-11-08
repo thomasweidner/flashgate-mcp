@@ -16,7 +16,7 @@ func TestRegistryRegisterAndGet(t *testing.T) {
 		name: "test_tool",
 	}
 
-	registry.Register(tool)
+	requireRegistration(t, registry, tool)
 
 	got, ok := registry.Get("test_tool")
 	if !ok {
@@ -52,9 +52,9 @@ func TestRegistryListReturnsToolsInRegistrationOrder(t *testing.T) {
 	second := &testTool{name: "second"}
 	third := &testTool{name: "third"}
 
-	registry.Register(first)
-	registry.Register(second)
-	registry.Register(third)
+	requireRegistration(t, registry, first)
+	requireRegistration(t, registry, second)
+	requireRegistration(t, registry, third)
 
 	list := registry.List()
 
@@ -91,9 +91,9 @@ func TestRegistryRegisterOverridesExistingToolWithoutChangingOrder(t *testing.T)
 		description: "second",
 	}
 
-	registry.Register(first)
-	registry.Register(other)
-	registry.Register(second)
+	requireRegistration(t, registry, first)
+	requireRegistration(t, registry, other)
+	requireRegistration(t, registry, second)
 
 	got, ok := registry.Get("test_tool")
 	if !ok {
@@ -124,7 +124,7 @@ type testTool struct {
 	title       string
 	description string
 	inputSchema any
-	result      any
+	result      resultObject
 	err         error
 	called      int
 	arguments   json.RawMessage
@@ -155,13 +155,24 @@ func (t *testTool) Definition() protocol.Tool {
 	}
 }
 
-func (t *testTool) Execute(_ context.Context, arguments json.RawMessage) (any, error) {
+func (t *testTool) ResultContract() ResultContract {
+	return metadataContract(defaultVariant)
+}
+
+func (t *testTool) Execute(_ context.Context, arguments json.RawMessage) (ToolResult, error) {
 	t.called++
 	t.arguments = append(json.RawMessage(nil), arguments...)
 
 	if t.err != nil {
-		return nil, t.err
+		return ToolResult{}, t.err
 	}
 
-	return t.result, nil
+	return NewToolResult(defaultVariant, t.result), nil
+}
+
+func requireRegistration(t testing.TB, registry *Registry, tool Tool) {
+	t.Helper()
+	if err := registry.Register(tool); err != nil {
+		t.Fatal(err)
+	}
 }

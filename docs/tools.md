@@ -21,7 +21,8 @@ All paths are relative to the configured root. Absolute paths, traversal, denied
 
 ## Successful MCP result envelope
 
-The result examples below are domain objects. Every successful `tools/call` places that object inside an MCP `CallToolResult`:
+Every successful `tools/call` uses an MCP `CallToolResult`. A small metadata
+result can carry a compact JSON compatibility copy:
 
 ```json
 {
@@ -35,7 +36,13 @@ The result examples below are domain objects. Every successful `tools/call` plac
 }
 ```
 
-The central adapter serializes the typed domain result once with `encoding/json`. The compact bytes become both the text and `structuredContent`, so decoding the text is deeply equal to the structured object. All eight tools use the same wrapper. For `read_file`, outer `content` is the MCP array while `structuredContent.content` remains the file-text string.
+The central adapter places each payload in one location. `list_directory`
+returns entries in `structuredContent.entries` and a fixed text summary.
+`read_file` returns valid UTF-8 file text in `content[0].text` and source byte size
+in `structuredContent.size`. The other six tools return metadata in
+`structuredContent`, with a compact JSON text copy for objects up to 8 KiB.
+Larger metadata objects within the result limit receive the same fixed text
+summary as structured collections.
 
 `tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Expected tool failures use the separate machine-readable error contract below.
 
@@ -54,7 +61,9 @@ The same current MCP `2025-11-25` definitions expose all four annotation members
 
 `write_file` and `copy_path` are not tool-wide idempotent because `overwrite:true` can replace an existing target. Annotations are client-facing discovery hints only. Registration, read-only/profile gating, capabilities, root/path/security checks, and execution identity remain authoritative server-side decisions.
 
-The current deterministic UTF-8 JSONL `tools/list` snapshot, including the response's trailing newline, is 2446 response bytes and 2411 result bytes for read-only, and 6492 response bytes and 6457 result bytes for default. Relative to the schema-bearing pre-BL-202 snapshot, explicit annotations add 312 bytes to read-only and 835 bytes to default. These are measured contract values, not a performance baseline.
+The deterministic UTF-8 JSONL `tools/list` response, including the trailing
+newline, is 2426 response bytes and 2391 result bytes for read-only, and 6472
+response bytes and 6437 result bytes for default.
 
 ## `list_directory`
 
@@ -74,11 +83,18 @@ Lists one directory. `path` is optional; omission means `.`, while an explicitly
 }
 ```
 
-No pagination, filtering, recursion, or batch behavior is provided.
+The configured entry limit counts every entry scanned, including entries
+filtered by policy. Returned entries are also subject to a result byte limit.
+Exceeding either limit returns `limit_exceeded` without a partial listing.
 
 ## `read_file`
 
 Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the configured server limit is used; a larger client value is capped at that limit.
+
+The file must contain valid UTF-8. After JSON decoding, the text encodes to
+the original bytes, including any BOM, line endings, or control characters.
+An empty file returns an empty string and size zero. Invalid UTF-8 returns
+`invalid_text_encoding` without file data.
 
 ```json
 {
@@ -89,8 +105,8 @@ Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the co
 
 ```json
 {
-  "content": "...",
-  "size": 123
+  "content": [{"type": "text", "text": "file text"}],
+  "structuredContent": {"size": 9}
 }
 ```
 
@@ -220,7 +236,7 @@ Registered tools return expected argument and domain failures as MCP
 
 Active categories are `invalid_arguments`, `invalid_path`, `not_found`,
 `already_exists`, `access_denied`, `unsupported_path_type`,
-`unsupported_operation`, and `limit_exceeded`. The future vocabulary reserves
+`unsupported_operation`, `invalid_text_encoding`, and `limit_exceeded`. The future vocabulary reserves
 `unsupported_capability`, `content_not_local`, `indeterminate`, `canceled`,
 and `deadline_exceeded`; their domain functions are not implemented.
 
@@ -233,8 +249,8 @@ No public `io_error`, raw OS cause, host root, provider identity, or diagnostic
 fields are included. Error responses contain either a JSON-RPC `error` or an
 MCP `result`, never both. No `_meta` is added.
 
-Success `outputSchema` and `structuredContent` remain success-only and
-unchanged. Missing `get_path_info` remains successful with `exists:false`.
+The success `outputSchema` describes `structuredContent`. Missing
+`get_path_info` remains successful with `exists:false`.
 
 ## Version 1.0 target contract direction
 
@@ -249,7 +265,7 @@ Planned contract changes include:
 - targeted edits, conditional/atomic writes, dry-run previews, and bounded filesystem plans;
 - search, process, typed command, system-information, and job tools in separate capabilities;
 - deterministic profile catalogs and compact initialization instructions;
-- payload classes that transmit large content once instead of duplicating it in text and structured fields;
+- apply the current single-transmission contract to new payload-producing tools;
 - opaque principal-bound result/resource handles for content that should not be embedded in one tool response.
 
 Version 1.0 tool names, schemas, annotations, limits, profiles, and error payloads become stable only after their canonical backlog tasks and the release gate are complete. The machine-readable catalog remains a current-implementation snapshot until replaced by generated Version 1.0 profile catalogs.

@@ -72,7 +72,7 @@ fi
 
 "${BINARY_PATH}" < "${REQUEST_PATH}" > "${RESPONSE_PATH}"
 
-python3 - "${RESPONSE_PATH}" "${MOVE_TARGET_PATH}" <<'PY'
+python3 - "${RESPONSE_PATH}" "${MOVE_TARGET_PATH}" "${REPO_ROOT}/README.md" <<'PY'
 import json
 import os
 import sys
@@ -146,7 +146,7 @@ if tool_names != expected_tools:
         f"Unexpected tool order. Expected: {', '.join(expected_tools)}. Actual: {', '.join(tool_names)}"
     )
 
-def decode_call_tool_result(response, expected_id):
+def decode_call_tool_result(response, expected_id, expected_text=None):
     if response.get("id") != expected_id or "error" in response or not isinstance(response.get("result"), dict):
         raise SystemExit(f"Expected successful tools/call response id {expected_id}")
     result = response["result"]
@@ -157,34 +157,32 @@ def decode_call_tool_result(response, expected_id):
     content = result.get("content")
     if not isinstance(content, list) or len(content) != 1:
         raise SystemExit(f"tools/call result id {expected_id} content must contain exactly one block")
-    decoded_text = None
-    for block in content:
-        if not isinstance(block, dict) or set(block) != {"type", "text"}:
-            raise SystemExit(f"tools/call result id {expected_id} contains an invalid block")
-        if block.get("type") != "text" or not isinstance(block.get("text"), str):
-            raise SystemExit(f"tools/call result id {expected_id} contains an invalid text block")
-        value = json.loads(block["text"])
-        if not isinstance(value, dict):
-            raise SystemExit(f"tools/call result id {expected_id} text must encode an object")
-        if decoded_text is None:
-            decoded_text = value
-        elif value != decoded_text:
-            raise SystemExit(f"tools/call result id {expected_id} text blocks disagree")
+    block = content[0]
+    if (not isinstance(block, dict) or set(block) != {"type", "text"} or
+            block["type"] != "text" or not isinstance(block["text"], str)):
+        raise SystemExit(f"tools/call result id {expected_id} contains an invalid text block")
     structured = result.get("structuredContent")
-    if not isinstance(structured, dict) or decoded_text != structured:
-        raise SystemExit(f"tools/call result id {expected_id} text and structuredContent differ")
+    if not isinstance(structured, dict):
+        raise SystemExit(f"tools/call result id {expected_id} structuredContent must be an object")
+    if expected_text is None:
+        if json.loads(block["text"]) != structured:
+            raise SystemExit(f"tools/call result id {expected_id} text and structuredContent differ")
+    elif block["text"] != expected_text:
+        raise SystemExit(f"tools/call result id {expected_id} does not contain the expected text payload")
     if result.get("isError", False) is not False:
         raise SystemExit(f"tools/call result id {expected_id} unexpectedly has isError=true")
     return structured
 
-list_result = decode_call_tool_result(list_directory, 3)
-read_result = decode_call_tool_result(read_file, 4)
+with open(sys.argv[3], "rb") as handle:
+    readme = handle.read()
+list_result = decode_call_tool_result(list_directory, 3, "See structuredContent for the result.")
+read_result = decode_call_tool_result(read_file, 4, readme.decode("utf-8"))
 existing_result = decode_call_tool_result(existing_path_info, 5)
 missing_result = decode_call_tool_result(missing_path_info, 6)
 if not isinstance(list_result.get("entries"), list):
     raise SystemExit("list_directory did not return entries")
-if not isinstance(read_result.get("content"), str) or read_result.get("size", 0) <= 0:
-    raise SystemExit("read_file did not return content and size")
+if read_result != {"size": len(readme)}:
+    raise SystemExit("read_file structuredContent must contain only the file size")
 if existing_result.get("exists") is not True or existing_result.get("path") != "README.md":
     raise SystemExit("get_path_info did not report README.md as existing")
 if missing_result != {"path": "smoke-missing-path", "exists": False}:

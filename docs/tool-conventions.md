@@ -49,7 +49,12 @@ have their own contracts. Authors use JSON Schema Draft 2020-12. The test
 compiler pins the dialect, so published definitions can omit `$schema`.
 The Go argument decoders and authorization checks still govern runtime calls.
 
-Every successful `tools/call` uses the central MCP adapter wrapper. The outer result is `CallToolResult` with exactly one `TextContent` block whose text is compact deterministic JSON and `structuredContent` containing the same object. No domain field is placed directly on the outer result. Productive results remain structs; Go's standard `encoding/json` provides deterministic struct-field output and sorted map keys if a map is ever used.
+The central adapter produces `CallToolResult` according to the registered
+variant. Standalone objects use closed Go types and an encoded-size check
+before serialization. Structured collections appear once in
+`structuredContent`. Small standalone metadata can also appear in compact
+JSON text within the 8 KiB compatibility limit. Payload variants return
+ordered content blocks with a size object derived by the adapter.
 
 The current MCP `2025-11-25` tool definitions expose this exact annotation matrix:
 
@@ -124,15 +129,20 @@ The current `MCP_READ_ONLY` environment switch remains a pre-Version-1.0 compati
 
 ### Result payload classes
 
-Version 1.0 does not apply text-plus-`structuredContent` duplication indiscriminately to payload-heavy results.
+Every registered tool declares the variants it can produce. Each variant binds
+its structured object kind, ordered content parts, transfer mode, lifecycle
+state, and size limits. The current adapter registers complete inline variants.
 
-| Class | Examples | Target representation |
+| Payload kind | Examples | Representation |
 |---|---|---|
 | Small metadata | path status, operation status, counters | compact structured object; text compatibility parity allowed within budget |
-| Structured page | directory, search, process page | structured entries/cursor/counters; optional short text summary only |
-| Text payload | file range, process stdout/stderr | content once plus compact metadata |
-| Binary/media payload | image, archive, arbitrary binary | bounded inline content only below threshold; otherwise opaque resource/result handle |
-| Long-running result | tree, hash batch, copy/move plan | operation/job handle plus bounded pages or result resource |
+| Structured data | directory, search, process page | structured entries/cursor/counters with a short text summary |
+| Text payload | UTF-8 file text, future process output | text once with adapter-derived byte size |
+| Binary/media payload | image, audio, archive bytes | bounded inline image/audio with adapter-derived raw byte size, or a future opaque resource |
+
+Paged and resource transfer, and partial or pending results, require the
+delivery mechanism and lifecycle owned by their feature. Tool authors add
+executable conformance cases for every declared variant.
 
 Every result definition states:
 

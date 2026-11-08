@@ -44,7 +44,7 @@ func TestNewCallToolResultMarshal(t *testing.T) {
 		t.Fatal("isError=false must be omitted")
 	}
 	var textValue, structuredValue any
-	if err := json.Unmarshal([]byte(result.Content[0].Text), &textValue); err != nil {
+	if err := json.Unmarshal([]byte(result.Content[0].(TextContent).Text), &textValue); err != nil {
 		t.Fatal(err)
 	}
 	if err := json.Unmarshal(result.StructuredContent, &structuredValue); err != nil {
@@ -82,7 +82,7 @@ func TestNewCallToolResultCompactsAndOwnsStructuredContent(t *testing.T) {
 	}
 	input[0] = 'x'
 
-	if result.Content[0].Text != `{"empty":{}}` || string(result.StructuredContent) != `{"empty":{}}` {
+	if result.Content[0].(TextContent).Text != `{"empty":{}}` || string(result.StructuredContent) != `{"empty":{}}` {
 		t.Fatalf("unexpected compact result: %#v", result)
 	}
 }

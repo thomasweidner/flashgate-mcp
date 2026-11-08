@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 )
 
 func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
 
 	registeredTools := registry.List()
 	gotNames := make([]string, 0, len(registeredTools))
@@ -39,7 +40,7 @@ func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
 func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
 
 	expectedNames := []string{
 		"list_directory",
@@ -60,7 +61,7 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 }
 
 func TestCreateToolRegistryDoesNotResolveRemovedTools(t *testing.T) {
-	registry := createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
 	for _, name := range []string{"list_files", "stat_path", "exists_path", "mkdir", "rename_path"} {
 		if _, ok := registry.Get(name); ok {
 			t.Fatalf("expected removed tool %q to be unavailable", name)
@@ -71,7 +72,7 @@ func TestCreateToolRegistryDoesNotResolveRemovedTools(t *testing.T) {
 func TestCreateToolRegistryOmitsWriteToolsWhenReadOnly(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true))
+	registry := requireToolRegistry(t, filesystem, 1024, capabilitiesFromReadOnly(true))
 
 	registeredTools := registry.List()
 	gotNames := make([]string, 0, len(registeredTools))
@@ -94,7 +95,7 @@ func TestCreateToolRegistryOmitsWriteToolsWhenReadOnly(t *testing.T) {
 func TestCreateToolRegistryDoesNotResolveWriteToolsWhenReadOnly(t *testing.T) {
 	filesystem := noopFileSystem{}
 
-	registry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true))
+	registry := requireToolRegistry(t, filesystem, 1024, capabilitiesFromReadOnly(true))
 
 	writeToolNames := []string{
 		"write_file",
@@ -124,6 +125,15 @@ func TestCapabilitiesFromReadOnly(t *testing.T) {
 }
 
 type noopFileSystem struct{}
+
+func requireToolRegistry(t testing.TB, filesystem fs.FileSystem, maxFileSize int64, capabilities toolCapabilities) *tools.Registry {
+	t.Helper()
+	registry, err := createToolRegistry(filesystem, maxFileSize, capabilities)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return registry
+}
 
 func (noopFileSystem) List(string) ([]fs.Entry, error) {
 	return nil, errors.New("not implemented")

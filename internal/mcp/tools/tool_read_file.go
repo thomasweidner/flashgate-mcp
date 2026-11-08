@@ -36,7 +36,7 @@ func (t *ReadFileTool) Title() string {
 
 // Description returns the tool description.
 func (t *ReadFileTool) Description() string {
-	return "Reads a text file below the configured filesystem root."
+	return "Reads a UTF-8 text file below the configured filesystem root."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -72,21 +72,28 @@ func (t *ReadFileTool) Definition() protocol.Tool {
 	}
 }
 
+func (t *ReadFileTool) ResultContract() ResultContract {
+	return ResultContract{{
+		Name: defaultVariant, ObjectKind: MetadataPayload, Parts: []PayloadKind{TextPayload},
+		Mode: InlineTransfer, State: CompleteResult, MaxObjectBytes: 128, MaxPayloadBytes: t.serverMaxBytes,
+	}}
+}
+
 // Execute reads the requested file.
-func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments readFileArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return nil, rpcErr
+		return ToolResult{}, rpcErr
 	}
 
 	if !isNonBlank(arguments.Path) {
-		return nil, invalidArgumentsError()
+		return ToolResult{}, invalidArgumentsError()
 	}
 
 	maxBytes := t.serverMaxBytes
 	if arguments.MaxBytes != nil {
 		if *arguments.MaxBytes < 1 {
-			return nil, invalidArgumentsError()
+			return ToolResult{}, invalidArgumentsError()
 		}
 		maxBytes = *arguments.MaxBytes
 	}
@@ -96,21 +103,24 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 
 	content, err := t.filesystem.Read(arguments.Path, maxBytes)
 	if err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return readFileResult{
-		Content: string(content),
-		Size:    int64(len(content)),
-	}, nil
+	size := int64(len(content))
+	if size > maxBytes {
+		return ToolResult{}, mapFilesystemError(fs.ErrFileTooLarge)
+	}
+	text, err := TextPart(string(content))
+	if err != nil {
+		return ToolResult{}, &toolExecutionError{
+			category: categoryInvalidTextEncoding,
+			message:  "file text is not valid UTF-8",
+		}
+	}
+	return NewPayloadResult(defaultVariant, text), nil
 }
 
 type readFileArguments struct {
 	Path     string `json:"path"`
 	MaxBytes *int64 `json:"maxBytes,omitempty"`
-}
-
-type readFileResult struct {
-	Content string `json:"content"`
-	Size    int64  `json:"size"`
 }

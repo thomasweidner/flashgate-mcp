@@ -51,9 +51,19 @@ Inputs are closed objects and are strictly decoded at runtime. `get_path_info` u
 
 ## Current successful result contract
 
-The implemented adapter uses MCP `CallToolResult` variant B for every successful call from all eight filesystem tools: one `TextContent` block contains compact deterministic JSON, and `structuredContent` contains the same domain object. Protocol conformance takes precedence over minimizing the duplicated payload. Reproducible benchmarks record response bytes, runtime, and allocations for the historical direct form, text-only form, and selected text-plus-structured form without setting CI budgets from a single machine.
+BL-213 replaces universal text parity with registered result variants. The
+contract separates four payload kinds, transfer, and lifecycle. The central
+adapter supports ordered parts with derived metadata for complete inline
+results. UTF-8 file text and directory entries have one wire location.
+Standalone object sizes are checked before serialization. Small metadata retains bounded
+compatibility parity. Reproducible benchmarks preserve the historical direct,
+text-only, and text-plus-structured comparison fixtures.
 
-Typed domain results and the filesystem core remain independent of MCP. Runtime `outputSchema` is implemented for all eight tools and describes the typed domain result. BL-203 implements expected registered-tool/domain failures as MCP `CallToolResult` with `isError:true`, one compact JSON text block containing only safe `category` and `message` fields, and absent `structuredContent`. Malformed or request-level failures and unknown or unregistered tools remain JSON-RPC errors; unexpected internal, unclassified I/O, and serialization failures return generic JSON-RPC Internal error. Successful `structuredContent` and `outputSchema` remain success-only and unchanged; see the [machine-readable tool-error contract](../tools.md#machine-readable-tool-errors).
+Typed domain results and the filesystem core remain independent of MCP.
+Runtime `outputSchema` describes the successful structured object for each
+tool. BL-203's [machine-readable tool-error contract](../tools.md#machine-readable-tool-errors)
+separates normalized expected failures from JSON-RPC request and internal
+errors.
 
 ## Measurement contract
 
@@ -68,7 +78,10 @@ Machine-readable format `flashgate-benchmark/v1` excludes host paths and private
 The sole token orientation is `ceil(UTF-8 bytes / 4)`. It is not model-specific, does not use a tokenizer, and is not suitable for billing.
 ## Accepted Version 1.0 target
 
-The current all-tool text-plus-`structuredContent` parity remains an implementation fact, but Version 1.0 adopts payload classes rather than applying that duplication to every future result. Small metadata may retain compact parity for client compatibility. Payload-heavy file text, binary/media data, search pages, trees, and process output must appear once, with separate compact structured metadata or an identity-bound resource handle.
+Search pages, trees, process output, and media use the same single-transmission
+rule as the current filesystem payloads. Paged and resource delivery, jobs,
+notifications, and streaming are separate mechanisms owned by their feature
+and transport contracts.
 
 Version 1.0 adds hard measurement of wire amplification, useful payload bytes, approximate token cost per useful byte, catalog/instruction size, and proxy/service overhead. It also adds opaque `flashgate://` result handles, deterministic catalog fingerprints, profile-specific instructions, and bounded resource-link/inline fallbacks.
 

@@ -342,7 +342,7 @@ func (c FilesystemConfig) MaxWriteBytes() int64 {
 	return c.maxWriteBytes
 }
 
-// MaxListEntries returns the maximum number of list_directory entries.
+// MaxListEntries returns the maximum number of entries inspected by list_directory.
 func (c FilesystemConfig) MaxListEntries() int {
 	return c.maxListEntries
 }

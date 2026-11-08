@@ -36,16 +36,18 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := createToolRegistry(filesystem, 1024*1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, filesystem, 1024*1024, toolCapabilities{filesystemWrite: true})
 
 	tests := []struct {
 		name       string
 		params     string
+		text       *string
 		assertions func(*testing.T, map[string]any)
 	}{
 		{
 			name:   "list_directory",
 			params: `{"name":"list_directory","arguments":{}}`,
+			text:   new("See structuredContent for the result."),
 			assertions: func(t *testing.T, value map[string]any) {
 				if _, ok := value["entries"].([]any); !ok {
 					t.Fatalf("expected entries array, got %#v", value)
@@ -53,10 +55,11 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			},
 		},
 		{
-			name:   "read_file content collision",
+			name:   "read_file single transmission",
 			params: `{"name":"read_file","arguments":{"path":"read file.txt"}}`,
+			text:   &readContent,
 			assertions: func(t *testing.T, value map[string]any) {
-				if value["content"] != readContent || value["size"] != json.Number("50") {
+				if len(value) != 1 || value["size"] != json.Number("50") {
 					t.Fatalf("unexpected read result: %#v", value)
 				}
 			},
@@ -96,12 +99,19 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 			if response.Error != nil {
 				t.Fatalf("unexpected error: %#v", response.Error)
 			}
-			decoded, err := mcptest.DecodeCallToolResult(response.Result)
+			decode := mcptest.DecodeCallToolResult
+			if tc.text != nil {
+				decode = mcptest.DecodeSplitCallToolResult
+			}
+			decoded, err := decode(response.Result)
 			if err != nil {
 				t.Fatalf("strict CallToolResult validation failed: %v; response=%s", err, raw)
 			}
 			if !decoded.HasStructuredContent || decoded.IsError {
 				t.Fatalf("unexpected decoded result: %#v", decoded)
+			}
+			if tc.text != nil && decoded.TextContent != *tc.text {
+				t.Fatalf("unexpected payload text: %#v", decoded.TextContent)
 			}
 			structured, ok := decoded.StructuredContent.(map[string]any)
 			if !ok {
@@ -122,8 +132,8 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defaultRegistry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
-	readOnlyRegistry := createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(true))
+	defaultRegistry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	readOnlyRegistry := requireToolRegistry(t, filesystem, 1024, capabilitiesFromReadOnly(true))
 
 	tests := []struct {
 		name     string
@@ -177,7 +187,7 @@ func TestFilesystemExpectedToolErrorWireContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
 	for _, tc := range []struct{ params, category string }{
 		{`{"name":"get_path_info","arguments":{}}`, "invalid_arguments"},
 		{`{"name":"read_file","arguments":{"path":"../outside.txt"}}`, "invalid_path"},

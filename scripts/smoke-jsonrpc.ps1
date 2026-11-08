@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path "$PSScriptRoot\.."
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
 $buildDir = Join-Path $repoRoot "build"
-$stamp = "{0}-{1}" -f ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()), $PID
+[string]$stamp = "{0}-{1}" -f ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()), $PID
 $requestPath = Join-Path $buildDir "smoke-jsonrpc-$stamp-request.jsonl"
 $responsePath = Join-Path $buildDir "smoke-jsonrpc-$stamp-response.jsonl"
 $moveSourceRelative = "build/smoke-move-$stamp-source.txt"
@@ -36,7 +36,8 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 function Get-CallToolStructuredContent {
     param(
         [object]$Response,
-        [int]$ExpectedId
+        [int]$ExpectedId,
+        [AllowEmptyString()][string]$ExpectedText
     )
 
     if ($Response.id -ne $ExpectedId -or
@@ -79,14 +80,20 @@ function Get-CallToolStructuredContent {
         }
     }
 
-    $textValue = $blocks[0].text | ConvertFrom-Json
-    if (-not ($textValue -is [PSCustomObject])) {
-        throw "tools/call result id $ExpectedId text must encode an object"
-    }
-    $textJSON = $textValue | ConvertTo-Json -Compress -Depth 100
-    $structuredJSON = $Response.result.structuredContent | ConvertTo-Json -Compress -Depth 100
-    if ($textJSON -cne $structuredJSON) {
-        throw "tools/call result id $ExpectedId text and structuredContent differ"
+    if ($PSBoundParameters.ContainsKey("ExpectedText")) {
+        if ($blocks[0].text -cne $ExpectedText) {
+            throw "tools/call result id $ExpectedId does not contain the expected text payload"
+        }
+    } else {
+        $textValue = $blocks[0].text | ConvertFrom-Json
+        if (-not ($textValue -is [PSCustomObject])) {
+            throw "tools/call result id $ExpectedId text must encode an object"
+        }
+        $textJSON = $textValue | ConvertTo-Json -Compress -Depth 100
+        $structuredJSON = $Response.result.structuredContent | ConvertTo-Json -Compress -Depth 100
+        if ($textJSON -cne $structuredJSON) {
+            throw "tools/call result id $ExpectedId text and structuredContent differ"
+        }
     }
 
     return $Response.result.structuredContent
@@ -121,7 +128,8 @@ try {
         )
     }
 
-    [System.IO.File]::WriteAllText($requestPath, (($requests -join "`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
+    $lineFeed = [string][char]10
+    [System.IO.File]::WriteAllText($requestPath, (($requests -join $lineFeed) + $lineFeed), [System.Text.UTF8Encoding]::new($false))
 
     cmd /c "`"$binaryPath`" < `"$requestPath`" > `"$responsePath`""
 
@@ -181,31 +189,35 @@ try {
         )
     }
 
-    if (($toolNames -join "`0") -cne ($expectedTools -join "`0")) {
-        throw "Unexpected tool order. Expected: $($expectedTools -join ', '). Actual: $($toolNames -join ', ')"
+    $separator = [string][char]0
+    if (($toolNames -join $separator) -cne ($expectedTools -join $separator)) {
+        throw ("Unexpected tool order. Expected: {0}. Actual: {1}" -f ($expectedTools -join ', '), ($toolNames -join ', '))
     }
 
     foreach ($expectedTool in $expectedTools) {
         if ($toolNames -notcontains $expectedTool) {
-            throw "Expected tool '$expectedTool' was not listed. Actual tools: $($toolNames -join ', ')"
+            throw ("Expected tool '{0}' was not listed. Actual tools: {1}" -f $expectedTool, ($toolNames -join ', '))
         }
     }
 
     foreach ($toolName in $toolNames) {
         if ($expectedTools -notcontains $toolName) {
-            throw "Unexpected tool '$toolName' was listed. Expected tools: $($expectedTools -join ', ')"
+            throw ("Unexpected tool '{0}' was listed. Expected tools: {1}" -f $toolName, ($expectedTools -join ', '))
         }
     }
 
-    $listResult = Get-CallToolStructuredContent -Response $listDirectory -ExpectedId 3
-    $readResult = Get-CallToolStructuredContent -Response $readFile -ExpectedId 4
+    $readmeBytes = [System.IO.File]::ReadAllBytes((Join-Path $repoRoot "README.md"))
+    $readmeText = [System.Text.Encoding]::UTF8.GetString($readmeBytes)
+    $listResult = Get-CallToolStructuredContent -Response $listDirectory -ExpectedId 3 -ExpectedText "See structuredContent for the result."
+    $readResult = Get-CallToolStructuredContent -Response $readFile -ExpectedId 4 -ExpectedText $readmeText
     $existingResult = Get-CallToolStructuredContent -Response $existingPathInfo -ExpectedId 5
     $missingResult = Get-CallToolStructuredContent -Response $missingPathInfo -ExpectedId 6
     if ($null -eq $listResult.entries) {
         throw "list_directory did not return entries"
     }
-    if (-not ($readResult.content -is [string]) -or $readResult.size -le 0) {
-        throw "read_file did not return content and size"
+    $readFields = @($readResult.PSObject.Properties.Name)
+    if ($readFields.Count -ne 1 -or $readFields[0] -cne "size" -or $readResult.size -ne $readmeBytes.Length) {
+        throw "read_file structuredContent must contain only the file size"
     }
     if (-not $existingResult.exists -or $existingResult.path -ne "README.md") {
         throw "get_path_info did not report README.md as existing"
@@ -242,7 +254,7 @@ try {
 
     Write-Host "JSON-RPC smoke test passed."
     Write-Host "Protocol version: $($initialize.result.protocolVersion)"
-    Write-Host "Tools: $($toolNames -join ', ')"
+    Write-Host ("Tools: {0}" -f ($toolNames -join ', '))
 } finally {
     Remove-Item -LiteralPath $requestPath, $responsePath, $moveSourcePath, $moveTargetPath, $readOnlyWritePath, $readOnlyDeletePath, $readOnlyCopySourcePath, $readOnlyCopyTargetPath, $readOnlyMoveSourcePath, $readOnlyMoveTargetPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $readOnlyCreatePath -Recurse -Force -ErrorAction SilentlyContinue

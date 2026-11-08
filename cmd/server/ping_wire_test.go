@@ -36,7 +36,9 @@ func TestMCPConformancePingRegistryIndependence(t *testing.T) {
 	assertPingResponse(t, mcpWire(t, r, request, 1)[0], "7", 0)
 
 	fixture, _ := mcpRegistry(t, false)
-	registry.Register(mcpFutureTool{Tool: fixture.List()[0]})
+	if err := registry.Register(mcpFutureTool{Tool: fixture.List()[0]}); err != nil {
+		t.Fatal(err)
+	}
 	assertPingResponse(t, mcpWire(t, r, request, 1)[0], "7", 0)
 	result := mcpResult(t, r, "tools/list", `{}`, protocol.ProtocolVersion)
 	var listed []protocol.Tool

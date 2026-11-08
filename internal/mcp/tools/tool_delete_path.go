@@ -69,25 +69,33 @@ func (t *DeletePathTool) Definition() protocol.Tool {
 	}
 }
 
+func (t *DeletePathTool) ResultContract() ResultContract {
+	return metadataContract(defaultVariant)
+}
+
 // Execute deletes the requested path.
-func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments deletePathArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return nil, rpcErr
+		return ToolResult{}, rpcErr
 	}
 
 	if !isNonBlank(arguments.Path) {
-		return nil, invalidArgumentsError()
+		return ToolResult{}, invalidArgumentsError()
+	}
+
+	if err := validateReceiptPaths(arguments.Path); err != nil {
+		return ToolResult{}, err
 	}
 
 	if err := t.filesystem.Delete(arguments.Path, arguments.Recursive); err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return deletePathResult{
+	return NewToolResult(defaultVariant, deletePathResult{
 		Path:    arguments.Path,
 		Deleted: true,
-	}, nil
+	}), nil
 }
 
 type deletePathArguments struct {

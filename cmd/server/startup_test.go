@@ -260,9 +260,9 @@ func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 		return nil, security.ErrUNCPathDenied
 	}
 	registryCalls := 0
-	dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) *tools.Registry {
+	dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
 		registryCalls++
-		return tools.NewRegistry()
+		return tools.NewRegistry(), nil
 	}
 	routerCalls := 0
 	originalRouterFactory := dependencies.newRouter
@@ -283,6 +283,36 @@ func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 	}
 	if registryCalls != 0 || routerCalls != 0 || serverCalls != 0 {
 		t.Fatalf("expected no post-root factories, registry=%d router=%d server=%d", registryCalls, routerCalls, serverCalls)
+	}
+}
+
+func TestRunWithIOPropagatesToolRegistrationFailure(t *testing.T) {
+	t.Setenv("MCP_ROOT", t.TempDir())
+	dependencies := defaultBootstrapDependencies()
+	var registrationErr error
+	dependencies.newToolRegistry = func(filesystem fs.FileSystem, _ int64, capabilities toolCapabilities) (*tools.Registry, error) {
+		registry, err := createToolRegistry(filesystem, 0, capabilities)
+		if registry != nil || err == nil || !strings.Contains(err.Error(), "register read_file") {
+			t.Fatalf("expected read_file contract registration to fail, registry=%v error=%v", registry, err)
+		}
+		registrationErr = err
+		return registry, err
+	}
+	dependencies.newRouter = func(string, string, *tools.Registry) *router.Router {
+		t.Fatal("router created after invalid tool registration")
+		return nil
+	}
+	dependencies.newServer = func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer {
+		t.Fatal("server created after invalid tool registration")
+		return nil
+	}
+	var stdout, stderr bytes.Buffer
+	err := runWithIO(context.Background(), strings.NewReader(""), &stdout, &stderr, dependencies)
+	if registrationErr == nil || !errors.Is(err, registrationErr) || err.Error() != string(config.CategoryStartupFailed) {
+		t.Fatalf("expected safe startup error wrapping registration cause, got %v", err)
+	}
+	if stdout.Len() != 0 || stderr.Len() != 0 {
+		t.Fatal("failed bootstrap wrote protocol output or internal diagnostics")
 	}
 }
 
@@ -315,7 +345,7 @@ func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) 
 			return dependencies
 		},
 		"nil registry": func(dependencies bootstrapDependencies) bootstrapDependencies {
-			dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) *tools.Registry { return nil }
+			dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) { return nil, nil }
 			return dependencies
 		},
 		"nil router": func(dependencies bootstrapDependencies) bootstrapDependencies {

@@ -74,26 +74,34 @@ func (t *MovePathTool) Definition() protocol.Tool {
 	}
 }
 
+func (t *MovePathTool) ResultContract() ResultContract {
+	return metadataContract(defaultVariant)
+}
+
 // Execute moves the requested source path to the target path.
-func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments movePathArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return nil, rpcErr
+		return ToolResult{}, rpcErr
 	}
 
 	if !isNonBlank(arguments.Source) || !isNonBlank(arguments.Target) {
-		return nil, invalidArgumentsError()
+		return ToolResult{}, invalidArgumentsError()
+	}
+
+	if err := validateReceiptPaths(arguments.Source, arguments.Target); err != nil {
+		return ToolResult{}, err
 	}
 
 	if err := t.filesystem.Move(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return movePathResult{
+	return NewToolResult(defaultVariant, movePathResult{
 		Source: arguments.Source,
 		Target: arguments.Target,
 		Moved:  true,
-	}, nil
+	}), nil
 }
 
 type movePathArguments struct {

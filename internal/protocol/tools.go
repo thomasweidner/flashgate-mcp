@@ -31,6 +31,22 @@ type TextContent struct {
 	Text string `json:"text"`
 }
 
+// ContentBlock is a supported MCP tools/call content block.
+type ContentBlock interface {
+	contentBlock()
+}
+
+func (TextContent) contentBlock() {}
+
+// MediaContent is inline MCP image or audio content. JSON encodes Data as base64.
+type MediaContent struct {
+	Type     string `json:"type"`
+	MIMEType string `json:"mimeType"`
+	Data     []byte `json:"data"`
+}
+
+func (MediaContent) contentBlock() {}
+
 // NewTextContent creates a text content block with the required MCP type.
 func NewTextContent(text string) TextContent {
 	return TextContent{Type: "text", Text: text}
@@ -38,7 +54,7 @@ func NewTextContent(text string) TextContent {
 
 // CallToolResult is the MCP result envelope for tools/call.
 type CallToolResult struct {
-	Content           []TextContent   `json:"content"`
+	Content           []ContentBlock  `json:"content"`
 	StructuredContent json.RawMessage `json:"structuredContent,omitempty"`
 	IsError           bool            `json:"isError,omitempty"`
 }
@@ -56,7 +72,7 @@ func NewCallToolResult(structuredContent json.RawMessage) (CallToolResult, error
 	}
 
 	return CallToolResult{
-		Content:           []TextContent{NewTextContent(string(content))},
+		Content:           []ContentBlock{NewTextContent(string(content))},
 		StructuredContent: content,
 	}, nil
 }
@@ -75,5 +91,5 @@ func NewCallToolErrorResult(category, message string) (CallToolResult, error) {
 	if err != nil {
 		return CallToolResult{}, err
 	}
-	return CallToolResult{Content: []TextContent{NewTextContent(string(encoded))}, IsError: true}, nil
+	return CallToolResult{Content: []ContentBlock{NewTextContent(string(encoded))}, IsError: true}, nil
 }

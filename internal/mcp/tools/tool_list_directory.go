@@ -42,26 +42,30 @@ func (t *ListDirectoryTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()), Annotations: filesystemToolAnnotations(t.Name())}
 }
 
-func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *ListDirectoryTool) ResultContract() ResultContract {
+	return ResultContract{{Name: defaultVariant, ObjectKind: StructuredPayload, Mode: InlineTransfer, State: CompleteResult, MaxObjectBytes: maxStructuredBytes}}
+}
+
+func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments listDirectoryArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return nil, rpcErr
+		return ToolResult{}, rpcErr
 	}
 
 	path := "."
 	if arguments.Path != nil {
 		if !isNonBlank(*arguments.Path) {
-			return nil, invalidArgumentsError()
+			return ToolResult{}, invalidArgumentsError()
 		}
 		path = *arguments.Path
 	}
 
 	entries, err := t.filesystem.List(path)
 	if err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return listDirectoryResult{Entries: entries}, nil
+	return NewToolResult(defaultVariant, listDirectoryResult{Entries: entries}), nil
 }
 
 type listDirectoryArguments struct {

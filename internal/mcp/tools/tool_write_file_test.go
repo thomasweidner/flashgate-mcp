@@ -68,7 +68,7 @@ func TestWriteFileToolExecute(t *testing.T) {
 		t.Fatal("expected overwrite=false")
 	}
 
-	encoded, err := json.Marshal(result)
+	encoded, err := json.Marshal(result.object)
 	if err != nil {
 		t.Fatalf("expected marshalable result, got %v", err)
 	}
@@ -119,7 +119,7 @@ func TestWriteFileToolAllowsEmptyContent(t *testing.T) {
 		t.Fatalf("expected empty content, got %q", string(filesystem.writeContent))
 	}
 
-	encoded, err := json.Marshal(result)
+	encoded, err := json.Marshal(result.object)
 	if err != nil {
 		t.Fatalf("expected marshalable result, got %v", err)
 	}
@@ -168,7 +168,7 @@ func TestWriteFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		json.RawMessage(`{"path":`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -192,7 +192,7 @@ func TestWriteFileToolReturnsInvalidParamsForMissingPath(t *testing.T) {
 		json.RawMessage(`{"content":"hello"}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -218,7 +218,7 @@ func TestWriteFileToolReturnsInvalidParamsForFileExists(t *testing.T) {
 		json.RawMessage(`{"path":"existing.txt","content":"hello","overwrite":false}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -244,7 +244,7 @@ func TestWriteFileToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		json.RawMessage(`{"path":"docs","content":"hello","overwrite":false}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 

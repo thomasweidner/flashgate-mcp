@@ -33,7 +33,7 @@ also inherits its owner's focused tests and `T`.
 | MCP `ping` receiver behavior for `2025-11-25` (A, T, ADR-013; official ping utility) | BL-371 | BL-207, BL-208 | Reuse BL-204 gap evidence and existing router/server/revision protocol contracts; BL-257 remains independently gated by BL-204/212 | Existing server validation and exact-revision router, with one dedicated `ping` handler in the STDIO bootstrap | Official request/result schema; positive and negative ID/params/notification/revision wire tests; Windows/native Linux, focused CI/coverage and review | Verified `2025-11-25` empty-result response and `2026-07-28` method-not-found; tool catalog unchanged; native conformance evidence |
 | JSON Schema 2020-12 validation (A, R, ADR MCP compatibility) | BL-212 | BL-200, BL-201, BL-204 | Reuse BL-289/291 arguments/catalog and BL-262 source inventory; BL-110 extends the profile matrix; BL-257 consumes evidence | BL-204 registry, wire snapshots and report; BL-262 dependency classification | [BL-212 binding](implementation-contract.md#bl-212-schema-conformance-binding) | Offline Draft 2020-12 and instance checks, drift mutations, pinned test-only dependencies, unchanged wire snapshots |
 | MCP contract enforcement in CI (T, R) | BL-257 | BL-204, BL-212 | Reuse `mcpcheck`, registry and catalog parity, schema validation, and the owner-maintained conformance matrix | Existing Windows/Linux test job and workflow policy checks | [BL-257 binding](implementation-contract.md#bl-257-ci-enforcement-binding) | Missing executable coverage, failed/skipped checks, or unaccepted contract drift blocks CI; intentional diffs require independent review |
-| Payload classes and single transmission (A, R, ADR efficiency contracts) | BL-213 | BL-201 | BL-214 metrics and BL-218 handoff consume it; BL-090 is not required for inline heavy-payload retrofit | Existing `read_file` and other duplicated heavy results | BL-213, BL-214, BL-258 | Heavy bytes appear once; allowed small metadata parity remains bounded |
+| Typed result contracts and single transmission (A, R, ADR efficiency contracts) | BL-213 | BL-201, BL-204, BL-212, BL-257 | BL-214 metrics and BL-218 handoff consume the contract. BL-090 supplies storage to BL-218 | Tool interface, registry, result adapter, `read_file`, `list_directory`, and six metadata tools | [BL-213 binding](implementation-contract.md#bl-213-tool-result-contract), per-variant wire coverage and existing CI gate | Adapter-derived payload metadata, lossless UTF-8, pre-serialization bounds, bounded metadata parity, and fail-closed registration |
 | Useful-byte and wire-amplification metrics (A, T) | BL-214 | BL-213 | BL-258 later enforces measurements | Existing response serialization and benchmarks | BL-214, BL-258 | Hard budgets and useful-byte measurements exist |
 | Catalog and initialization budget definitions (A, R, TA) | BL-215 | — | BL-216 instructions and BL-256 CI consume budgets | `tools/list` and initialization-size baseline | BL-215, BL-256 | Version 1.0 profile-specific limits defined |
 | Early Native Tool/no-interpreter policy (A, S, TA) | BL-220 | — | BL-163 and typed-command owners later implement policy; no early command engine | Current native Go runtime and future adapter selection | BL-220, BL-163 | Typed no-shell selection, executable identity and evidence gate defined |
@@ -178,6 +178,23 @@ Accepted Post-1.0 workstream owners inherit the same context, root,
 authorization, state, result, adapter, and validation contracts when
 scheduled. They remain outside BL-263's Version 1.0 feature scope and are not
 hard predecessors in the Version 1.0 graph.
+
+### Result delivery successors
+
+The [BL-213 result contract](implementation-contract.md#bl-213-tool-result-contract)
+defines bounded variants and single transmission. The following owners add the
+delivery mechanisms and their acceptance in the backlog.
+
+| Responsibility | Implementation and validation owners |
+|---|---|
+| Directory paging and file streaming/media | BL-037, BL-044, BL-045 |
+| Operation lifecycle, storage and context binding | BL-084–BL-090, BL-239 |
+| Resource handoff, subscriptions and bounded fallback | BL-218 |
+| Catalog notifications and cache invalidation | BL-219 |
+| Tasks, optional task notifications and synchronous fallback | BL-209, BL-210, BL-211 |
+| Negotiated event/stream forwarding and transport tests | BL-225, BL-228, BL-241, BL-370 |
+| Watch domain events | BL-347 |
+| Useful-byte measurement and resource efficiency CI | BL-214, BL-258 |
 
 For each completed row, the owning BL records focused test/CI evidence,
 migrated paths/contracts, and any residual dual-bound to one successor. BL-315

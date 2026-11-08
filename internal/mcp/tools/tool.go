@@ -13,5 +13,6 @@ type Tool interface {
 	Description() string
 	InputSchema() any
 	Definition() protocol.Tool
-	Execute(ctx context.Context, arguments json.RawMessage) (any, error)
+	ResultContract() ResultContract
+	Execute(ctx context.Context, arguments json.RawMessage) (ToolResult, error)
 }
