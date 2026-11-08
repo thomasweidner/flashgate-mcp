@@ -17,21 +17,33 @@ The `SPR-048` prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete:
 product-code coverage and canonical product versioning are established before
 subsequent functional work. BL-255 completed the current-version candidate
 and exact-byte local-promotion foundation in PR #303; future `VERSION`-changing
-release freezes use its hosted candidate gate. BL-372 binds version assignment
-to [release preparation](../build-metadata.md#product-versioning-policy), with notable
-development changes collected under Unreleased. BL-257 follows BL-204 plus BL-212,
-BL-213/214 and BL-215 define payload and catalog contracts in SPR-048. BL-216/219/256 require the later SPR-053 effective profile/catalog/context foundation; BL-218/258 require SPR-049 BL-090 result storage. The stable Version 1.0 public release boundary remains SPR-061/BL-263; public pre-1.0 prereleases belong to SPR-048/BL-363. After BL-330 and BL-315 convergence, the near-term order is BL-255 -> BL-262 -> BL-363 -> BL-204 + BL-212 -> BL-257 -> BL-213 -> BL-214 -> BL-215 -> BL-220 -> SPR-053. Establish SPR-053 named-root/profile/configuration -> BL-236 context -> BL-159 authorization -> BL-110 catalog -> BL-166 audit -> BL-239 state binding. Finish BL-216/219/256 and BL-209/211 there. In SPR-049, complete BL-084–BL-089 lifecycle -> BL-090 store, then conditional BL-210 Tasks mapping, BL-218 resource handoff and BL-258 payload/resource CI. Operations, filesystem, and search consume the final foundation; the matrix's hard predecessors follow this sprint and within-sprint order. [Architecture traceability](architecture-traceability.md) records hard edges and closure obligations.
+release freezes use its hosted candidate gate. Completed BL-372 binds version
+assignment to [release preparation](../build-metadata.md#product-versioning-policy),
+with notable development changes collected under Unreleased. BL-204/212 and BL-257
+completed the conformance, schema, and CI baselines. BL-371 independently
+closed the `2025-11-25` MCP `ping` receiver gap recorded by BL-204, reusing
+BL-207/208. BL-257 retains its independent prerequisites. The
+`2026-07-28` ping receiver remains unsupported, and BL-158 network probing
+remains separate.
 
-BL-371 is the separate SPR-048 / Version 1.0 owner for the
-`2025-11-25` MCP `ping` receiver gap. Begin as soon as its registration and
-separate implementation authorization are valid; prefer completion before
-BL-257 without adding a hard BL-257 dependency, and finish before SPR-048
-closure and SPR-053. Keep BL-204 conformance evidence separate, leave
-`2026-07-28` ping unsupported, and exclude BL-158 ICMP/network probing.
+**Remaining executable lane.** In SPR-048, BL-214 builds efficiency metrics
+on completed BL-213. BL-205 is the recommended response-size regression
+follow-up, with no hard BL-214 dependency. BL-215 and BL-220 can proceed
+independently or earlier.
+
+SPR-053 establishes the configuration, root and profile, context,
+authorization, effective catalog, audit, and state-binding contracts.
+Its validation, catalog, and protocol gates follow the applicable predecessors.
+SPR-049 establishes BL-084–BL-089 Operations lifecycle and the BL-090 shared
+result store before dependent Operations work, BL-218 resource handoff, and
+conditional BL-210 Tasks mapping. BL-258 builds on completed BL-213 and
+follows BL-214 and BL-218. Later domains consume the applicable foundations.
+[Architecture traceability](architecture-traceability.md) records hard edges
+and closure obligations. BL-305/306/315 apply at every owner closure.
 
 ## Local pre-release promotion
 
-BL-255 may promote a fully BL-248-verified current-version candidate for local use before Version 1.0. Promotion reuses exactly the verified artifact bytes; it never rebuilds or mutates them. Immutable identity includes `VERSION + SourceCommitSHA + ArtifactSHA256`. An optional mutable `current` convenience alias may select the latest verified local set but never replaces immutable identity or silently overwrites different bytes under one identity. The earlier candidate CI may upload transient verification artifacts as evidence. Local promotion itself creates no additional remote upload, Git tag, GitHub Release, remote publication, or external release claim. Root `VERSION` remains the canonical BL-245 source; no SemVer pre-release suffix is generated merely for local promotion. BL-363 owns planned public pre-1.0 prereleases; BL-263 owns the stable Version 1.0 gate and stable publication. BL-243 later owns complete installation, removal, and operation guidance across direct, service, and proxy modes; local promotion does not imply those modes already work.
+BL-255 may promote a fully BL-248-verified current-version candidate for local use before Version 1.0. Promotion reuses exactly the verified artifact bytes; it never rebuilds or mutates them. Immutable identity includes `VERSION + SourceCommitSHA + ArtifactSHA256`. An optional mutable `current` convenience alias may select the latest verified local set but never replaces immutable identity or silently overwrites different bytes under one identity. The earlier candidate CI may upload transient verification artifacts as evidence. Local promotion itself creates no additional remote upload, Git tag, GitHub Release, remote publication, or external release claim. Root `VERSION` remains the canonical BL-245 source; no SemVer pre-release suffix is generated merely for local promotion. Completed BL-363 established public pre-1.0 prerelease publication. BL-263 owns the stable Version 1.0 gate and stable publication. BL-243 later owns complete installation, removal, and operation guidance across direct, service, and proxy modes; local promotion does not imply those modes already work.
 
 The BL-255 implementation binds each of the four canonical archives and sibling
 checksums to the full source commit, BL-248 verifier output, reproduction report,
@@ -137,15 +149,14 @@ Version 1.0 gate.
 
 ## Release-unassigned security work
 
-BL-366 (SBOM security management) and BL-367 (GitHub Artifact Attestations) are
-accepted independent owners with no sprint or release assignment. They
-may be scheduled at any time subject to technical prerequisites and separate
-implementation authorization. Neither blocks Version 1.0, another release or
-BL-364. SBOM management reuses BL-262 inventory and existing dependency-security
-functions. Its locally implemented OSV assessment is informative after verified
-candidates and confirmed publication, with no gate based on findings or provider
-availability; see [dependency security assessment](../security-assessment.md).
-Independent review and integration precede activation. Attestations use
+BL-366 (SBOM security management) is Completed. BL-367 (GitHub Artifact
+Attestations) remains Planned and requires separate implementation
+authorization. Both are release-unassigned, independent of BL-364, and carry
+no release-blocking obligation. SBOM management reuses BL-262 inventory and
+existing dependency-security functions. Its OSV assessment is informative
+after verified candidates and confirmed publication, with no gate based on
+findings or provider availability. See [dependency security assessment](../security-assessment.md).
+The implementation and independent review are accepted. Planned attestations use
 GitHub-native OIDC and short-lived identity for the four archives, without
 permanent keys or an extra release-download asset. BL-367 remains inactive.
 BL-366 adds no permissions or credentials; actual provider calls remain separately
@@ -365,7 +376,7 @@ separate future implementation/authorization decisions.
 `BL-263` must verify at minimum:
 
 1. all tasks assigned to Version 1.0 by the sprint sequence are `Completed` or have a documented explicit waiver approved in the release record, and [architecture traceability](architecture-traceability.md) has no ownerless requirement or unresolved Version 1.0 retrofit except an explicitly approved release waiver;
-2. all remaining Post-1.0 tasks are outside Version 1.0; release-unassigned BL-366/367 have no release-blocking obligation and are not silently made Version 1.0 prerequisites;
+2. all remaining Post-1.0 tasks are outside Version 1.0, and release-unassigned BL-366/367/368/369 have no release-blocking obligation;
 3. direct STDIO remains functional without administrative installation;
 4. system service mode implements Variant A only and rejects unsupported Variant B configuration safely;
 5. in-process impersonation does not exist;

@@ -14,9 +14,9 @@ Backlog status describes execution state. The sprint sequence identifies Version
 |---|---|---|
 | Architecture and identity | `SPR-041` | FlashGate identity, ADR baseline, authoritative backlog consolidation |
 | Technical transition | `SPR-042`–`SPR-044` | Technical rename, pre-1.0 filesystem contract cleanup, read-only client preparation |
-| Release and contract definitions | `SPR-045`–`SPR-048` | Coverage/version baseline, exact-byte local candidate promotion, supply-chain foundation, planned persistent public pre-1.0 GitHub prereleases, MCP conformance/schema, payload classes and metrics, catalog budgets and native/no-interpreter policy |
+| Release and contract definitions | `SPR-045`–`SPR-048` | Coverage/version baseline, exact-byte local candidate promotion, supply-chain foundation, persistent public pre-1.0 GitHub prereleases, MCP conformance/schema, payload classes and metrics, catalog budgets and native/no-interpreter policy |
 | Core policy and effective MCP contracts | `SPR-053` | Named roots, safe-default profiles/capabilities, backend-neutral context, central authorization, effective catalog, audit/correlation, state binding, fingerprints, instructions and catalog CI |
-| Operations, Jobs and dependent MCP gates | `SPR-049` | Generic bounded lifecycle and one result store, then Tasks mapping, resource handoff and payload/resource CI |
+| Operations, Jobs and dependent MCP gates | `SPR-049` | Generic bounded lifecycle and one result store, then conditional Tasks mapping, resource handoff and payload/resource CI |
 | Filesystem and search | `SPR-050`–`SPR-052` | Efficient inspection, hashes/content identities, bounded file/tree compare and expected-state verification, MIME/binary/large-result handling, safe edits/plans, bounded search built on final root/profile/backend contracts |
 | Process and execution | `SPR-054`–`SPR-057` | Threat models, observation, managed processes, typed allowlisted commands, OS isolation, cursor output |
 | System information | `SPR-058` | Scoped and redacted host information |
@@ -26,19 +26,16 @@ Backlog status describes execution state. The sprint sequence identifies Version
 
 ### SPR-048 quality and version prerequisites
 
-The prerequisite chain `BL-260 -> BL-245 -> BL-203` is complete: the
-production-server coverage gate and canonical product-version source are active,
-and subsequent functional work carries the required SemVer change. BL-255 completed in PR #303 (merged 2026-10-11): hosted Windows/Linux
-x64/ARM64 candidate validation and independent implementation review passed,
-and exact-byte local promotion is implemented without public publication.
-BL-262 follows this verified candidate foundation.
-BL-363 then plans persistent public pre-1.0 GitHub prereleases of those exact
-verified bytes with `prerelease=true`, a separate explicit publication boundary
-and no publication-time rebuild. Stable Version 1.0 gate/publication remains
-exclusively BL-263; a prerelease does not imply stable/latest readiness.
-BL-257 follows BL-204/212 in SPR-048. BL-213/214 and BL-215 establish payload
-and catalog contracts there; dependent BL-216/219/256 run after the SPR-053
-profile/context/catalog foundation, while BL-218/258 run after SPR-049 BL-090.
+The completed `BL-260 -> BL-245 -> BL-203` chain established production-server
+coverage and canonical product versioning. Completed BL-372 assigns versions
+during release preparation. BL-255 completed hosted Windows/Linux x64/ARM64
+candidate validation, independent review, and exact-byte local promotion in
+PR #303 on 2026-10-11. BL-262 established the supply-chain evidence foundation.
+BL-363 implemented persistent public pre-1.0 GitHub prereleases of those
+verified bytes with `prerelease=true`, a separate explicit publication
+boundary, and no publication-time rebuild.
+BL-364 established five-asset distribution. The stable Version 1.0 gate and
+publication remain exclusively with BL-263.
 
 ### MCP revision migration sequence (SPR-048 and SPR-053)
 
@@ -46,14 +43,35 @@ The protocol migration is intentionally split so each implementation chat has a 
 
 1. **BL-207 — completed revision matrix and dispatch contract:** the exact revision matrix and dispatch invariants are defined while production continues to advertise only enabled support.
 2. **BL-208 — completed `2026-07-28` stateless candidate path:** per-request metadata, `server/discover`, unsupported-version/result/cache semantics, and exact extension negotiation are implemented behind the production policy without weakening the `2025-11-25` path.
-3. **BL-204 / BL-212, then BL-219 after SPR-053:** complete final-spec conformance and JSON Schema 2020-12 first; after effective catalog/context binding, complete fingerprints and safe cache-scope coverage. Only then may the support matrix advertise `2026-07-28`.
-4. **BL-209 / BL-211, then conditional BL-210 after SPR-049:** decide final Tasks support and bounded fallback; map internal Operations/Jobs only if selected and after their lifecycle exists.
+3. **Completed BL-204 / BL-212 / BL-257 and BL-371:** the conformance, JSON Schema 2020-12, and CI baselines are in place. BL-371 independently closed the `2025-11-25` MCP `ping` gap.
+4. **BL-219 in SPR-053:** implement fingerprints and safe cache scope after the effective catalog and state-binding contracts. Only then may the support matrix advertise `2026-07-28`.
+5. **BL-209 / BL-211, then conditional BL-210 in SPR-049:** decide final Tasks support after BL-219, define the bounded fallback, and map eligible Operations/Jobs only if selected and the shared result store is in place.
 
 Prepared Mobile PRs #60, #69, and #149 are inputs to those later chats, not merge-ready authority after this convergence.
 
 Version 1.0 implements service execution Variant A. Variant B's backend boundary and threat model are included so later user workers do not require public tool or domain redesign. Shared-process impersonation is excluded.
 
-After BL-330, rebind local version/main and complete BL-315 convergence. The near-term order is `BL-255 -> BL-262 -> BL-363`, then BL-204 + BL-212 -> BL-257 -> BL-213 -> BL-214 -> BL-215 -> BL-220 -> SPR-053. BL-255 reuses BL-248 verification and exact-byte local promotion; BL-262 supplies evidence and BL-363 publishes the verified immutable candidate through the planned safe publication boundary. SPR-053 establishes roots/profiles/configuration -> BL-236 context -> BL-159 authorization -> BL-110 effective catalog -> BL-166 audit -> BL-239 state binding; then BL-216/219/256 and BL-209/211. SPR-049 establishes BL-084–BL-089 lifecycle -> BL-090 result store -> remaining Operations, conditional BL-210 Tasks mapping, BL-218 handoff and BL-258 payload/resource CI. BL-305/306/315 apply at every closure. Later domains consume these final contracts. [Implementation contract](planning/implementation-contract.md) and [architecture traceability](planning/architecture-traceability.md) carry hard edges and retrofit owners.
+### Remaining executable lane
+
+In SPR-048, BL-214 builds wire metrics on the completed BL-213 result contract.
+BL-205 response-size regression tests are the recommended follow-up and have no
+hard dependency on BL-214. BL-215 catalog and initialization budgets and BL-220
+native-adapter and no-interpreter policy can proceed independently or earlier.
+
+SPR-053 builds configuration, capabilities, named roots, profiles, and root
+policies, followed by BL-236 context, BL-159 authorization, BL-110 effective
+catalog, BL-166 audit and correlation, and BL-239 state binding. Its validation,
+catalog, and protocol owners follow their respective hard predecessors.
+SPR-049 builds BL-084–BL-089 Operations lifecycle and the BL-090 shared result
+store before dependent Operations work, BL-218 resource handoff, and conditional
+BL-210 Tasks mapping. BL-258 enforces payload and resource efficiency after
+BL-214 and BL-218 on the completed BL-213 contract.
+
+Later domains consume the applicable foundation contracts. BL-305/306/315 apply
+at every owner closure. BL-367, BL-368, and BL-369 remain independent of the
+release sequence. See the [backlog sequence](../BACKLOG.md#sprint-sequence-and-status)
+and [architecture traceability](planning/architecture-traceability.md) for
+hard predecessors and retrofit owners.
 
 ## Version 1.0 release boundary
 

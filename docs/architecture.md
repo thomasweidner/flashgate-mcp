@@ -549,8 +549,8 @@ raw-evidence retention duty beyond regular Actions retention. Preserve
 GitHub-generated source downloads are excluded. Lightweight tags retain exact
 version/source parity. BL-364 adds no mandatory signed provenance or signing keys
 and activates no Artifact Attestations or Immutable Releases. Independent
-owners BL-366 (SBOM security management) and BL-367 (GitHub Artifact Attestations)
-are release-unassigned and block no release; see their
+release-unassigned owners BL-366 (Completed SBOM security management) and
+BL-367 (Planned GitHub Artifact Attestations) block no release. See their
 [bindings](planning/implementation-contract.md#release-unassigned-security-task-bindings).
 Historical normalization requires exact original/provider checks, separate
 authorizations for checksum upload and deletion of 36 existing additional assets,
@@ -566,7 +566,7 @@ There is no automatic workflow dispatch or new mutation authority. See the
 [BL-364 contract](planning/implementation-contract.md#bl-364-planning-binding)
 and [release boundary](planning/release-scope.md#accepted-distribution-target-for-all-releases).
 
-The planned SPR-048 release lane is `BL-255 -> BL-262 -> BL-363`, reusing
+The completed SPR-048 release foundation is `BL-255 -> BL-262 -> BL-363`, reusing
 completed BL-245 version/tag/changelog semantics and BL-248 verification.
 BL-255 owns candidate verification and local exact-byte promotion; BL-262 owns
 supply-chain and rollback evidence; BL-363 owns persistent public pre-1.0 GitHub
@@ -647,13 +647,13 @@ MCP protocol extensions are separate negotiated wire features and do not imply a
 
 Authoritative tasks and status are in [BACKLOG.md](../BACKLOG.md).
 
-Near-term sequence:
+**Remaining executable lane.**
 
-1. complete SPR-048 in order: BL-255 -> BL-262 -> BL-363 -> BL-204 + BL-212 -> BL-257 -> BL-213 -> BL-214 -> BL-215 -> BL-220; these candidate, supply-chain, public prerelease and early contract owners do not require later profile or job runtime;
-2. establish SPR-053 named roots, profiles, configuration, backend-neutral context, central authorization, effective catalog, audit/correlation, and state binding, then its fingerprint/instruction/catalog gates;
-3. build SPR-049 Operations and one bounded result store, then MCP Tasks mapping, resource handoff, and payload/resource CI as their prerequisites permit;
-4. extend filesystem, search, process, typed execution, and system domains on that foundation;
-5. implement local runtime/service modes and pass Version 1.0 security, performance, supply-chain verification, compatibility, and documentation gates.
+1. Finish SPR-048 with BL-214 wire metrics on the completed BL-213 result contract and the recommended BL-205 response-size regression follow-up. BL-205 has no hard BL-214 dependency. BL-215 catalog and initialization budgets and BL-220 native-adapter and no-interpreter policy can proceed independently or earlier.
+2. Establish SPR-053 configuration, capabilities, named roots, profiles and root policies, then backend-neutral context, central authorization, effective catalog, audit and correlation, and reusable state binding. Its validation, catalog, and protocol work follows the applicable [hard predecessors](planning/architecture-traceability.md#core-policy-context-catalog-and-state-foundation).
+3. Build SPR-049 Operations lifecycle and one bounded result store, then dependent Operations work, resource handoff, and conditional MCP Tasks mapping. Payload and resource CI follows the metrics and handoff contracts.
+4. Extend filesystem, search, process, typed execution, and system domains on that foundation.
+5. Implement local runtime/service modes and pass Version 1.0 security, performance, supply-chain verification, compatibility, and documentation gates.
 
 ## Post-Version-1.0 decisions
 
