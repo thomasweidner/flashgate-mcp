@@ -256,7 +256,7 @@ func TestMetadataParityForFilesystemReceipts(t *testing.T) {
 
 	for name, domainResult := range tests {
 		t.Run(name, func(t *testing.T) {
-			wrapped, err := metadataContract(defaultVariant).wrap(NewToolResult(defaultVariant, domainResult))
+			wrapped, err := metadataContract(defaultVariant).wrap(t.Context(), NewToolResult(defaultVariant, domainResult))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -273,7 +273,7 @@ func TestWrapSuccessfulToolResultRejectsUnsafeValues(t *testing.T) {
 		untrustedResultObject{},
 	}
 	for _, value := range tests {
-		result, err := metadataContract(defaultVariant).wrap(NewToolResult(defaultVariant, value))
+		result, err := metadataContract(defaultVariant).wrap(t.Context(), NewToolResult(defaultVariant, value))
 		if err != errInvalidToolResult {
 			t.Fatalf("expected invalid result for %#v, result=%#v error=%#v", value, result, err)
 		}

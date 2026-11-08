@@ -174,6 +174,70 @@ Linux `go test -race ./...` remains required.
 
 A hard failure makes the local benchmark command fail after writing its JSON result. A soft excess is recorded as a warning for review. The full process benchmark is not currently run in CI; cross-run baseline comparison and CI enforcement remain BL-249 and BL-250.
 
+## Deterministic wire efficiency
+
+BL-214 runs in ordinary Go tests. Use
+`go test -mod=vendor ./cmd/server -run '^TestMCPConformanceWireEfficiency$' -count=1 -v`
+to report measurements by exact revision, effective profile, route, tool
+variant, fixture and transport. The test uses actual STDIO response frames.
+It exercises both current startup modes under the production `2025-11-25`
+path and the `2026-07-28` candidate policy. Initialization, discovery and
+catalog frames are separate cases. Synthetic deliveries have a separate path
+group and represent unavailable product mechanisms.
+
+The verifier compares the complete decoded body to an independent expected
+result and checks ordered payload locations against reference bytes. Response
+bytes include transport framing. Result bytes count the JSON value in
+`result`. A JSON-RPC error or event without a result has zero result bytes.
+Useful bytes count text in UTF-8, decoded binary and media, or compact
+canonical JSON at the declared structured payload location. The fixture
+validates reported counters such as `size` separately. Metadata receipts and
+resource links have zero useful bytes. Ordered ranges consume each reference
+part once, even across several frames.
+
+For strings, encoded payload bytes exclude the JSON quotes. The measurement
+attributes escaping, structured formatting and Base64 expansion separately.
+Payload class and encoding are independent so a new class can use an existing
+decoder. The measurement attributes the
+serialized values of compatibility fields, revision `_meta`, `resultType`,
+cache fields and cursors. Shared JSON syntax stays in the envelope or residual
+metadata cost. Domain and cursor bytes are included in metadata. Total
+response bytes and useful bytes are accumulated over all frames. Reported
+amplification divides total response bytes by useful bytes, and token cost
+divides `ceil(total response bytes / 4)` by useful bytes. Both ratios are
+absent for zero-payload results.
+
+The fixture trace checks explicit response-side serialization passes and
+buffer-to-string conversions at the instrumented boundaries. Its copy count
+includes small metadata or error conversions where they occur. Internal Go
+and OS copies are unobserved. The existing allocation benchmarks and budgets
+remain separate from explicit copy counts. Synthetic frames have no observed
+trace.
+
+[Wire budgets](wire-budgets.json) use the benchmark package's strict JSON
+loader and have a separate versioned definition. Paths group only executable
+combinations and named synthetic examples. A class sets absolute response,
+result and overhead limits, with integer-scaled amplification and token
+ceilings for nonzero payload. Choose bounds from the fixture's input range
+and permitted representation and envelope costs. Review changes explicitly.
+Historical `flashgate-benchmark/v1` artifacts, workflow counters and host
+baselines retain their definitions.
+
+### Producer integration
+
+Add semantic references, placement checks and exact budget bindings for
+material tool, representation, profile or revision changes. The registry and
+conformance matrix determine which tool variants must have fixtures. For a
+non-tool route, its owner supplies the actual negotiated producer inventory,
+captures the applicable frames, validates authorization and capability
+negatives, and uses the same measurement and exact coverage/budget checks.
+Include per-part and total retrieval costs for pages, chunks, resource reads
+and events. Distinguish compatibility fallback, control-only output and
+errors from content delivery. A synthetic reference cannot satisfy an active
+route binding. The
+[successor matrix](../docs/planning/architecture-traceability.md#result-delivery-successors)
+names the owners.
+
 ## Version 1.0 benchmark expansion
 
 Versioned baselines are created only from a clean implementation commit. They are not retroactively rewritten when Version 1.0 contracts change.

@@ -1,0 +1,271 @@
+{
+  "schema_version": "flashgate-benchmark-wire-budgets/v1",
+  "paths": {
+    "production/2025-11-25/default/stdio-lf": {},
+    "production/2025-11-25/read-only/stdio-lf": {},
+    "candidate/2026-07-28/default/stdio-lf": {
+      "max_revision_bytes": 160
+    },
+    "candidate/2026-07-28/read-only/stdio-lf": {
+      "max_revision_bytes": 160
+    },
+    "synthetic/2026-07-28/fixture/synthetic-lf": {},
+    "synthetic/2026-07-28/fixture/synthetic-event": {}
+  },
+  "groups": {
+    "all": [
+      "production/2025-11-25/default/stdio-lf",
+      "production/2025-11-25/read-only/stdio-lf",
+      "candidate/2026-07-28/default/stdio-lf",
+      "candidate/2026-07-28/read-only/stdio-lf"
+    ],
+    "default": [
+      "production/2025-11-25/default/stdio-lf",
+      "candidate/2026-07-28/default/stdio-lf"
+    ],
+    "read-only": [
+      "production/2025-11-25/read-only/stdio-lf",
+      "candidate/2026-07-28/read-only/stdio-lf"
+    ],
+    "production": [
+      "production/2025-11-25/default/stdio-lf",
+      "production/2025-11-25/read-only/stdio-lf"
+    ],
+    "candidate": [
+      "candidate/2026-07-28/default/stdio-lf",
+      "candidate/2026-07-28/read-only/stdio-lf"
+    ],
+    "synthetic": [
+      "synthetic/2026-07-28/fixture/synthetic-lf"
+    ],
+    "synthetic-event": [
+      "synthetic/2026-07-28/fixture/synthetic-event"
+    ]
+  },
+  "cases": {
+    "initialize///entry": {
+      "class": "entry",
+      "group": "production"
+    },
+    "server/discover///entry": {
+      "class": "entry",
+      "group": "candidate"
+    },
+    "tools/list///default": {
+      "class": "catalog-default",
+      "group": "default"
+    },
+    "tools/list///read-only": {
+      "class": "catalog-read-only",
+      "group": "read-only"
+    },
+    "tools/call///unknown-tool": {
+      "class": "error",
+      "group": "all"
+    },
+    "ping///empty-result": {
+      "class": "empty",
+      "group": "production"
+    },
+    "tools/call/list_directory/complete/reference": {
+      "class": "collection-small",
+      "group": "all",
+      "contract": "structured/inline/complete/16777216/0"
+    },
+    "tools/call/list_directory/complete/500-entries": {
+      "class": "collection-large",
+      "group": "all",
+      "contract": "structured/inline/complete/16777216/0"
+    },
+    "tools/call/list_directory/error/denied": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call/read_file/complete/reference": {
+      "class": "text-small",
+      "group": "all",
+      "contract": "metadata+text/inline/complete/128/65536"
+    },
+    "tools/call/read_file/complete/64kib": {
+      "class": "text-large",
+      "group": "all",
+      "contract": "metadata+text/inline/complete/128/65536"
+    },
+    "tools/call/read_file/complete/escaped": {
+      "class": "text-escaped",
+      "group": "all",
+      "contract": "metadata+text/inline/complete/128/65536"
+    },
+    "tools/call/read_file/complete/empty": {
+      "class": "empty",
+      "group": "all",
+      "contract": "metadata+text/inline/complete/128/65536"
+    },
+    "tools/call/read_file/error/denied": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call/get_path_info/existing/reference": {
+      "class": "metadata",
+      "group": "all",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/get_path_info/missing/reference": {
+      "class": "metadata",
+      "group": "all",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/get_path_info/error/denied": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call/write_file/complete/reference": {
+      "class": "metadata",
+      "group": "default",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/write_file/error/denied": {
+      "class": "error",
+      "group": "default"
+    },
+    "tools/call/create_directory/complete/reference": {
+      "class": "metadata",
+      "group": "default",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/create_directory/error/denied": {
+      "class": "error",
+      "group": "default"
+    },
+    "tools/call/delete_path/complete/reference": {
+      "class": "metadata",
+      "group": "default",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/delete_path/error/denied": {
+      "class": "error",
+      "group": "default"
+    },
+    "tools/call/copy_path/complete/reference": {
+      "class": "metadata",
+      "group": "default",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/copy_path/error/denied": {
+      "class": "error",
+      "group": "default"
+    },
+    "tools/call/move_path/complete/reference": {
+      "class": "metadata",
+      "group": "default",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/move_path/error/denied": {
+      "class": "error",
+      "group": "default"
+    },
+    "fixture/page///reference": {
+      "class": "synthetic",
+      "group": "synthetic"
+    },
+    "fixture/link///reference": {
+      "class": "empty",
+      "group": "synthetic"
+    },
+    "fixture/resource-read///reference": {
+      "class": "synthetic",
+      "group": "synthetic"
+    },
+    "fixture/chunk///reference": {
+      "class": "synthetic",
+      "group": "synthetic"
+    },
+    "fixture/event///reference": {
+      "class": "synthetic",
+      "group": "synthetic-event"
+    },
+    "fixture/fallback///reference": {
+      "class": "synthetic",
+      "group": "synthetic"
+    },
+    "fixture/media///reference": {
+      "class": "synthetic",
+      "group": "synthetic"
+    }
+  },
+  "classes": {
+    "entry": {
+      "max_response_bytes": 400,
+      "max_result_bytes": 350,
+      "max_overhead_bytes": 400
+    },
+    "catalog-default": {
+      "max_response_bytes": 7500,
+      "max_result_bytes": 7450,
+      "max_overhead_bytes": 7500
+    },
+    "catalog-read-only": {
+      "max_response_bytes": 3200,
+      "max_result_bytes": 3150,
+      "max_overhead_bytes": 3200
+    },
+    "metadata": {
+      "max_response_bytes": 500,
+      "max_result_bytes": 450,
+      "max_overhead_bytes": 500
+    },
+    "error": {
+      "max_response_bytes": 380,
+      "max_result_bytes": 335,
+      "max_overhead_bytes": 380
+    },
+    "empty": {
+      "max_response_bytes": 360,
+      "max_result_bytes": 310,
+      "max_overhead_bytes": 360
+    },
+    "collection-small": {
+      "max_response_bytes": 390,
+      "max_result_bytes": 340,
+      "max_overhead_bytes": 350,
+      "max_amplification_milli": 11000,
+      "max_token_cost_milli": 2800
+    },
+    "collection-large": {
+      "max_response_bytes": 25000,
+      "max_result_bytes": 24950,
+      "max_overhead_bytes": 600,
+      "max_amplification_milli": 1040,
+      "max_token_cost_milli": 265
+    },
+    "text-small": {
+      "max_response_bytes": 360,
+      "max_result_bytes": 320,
+      "max_overhead_bytes": 360,
+      "max_amplification_milli": 90000,
+      "max_token_cost_milli": 23000
+    },
+    "text-large": {
+      "max_response_bytes": 66000,
+      "max_result_bytes": 65950,
+      "max_overhead_bytes": 460,
+      "max_amplification_milli": 1010,
+      "max_token_cost_milli": 255
+    },
+    "text-escaped": {
+      "max_response_bytes": 2400,
+      "max_result_bytes": 2350,
+      "max_overhead_bytes": 1600,
+      "max_amplification_milli": 3500,
+      "max_token_cost_milli": 880
+    },
+    "synthetic": {
+      "max_response_bytes": 400,
+      "max_result_bytes": 330,
+      "max_overhead_bytes": 400,
+      "max_frame_bytes": 240,
+      "max_amplification_milli": 63000,
+      "max_token_cost_milli": 16000
+    }
+  }
+}

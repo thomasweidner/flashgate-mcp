@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"mime"
 	"slices"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
 type PayloadKind string
@@ -159,27 +160,27 @@ func (result ToolResult) Variant() string { return result.variant }
 var errInvalidToolResult = errors.New("invalid tool result")
 var errToolResultLimit = errors.New("tool result limit exceeded")
 
-func (contract ResultContract) wrap(result ToolResult) (protocol.CallToolResult, error) {
+func (contract ResultContract) wrap(ctx context.Context, result ToolResult) (protocol.CallToolResult, error) {
 	for _, variant := range contract {
 		if variant.Name == result.variant {
-			return variant.wrap(result)
+			return variant.wrap(ctx, result)
 		}
 	}
 	return protocol.CallToolResult{}, errInvalidToolResult
 }
 
-func (variant ResultVariant) wrap(result ToolResult) (protocol.CallToolResult, error) {
+func (variant ResultVariant) wrap(ctx context.Context, result ToolResult) (protocol.CallToolResult, error) {
 	if len(variant.Parts) != len(result.parts) {
 		return protocol.CallToolResult{}, errInvalidToolResult
 	}
 	if len(result.parts) == 0 {
-		object, err := encodeResultObject(result.object, variant.ObjectKind, variant.MaxObjectBytes)
+		object, err := encodeResultObject(ctx, result.object, variant.ObjectKind, variant.MaxObjectBytes)
 		if err != nil {
 			return protocol.CallToolResult{}, err
 		}
 		text := "See structuredContent for the result."
 		if variant.ObjectKind == MetadataPayload && len(object) <= metadataParityBytes {
-			text = string(object)
+			text = wiretrace.Text(ctx, object)
 		}
 		return protocol.CallToolResult{
 			Content: []protocol.ContentBlock{protocol.NewTextContent(text)}, StructuredContent: object,
@@ -188,14 +189,14 @@ func (variant ResultVariant) wrap(result ToolResult) (protocol.CallToolResult, e
 	if result.object != nil || variant.ObjectKind != MetadataPayload {
 		return protocol.CallToolResult{}, errInvalidToolResult
 	}
-	return variant.wrapParts(result.parts)
+	return variant.wrapParts(ctx, result.parts)
 }
 
 type payloadMetadata struct {
 	Size int64 `json:"size"`
 }
 
-func (variant ResultVariant) wrapParts(parts []ResultPart) (protocol.CallToolResult, error) {
+func (variant ResultVariant) wrapParts(ctx context.Context, parts []ResultPart) (protocol.CallToolResult, error) {
 	blocks := make([]protocol.ContentBlock, 0, len(parts))
 	remaining := variant.MaxPayloadBytes
 	for index, part := range parts {
@@ -213,7 +214,7 @@ func (variant ResultVariant) wrapParts(parts []ResultPart) (protocol.CallToolRes
 	if len(`{"size":}`)+decimalSize(size) > variant.MaxObjectBytes {
 		return protocol.CallToolResult{}, errToolResultLimit
 	}
-	object, err := json.Marshal(payloadMetadata{Size: size})
+	object, err := wiretrace.Marshal(ctx, payloadMetadata{Size: size})
 	if err != nil {
 		return protocol.CallToolResult{}, errInvalidToolResult
 	}

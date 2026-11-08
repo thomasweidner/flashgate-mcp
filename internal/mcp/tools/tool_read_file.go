@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
 const readFileToolName = "read_file"
@@ -80,7 +81,7 @@ func (t *ReadFileTool) ResultContract() ResultContract {
 }
 
 // Execute reads the requested file.
-func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
+func (t *ReadFileTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments readFileArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
 		return ToolResult{}, rpcErr
@@ -110,7 +111,7 @@ func (t *ReadFileTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 	if size > maxBytes {
 		return ToolResult{}, mapFilesystemError(fs.ErrFileTooLarge)
 	}
-	text, err := TextPart(string(content))
+	text, err := TextPart(wiretrace.Text(ctx, content))
 	if err != nil {
 		return ToolResult{}, &toolExecutionError{
 			category: categoryInvalidTextEncoding,

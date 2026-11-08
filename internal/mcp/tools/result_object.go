@@ -1,9 +1,12 @@
 package tools
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 	"unicode/utf8"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
 // resultObject is a standalone filesystem object. The encoder admits only the
@@ -19,7 +22,7 @@ func (copyPathResult) resultObject()            {}
 func (movePathResult) resultObject()            {}
 func (listDirectoryResult) resultObject()       {}
 
-func encodeResultObject(object resultObject, kind PayloadKind, limit int) (json.RawMessage, error) {
+func encodeResultObject(ctx context.Context, object resultObject, kind PayloadKind, limit int) (json.RawMessage, error) {
 	_, collection := object.(listDirectoryResult)
 	if collection != (kind == StructuredPayload) {
 		return nil, errInvalidToolResult
@@ -31,7 +34,7 @@ func encodeResultObject(object resultObject, kind PayloadKind, limit int) (json.
 	if !fits {
 		return nil, errToolResultLimit
 	}
-	encoded, err := json.Marshal(object)
+	encoded, err := wiretrace.Marshal(ctx, object)
 	if err != nil {
 		return nil, errInvalidToolResult
 	}

@@ -48,7 +48,7 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 
 	result, err := entry.tool.Execute(execCtx, params.Arguments)
 	if err == nil {
-		wrapped, wrapErr := entry.contract.wrap(result)
+		wrapped, wrapErr := entry.contract.wrap(execCtx, result)
 		if wrapErr == nil {
 			return wrapped, nil
 		}
@@ -59,7 +59,7 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 	}
 	var expected *toolExecutionError
 	if errors.As(err, &expected) && expected != nil {
-		wrapped, wrapErr := protocol.NewCallToolErrorResult(string(expected.category), expected.message)
+		wrapped, wrapErr := protocol.NewCallToolErrorResultContext(execCtx, string(expected.category), expected.message)
 		if wrapErr == nil {
 			return wrapped, nil
 		}

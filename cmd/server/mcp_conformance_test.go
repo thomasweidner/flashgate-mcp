@@ -116,6 +116,11 @@ func (tool *mcpObservedTool) Execute(ctx context.Context, arguments json.RawMess
 
 func mcpRegistry(t *testing.T, readOnly bool) (*tools.Registry, string) {
 	t.Helper()
+	return mcpRegistryWithLimit(t, readOnly, 1024)
+}
+
+func mcpRegistryWithLimit(t *testing.T, readOnly bool, maxFileBytes int64) (*tools.Registry, string) {
+	t.Helper()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "seed.txt"), []byte("seed"), 0o600); err != nil {
 		t.Fatal(err)
@@ -124,7 +129,7 @@ func mcpRegistry(t *testing.T, readOnly bool) (*tools.Registry, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return requireToolRegistry(t, filesystem, 1024, capabilitiesFromReadOnly(readOnly)), root
+	return requireToolRegistry(t, filesystem, maxFileBytes, capabilitiesFromReadOnly(readOnly)), root
 }
 
 func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
@@ -143,16 +148,16 @@ func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
 // Notifications are deliberately counted separately from request responses.
 func mcpWire(t *testing.T, r *router.Router, input string, count int) []map[string]json.RawMessage {
 	t.Helper()
-	var stdout bytes.Buffer
-	if err := mcpserver.New(strings.NewReader(input), &stdout, r).Run(context.Background()); err != nil {
+	stdout, err := mcpStdout(context.Background(), r, input)
+	if err != nil {
 		t.Fatal(err)
 	}
-	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-	if count == 0 && stdout.Len() == 0 {
+	lines := strings.Split(strings.TrimSpace(string(stdout)), "\n")
+	if count == 0 && len(stdout) == 0 {
 		return nil
 	}
 	if len(lines) != count {
-		t.Fatalf("stdout purity/response count: got %q, want %d JSON-RPC lines", stdout.String(), count)
+		t.Fatalf("stdout purity/response count: got %q, want %d JSON-RPC lines", stdout, count)
 	}
 	results := make([]map[string]json.RawMessage, 0, count)
 	for _, line := range lines {
@@ -166,6 +171,12 @@ func mcpWire(t *testing.T, r *router.Router, input string, count int) []map[stri
 		results = append(results, response)
 	}
 	return results
+}
+
+func mcpStdout(ctx context.Context, r *router.Router, input string) ([]byte, error) {
+	var stdout bytes.Buffer
+	err := mcpserver.New(strings.NewReader(input), &stdout, r).Run(ctx)
+	return stdout.Bytes(), err
 }
 
 func mcpRequest(method, params, version string) string {

@@ -76,6 +76,16 @@ Windows uses Win32 current/peak working set and user/kernel CPU time. Linux uses
 Machine-readable format `flashgate-benchmark/v1` excludes host paths and private environment data. Deterministic tool/schema counts, wire sizes, stable allocation records, workflow calls, and counters are hard local budgets. Startup, p50/p95, working set, and CPU are soft review budgets. Full CI execution and cross-run baseline comparison remain deferred to BL-249 and BL-250.
 
 The sole token orientation is `ceil(UTF-8 bytes / 4)`. It is not model-specific, does not use a tokenizer, and is not suitable for billing.
+
+BL-214 checks actual framed responses against independent semantic references
+and versioned wire budgets in the ordinary Go suite. The gate derives its
+current variant inventory from the executable registry and uses the existing
+conformance paths for exact revision and effective profile coverage. It records
+bounded metadata parity separately from useful bytes and observes explicit
+response operations without adding wire fields. The
+[benchmark contract](../../benchmarks/README.md#deterministic-wire-efficiency)
+defines accounting and the producer integration rule.
+
 ## Accepted Version 1.0 target
 
 Search pages, trees, process output, and media use the same single-transmission
@@ -83,7 +93,10 @@ rule as the current filesystem payloads. Paged and resource delivery, jobs,
 notifications, and streaming are separate mechanisms owned by their feature
 and transport contracts.
 
-Version 1.0 adds hard measurement of wire amplification, useful payload bytes, approximate token cost per useful byte, catalog/instruction size, and proxy/service overhead. It also adds opaque `flashgate://` result handles, deterministic catalog fingerprints, profile-specific instructions, and bounded resource-link/inline fallbacks.
+Version 1.0 extends wire measurement to active delivery routes, effective
+catalogs and instructions, and proxy/service overhead. It also adds opaque
+`flashgate://` result handles, deterministic catalog fingerprints,
+profile-specific instructions, and bounded resource-link/inline fallbacks.
 
 The profile target changes the default from a broad implicit profile to: fail when no root is configured; use safe read-only when roots exist but no explicit profile is selected; require explicit activation for write, process, command, or other high-risk capabilities.
 

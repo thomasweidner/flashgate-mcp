@@ -105,6 +105,11 @@ the snapshot and completeness families in its test evidence.
 
 ## Wire coverage
 
+The [wire efficiency gate](../benchmarks/README.md#deterministic-wire-efficiency)
+reuses the registry, revision/profile matrix, executable cases and reviewed
+snapshots. It captures complete frames with framing intact. Add the matching
+semantic references and wire budget binding when a result or path changes.
+
 The real parser, STDIO transport, router and serializers process requests.
 Child-process tests also run real startup/environment loading under both
 profiles, enforce protocol-only stdout, verify write authorization and reject

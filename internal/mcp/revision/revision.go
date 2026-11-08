@@ -3,10 +3,12 @@ package revision
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"sort"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
 const Stateless = "2026-07-28"
@@ -163,17 +165,22 @@ func Unsupported(requested string, policy Policy) *protocol.Error {
 // Complete encodes a synchronous result for the stateless revision. Domain
 // values remain unchanged; only the wire result receives revision fields.
 func Complete(value any, method, serverName, serverVersion string) (any, *protocol.Error) {
-	encoded, err := json.Marshal(value)
+	return CompleteContext(context.Background(), value, method, serverName, serverVersion)
+}
+
+// CompleteContext allows tests to observe result-wide serialization passes.
+func CompleteContext(ctx context.Context, value any, method, serverName, serverVersion string) (any, *protocol.Error) {
+	encoded, err := wiretrace.Marshal(ctx, value)
 	if err != nil {
 		return nil, &protocol.Error{Code: protocol.ErrInternalError, Message: "internal error"}
 	}
 	var result map[string]json.RawMessage
-	if json.Unmarshal(encoded, &result) != nil || result == nil {
+	if wiretrace.Unmarshal(ctx, encoded, &result) != nil || result == nil {
 		return nil, &protocol.Error{Code: protocol.ErrInternalError, Message: "internal error"}
 	}
 	result["resultType"] = json.RawMessage(`"complete"`)
-	serverInfo, _ := json.Marshal(map[string]string{"name": serverName, "version": serverVersion})
-	meta, _ := json.Marshal(map[string]json.RawMessage{"io.modelcontextprotocol/serverInfo": serverInfo})
+	serverInfo, _ := wiretrace.Marshal(ctx, map[string]string{"name": serverName, "version": serverVersion})
+	meta, _ := wiretrace.Marshal(ctx, map[string]json.RawMessage{"io.modelcontextprotocol/serverInfo": serverInfo})
 	result["_meta"] = meta
 	if Cacheable(method) {
 		result["ttlMs"] = json.RawMessage(`0`)

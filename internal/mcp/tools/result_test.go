@@ -166,7 +166,7 @@ func TestOversizeReceiptRejectedBeforeWrite(t *testing.T) {
 
 func TestMetadataParityFallsBackToSummary(t *testing.T) {
 	object := createDirectoryResult{Path: strings.Repeat("x", metadataParityBytes), Created: true}
-	result, err := metadataContract(defaultVariant).wrap(NewToolResult(defaultVariant, object))
+	result, err := metadataContract(defaultVariant).wrap(t.Context(), NewToolResult(defaultVariant, object))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestOversizeObjectsAndDerivedMetadataFailClosed(t *testing.T) {
 		{StructuredPayload, listDirectoryResult{Entries: []fs.Entry{{Name: strings.Repeat("<", 48)}}}},
 		{StructuredPayload, listDirectoryResult{Entries: make([]fs.Entry, 1000)}},
 	} {
-		if encoded, err := encodeResultObject(tc.object, tc.kind, 96); encoded != nil || err != errToolResultLimit {
+		if encoded, err := encodeResultObject(t.Context(), tc.object, tc.kind, 96); encoded != nil || err != errToolResultLimit {
 			t.Fatalf("%T escaped object bound: encoded=%v error=%v", tc.object, encoded != nil, err)
 		}
 	}
@@ -256,7 +256,7 @@ func TestOversizeObjectsAndDerivedMetadataFailClosed(t *testing.T) {
 		Name: defaultVariant, ObjectKind: MetadataPayload, Parts: []PayloadKind{TextPayload},
 		MaxObjectBytes: len(`{"size":0}`) - 1, MaxPayloadBytes: 16,
 	}
-	result, err := variant.wrap(NewPayloadResult(defaultVariant, requireTextPart(t, "")))
+	result, err := variant.wrap(t.Context(), NewPayloadResult(defaultVariant, requireTextPart(t, "")))
 	if result.Content != nil || err != errToolResultLimit {
 		t.Fatalf("derived metadata escaped bound: %v, %v", result.Content, err)
 	}

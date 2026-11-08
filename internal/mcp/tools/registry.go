@@ -1,6 +1,9 @@
 package tools
 
-import "sync"
+import (
+	"slices"
+	"sync"
+)
 
 type registeredTool struct {
 	tool     Tool
@@ -45,6 +48,17 @@ func (r *Registry) Register(tool Tool) error {
 func (r *Registry) Get(name string) (Tool, bool) {
 	entry, ok := r.lookup(name)
 	return entry.tool, ok
+}
+
+// ResultContract returns an independent copy of the validated contract
+// captured at registration and used by the call adapter.
+func (r *Registry) ResultContract(name string) ResultContract {
+	entry, _ := r.lookup(name)
+	contract := slices.Clone(entry.contract)
+	for index := range contract {
+		contract[index].Parts = slices.Clone(contract[index].Parts)
+	}
+	return contract
 }
 
 func (r *Registry) lookup(name string) (registeredTool, bool) {

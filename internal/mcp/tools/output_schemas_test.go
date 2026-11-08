@@ -89,7 +89,7 @@ func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 
 func TestReadFileOutputSchemaDescribesOnlyMetadata(t *testing.T) {
 	tool := NewReadFileTool(newFakeFileSystem(), 1024)
-	result, err := tool.ResultContract().wrap(NewPayloadResult(defaultVariant, requireTextPart(t, "file text")))
+	result, err := tool.ResultContract().wrap(t.Context(), NewPayloadResult(defaultVariant, requireTextPart(t, "file text")))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,9 +2,12 @@ package protocol
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"strings"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
 // Tool describes a MCP tool exposed by the server.
@@ -80,6 +83,11 @@ func NewCallToolResult(structuredContent json.RawMessage) (CallToolResult, error
 // NewCallToolErrorResult creates an expected tool failure without success data.
 // Callers supply only stable categories and safe, normalized messages.
 func NewCallToolErrorResult(category, message string) (CallToolResult, error) {
+	return NewCallToolErrorResultContext(context.Background(), category, message)
+}
+
+// NewCallToolErrorResultContext observes the normalized error encoding in tests.
+func NewCallToolErrorResultContext(ctx context.Context, category, message string) (CallToolResult, error) {
 	if strings.TrimSpace(category) == "" || strings.TrimSpace(message) == "" {
 		return CallToolResult{}, errors.New("tool error category and message are required")
 	}
@@ -87,9 +95,9 @@ func NewCallToolErrorResult(category, message string) (CallToolResult, error) {
 		Category string `json:"category"`
 		Message  string `json:"message"`
 	}{category, message}
-	encoded, err := json.Marshal(payload)
+	encoded, err := wiretrace.Marshal(ctx, payload)
 	if err != nil {
 		return CallToolResult{}, err
 	}
-	return CallToolResult{Content: []ContentBlock{NewTextContent(string(encoded))}, IsError: true}, nil
+	return CallToolResult{Content: []ContentBlock{NewTextContent(wiretrace.Text(ctx, encoded))}, IsError: true}, nil
 }

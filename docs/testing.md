@@ -333,7 +333,15 @@ limits, and lossless UTF-8 or explicit encoding failure in both profiles.
 The `tools/list` wire test verifies schema and annotation exposure in both
 profiles. It pins 2426/2391 bytes for read-only and 6472/6437 bytes for default
 (response/result). The existing benchmark ceilings and historical comparison
-fixtures remain the baseline for later BL-214 measurements.
+fixtures remain the historical baseline.
+
+Run the BL-214 deterministic wire checks with
+`go test -mod=vendor ./cmd/server -run '^TestMCPConformanceWireEfficiency' -count=1`.
+The ordinary suite checks registry variant and budget parity, real STDIO frames
+under production and candidate policy, independent semantic bytes, observed
+copies, and synthetic delivery costs. Negative tests exercise the same gate.
+See the [benchmark wire contract](../benchmarks/README.md#deterministic-wire-efficiency)
+for accounting, budget updates and future producer bindings.
 
 ### MCP Compatibility Testing
 
