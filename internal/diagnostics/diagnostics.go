@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sort"
+	"strings"
 )
 
 var (
@@ -16,7 +18,82 @@ var (
 	uncPathPattern        = regexp.MustCompile(`\\\\[^\s\\/:*?"<>|]+\\[^\s\\/:*?"<>|]+(?:\\[^\s\\/:*?"<>|]+)*`)
 	windowsPathPattern    = regexp.MustCompile(`[A-Za-z]:\\[^\s:*?"<>|]+(?:\\[^\s:*?"<>|]+)*`)
 	posixPathPattern      = regexp.MustCompile(`(^|[\s"'])/(?:[^/\s"']+/)+[^\s"']*`)
+	sensitiveEnvName      = regexp.MustCompile(`(?i)(^|_)(auth|authorization|cookie|credential|key|password|secret|token)($|_)`)
 )
+
+const redactedValue = "[REDACTED]"
+
+// ExecutionRedactor removes diagnostic patterns and sensitive environment
+// values from command output, diagnostics, and audit text. It is immutable and
+// safe for concurrent use after construction.
+type ExecutionRedactor struct {
+	replacer *strings.Replacer
+}
+
+// NewExecutionRedactor creates a redactor from an execution environment and
+// any additional values known to be sensitive. Only environment variables
+// whose names identify secret material contribute output replacements; use
+// additionalSecrets for values whose variable names are application-specific.
+func NewExecutionRedactor(environment map[string]string, additionalSecrets ...string) *ExecutionRedactor {
+	secrets := make(map[string]struct{}, len(additionalSecrets))
+	for name, value := range environment {
+		if sensitiveEnvName.MatchString(name) {
+			addSecret(secrets, value)
+		}
+	}
+	for _, value := range additionalSecrets {
+		addSecret(secrets, value)
+	}
+
+	values := make([]string, 0, len(secrets))
+	for value := range secrets {
+		values = append(values, value)
+	}
+	sort.Slice(values, func(i, j int) bool {
+		if len(values[i]) == len(values[j]) {
+			return values[i] < values[j]
+		}
+		return len(values[i]) > len(values[j])
+	})
+
+	replacements := make([]string, 0, len(values)*2)
+	for _, value := range values {
+		replacements = append(replacements, value, redactedValue)
+	}
+
+	var replacer *strings.Replacer
+	if len(replacements) > 0 {
+		replacer = strings.NewReplacer(replacements...)
+	}
+	return &ExecutionRedactor{replacer: replacer}
+}
+
+func addSecret(secrets map[string]struct{}, value string) {
+	if value == "" || value == redactedValue {
+		return
+	}
+	secrets[value] = struct{}{}
+}
+
+// Redact removes known execution secrets followed by the common diagnostic
+// secret and host-path patterns.
+func (r *ExecutionRedactor) Redact(input string) string {
+	if r != nil && r.replacer != nil {
+		input = r.replacer.Replace(input)
+	}
+	return Redact(input)
+}
+
+// RedactedEnvironment returns a copy suitable for results, diagnostics, and
+// audit events. Names are retained for troubleshooting; values are never
+// returned. The input map is not mutated.
+func RedactedEnvironment(environment map[string]string) map[string]string {
+	redacted := make(map[string]string, len(environment))
+	for name := range environment {
+		redacted[name] = redactedValue
+	}
+	return redacted
+}
 
 // Logger writes redacted diagnostics to stderr-like writers when debug is enabled.
 type Logger struct {
