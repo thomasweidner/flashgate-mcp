@@ -68,7 +68,7 @@ func TestMovePathToolExecute(t *testing.T) {
 		t.Fatal("expected overwrite=false")
 	}
 
-	encoded, err := json.Marshal(result)
+	encoded, err := json.Marshal(result.object)
 	if err != nil {
 		t.Fatalf("expected marshalable result, got %v", err)
 	}
@@ -127,7 +127,7 @@ func TestMovePathToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		json.RawMessage(`{"source":`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -151,7 +151,7 @@ func TestMovePathToolReturnsInvalidParamsForMissingSource(t *testing.T) {
 		json.RawMessage(`{"target":"target.txt"}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -175,7 +175,7 @@ func TestMovePathToolReturnsInvalidParamsForMissingTarget(t *testing.T) {
 		json.RawMessage(`{"source":"source.txt"}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -201,7 +201,7 @@ func TestMovePathToolReturnsInvalidParamsForTargetExists(t *testing.T) {
 		json.RawMessage(`{"source":"source.txt","target":"target.txt","overwrite":false}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -227,7 +227,7 @@ func TestMovePathToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		json.RawMessage(`{"source":"invalid","target":"target.txt"}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 

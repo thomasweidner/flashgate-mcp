@@ -16,12 +16,12 @@ func TestGetPathInfoExistingAndMissing(t *testing.T) {
 	tool := NewGetPathInfoTool(fake)
 	result, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"path":"file.txt"}`))
 	want := getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Size: 7}
-	if rpcErr != nil || !reflect.DeepEqual(result, want) {
+	if rpcErr != nil || !reflect.DeepEqual(result.object, want) {
 		t.Fatalf("unexpected existing result=%#v error=%v", result, rpcErr)
 	}
 	fake.statErr = fs.ErrNotFound
 	result, rpcErr = tool.Execute(context.Background(), json.RawMessage(`{"path":"missing.txt"}`))
-	if rpcErr != nil || !reflect.DeepEqual(result, getPathInfoMissingResult{Path: "missing.txt", Exists: false}) {
+	if rpcErr != nil || !reflect.DeepEqual(result.object, getPathInfoMissingResult{Path: "missing.txt", Exists: false}) {
 		t.Fatalf("unexpected missing result=%#v error=%v", result, rpcErr)
 	}
 }
@@ -38,7 +38,7 @@ func TestGetPathInfoExistingDirectory(t *testing.T) {
 	fake.statMetadata = fs.Metadata{Name: "docs", IsDir: true}
 	result, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"docs"}`))
 	want := getPathInfoExistingResult{Path: "docs", Exists: true, Name: "docs", IsDir: true, Size: 0}
-	if rpcErr != nil || !reflect.DeepEqual(result, want) {
+	if rpcErr != nil || !reflect.DeepEqual(result.object, want) {
 		t.Fatalf("unexpected directory result=%#v error=%v", result, rpcErr)
 	}
 }
@@ -56,7 +56,7 @@ func TestGetPathInfoMapsFilesystemError(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.statErr = fs.ErrPathIsDirectory
 	result, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"file"}`))
-	if result != nil || rpcErr == nil || errorCategory(rpcErr) != "unsupported_path_type" {
+	if result.variant != "" || rpcErr == nil || errorCategory(rpcErr) != "unsupported_path_type" {
 		t.Fatalf("expected Invalid params, result=%#v error=%#v", result, rpcErr)
 	}
 }

@@ -40,7 +40,12 @@ Four snapshots under `cmd/server/testdata/mcp` bind actual startup-registry
 definitions, including name, title, description, complete input/output schemas
 and every explicit boolean annotation. They also bind actual `tools/list`
 wire results, initialization/discovery capabilities, revision metadata, and
-successful and denied calls for every exposed tool in each profile.
+successful calls for every registered result variant and a denied call for
+each exposed tool in each profile.
+
+The wire negatives also exercise `read_file` encoding in every
+revision/profile combination. Valid and empty UTF-8 round-trip byte for byte
+and malformed UTF-8 returns the safe `invalid_text_encoding` result.
 
 Definitions are sorted by name; wire lists preserve their actual stable
 registration order. Object keys are canonical, UTF-8 and indented, with LF
@@ -54,8 +59,9 @@ git diff -- cmd/server/testdata/mcp
 ```
 
 Review the complete diff, including new untracked snapshots, then rerun normal
-tests without the flag. Tool owners add functional success and denial cases
-to `mcpToolCases`, add assertions for new or changed parameter semantics, and
+tests without the flag. Tool owners add executable cases for every declared
+result variant and a denial case to `mcpToolCases`, assert result placement
+and new or changed parameter semantics, and
 update the catalog and affected snapshots. Capability, profile, and revision
 owners extend the existing discovery, revision/profile matrix, and wire
 contracts, including a snapshot for every supported combination. The CI entry
@@ -68,8 +74,8 @@ A technical PASS records executed coverage and accepted byte parity.
 `docs/mcp-tool-catalog.json` remains the product catalog; snapshots are test
 baselines of runtime/wire behavior, not another product catalog.
 
-Mutation tests register an additional tool and reject both missing coverage
-and snapshot drift. They also reject changed input/output schemas or descriptive
+Mutation tests register an additional tool and reject missing coverage,
+missing result variants, and snapshot drift. They also reject changed input/output schemas or descriptive
 metadata, missing explicit-false annotations, missing tools, changed profile
 membership, activated/announced revisions and unknown capabilities/members.
 New capabilities require explicit tests or justified non-applicability.

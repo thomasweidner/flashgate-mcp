@@ -15,7 +15,7 @@ func TestFilesystemStructuredResultsMatchOutputSchemas(t *testing.T) {
 		result any
 	}{
 		{listDirectoryToolName, listDirectoryResult{Entries: []fs.Entry{{Name: "file.txt", Size: 4}}}},
-		{readFileToolName, readFileResult{Content: "text", Size: 4}},
+		{readFileToolName, payloadMetadata{Size: 4}},
 		{getPathInfoToolName + " existing", getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Size: 4}},
 		{getPathInfoToolName + " missing", getPathInfoMissingResult{Path: "missing.txt", Exists: false}},
 		{writeFileToolName, writeFileResult{Path: "file.txt", Size: 4, Written: true}},
@@ -57,7 +57,6 @@ func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 		expected string
 	}{
 		{listDirectoryToolName, "entries", "array"},
-		{readFileToolName, "content", "string"},
 		{readFileToolName, "size", "integer"},
 		{writeFileToolName, "written", "boolean"},
 		{createDirectoryToolName, "created", "boolean"},
@@ -88,10 +87,11 @@ func TestKnownOutputSchemaPropertyTypes(t *testing.T) {
 	}
 }
 
-func TestReadFileOutputSchemaSeparatesMCPContentFromDomainContent(t *testing.T) {
-	result, rpcErr := wrapSuccessfulToolResult(readFileResult{Content: "file text", Size: 9})
-	if rpcErr != nil {
-		t.Fatalf("unexpected wrapper error: %#v", rpcErr)
+func TestReadFileOutputSchemaDescribesOnlyMetadata(t *testing.T) {
+	tool := NewReadFileTool(newFakeFileSystem(), 1024)
+	result, err := tool.ResultContract().wrap(NewPayloadResult(defaultVariant, requireTextPart(t, "file text")))
+	if err != nil {
+		t.Fatal(err)
 	}
 	raw, err := json.Marshal(result)
 	if err != nil {
@@ -101,17 +101,18 @@ func TestReadFileOutputSchemaSeparatesMCPContentFromDomainContent(t *testing.T) 
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := decoded["content"].([]any); !ok {
-		t.Fatalf("outer CallToolResult.content must be an array, got %#v", decoded["content"])
+	want := []any{map[string]any{"type": "text", "text": "file text"}}
+	if !reflect.DeepEqual(decoded["content"], want) {
+		t.Fatalf("unexpected text payload: %#v", decoded["content"])
 	}
 	structured := decoded["structuredContent"].(map[string]any)
-	if _, ok := structured["content"].(string); !ok {
-		t.Fatalf("inner read_file content must be a string, got %#v", structured["content"])
+	if !reflect.DeepEqual(structured, map[string]any{"size": float64(9)}) {
+		t.Fatalf("unexpected structured metadata: %#v", structured)
 	}
 	schema := normalizeSchema(t, filesystemOutputSchema(readFileToolName))
 	properties := schema["properties"].(map[string]any)
-	if properties["content"].(map[string]any)["type"] != "string" {
-		t.Fatalf("read_file outputSchema must describe domain content as string: %#v", schema)
+	if len(properties) != 1 || properties["size"] == nil {
+		t.Fatalf("read_file outputSchema must describe size only: %#v", schema)
 	}
 }
 

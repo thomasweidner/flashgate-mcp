@@ -34,23 +34,27 @@ func (t *GetPathInfoTool) InputSchema() any {
 func (t *GetPathInfoTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()), Annotations: filesystemToolAnnotations(t.Name())}
 }
-func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *GetPathInfoTool) ResultContract() ResultContract {
+	return metadataContract("existing", "missing")
+}
+
+func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments getPathInfoArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil || !isNonBlank(arguments.Path) {
-		return nil, invalidArgumentsError()
+		return ToolResult{}, invalidArgumentsError()
 	}
 
 	metadata, err := t.filesystem.Stat(arguments.Path)
 	if errors.Is(err, fs.ErrNotFound) {
-		return getPathInfoMissingResult{Path: arguments.Path, Exists: false}, nil
+		return NewToolResult("missing", getPathInfoMissingResult{Path: arguments.Path, Exists: false}), nil
 	}
 	if err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return getPathInfoExistingResult{
+	return NewToolResult("existing", getPathInfoExistingResult{
 		Path: arguments.Path, Exists: true, Name: metadata.Name, IsDir: metadata.IsDir, Size: metadata.Size,
-	}, nil
+	}), nil
 }
 
 type getPathInfoArguments struct {

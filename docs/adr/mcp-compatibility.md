@@ -78,7 +78,11 @@ Extension negotiation is not authorization. Tasks and every supported revision p
 
 ## Current result adapter
 
-The implemented adapter uses MCP `2025-11-25` with explicit `TextContent` and `CallToolResult` DTOs. All eight current tools expose runtime `outputSchema` for the typed domain result. These features do not add protocol-version or extension negotiation.
+The implemented adapter uses MCP `2025-11-25` with explicit content blocks
+and a `CallToolResult` envelope. All eight tools expose a runtime
+`outputSchema` for their successful `structuredContent` object. The
+[tool result contract](../protocol.md#tool-result-classes) defines placement
+and limits independently of protocol and extension negotiation.
 ## Version 1.0 adapter requirements
 
 Version 1.0 must publish a concrete protocol matrix. Support for the accepted `2026-07-28` target is conditional on completed implementation and tests; the date alone does not change the advertised revision.

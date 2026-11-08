@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -67,7 +68,7 @@ func BenchmarkCallToolResultSerialization(b *testing.B) {
 }
 
 func BenchmarkCallToolHandlerProcessing(b *testing.B) {
-	for _, fixture := range callToolHandlerBenchmarkFixtures() {
+	for _, fixture := range callToolHandlerBenchmarkFixtures(b) {
 		fixture := fixture
 		b.Run(fixture.name, func(b *testing.B) {
 			sample, rpcErr := fixture.handler.Handle(
@@ -107,7 +108,7 @@ func BenchmarkCallToolHandlerProcessing(b *testing.B) {
 
 func BenchmarkCallToolHandlerProcessingParallel(b *testing.B) {
 	registry := NewRegistry()
-	registry.Register(NewGetPathInfoTool(benchmarkParallelFileSystem{}))
+	requireRegistration(b, registry, NewGetPathInfoTool(benchmarkParallelFileSystem{}))
 	handler := NewCallHandler(registry)
 	params := json.RawMessage(`{"name":"get_path_info","arguments":{"path":"existing.txt"}}`)
 	sample, rpcErr := handler.Handle(handlers.Context{Context: context.Background()}, params)
@@ -164,7 +165,7 @@ type callToolHandlerBenchmarkFixture struct {
 	params  json.RawMessage
 }
 
-func callToolHandlerBenchmarkFixtures() []callToolHandlerBenchmarkFixture {
+func callToolHandlerBenchmarkFixtures(b *testing.B) []callToolHandlerBenchmarkFixture {
 	result := make([]callToolHandlerBenchmarkFixture, 0, len(callToolResultBenchmarkFixtures()))
 	for _, fixture := range callToolResultBenchmarkFixtures() {
 		filesystem := newFakeFileSystem()
@@ -174,19 +175,19 @@ func callToolHandlerBenchmarkFixtures() []callToolHandlerBenchmarkFixture {
 		switch value := fixture.value.(type) {
 		case getPathInfoMissingResult:
 			filesystem.statErr = fs.ErrNotFound
-			registry.Register(NewGetPathInfoTool(filesystem))
+			requireRegistration(b, registry, NewGetPathInfoTool(filesystem))
 			params = json.RawMessage(`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`)
 		case getPathInfoExistingResult:
 			filesystem.statMetadata = fs.Metadata{Name: value.Name, IsDir: value.IsDir, Size: value.Size}
-			registry.Register(NewGetPathInfoTool(filesystem))
+			requireRegistration(b, registry, NewGetPathInfoTool(filesystem))
 			params = json.RawMessage(`{"name":"get_path_info","arguments":{"path":"docs/readme.txt"}}`)
 		case listDirectoryResult:
 			filesystem.entries = value.Entries
-			registry.Register(NewListDirectoryTool(filesystem))
+			requireRegistration(b, registry, NewListDirectoryTool(filesystem))
 			params = json.RawMessage(`{"name":"list_directory","arguments":{"path":"fixtures"}}`)
-		case readFileResult:
+		case historicalReadFileResult:
 			filesystem.readContent = []byte(value.Content)
-			registry.Register(NewReadFileTool(filesystem, 64*1024))
+			requireRegistration(b, registry, NewReadFileTool(filesystem, 64*1024))
 			params = json.RawMessage(`{"name":"read_file","arguments":{"path":"fixture.txt"}}`)
 		default:
 			panic(fmt.Sprintf("unsupported benchmark fixture %T", fixture.value))
@@ -212,11 +213,21 @@ func serializeTextOnlyCallToolResult(value any) ([]byte, error) {
 }
 
 func serializeStructuredCallToolResult(value any) ([]byte, error) {
-	wrapped, rpcErr := wrapSuccessfulToolResult(value)
-	if rpcErr != nil {
-		return nil, fmt.Errorf("wrap result: %s", rpcErr.Message)
+	structured, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
 	}
-	return json.Marshal(wrapped)
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, structured); err != nil {
+		return nil, err
+	}
+	return json.Marshal(struct {
+		Content           []protocol.TextContent `json:"content"`
+		StructuredContent json.RawMessage        `json:"structuredContent"`
+	}{
+		Content:           []protocol.TextContent{protocol.NewTextContent(compact.String())},
+		StructuredContent: compact.Bytes(),
+	})
 }
 
 func serializeBenchmarkResponse(result []byte) ([]byte, error) {
@@ -236,6 +247,12 @@ type callToolResultBenchmarkFixture struct {
 	value any
 }
 
+// The historical serialization comparisons retain the pre-BL-213 shape.
+type historicalReadFileResult struct {
+	Content string `json:"content"`
+	Size    int64  `json:"size"`
+}
+
 func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 	largeEntries := make([]fs.Entry, 500)
 	for index := range largeEntries {
@@ -251,8 +268,8 @@ func callToolResultBenchmarkFixtures() []callToolResultBenchmarkFixture {
 		{"path_info_existing", getPathInfoExistingResult{Path: "docs/readme.txt", Exists: true, Name: "readme.txt", Size: 128}},
 		{"directory_small", listDirectoryResult{Entries: []fs.Entry{{Name: "a.txt", Size: 12}, {Name: "sub", IsDir: true}}}},
 		{"directory_500_entries", listDirectoryResult{Entries: largeEntries}},
-		{"text_file_small", readFileResult{Content: "FlashGate benchmark text.\n", Size: 26}},
-		{"text_file_64kib", readFileResult{Content: strings.Repeat("x", 64*1024), Size: 64 * 1024}},
+		{"text_file_small", historicalReadFileResult{Content: "FlashGate benchmark text.\n", Size: 26}},
+		{"text_file_64kib", historicalReadFileResult{Content: strings.Repeat("x", 64*1024), Size: 64 * 1024}},
 	}
 }
 

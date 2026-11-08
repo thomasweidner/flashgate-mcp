@@ -150,6 +150,25 @@
           "path": "seed.txt",
           "size": 4
         }
+      },
+      "success_missing": {
+        "_meta": {
+          "io.modelcontextprotocol/serverInfo": {
+            "name": "flashgate",
+            "version": "conformance-fixture"
+          }
+        },
+        "content": [
+          {
+            "text": "{\"path\":\"missing.txt\",\"exists\":false}",
+            "type": "text"
+          }
+        ],
+        "resultType": "complete",
+        "structuredContent": {
+          "exists": false,
+          "path": "missing.txt"
+        }
       }
     },
     "list_directory": {
@@ -178,7 +197,7 @@
         },
         "content": [
           {
-            "text": "{\"entries\":[{\"name\":\"seed.txt\",\"isDir\":false,\"size\":4}]}",
+            "text": "See structuredContent for the result.",
             "type": "text"
           }
         ],
@@ -258,13 +277,12 @@
         },
         "content": [
           {
-            "text": "{\"content\":\"seed\",\"size\":4}",
+            "text": "seed",
             "type": "text"
           }
         ],
         "resultType": "complete",
         "structuredContent": {
-          "content": "seed",
           "size": 4
         }
       }
@@ -640,7 +658,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Reads a text file below the configured filesystem root.",
+      "description": "Reads a UTF-8 text file below the configured filesystem root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -664,15 +682,12 @@
       "outputSchema": {
         "additionalProperties": false,
         "properties": {
-          "content": {
-            "type": "string"
-          },
           "size": {
+            "minimum": 0,
             "type": "integer"
           }
         },
         "required": [
-          "content",
           "size"
         ],
         "type": "object"
@@ -827,7 +842,7 @@
           "openWorldHint": false,
           "readOnlyHint": true
         },
-        "description": "Reads a text file below the configured filesystem root.",
+        "description": "Reads a UTF-8 text file below the configured filesystem root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
@@ -851,15 +866,12 @@
         "outputSchema": {
           "additionalProperties": false,
           "properties": {
-            "content": {
-              "type": "string"
-            },
             "size": {
+              "minimum": 0,
               "type": "integer"
             }
           },
           "required": [
-            "content",
             "size"
           ],
           "type": "object"

@@ -71,11 +71,10 @@ this principle does not claim those checks already run. Tool visibility,
 annotations, a previous hash, client instructions, and the desire to reduce
 retransmission grant no additional authority.
 
-Successful filesystem calls currently retain text-plus-`structuredContent`
-parity. The Version 1.0 single-transmission rule for heavy payloads remains
-the accepted target owned by BL-213 in the
+Current filesystem calls use BL-213's
 [payload-class result architecture](#payload-class-result-architecture).
-This principle changes no runtime, wire, result, error, or security contract.
+The deterministic-work principle operates within the current wire and
+security contracts.
 
 ## Adopted improvements from comparative review
 
@@ -130,9 +129,9 @@ Annotations improve client behavior but are never authorization.
 
 ## Payload-class result architecture
 
-The current implementation returns compact JSON as both one text block and `structuredContent` for every successful filesystem call. This remains the current state, but it is not the final contract for payload-heavy operations.
-
-Version 1.0 defines result classes:
+BL-213 defines four payload kinds. Transfer mode and lifecycle state are
+independent. Complete inline payload results can combine ordered text or
+media parts. The adapter derives their compact size object.
 
 | Class | Examples | Primary content | Structured metadata |
 |---|---|---|---|
@@ -140,11 +139,18 @@ Version 1.0 defines result classes:
 | Structured collections | directory page, process page, search page | optional short summary | entries, cursor, counters |
 | Heavy text | file range, process output | text once | path/root ID, range, encoding, truncation, hash |
 | Binary/media | image, audio, blob | bounded media block or resource handle | MIME, raw size, hash, transfer mode |
-| Large asynchronous result | tree, scan, hash batch, long output | resource link or page reference | handle, TTL, progress, size, owner |
+
+Large asynchronous work uses the same payload kinds through a later operation
+or job lifecycle. Its delivery can use paged or resource transfer once the
+responsible feature enables it.
 
 ### Single-transmission rule
 
-The full heavy payload must not be repeated in both `content` and `structuredContent`.
+The full payload appears once. Current file text is in `content[0].text`,
+with source size in `structuredContent.size`. Directory entries are in
+`structuredContent.entries`, with a bounded text summary. The current
+adapter allows a compact compatibility copy only for metadata objects up to
+8 KiB.
 
 Compatibility options are evaluated per supported client:
 

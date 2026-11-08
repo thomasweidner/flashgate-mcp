@@ -306,7 +306,14 @@ On Linux:
 bash scripts/smoke-startup-negative.sh
 ```
 
-The default smoke test validates `initialize`, the exact eight-tool `tools/list`, `list_directory`, `read_file`, `get_path_info` for existing and missing paths, and `move_path` rename behavior. Every positive result must have only the `CallToolResult` envelope fields, exactly one text block with only `type` and `text`, valid compact object JSON, and a deeply equal `structuredContent` object. The read-only variant verifies the exact three-tool profile and invokes all five write-capable names, requiring the same generic Invalid params response without filesystem changes. The negative smoke validates all five removed legacy names in addition to malformed JSON, unknown methods, invalid `tools/call` params, notification no-response behavior, and a registered `read_file` traversal denial returning an MCP error result with `invalid_path`, no `structuredContent`, and no root leakage.
+The default smoke validates `initialize`, the exact eight-tool `tools/list`,
+`list_directory`, `read_file`, existing and missing path metadata, and
+`move_path` rename behavior. It checks closed envelopes and one text block
+per current tool, exact file text with size-only metadata, a directory text
+summary with structured entries, and compact JSON parity for small metadata.
+The read-only variant verifies the exact three-tool profile and tests generic
+Invalid params for all five write-capable names. The negative smoke covers
+removed names, request errors, notification silence, and safe traversal denial.
 
 The startup-negative smoke covers missing/empty/whitespace/relative roots, `.` with and without the development opt-in, invalid development/read-only values, missing and file roots, a valid absolute root, exit codes, empty stdout, safe stderr categories and cleanup.
 
@@ -318,10 +325,15 @@ The [MCP conformance gate](mcp-conformance.md) compiles both schemas for every
 registered tool and checks functional inputs and successful wire results in
 each revision/profile. The same run compares the full registry to the catalog,
 including complete input/output schemas and explicit boolean annotations.
-Unit tests retain representative result variants and the distinction between
-outer MCP content and the inner `read_file` content string.
+The gate verifies executable coverage for every registered variant and tests
+the declared wire locations separately from `outputSchema`. Tests cover
+rejected mixed object/part results, multipart byte counts, pre-serialization
+limits, and lossless UTF-8 or explicit encoding failure in both profiles.
 
-The `tools/list` JSON-RPC wire test checks schema and annotation exposure for both profiles, requires all four annotation members in the real wire object, verifies the exact annotation values, and records deterministic UTF-8 JSONL response/result sizes. The current BL-202 measurements are 2446/2411 bytes for read-only and 6492/6457 bytes for default (response/result). The test and `benchmarks/budgets.json` pin them as deterministic contract values; no timing, CPU, RAM, or performance baseline is recalibrated.
+The `tools/list` wire test verifies schema and annotation exposure in both
+profiles. It pins 2426/2391 bytes for read-only and 6472/6437 bytes for default
+(response/result). The existing benchmark ceilings and historical comparison
+fixtures remain the baseline for later BL-214 measurements.
 
 ### MCP Compatibility Testing
 
@@ -340,7 +352,11 @@ contracts; then pass the existing compatibility, conformance, schema, security,
 platform, and documentation gates. Only then add it to the advertised matrix.
 The matrix contains current support, not planned revisions.
 
-The production-enabled protocol remains MCP `2025-11-25`. Explicit `CallToolResult` DTO tests, a strict project-local decoder, pre-`CallToolResult` unwrapped negative fixtures, all-eight-tool adapter coverage, and full JSON-RPC wire tests cover success and the normalized tool-error contract. The decoder intentionally validates the exact FlashGate-emitted `2025-11-25` subset (one text block; success requires object `structuredContent` with text parity; error requires `isError:true` and absent `structuredContent`; no `_meta`) rather than claiming to decode every standard-conformant MCP result. Windows and Bash positive smokes enforce the same shape.
+The production-enabled protocol remains MCP `2025-11-25`. DTO tests, the
+project-local decoder, unwrapped negative fixtures, and the wire tests
+verify FlashGate's result subset. Successful results have a structured object
+and the blocks declared for their variant. Expected failures have
+`isError:true` and a single normalized error text block.
 
 The `2026-07-28` candidate has separate wire tests using the production server and an injected revision policy. They cover `server/discover`, per-request metadata, optional self-reported `clientInfo`, response identity, `UnsupportedProtocolVersion`, complete results, private zero-TTL list hints, unavailable subscriptions, and the default production gate. The advertised matrix stays at `2025-11-25` until BL-204, BL-212, and BL-219 pass. Native Draft 2020-12 validation runs with the existing conformance tests. Official suite execution is tracked separately.
 

@@ -44,6 +44,13 @@ the intended release date. Publication evidence is separate.
 
 ### Changed
 
+- Enforce typed MCP tool result contracts. `read_file` sends file text once in
+  `content[0].text` and file size in `structuredContent.size`. It rejects
+  invalid UTF-8 with `invalid_text_encoding`.
+  `list_directory` sends entries once in `structuredContent.entries` and
+  counts filtered entries toward `MCP_MAX_LIST_ENTRIES`.
+  See the [client migration](docs/migration.md#successful-tool-results).
+
 - Reworked README onboarding with prerelease downloads, selected-archive SHA-256 verification, Windows/Linux quickstarts, explicit read-only Codex and Claude Desktop configuration, and a first filesystem task. Corrected the public download procedure to use four platform archives plus shared SHA256SUMS while preserving publication history; product VERSION and release bytes are unchanged.
 - Migrated human backlog and sprint status to the canonical six-status lifecycle while retaining Post-1.0 placement in a separate workstream table; added deterministic status, Markdown status-cell rendering, and placement validation.
 - Standardized public documentation in English with stable topic-based filenames, consolidated client and migration guidance, and separated historical execution reports from product documentation.

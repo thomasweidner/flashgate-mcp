@@ -849,6 +849,11 @@ This inventory is a planning contract, not a current-runtime claim.
 
 ## 22. Implementation gate for every new public tool
 
+Use the shared [BL-213 result contract](implementation-contract.md#bl-213-tool-result-contract).
+Each registered variant needs an executable wire fixture and a matching
+structured schema. Domain events and transport streams follow the relevant
+feature's notification and streaming acceptance.
+
 Before a future tool is advertised, its owner must provide:
 
 - final name/schema/result contract;

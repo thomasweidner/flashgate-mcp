@@ -91,10 +91,10 @@ that out-of-root traversal is denied, and use the provided negative tests to
 check every unavailable mutation and removed tool name. Compare root contents
 before and after testing.
 
-Successful calls contain MCP `content[]` and `structuredContent`; both carry
-the same domain object. For `read_file`, outer `content` is an array while the
-nested domain `content` is the file string. A missing `get_path_info` path is a
-successful `exists:false` result, not a policy bypass or an error. See the
+Read UTF-8 file text from MCP `content[0].text` and its byte size from
+`structuredContent.size`. Invalid UTF-8 returns a tool error. Read directory entries from
+`structuredContent.entries`. A missing `get_path_info` path returns a
+successful `exists:false` metadata result. See the
 [protocol reference](protocol.md) and [migration guide](migration.md).
 
 Stdout must contain only JSON-RPC. Stderr must use safe categories without raw

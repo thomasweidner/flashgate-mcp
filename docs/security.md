@@ -198,7 +198,19 @@ Notifications do not receive JSON-RPC responses. `notifications/initialized` is 
 
 Unexpected handler panics are contained at the request boundary and returned as generic Internal error responses when the request requires a response.
 
-Every successful filesystem `tools/call` now crosses one central adapter boundary into MCP `CallToolResult`. The required outer `content` is a text-block array, and `structuredContent` repeats the same already-serialized domain object. The wrapper adds no resolved host paths and leaves the filesystem core protocol-independent. Expected failures of registered tools cross a separate typed adapter boundary into `isError:true` results containing only safe `category` and `message` text JSON; `structuredContent` is omitted. Unavailable tools retain generic Invalid params; unclassified I/O and internal failures return generic Internal error. No raw causes are serialized.
+Every successful filesystem `tools/call` crosses the central typed result
+adapter. It checks the registered variant, payload kind, and byte bounds before
+serializing the envelope. The adapter derives metadata for payload-bearing
+variants from the accepted parts. Bounded file reads enforce the effective
+byte limit on actual data and reject invalid UTF-8. The adapter independently
+rejects malformed text parts before serialization. Directory reads use bounded
+batches, charge filtered entries to the scan limit, and bound retained results.
+File text and directory entries each appear once. Compatibility metadata parity has an
+independent size threshold. The adapter adds no resolved host paths and the
+filesystem core stays protocol-independent. Expected failures return
+`isError:true` with only safe `category` and `message` text JSON. Unavailable
+tools return generic Invalid params. Unclassified I/O and invalid result
+contracts return generic Internal error.
 
 ## Limits and Redaction
 
@@ -210,7 +222,7 @@ FlashGate applies configurable hard limits for protocol input, tool arguments, f
 | `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `16777216` | Maximum single JSON-RPC message read from stdin. |
 | `MCP_MAX_TOOL_ARGUMENT_BYTES` | `12582912` | Maximum `tools/call` params or arguments payload. |
 | `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum `write_file` content size. |
-| `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum policy-visible `list_directory` entries. |
+| `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum entries scanned by `list_directory`, including hidden or symlink entries filtered by policy. |
 | `MCP_MAX_COPY_BYTES` | `10485760` | Maximum `copy_path` source file size. |
 | `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries for recursive `delete_path`. |
 | `MCP_MAX_RESPONSE_BYTES` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
@@ -246,7 +258,8 @@ Security tests currently cover:
 - JSON-RPC message and tool argument limits
 - filesystem read/write/list/copy/delete limits
 - response-size safety net
-- strict successful `CallToolResult` envelope and text/structured parity without host-path additions
+- strict `CallToolResult` envelopes, bounded metadata parity, single transmission,
+  and no host-path additions
 - diagnostics redaction
 
 Startup preflight completes before any tool Registry, Router or MCP server is created. Normal starts remain silent; diagnostics never share JSON-RPC stdout.

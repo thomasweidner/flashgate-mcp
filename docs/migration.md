@@ -121,19 +121,30 @@ must now decode the MCP `CallToolResult` envelope:
   "jsonrpc": "2.0",
   "id": 3,
   "result": {
-    "content": [{"type": "text", "text": "{\"entries\":[]}"}],
-    "structuredContent": {"entries": []}
+    "content": [{"type": "text", "text": "file text"}],
+    "structuredContent": {"size": 9}
   }
 }
 ```
 
-The text block is compact deterministic JSON; it and `structuredContent`
-decode to the same domain object. Domain fields are not placed directly on
-the outer result. Successful calls omit `isError`.
+BL-213 replaces the duplicated `read_file` object with one plain text block.
+Read `result.content[0].text` directly as file text and
+`result.structuredContent.size` as source byte size. Earlier builds placed the
+text in `structuredContent.content` and a JSON-encoded object in the text block.
+Clients supporting both wire shapes can use the advertised `read_file`
+`outputSchema` to select the decoder.
 
-For `read_file`, the domain object remains `{"content":"file text","size":9}`:
-outer MCP `content` is an array, while `structuredContent.content` is a string.
-Genuine missing-path metadata remains successful in both representations.
+Handle `invalid_text_encoding` as a tool failure when the input file is not
+valid UTF-8. Earlier text serialization could replace malformed bytes.
+Valid text retains its original UTF-8 bytes after JSON decoding.
+
+`list_directory` clients read `result.structuredContent.entries`. Its text
+block gives a short pointer to the structured data. The server's
+`MCP_MAX_LIST_ENTRIES` limit now counts filtered entries too. A directory can
+return `limit_exceeded` even if few entries would be visible. Small metadata
+receipts still offer a compact JSON text copy within the 8 KiB compatibility budget.
+Read authoritative metadata from `structuredContent`, including
+`exists:false` for a genuinely missing path. Successful calls omit `isError`.
 
 Runtime `outputSchema` is implemented for all eight tools. The catalog's
 `resultSchema` describes the same domain result, not the entire JSON-RPC or
@@ -141,10 +152,8 @@ MCP wrapper. Version 0.2.0 moves expected failures of registered tools from JSON
 Invalid params into MCP `result` with `isError:true`. Decode the text JSON
 `category` and `message`; error results omit `structuredContent`. Request-level
 errors and unavailable names remain JSON-RPC errors. Unexpected failures return
-generic Internal error. Success schemas, envelopes, and missing metadata stay
-unchanged. See the [error contract](tools.md#machine-readable-tool-errors).
+generic Internal error. See the [error contract](tools.md#machine-readable-tool-errors).
 
-Validate envelope shape, semantic parity, missing-path behavior, discovery,
-and negative cases through the supported Windows/Linux smoke tests and the
-actual client. Accepting valid JSON alone is insufficient. Payload-reduction
-planning does not authorize reverting to the invalid unwrapped result form.
+Validate each payload location, metadata compatibility, missing-path behavior,
+discovery, and negative cases through the Windows/Linux smoke tests and the
+actual client.

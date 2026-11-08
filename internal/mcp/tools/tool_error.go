@@ -27,6 +27,7 @@ const (
 	categoryAlreadyExists        filesystemErrorCategory = "already_exists"
 	categoryAccessDenied         filesystemErrorCategory = "access_denied"
 	categoryInvalidPath          filesystemErrorCategory = "invalid_path"
+	categoryInvalidTextEncoding  filesystemErrorCategory = "invalid_text_encoding"
 	categoryUnsupportedPathType  filesystemErrorCategory = "unsupported_path_type"
 	categoryUnsupportedOperation filesystemErrorCategory = "unsupported_operation"
 	categoryLimitExceeded        filesystemErrorCategory = "limit_exceeded"

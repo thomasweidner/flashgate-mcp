@@ -12,7 +12,7 @@ func TestListHandlerReturnsRegisteredTools(t *testing.T) {
 	t.Parallel()
 
 	registry := NewRegistry()
-	registry.Register(&testTool{
+	requireRegistration(t, registry, &testTool{
 		name:        "list_directory",
 		title:       "List Directory",
 		description: "Lists files and directories.",
@@ -25,7 +25,7 @@ func TestListHandlerReturnsRegisteredTools(t *testing.T) {
 			},
 		},
 	})
-	registry.Register(&testTool{
+	requireRegistration(t, registry, &testTool{
 		name:        "read_file",
 		title:       "Read File",
 		description: "Reads a file.",

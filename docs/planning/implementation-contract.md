@@ -149,6 +149,34 @@ chains, and independent terminal review before Git integration. Snapshot
 updates remain explicit. This gate makes no product, activation, version,
 migration, or security-policy change and produces only temporary CI evidence.
 
+## BL-213 tool result contract
+
+BL-213 owns the shared tool result contract at the MCP adapter boundary. It
+reuses BL-201 result and error envelopes, BL-204 exact-revision wire coverage,
+BL-212 schema and catalog parity, and BL-257's existing CI gate. The security
+model, [efficiency ADR](../adr/efficiency-contracts.md), and
+[protocol guide](../protocol.md#tool-result-classes) govern the public contract.
+
+Each tool declares its result variants and returns typed results to the central
+adapter. Payload kind, transfer mode, and result state are independent. Inline
+results can combine adapter-derived metadata with ordered payload parts.
+Registration rejects missing or unsupported declarations. The adapter accepts
+closed object shapes and checks their encoded sizes before serialization.
+Payload-bearing results derive their size metadata from the parts. The adapter
+rejects malformed UTF-8 text parts before serialization. File text must
+round-trip byte for byte. Directory scans count filtered entries toward the
+configured entry limit and fail without a partial result. Small metadata can
+retain compatibility parity within its budget. File text and directory entries each
+have one primary wire location.
+
+Validate all registered variants on the default and read-only paths for each
+executable revision. Cover single transmission, malformed contracts, limits,
+schema instances, catalog parity, normalized errors, and intentional snapshot
+changes through the existing native CI gate. Keep client migration guidance and
+Unreleased notes with the wire delta. Require independent review before closure.
+The successor owners retain paging, resource delivery, notifications, jobs,
+streaming, and efficiency budgets.
+
 ## BL-372 release-oriented product versioning
 
 BL-372 owns release governance and test controls in SPR-048. It reuses the

@@ -159,7 +159,7 @@ func TestMCPConformanceSchema202012(t *testing.T) {
 				t.Errorf("strict decoder accepted %s", raw)
 			}
 		}
-		for _, raw := range []string{`{"content":["seed"],"size":4}`, `{"content":"seed"}`, `{"content":"seed","size":4,"extra":true}`, `null`} {
+		for _, raw := range []string{`{"content":"seed","size":4}`, `{"size":"4"}`, `{"size":-1}`, `{}`, `null`} {
 			value, err := mcptest.SchemaInstance([]byte(raw))
 			if err != nil || schema.output.Validate(value) == nil {
 				t.Errorf("expected output schema to reject %s (decode: %v)", raw, err)

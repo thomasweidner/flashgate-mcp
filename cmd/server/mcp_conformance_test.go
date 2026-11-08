@@ -51,24 +51,67 @@ func mcpMatrixCoverage(versions, profiles []string) error {
 // Each entry is executable functional coverage, independent of snapshot updates.
 // A new registration requires an explicit success and security case here.
 type mcpToolCase struct {
+	success  map[string]mcpSuccessCase
+	denied   string
+	readOnly bool
+}
+
+type mcpSuccessCase struct {
 	arguments string
-	denied    string
 	field     string
 	want      any
-	readOnly  bool
+	content   []protocol.ContentBlock
+}
+
+func mcpCompleteCase(arguments, denied, field string, want any, readOnly bool) mcpToolCase {
+	return mcpToolCase{map[string]mcpSuccessCase{"complete": {arguments: arguments, field: field, want: want}}, denied, readOnly}
 }
 
 func mcpToolCases() map[string]mcpToolCase {
 	return map[string]mcpToolCase{
-		"list_directory":   {`{}`, `{"path":"../outside"}`, "entries", []any{map[string]any{"name": "seed.txt", "isDir": false, "size": json.Number("4")}}, true},
-		"read_file":        {`{"path":"seed.txt"}`, `{"path":"../outside"}`, "content", "seed", true},
-		"get_path_info":    {`{"path":"seed.txt"}`, `{"path":"../outside"}`, "exists", true, true},
-		"write_file":       {`{"path":"written.txt","content":"new"}`, `{"path":"../outside","content":"new"}`, "written", true, false},
-		"create_directory": {`{"path":"new-directory"}`, `{"path":"../outside"}`, "created", true, false},
-		"delete_path":      {`{"path":"seed.txt"}`, `{"path":"../outside"}`, "deleted", true, false},
-		"copy_path":        {`{"source":"seed.txt","target":"copied.txt"}`, `{"source":"../outside","target":"copied.txt"}`, "copied", true, false},
-		"move_path":        {`{"source":"seed.txt","target":"moved.txt"}`, `{"source":"../outside","target":"moved.txt"}`, "moved", true, false},
+		"list_directory": {map[string]mcpSuccessCase{
+			"complete": {`{}`, "entries", []any{map[string]any{"name": "seed.txt", "isDir": false, "size": json.Number("4")}}, []protocol.ContentBlock{protocol.NewTextContent("See structuredContent for the result.")}},
+		}, `{"path":"../outside"}`, true},
+		"read_file": {map[string]mcpSuccessCase{
+			"complete": {`{"path":"seed.txt"}`, "size", json.Number("4"), []protocol.ContentBlock{protocol.NewTextContent("seed")}},
+		}, `{"path":"../outside"}`, true},
+		"get_path_info": {map[string]mcpSuccessCase{
+			"existing": {arguments: `{"path":"seed.txt"}`, field: "exists", want: true},
+			"missing":  {arguments: `{"path":"missing.txt"}`, field: "exists", want: false},
+		}, `{"path":"../outside"}`, true},
+		"write_file":       mcpCompleteCase(`{"path":"written.txt","content":"new"}`, `{"path":"../outside","content":"new"}`, "written", true, false),
+		"create_directory": mcpCompleteCase(`{"path":"new-directory"}`, `{"path":"../outside"}`, "created", true, false),
+		"delete_path":      mcpCompleteCase(`{"path":"seed.txt"}`, `{"path":"../outside"}`, "deleted", true, false),
+		"copy_path":        mcpCompleteCase(`{"source":"seed.txt","target":"copied.txt"}`, `{"source":"../outside","target":"copied.txt"}`, "copied", true, false),
+		"move_path":        mcpCompleteCase(`{"source":"seed.txt","target":"moved.txt"}`, `{"source":"../outside","target":"moved.txt"}`, "moved", true, false),
 	}
+}
+
+func mcpVariantCoverage(contract tools.ResultContract, cases map[string]mcpSuccessCase) error {
+	if len(contract) != len(cases) {
+		return fmt.Errorf("declared variants %d differ from executable fixtures %d", len(contract), len(cases))
+	}
+	for _, variant := range contract {
+		fixture, ok := cases[variant.Name]
+		if !ok || fixture.arguments == "" || fixture.field == "" {
+			return fmt.Errorf("missing executable fixture for variant %q", variant.Name)
+		}
+		if (variant.ObjectKind != tools.MetadataPayload || len(variant.Parts) > 0) && len(fixture.content) == 0 {
+			return fmt.Errorf("missing exact payload block assertions for variant %q", variant.Name)
+		}
+	}
+	return nil
+}
+
+type mcpObservedTool struct {
+	tools.Tool
+	variant string
+}
+
+func (tool *mcpObservedTool) Execute(ctx context.Context, arguments json.RawMessage) (tools.ToolResult, error) {
+	result, err := tool.Tool.Execute(ctx, arguments)
+	tool.variant = result.Variant()
+	return result, err
 }
 
 func mcpRegistry(t *testing.T, readOnly bool) (*tools.Registry, string) {
@@ -81,7 +124,7 @@ func mcpRegistry(t *testing.T, readOnly bool) (*tools.Registry, string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return createToolRegistry(filesystem, 1024, capabilitiesFromReadOnly(readOnly)), root
+	return requireToolRegistry(t, filesystem, 1024, capabilitiesFromReadOnly(readOnly)), root
 }
 
 func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
@@ -187,7 +230,7 @@ func mcpInventory(definitions []protocol.Tool, cases map[string]mcpToolCase, rea
 		}
 		delete(expected, definition.Name)
 		test := cases[definition.Name]
-		if test.arguments == "" || test.denied == "" || test.field == "" {
+		if len(test.success) == 0 || test.denied == "" {
 			return fmt.Errorf("missing executable contract case for %q", definition.Name)
 		}
 	}
@@ -315,37 +358,53 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 				for _, definition := range definitions {
 					test := cases[definition.Name]
 					schema := schemas[definition.Name]
-					outcomes := make(map[string]any)
-					for _, outcome := range []string{"success", "denied"} {
-						fresh, _ := mcpRegistry(t, readOnly)
-						arguments := test.arguments
-						if outcome == "denied" {
-							arguments = test.denied
-						}
-						mcpRequireSchemaInstance(t, definition.Name+"/"+outcome+"/inputSchema", schema.input, []byte(arguments))
-						result := mcpResult(t, mcpRouter(fresh, version == revision.Stateless), "tools/call", `{"name":"`+definition.Name+`","arguments":`+arguments+`}`, version)
-						mcpCheckRevisionResult(t, result, version, false)
-						outcomes[outcome] = result
-						// Strip only validated adapter fields before reusing the strict
-						// legacy CallToolResult decoder; domain contracts stay shared.
-						base := make(map[string]json.RawMessage)
-						for key, value := range result {
-							if key != "_meta" && key != "resultType" {
-								base[key] = value
-							}
-						}
-						decoded, err := mcptest.DecodeCallToolResult(canonicalMCP(t, base))
-						if err != nil || decoded.IsError != (outcome == "denied") {
-							t.Fatalf("%s/%s result contract: %v, result: %s", definition.Name, outcome, err, canonicalMCP(t, result))
-						}
-						if outcome == "success" {
-							mcpRequireSchemaInstance(t, definition.Name+"/outputSchema", schema.output, result["structuredContent"])
-							value, ok := decoded.StructuredContent.(map[string]any)
-							if !ok || !reflect.DeepEqual(value[test.field], test.want) {
-								t.Fatalf("%s: functional assertion %s=%v failed: %#v", definition.Name, test.field, test.want, value)
-							}
-						}
+					registered, ok := registry.Get(definition.Name)
+					if !ok {
+						t.Fatalf("missing registered tool %q", definition.Name)
 					}
+					contract := registered.ResultContract()
+					if err := mcpVariantCoverage(contract, test.success); err != nil {
+						t.Fatalf("%s: %v", definition.Name, err)
+					}
+					outcomes := make(map[string]any)
+					for variant, fixture := range test.success {
+						fresh, _ := mcpRegistry(t, readOnly)
+						original, _ := fresh.Get(definition.Name)
+						observed := &mcpObservedTool{Tool: original}
+						if err := fresh.Register(observed); err != nil {
+							t.Fatal(err)
+						}
+						label := definition.Name + "/" + variant
+						mcpRequireSchemaInstance(t, label+"/inputSchema", schema.input, []byte(fixture.arguments))
+						result := mcpResult(t, mcpRouter(fresh, version == revision.Stateless), "tools/call", `{"name":"`+definition.Name+`","arguments":`+fixture.arguments+`}`, version)
+						mcpCheckRevisionResult(t, result, version, false)
+						if observed.variant != variant {
+							t.Fatalf("%s: executed variant %q", label, observed.variant)
+						}
+						mcpRequireSchemaInstance(t, label+"/outputSchema", schema.output, result["structuredContent"])
+						base := mcpResultEnvelope(t, result)
+						decoded, err := mcpDecodeSuccess(t, base, fixture)
+						if err != nil || decoded.IsError {
+							t.Fatalf("%s: invalid success envelope: %v, %s", label, err, base)
+						}
+						value := decoded.StructuredContent.(map[string]any)
+						if !reflect.DeepEqual(value[fixture.field], fixture.want) {
+							t.Fatalf("%s: functional assertion failed: %s", label, base)
+						}
+						outcome := "success_" + variant
+						if variant == contract[0].Name {
+							outcome = "success"
+						}
+						outcomes[outcome] = result
+					}
+					fresh, _ := mcpRegistry(t, readOnly)
+					mcpRequireSchemaInstance(t, definition.Name+"/denied/inputSchema", schema.input, []byte(test.denied))
+					denied := mcpResult(t, mcpRouter(fresh, version == revision.Stateless), "tools/call", `{"name":"`+definition.Name+`","arguments":`+test.denied+`}`, version)
+					mcpCheckRevisionResult(t, denied, version, false)
+					if decoded, err := mcptest.DecodeCallToolResult(mcpResultEnvelope(t, denied)); err != nil || !decoded.IsError {
+						t.Fatalf("%s: invalid denial: %v", definition.Name, err)
+					}
+					outcomes["denied"] = denied
 					results[definition.Name] = outcomes
 				}
 				mcpCheckRevisionResult(t, list, version, true)
@@ -374,6 +433,25 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 			})
 		}
 	}
+}
+
+func mcpDecodeSuccess(t *testing.T, raw json.RawMessage, fixture mcpSuccessCase) (mcptest.DecodedCallToolResult, error) {
+	t.Helper()
+	if fixture.content == nil {
+		return mcptest.DecodeCallToolResult(raw)
+	}
+	return mcptest.DecodeDeclaredCallToolResult(raw, canonicalMCP(t, fixture.content))
+}
+
+func mcpResultEnvelope(t *testing.T, result map[string]json.RawMessage) json.RawMessage {
+	t.Helper()
+	base := make(map[string]json.RawMessage, len(result))
+	for key, value := range result {
+		if key != "_meta" && key != "resultType" {
+			base[key] = value
+		}
+	}
+	return canonicalMCP(t, base)
 }
 
 func mcpCheckRevisionResult(t *testing.T, result map[string]json.RawMessage, version string, cacheable bool) {
@@ -417,7 +495,9 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 		if !ok {
 			t.Fatal("missing mutation seed")
 		}
-		registry.Register(mcpFutureTool{Tool: base})
+		if err := registry.Register(mcpFutureTool{Tool: base}); err != nil {
+			t.Fatal(err)
+		}
 		mutated := mcpDefinitions(registry)
 		schemas, err := mcpCompileSchemas(mutated)
 		if err != nil || schemas["future_tool"].input == nil || schemas["future_tool"].output == nil {
@@ -435,6 +515,21 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 		cases["read_file"] = mcpToolCase{readOnly: true}
 		if mcpInventory(definitions, cases, false) == nil {
 			t.Fatal("empty contract escaped gate")
+		}
+	})
+	t.Run("missing-variant-fixture", func(t *testing.T) {
+		tool, _ := registry.Get("get_path_info")
+		cases := mcpToolCases()["get_path_info"].success
+		delete(cases, "missing")
+		if mcpVariantCoverage(tool.ResultContract(), cases) == nil {
+			t.Fatal("untested result variant escaped the conformance gate")
+		}
+	})
+	t.Run("duplicated-payload", func(t *testing.T) {
+		fixture := mcpToolCases()["read_file"].success["complete"]
+		raw := json.RawMessage(`{"content":[{"type":"text","text":"seed"},{"type":"text","text":"seed"}],"structuredContent":{"size":4}}`)
+		if _, err := mcpDecodeSuccess(t, raw, fixture); err == nil {
+			t.Fatal("duplicate payload escaped the conformance gate")
 		}
 	})
 	t.Run("profile-drift", func(t *testing.T) {

@@ -66,26 +66,12 @@ func TestReadFileToolExecute(t *testing.T) {
 		t.Fatalf("expected maxBytes 256, got %d", filesystem.readMaxBytes)
 	}
 
-	encoded, err := json.Marshal(result)
-	if err != nil {
-		t.Fatalf("expected marshalable result, got %v", err)
+	if len(result.parts) != 1 || result.parts[0].kind != TextPayload || result.parts[0].text != "hello world" {
+		t.Fatalf("unexpected text payload: %#v", result.parts)
 	}
 
-	var decoded struct {
-		Content string `json:"content"`
-		Size    int64  `json:"size"`
-	}
-
-	if err := json.Unmarshal(encoded, &decoded); err != nil {
-		t.Fatalf("expected valid result JSON, got %v", err)
-	}
-
-	if decoded.Content != "hello world" {
-		t.Fatalf("expected content hello world, got %q", decoded.Content)
-	}
-
-	if decoded.Size != int64(len("hello world")) {
-		t.Fatalf("expected size %d, got %d", len("hello world"), decoded.Size)
+	if result.object != nil {
+		t.Fatalf("unexpected caller-supplied metadata: %#v", result.object)
 	}
 }
 
@@ -189,7 +175,7 @@ func TestReadFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		json.RawMessage(`{"path":`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -213,7 +199,7 @@ func TestReadFileToolReturnsInvalidParamsForMissingPath(t *testing.T) {
 		json.RawMessage(`{}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -239,7 +225,7 @@ func TestReadFileToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		json.RawMessage(`{"path":"docs"}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 

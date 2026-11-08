@@ -74,26 +74,34 @@ func (t *CopyPathTool) Definition() protocol.Tool {
 	}
 }
 
+func (t *CopyPathTool) ResultContract() ResultContract {
+	return metadataContract(defaultVariant)
+}
+
 // Execute copies the requested source path to the target path.
-func (t *CopyPathTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *CopyPathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments copyPathArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return nil, rpcErr
+		return ToolResult{}, rpcErr
 	}
 
 	if !isNonBlank(arguments.Source) || !isNonBlank(arguments.Target) {
-		return nil, invalidArgumentsError()
+		return ToolResult{}, invalidArgumentsError()
+	}
+
+	if err := validateReceiptPaths(arguments.Source, arguments.Target); err != nil {
+		return ToolResult{}, err
 	}
 
 	if err := t.filesystem.Copy(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return copyPathResult{
+	return NewToolResult(defaultVariant, copyPathResult{
 		Source: arguments.Source,
 		Target: arguments.Target,
 		Copied: true,
-	}, nil
+	}), nil
 }
 
 type copyPathArguments struct {

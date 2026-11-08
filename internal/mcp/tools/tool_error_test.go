@@ -48,7 +48,7 @@ func TestExpectedFilesystemErrorsAndRawFailures(t *testing.T) {
 	}
 	for _, cause := range []error{raw, fmt.Errorf("wrapped: %w", raw), (*toolExecutionError)(nil), &toolExecutionError{}} {
 		registry := NewRegistry()
-		registry.Register(&testTool{name: "test_tool", err: cause})
+		requireRegistration(t, registry, &testTool{name: "test_tool", err: cause})
 		result, rpcErr := NewCallHandler(registry).Handle(handlers.Context{}, json.RawMessage(`{"name":"test_tool","arguments":{}}`))
 		if result != nil || rpcErr == nil || rpcErr.Code != protocol.ErrInternalError || rpcErr.Message != "internal error" {
 			t.Fatalf("unsafe internal boundary: %v %#v", result, rpcErr)

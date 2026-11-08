@@ -64,7 +64,7 @@ func TestDeletePathToolExecuteFile(t *testing.T) {
 		t.Fatal("expected recursive=false")
 	}
 
-	encoded, err := json.Marshal(result)
+	encoded, err := json.Marshal(result.object)
 	if err != nil {
 		t.Fatalf("expected marshalable result, got %v", err)
 	}
@@ -122,7 +122,7 @@ func TestDeletePathToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 		json.RawMessage(`{"path":`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -146,7 +146,7 @@ func TestDeletePathToolReturnsInvalidParamsForMissingPath(t *testing.T) {
 		json.RawMessage(`{}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -172,7 +172,7 @@ func TestDeletePathToolReturnsInvalidParamsForDirectoryNotEmpty(t *testing.T) {
 		json.RawMessage(`{"path":"non-empty-dir","recursive":false}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 
@@ -198,7 +198,7 @@ func TestDeletePathToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 		json.RawMessage(`{"path":"invalid"}`),
 	)
 
-	if result != nil {
+	if result.variant != "" {
 		t.Fatalf("expected nil result, got %#v", result)
 	}
 

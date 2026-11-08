@@ -33,18 +33,26 @@ func (t *CreateDirectoryTool) InputSchema() any {
 func (t *CreateDirectoryTool) Definition() protocol.Tool {
 	return protocol.Tool{Name: t.Name(), Title: t.Title(), Description: t.Description(), InputSchema: t.InputSchema(), OutputSchema: filesystemOutputSchema(t.Name()), Annotations: filesystemToolAnnotations(t.Name())}
 }
-func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (any, error) {
+func (t *CreateDirectoryTool) ResultContract() ResultContract {
+	return metadataContract(defaultVariant)
+}
+
+func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var arguments createDirectoryArguments
 	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil || !isNonBlank(arguments.Path) {
-		return nil, invalidArgumentsError()
+		return ToolResult{}, invalidArgumentsError()
+	}
+
+	if err := validateReceiptPaths(arguments.Path); err != nil {
+		return ToolResult{}, err
 	}
 
 	created, err := t.filesystem.Mkdir(arguments.Path)
 	if err != nil {
-		return nil, mapFilesystemError(err)
+		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return createDirectoryResult{Path: arguments.Path, Created: created}, nil
+	return NewToolResult(defaultVariant, createDirectoryResult{Path: arguments.Path, Created: created}), nil
 }
 
 type createDirectoryArguments struct {

@@ -19,12 +19,12 @@ func TestCreateDirectoryReportsCreatedState(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.mkdirCreated = true
 	result, rpcErr := NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"a/b"}`))
-	if rpcErr != nil || result != (createDirectoryResult{Path: "a/b", Created: true}) {
+	if rpcErr != nil || result.object != (createDirectoryResult{Path: "a/b", Created: true}) {
 		t.Fatalf("unexpected created result=%#v error=%v", result, rpcErr)
 	}
 	fake.mkdirCreated = false
 	result, rpcErr = NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"a/b"}`))
-	if rpcErr != nil || result != (createDirectoryResult{Path: "a/b", Created: false}) {
+	if rpcErr != nil || result.object != (createDirectoryResult{Path: "a/b", Created: false}) {
 		t.Fatalf("unexpected existing result=%#v error=%v", result, rpcErr)
 	}
 }
@@ -42,7 +42,7 @@ func TestCreateDirectoryMapsFilesystemError(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.mkdirErr = fs.ErrPathIsNotDirectory
 	result, rpcErr := NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"file"}`))
-	if result != nil || rpcErr == nil || errorCategory(rpcErr) != "unsupported_path_type" {
+	if result.variant != "" || rpcErr == nil || errorCategory(rpcErr) != "unsupported_path_type" {
 		t.Fatalf("expected Invalid params, result=%#v error=%#v", result, rpcErr)
 	}
 }

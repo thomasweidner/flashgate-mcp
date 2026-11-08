@@ -2,6 +2,7 @@ package fs
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,6 +53,24 @@ func TestLocalFileSystemListReturnsFilesAndDirectories(t *testing.T) {
 	dirEntry := findEntry(t, entries, "subdir")
 	if !dirEntry.IsDir {
 		t.Fatal("expected subdir to be a directory")
+	}
+}
+
+func TestLocalFileSystemListSortsAcrossBatches(t *testing.T) {
+	root := t.TempDir()
+	count := listBatchSize*2 + 1
+	for index := count - 1; index >= 0; index-- {
+		writeTestFile(t, filepath.Join(root, fmt.Sprintf("entry-%04d", index)), "x")
+	}
+	filesystem := mustNewLocalFileSystem(t, root)
+	entries, err := filesystem.List(".")
+	if err != nil || len(entries) != count {
+		t.Fatalf("unexpected batched list count=%d, error=%v", len(entries), err)
+	}
+	for index, entry := range entries {
+		if entry.Name != fmt.Sprintf("entry-%04d", index) || entry.IsDir || entry.Size != 1 {
+			t.Fatalf("unexpected entry %d: %#v", index, entry)
+		}
 	}
 }
 
@@ -232,6 +251,27 @@ func TestLocalFileSystemReadReturnsFileContent(t *testing.T) {
 
 	if string(content) != "hello world" {
 		t.Fatalf("expected %q, got %q", "hello world", string(content))
+	}
+}
+
+func TestReadAtMostRejectsDataBeyondTheLimit(t *testing.T) {
+	for _, tc := range []struct {
+		data     string
+		max      int64
+		tooLarge bool
+	}{
+		{"", 5, false},
+		{"exact", 5, false},
+		{"larger", 5, true},
+	} {
+		content, err := readAtMost(strings.NewReader(tc.data), tc.max)
+		if tc.tooLarge {
+			if !errors.Is(err, ErrFileTooLarge) || content != nil {
+				t.Fatalf("over-limit read: content=%q, error=%v", content, err)
+			}
+		} else if err != nil || string(content) != tc.data {
+			t.Fatalf("bounded read: content=%q, error=%v", content, err)
+		}
 	}
 }
 
@@ -1424,6 +1464,43 @@ func TestLocalFileSystemListRejectsTooManyEntries(t *testing.T) {
 
 	if !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("expected ErrLimitExceeded, got %v", err)
+	}
+}
+
+func TestLocalFileSystemListCountsFilteredEntriesAgainstScanLimit(t *testing.T) {
+	for _, kind := range []string{"hidden", "symlink"} {
+		t.Run(kind, func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			target := filepath.Join(root, "visible.txt")
+			writeTestFile(t, target, "visible")
+			addFiltered := func(index int) {
+				name := fmt.Sprintf("entry-%03d", index)
+				if kind == "hidden" {
+					writeTestFile(t, filepath.Join(root, "."+name), "hidden")
+				} else {
+					createTestSymlinkOrSkip(t, target, filepath.Join(root, name))
+				}
+			}
+
+			limits := DefaultLimits()
+			limits.MaxListEntries = 2
+			filesystem := mustNewLocalFileSystemWithLimits(t, root, limits)
+			addFiltered(0)
+			entries, err := filesystem.List(".")
+			if err != nil || len(entries) != 1 || entries[0].Name != "visible.txt" {
+				t.Fatalf("expected one visible entry at the scan limit, got %v, %v", entries, err)
+			}
+
+			for index := 1; index <= listBatchSize; index++ {
+				addFiltered(index)
+			}
+			entries, err = filesystem.List(".")
+			if !errors.Is(err, ErrLimitExceeded) || entries != nil {
+				t.Fatalf("expected scan limit error without a partial listing, got %v, %v", entries, err)
+			}
+		})
 	}
 }
 

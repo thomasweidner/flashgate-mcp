@@ -59,7 +59,10 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 - MCP protocol revision `2025-11-25`;
 - benchmark measurement for startup, memory, CPU, latency, payload, catalog size, calls, and approximate tokens.
 
-Current successful filesystem tool results are wrapped as one compact JSON text block plus the same object in `structuredContent`. This is the implemented contract, not the final Version 1.0 payload-heavy result architecture. Version 1.0 plans payload classes so large text, binary, search, and process output is transferred once.
+All eight filesystem tools declare result variants and return typed results to
+the central MCP adapter. File text and directory entries each have a single
+wire location. Small metadata can retain bounded text parity. See the
+[protocol result contract](protocol.md#tool-result-classes).
 
 Expected registered-tool failures use a typed MCP adapter error and central
 `isError:true` result wrapper without `structuredContent`. Request and registry
@@ -385,13 +388,21 @@ Primary measurements:
 - tool/schema/instruction bytes and tokens;
 - proxy/service IPC overhead.
 
-Version 1.0 result architecture uses payload classes:
+The tool result contract separates payload kind, transfer mode, and lifecycle
+state. An inline result can carry ordered text or media parts with
+adapter-derived byte-size metadata. The adapter owns envelope encoding and
+checks the registered variant and object size before serialization.
 
 - small metadata may use compact text/structured parity;
 - structured pages use compact metadata and requested fields;
 - heavy text appears once plus metadata;
 - binary/media uses bounded content or an opaque result/resource handle;
-- large/asynchronous results use identity-bound handles, paging/streaming, TTL, and negotiated resource links with bounded fallback.
+- later delivery mechanisms use identity-bound handles, paging/streaming, TTL,
+  and negotiated resource links with bounded fallback.
+
+Domain events feed the revision/transport mechanisms for MCP notifications.
+The owners of subscriptions, delivery, and activation are bound in
+[architecture traceability](planning/architecture-traceability.md).
 
 The server must avoid unnecessary parse/serialize/copy cycles across proxy/service boundaries.
 

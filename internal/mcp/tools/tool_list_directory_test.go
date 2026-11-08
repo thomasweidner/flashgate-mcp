@@ -32,7 +32,7 @@ func TestListDirectoryDefaultsOnlyMissingPath(t *testing.T) {
 		t.Fatalf("expected default path, got path=%q error=%v", fake.listPath, rpcErr)
 	}
 	want := listDirectoryResult{Entries: fake.entries}
-	if !reflect.DeepEqual(result, want) {
+	if !reflect.DeepEqual(result.object, want) {
 		t.Fatalf("unexpected result: %#v", result)
 	}
 }

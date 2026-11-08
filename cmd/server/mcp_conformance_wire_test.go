@@ -6,15 +6,19 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcptest"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
 func TestMCPConformanceWireNegatives(t *testing.T) {
+	t.Run("read-file-encoding", verifyReadFileEncoding)
 	for _, candidate := range []bool{false, true} {
 		registry, _ := mcpRegistry(t, false)
 		r := mcpRouter(registry, candidate)
@@ -55,6 +59,49 @@ func TestMCPConformanceWireNegatives(t *testing.T) {
 			var rpcError protocol.Error
 			if err := json.Unmarshal(response["error"], &rpcError); err != nil || (rpcError.Code != protocol.ErrParseError && rpcError.Code != protocol.ErrInvalidRequest) {
 				t.Fatalf("malformed envelope accepted: %s", response["error"])
+			}
+		}
+	}
+}
+
+func verifyReadFileEncoding(t *testing.T) {
+	for _, version := range mcpConformanceVersions {
+		for _, readOnly := range []bool{false, true} {
+			registry, root := mcpRegistry(t, readOnly)
+			r := mcpRouter(registry, version == revision.Stateless)
+			valid := []byte("\ufeffGruß 💾\r\n<&>\x00\u2028")
+			invalid := append([]byte("private-body-marker"), 0xff)
+			for _, fixture := range []struct {
+				file string
+				data []byte
+			}{
+				{"utf8.txt", valid},
+				{"empty.txt", nil},
+				{"invalid.txt", invalid},
+			} {
+				if err := os.WriteFile(filepath.Join(root, fixture.file), fixture.data, 0o600); err != nil {
+					t.Fatal(err)
+				}
+				result := mcpResult(t, r, "tools/call",
+					`{"name":"read_file","arguments":{"path":"`+fixture.file+`"}}`, version)
+				mcpCheckRevisionResult(t, result, version, false)
+				envelope := mcpResultEnvelope(t, result)
+				if fixture.file == "invalid.txt" {
+					decoded, err := mcptest.DecodeCallToolResult(envelope)
+					if err != nil || !decoded.IsError || decoded.HasStructuredContent {
+						t.Fatalf("%s read-only=%t: invalid bytes were not rejected: %s, %v", version, readOnly, envelope, err)
+					}
+					body := decoded.TextContent.(map[string]any)
+					if body["category"] != "invalid_text_encoding" || body["message"] != "file text is not valid UTF-8" {
+						t.Fatalf("invalid encoding must return only its safe category and message: %s", envelope)
+					}
+					continue
+				}
+				decoded, err := mcptest.DecodeSplitCallToolResult(envelope)
+				if err != nil || decoded.IsError || decoded.TextContent != string(fixture.data) ||
+					string(result["structuredContent"]) != `{"size":`+strconv.Itoa(len(fixture.data))+`}` {
+					t.Fatalf("%s read-only=%t: file text or raw size changed: %s, %v", version, readOnly, envelope, err)
+				}
 			}
 		}
 	}

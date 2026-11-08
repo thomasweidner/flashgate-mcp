@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
@@ -35,7 +36,7 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		return nil, rpcErr
 	}
 
-	tool, ok := h.registry.Get(params.Name)
+	entry, ok := h.registry.lookup(params.Name)
 	if !ok {
 		return nil, invalidParamsError()
 	}
@@ -45,44 +46,25 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		execCtx = context.Background()
 	}
 
-	result, err := tool.Execute(execCtx, params.Arguments)
-	if err != nil {
-		var expected *toolExecutionError
-		if errors.As(err, &expected) && expected != nil {
-			wrapped, wrapErr := protocol.NewCallToolErrorResult(string(expected.category), expected.message)
-			if wrapErr != nil {
-				return nil, internalToolResultError()
-			}
+	result, err := entry.tool.Execute(execCtx, params.Arguments)
+	if err == nil {
+		wrapped, wrapErr := entry.contract.wrap(result)
+		if wrapErr == nil {
 			return wrapped, nil
 		}
-		return nil, internalToolResultError()
+		err = wrapErr
+		if errors.Is(wrapErr, errToolResultLimit) {
+			err = mapFilesystemError(fs.ErrLimitExceeded)
+		}
 	}
-
-	wrapped, rpcErr := wrapSuccessfulToolResult(result)
-	if rpcErr != nil {
-		return nil, rpcErr
+	var expected *toolExecutionError
+	if errors.As(err, &expected) && expected != nil {
+		wrapped, wrapErr := protocol.NewCallToolErrorResult(string(expected.category), expected.message)
+		if wrapErr == nil {
+			return wrapped, nil
+		}
 	}
-
-	return wrapped, nil
-}
-
-func wrapSuccessfulToolResult(result any) (protocol.CallToolResult, *protocol.Error) {
-	switch result.(type) {
-	case protocol.CallToolResult, *protocol.CallToolResult:
-		return protocol.CallToolResult{}, internalToolResultError()
-	}
-
-	encoded, err := json.Marshal(result)
-	if err != nil {
-		return protocol.CallToolResult{}, internalToolResultError()
-	}
-
-	wrapped, err := protocol.NewCallToolResult(encoded)
-	if err != nil {
-		return protocol.CallToolResult{}, internalToolResultError()
-	}
-
-	return wrapped, nil
+	return nil, internalToolResultError()
 }
 
 func internalToolResultError() *protocol.Error {

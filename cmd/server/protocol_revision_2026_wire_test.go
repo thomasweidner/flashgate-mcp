@@ -23,7 +23,7 @@ func statelessRouter(t *testing.T) *router.Router {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := createToolRegistry(filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
 	r := router.NewWithPolicy("flashgate", "test-version", revision.NewPolicy(protocol.ProtocolVersion, revision.Stateless))
 	r.Register(initialize.NewHandler("flashgate", "test-version"))
 	r.Register(ping.Handler{})
@@ -123,7 +123,7 @@ func TestStatelessCandidateWire(t *testing.T) {
 
 func TestStatelessMetadataAndProductionGate(t *testing.T) {
 	validMeta := `"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}`
-	defaultRouter := createRouter("flashgate", "test-version", createToolRegistry(noopFileSystem{}, 1024, toolCapabilities{}))
+	defaultRouter := createRouter("flashgate", "test-version", requireToolRegistry(t, noopFileSystem{}, 1024, toolCapabilities{}))
 	legacyResponses := runRevisionWire(t, defaultRouter,
 		`{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{`+validMeta+`}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"client","version":"1"}}}`,
