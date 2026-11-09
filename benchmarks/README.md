@@ -223,6 +223,29 @@ and permitted representation and envelope costs. Review changes explicitly.
 Historical `flashgate-benchmark/v1` artifacts, workflow counters and host
 baselines retain their definitions.
 
+The same gate reports BL-215 catalog and entry dimensions. Catalog text
+costs sum decoded UTF-8 bytes of each name, title and description across
+the response. Schema costs sum the exact emitted JSON values separately for
+input and output. Instruction cost counts decoded UTF-8 and tracks whether
+the field was present. Missing optional fields contribute zero. The complete
+frame still charges JSON escaping, keys, syntax, JSON-RPC, revision values
+and transport framing. Approximate tokens are computed from each aggregate
+byte count independently.
+
+Reference fixture measurements in bytes, with approximate tokens in parentheses:
+
+| Executable policy | Entry response | Read-only catalog | Default catalog |
+|---|---:|---:|---:|
+| Production `2025-11-25` | 161 (41) | 2,426 (607) | 6,472 (1,618) |
+| Candidate `2026-07-28` | 256 (64) | 2,583 (646) | 6,629 (1,658) |
+
+Each reference frame has 34 JSON-RPC envelope bytes and one LF byte.
+Revision-specific result values add 111 attributed bytes on the candidate
+path and zero on the production path. Additional result syntax and revision
+fields are reflected in the total. Entry instructions are absent in both.
+The [effective composition contract](../docs/planning/efficiency.md#tool-catalog-and-initialization-budgets)
+defines how future producers apply these ceilings.
+
 ### Producer integration
 
 Add semantic references, placement checks and exact budget bindings for

@@ -614,183 +614,85 @@ The skill and its examples are consumer-independent: no organization-specific id
 
 ## 20. Public tool inventory by target
 
-This inventory is a planning contract, not a current-runtime claim.
+Each row assigns the first public implementation owner. Later retrofit owners
+inherit the same [catalog acceptance](implementation-contract.md#bl-215-catalog-and-entry-budget-binding)
+for the existing names they change. For example, BL-043 changes path metadata,
+BL-037–040/049 change directory listing, and BL-052/053/055/063 change file writes.
 
-### Root and command discovery
+`IMPLEMENTED` means present in the current registry where authorized.
+`PLANNED` means an accepted name with no executable measurement.
+`CANDIDATE` means a planned, decision-gated surface with no executable
+measurement or activation. The milestone is independent of execution status.
 
-- `list_roots`
-- `get_root_info`
-- `list_commands`
-- `get_command_info`
+**Exposure and budget classes.** R is safe-read eligible, including in broader
+authorized catalogs. F is standard filesystem eligible. O requires an
+explicit opt-in composition. The capabilities below describe eligibility.
+The profile and policy owners define their final IDs and decide effective
+registration. Each class follows the
+[whole-catalog composition rule](efficiency.md#tool-catalog-and-initialization-budgets).
+Windows and Linux are the intended platforms unless the row specifies a
+narrower gate. All planned platform availability remains subject to proof.
 
-### Path/filesystem
+| Family | Public names | Owner | Milestone / state | Eligible capability / class |
+|---|---|---|---|---|
+| Root and command discovery | `list_roots`, `get_root_info` | BL-352 | 1.0 / PLANNED | Named-root read / R |
+| Root and command discovery | `list_commands`, `get_command_info` | BL-353 | 1.0 / PLANNED | Authorized typed-command discovery / O |
+| Path/filesystem | `get_path_info` | BL-002 | 1.0 / IMPLEMENTED | Filesystem read / R |
+| Path/filesystem | `copy_path`, `move_path`, `delete_path` | BL-002 | 1.0 / IMPLEMENTED | Filesystem write / F |
+| Path/filesystem | `get_paths_info` | BL-047 | 1.0 / PLANNED | Filesystem read / F |
+| Path/filesystem | `hash_paths` | BL-048 | 1.0 / PLANNED | Filesystem read / F |
+| Path/filesystem | `compare_paths`, `verify_paths` | BL-346 | 1.0 / PLANNED | Filesystem read / F |
+| Path/filesystem | `apply_filesystem_plan` | BL-056 | 1.0 / PLANNED | Bounded filesystem plan and operation-specific permissions / F |
+| Path/filesystem | `get_path_security`, `set_path_security` | BL-359 | Post-1.0 / PLANNED | Separate security inspection and high-risk mutation / O |
+| Directory | `list_directory` | BL-002 | 1.0 / IMPLEMENTED | Filesystem read / R |
+| Directory | `create_directory` | BL-002 | 1.0 / IMPLEMENTED | Filesystem write / F |
+| Directory | `get_directory_size` | BL-061 | 1.0 / PLANNED | Filesystem read / F |
+| File | `read_file` | BL-002 | 1.0 / IMPLEMENTED | Filesystem read / R |
+| File | `write_file` | BL-002 | 1.0 / IMPLEMENTED | Filesystem write / F |
+| File | `read_files` | BL-046 | 1.0 / PLANNED | Filesystem read / F |
+| File | `edit_file` | BL-050 | 1.0 / PLANNED | Filesystem write / F |
+| Search | `search_paths` | BL-069 | 1.0 / PLANNED | Root-scoped search / O |
+| Search | `search_text` | BL-072 | 1.0 / PLANNED | Root-scoped content search / O |
+| Path watch | `start_path_watch`, `read_path_watch_events`, `stop_path_watch` | BL-347 | Post-1.0 / PLANNED | Root-confined watch and handle ownership / O |
+| Archive | `list_archive_formats`, `get_archive_info`, `list_archive_entries`, `read_archive_entry`, `verify_archive`, `create_archive`, `extract_archive` | BL-348 | Post-1.0 / PLANNED | Format and operation capability, including destination write for mutations / O |
+| Content compression | `list_compression_formats`, `compress_file`, `decompress_file` | BL-354 | Post-1.0 / PLANNED | Codec capability and operation-specific read/write / O |
+| Storage/path attributes | `set_path_compression`, `set_path_encryption` | BL-351 | Post-1.0 / PLANNED | Filesystem support and explicit mutation, with separate high-risk encryption / O |
+| Storage/path attributes | `set_path_availability` | BL-345 | Post-1.0 / CANDIDATE | Cloud availability mutation with proven platform/provider support / O |
+| Process observation | `list_processes` | BL-114 | 1.0 / PLANNED | Process observation / O |
+| Process observation | `get_process_info` | BL-116 | 1.0 / PLANNED | Process observation / O |
+| Process observation | `get_process_tree` | BL-117 | 1.0 / PLANNED | Process observation / O |
+| Managed process | `start_process` | BL-122 | 1.0 / PLANNED | Managed process and typed allowlist / O |
+| Managed process | `wait_process` | BL-123 | 1.0 / PLANNED | Managed process and handle ownership / O |
+| Managed process | `read_process_output` | BL-124 | 1.0 / PLANNED | Managed process and handle ownership / O |
+| Managed process | `stop_process` | BL-126 | 1.0 / PLANNED | Managed process and handle ownership / O |
+| Managed process | `write_process_input` | BL-128 | Post-1.0 / CANDIDATE | Explicit process input policy and handle ownership / O |
+| Managed process | `stop_external_process` | BL-127 | Post-1.0 / CANDIDATE | High-risk external PID control / O |
+| Typed execution | `run_command` | BL-143 | 1.0 / PLANNED | Typed command execution over managed process / O |
+| System | `get_system_info` | BL-153 | 1.0 / PLANNED | Allowlisted system read / O |
+| System | `get_disk_usage` | BL-154 | 1.0 / PLANNED | Scoped system read using BL-062 / O |
+| System | `get_environment_info` | BL-155 | 1.0 / PLANNED | Allowlisted and redacted system read / O |
+| Network | `get_network_info`, `list_network_connections` | BL-158 | Post-1.0 / CANDIDATE | Network observation / O |
+| Network | `resolve_host`, `test_tcp_connection` | BL-158 | Post-1.0 / CANDIDATE | Explicit bounded network probe / O |
+| System logs | `list_system_log_sources`, `query_system_logs` | BL-356 | Post-1.0 / PLANNED | Bounded log read with Event Log or journald / O |
+| Services | `list_services`, `get_service_info`, `start_service`, `stop_service`, `restart_service` | BL-357 | Post-1.0 / PLANNED | Separate service observation and high-risk control with SCM or systemd / O |
+| Scheduled jobs | `list_scheduled_jobs`, `get_scheduled_job_info`, `create_scheduled_job`, `update_scheduled_job`, `delete_scheduled_job`, `enable_scheduled_job`, `disable_scheduled_job`, `run_scheduled_job` | BL-358 | Post-1.0 / PLANNED | Separate schedule observation and persistence/control with Task Scheduler or systemd timers / O |
+| Windows Registry | `list_registry_keys`, `list_registry_values`, `get_registry_value` | BL-349 | Post-1.0 / PLANNED | Windows allowlisted Registry read / O |
+| Windows Registry | `create_registry_key`, `set_registry_value`, `delete_registry_value`, `delete_registry_key` | BL-355 | Post-1.0 / PLANNED | Windows high-risk allowlisted Registry mutation / O |
+| Linux sysctl | `list_sysctls`, `get_sysctl` | BL-349 | Post-1.0 / PLANNED | Linux allowlisted sysctl read / O |
+| Linux sysctl | `set_sysctl` | BL-355 | Post-1.0 / PLANNED | Linux high-risk allowlisted sysctl mutation / O |
+| Windows ADS | `list_file_streams`, `read_file_stream`, `write_file_stream`, `delete_file_stream` | BL-359 | Post-1.0 / PLANNED | Windows stream read/write with root and identity checks / O |
+| Linux xattr | `list_extended_attributes`, `read_extended_attribute`, `write_extended_attribute`, `delete_extended_attribute` | BL-359 | Post-1.0 / PLANNED | Linux attribute read/write with root and identity checks / O |
+| Git first-party Native Tool adapter | `get_git_status`, `get_git_diff`, `list_git_branches`, `list_git_commits`, `get_git_commit`, `get_git_blame` | BL-360 | Post-1.0 / PLANNED | Local authorized repository read and approved executable / O |
+| Audit administration | `get_audit_status`, `query_audit_events`, `verify_audit_integrity` | BL-361 | Post-1.0 / PLANNED | Administrative audit access / O |
+| User session | `list_clipboard_formats`, `read_clipboard`, `write_clipboard`, `clear_clipboard`, `send_desktop_notification` | BL-362 | Post-1.0 / PLANNED | Separate clipboard and notification permissions in a verified user session / O |
 
-- `get_path_info`
-- `get_paths_info`
-- `hash_paths`
-- `compare_paths`
-- `verify_paths`
-- `copy_path`
-- `move_path`
-- `delete_path`
-- `apply_filesystem_plan`
-- `get_path_security`
-- `set_path_security`
-
-### Directory
-
-- `list_directory`
-- `get_directory_size`
-- `create_directory`
-
-### File
-
-- `read_file`
-- `read_files`
-- `write_file`
-- `edit_file`
-
-### Search
-
-- `search_paths`
-- `search_text`
-
-### Path watch
-
-- `start_path_watch`
-- `read_path_watch_events`
-- `stop_path_watch`
-
-### Archive
-
-- `list_archive_formats`
-- `get_archive_info`
-- `list_archive_entries`
-- `read_archive_entry`
-- `verify_archive`
-- `create_archive`
-- `extract_archive`
-
-### Content compression
-
-- `list_compression_formats`
-- `compress_file`
-- `decompress_file`
-
-### Storage/path attributes
-
-- `set_path_compression`
-- `set_path_encryption`
-- later cloud candidate `set_path_availability`
-
-### Process observation
-
-- `list_processes`
-- `get_process_info`
-- `get_process_tree`
-
-### Managed process
-
-- `start_process`
-- `wait_process`
-- `read_process_output`
-- `stop_process`
-- later `write_process_input`
-- later high-risk `stop_external_process` candidate under `BL-127`
-
-### Typed execution
-
-- `run_command`
-
-### System
-
-- `get_system_info`
-- `get_disk_usage`
-- `get_environment_info`
-
-### Network
-
-- `get_network_info`
-- `list_network_connections`
-- `resolve_host`
-- `test_tcp_connection`
-
-### System logs
-
-- `list_system_log_sources`
-- `query_system_logs`
-
-### Services
-
-- `list_services`
-- `get_service_info`
-- `start_service`
-- `stop_service`
-- `restart_service`
-
-### Scheduled jobs
-
-- `list_scheduled_jobs`
-- `get_scheduled_job_info`
-- `create_scheduled_job`
-- `update_scheduled_job`
-- `delete_scheduled_job`
-- `enable_scheduled_job`
-- `disable_scheduled_job`
-- `run_scheduled_job`
-
-### Windows Registry
-
-- `list_registry_keys`
-- `list_registry_values`
-- `get_registry_value`
-- `create_registry_key`
-- `set_registry_value`
-- `delete_registry_value`
-- `delete_registry_key`
-
-### Linux sysctl
-
-- `list_sysctls`
-- `get_sysctl`
-- `set_sysctl`
-
-### Windows ADS
-
-- `list_file_streams`
-- `read_file_stream`
-- `write_file_stream`
-- `delete_file_stream`
-
-### Linux xattr
-
-- `list_extended_attributes`
-- `read_extended_attribute`
-- `write_extended_attribute`
-- `delete_extended_attribute`
-
-### Git first-party Native Tool adapter
-
-- `get_git_status`
-- `get_git_diff`
-- `list_git_branches`
-- `list_git_commits`
-- `get_git_commit`
-- `get_git_blame`
-
-### Audit administration
-
-- `get_audit_status`
-- `query_audit_events`
-- `verify_audit_integrity`
-
-### User session
-
-- `list_clipboard_formats`
-- `read_clipboard`
-- `write_clipboard`
-- `clear_clipboard`
-- `send_desktop_notification`
+Operations and Jobs (BL-084–099) provide internal lifecycle and storage.
+BL-209–211 own MCP Tasks selection, mapping and fallback. Neither defines extra
+public MCP tool names. Provider families such as SSH, HTTP/Web, containers,
+desktop automation, cloud APIs and databases have no approved public names.
+BL-181–188 must resolve provider contracts before any registration. A provider
+that later proposes public tools supplies the same owner, milestone, platform,
+capability and budget bindings as a built-in family.
 
 ## 21. Internal adapter inventory
 
@@ -853,6 +755,8 @@ Use the shared [BL-213 result contract](implementation-contract.md#bl-213-tool-r
 Each registered variant needs an executable wire fixture and a matching
 structured schema. Bind it to the [BL-214 gate](implementation-contract.md#bl-214-wire-measurement-and-coverage)
 for each effective profile and exact revision where it can execute.
+The owning BL also applies the [BL-215 catalog and entry acceptance](implementation-contract.md#bl-215-catalog-and-entry-budget-binding)
+to each affected effective catalog and route before activation.
 
 Before a future tool is advertised, its owner must provide:
 
@@ -865,7 +769,7 @@ Before a future tool is advertised, its owner must provide:
 - deterministic ordering/cursor behavior where applicable;
 - state ownership/TTL/cleanup for handles;
 - MCP annotations as hints only;
-- catalog/schema/instruction budget measurement;
+- actual whole-catalog, field, schema and entry budget measurements;
 - semantic reference payloads, observed placement and hard BL-214 budgets for
   every material result variant or delivery change;
 - Windows/Linux tests where both are in scope;

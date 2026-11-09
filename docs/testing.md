@@ -30,6 +30,11 @@ completeness mutations and a reproducible focused report, see
 reported separately from native results; this does not claim full conformance
 or activate the candidate revision.
 
+Catalog and entry changes use the existing wire-efficiency gate. Check every
+affected exact revision, effective profile and transport, including field and
+schema growth, unknown compositions, missing budgets and unauthorized calls.
+Follow the [catalog acceptance binding](planning/implementation-contract.md#bl-215-catalog-and-entry-budget-binding).
+
 Run all tests:
 
 ```bash

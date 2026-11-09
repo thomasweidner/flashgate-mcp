@@ -1,6 +1,8 @@
 package benchmark
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"maps"
 	"math/bits"
@@ -11,12 +13,34 @@ import (
 const wireBudgetVersion = "flashgate-benchmark-wire-budgets/v1"
 
 type WireBudget struct {
-	MaxResponseBytes uint64 `json:"max_response_bytes"`
-	MaxResultBytes   uint64 `json:"max_result_bytes"`
-	MaxOverheadBytes uint64 `json:"max_overhead_bytes"`
-	MaxFrameBytes    uint64 `json:"max_frame_bytes,omitempty"`
-	MaxAmplification uint64 `json:"max_amplification_milli,omitempty"`
-	MaxTokenCost     uint64 `json:"max_token_cost_milli,omitempty"`
+	MaxResponseBytes uint64             `json:"max_response_bytes"`
+	MaxResultBytes   uint64             `json:"max_result_bytes"`
+	MaxOverheadBytes uint64             `json:"max_overhead_bytes"`
+	MaxFrameBytes    uint64             `json:"max_frame_bytes,omitempty"`
+	MaxAmplification uint64             `json:"max_amplification_milli,omitempty"`
+	MaxTokenCost     uint64             `json:"max_token_cost_milli,omitempty"`
+	Catalog          *WireCatalogBudget `json:"catalog,omitempty"`
+	Instructions     *uint64            `json:"max_instructions_bytes,omitempty"`
+}
+
+type WireCatalogBudget struct {
+	MaxTools             uint64 `json:"max_tools"`
+	MaxNameBytes         uint64 `json:"max_name_bytes"`
+	MaxTitleBytes        uint64 `json:"max_title_bytes"`
+	MaxDescriptionBytes  uint64 `json:"max_description_bytes"`
+	MaxInputSchemaBytes  uint64 `json:"max_input_schema_bytes"`
+	MaxOutputSchemaBytes uint64 `json:"max_output_schema_bytes"`
+}
+
+type wireCatalogCost struct {
+	Bytes        uint64
+	ApproxTokens uint64
+}
+
+type WireCatalogMeasurement struct {
+	ToolCount                                                              uint64
+	Names, Titles, Descriptions, InputSchemas, OutputSchemas, Instructions wireCatalogCost
+	InstructionsPresent                                                    bool
 }
 
 type WirePathBudget struct {
@@ -150,6 +174,105 @@ func CheckWireBudget(m WireMeasurement, budget WireBudget, path WirePathBudget) 
 		}
 	}
 	return nil
+}
+
+// CheckWireCatalogBudget reads field costs from a response already verified
+// by MeasureWire. The existing wire budget still caps the complete response.
+func CheckWireCatalogBudget(fixture WireFixture, budget WireBudget) (*WireCatalogMeasurement, error) {
+	id := fixture.Identity
+	catalog := id.Route == "tools/list" && id.Outcome == "success"
+	entry := (id.Route == "initialize" || id.Route == "server/discover") && id.Outcome == "success"
+	if catalog != (budget.Catalog != nil) || entry != (budget.Instructions != nil) {
+		return nil, fmt.Errorf("missing or unexpected catalog or instructions budget binding")
+	}
+	if !catalog && !entry {
+		return nil, nil
+	}
+	if id.Source == WireSynthetic || len(fixture.Frames) != 1 || fixture.Frames[0].Body != "result" {
+		return nil, fmt.Errorf("catalog and entry require one executable result frame")
+	}
+	frame := fixture.Frames[0]
+	body, prefixOK := bytes.CutPrefix(frame.Wire, frame.Prefix)
+	body, suffixOK := bytes.CutSuffix(body, frame.Suffix)
+	if !prefixOK || !suffixOK {
+		return nil, fmt.Errorf("invalid catalog or entry framing")
+	}
+	var envelope struct {
+		Result struct {
+			Tools []struct {
+				Name         string          `json:"name"`
+				Title        string          `json:"title"`
+				Description  string          `json:"description"`
+				InputSchema  json.RawMessage `json:"inputSchema"`
+				OutputSchema json.RawMessage `json:"outputSchema"`
+			} `json:"tools"`
+			Instructions json.RawMessage `json:"instructions"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, fmt.Errorf("decode catalog or entry fields: %w", err)
+	}
+	result := envelope.Result
+	measurement := &WireCatalogMeasurement{}
+	if entry {
+		if result.Instructions != nil {
+			var instructions *string
+			if err := json.Unmarshal(result.Instructions, &instructions); err != nil || instructions == nil {
+				return nil, fmt.Errorf("invalid entry instructions string")
+			}
+			measurement.InstructionsPresent = true
+			measurement.Instructions = catalogCost(uint64(len(*instructions)))
+			if *budget.Instructions == 0 || measurement.Instructions.Bytes > *budget.Instructions {
+				return nil, fmt.Errorf("instructions bytes %d exceed binding %d (zero requires absence)",
+					measurement.Instructions.Bytes, *budget.Instructions)
+			}
+		}
+		return measurement, nil
+	}
+	if result.Tools == nil {
+		return nil, fmt.Errorf("missing catalog tool array")
+	}
+	limit := *budget.Catalog
+	seen := make(map[string]bool, len(result.Tools))
+	var names, titles, descriptions, inputSchemas, outputSchemas uint64
+	for _, tool := range result.Tools {
+		if tool.Name == "" || seen[tool.Name] {
+			return nil, fmt.Errorf("empty or duplicate catalog tool name %q", tool.Name)
+		}
+		seen[tool.Name] = true
+		names += uint64(len(tool.Name))
+		titles += uint64(len(tool.Title))
+		descriptions += uint64(len(tool.Description))
+		inputSchemas += uint64(len(tool.InputSchema))
+		outputSchemas += uint64(len(tool.OutputSchema))
+	}
+	measurement.ToolCount = uint64(len(result.Tools))
+	measurement.Names, measurement.Titles = catalogCost(names), catalogCost(titles)
+	measurement.Descriptions = catalogCost(descriptions)
+	measurement.InputSchemas, measurement.OutputSchemas = catalogCost(inputSchemas), catalogCost(outputSchemas)
+	for _, field := range []struct {
+		name        string
+		actual, max uint64
+	}{
+		{"tool count", measurement.ToolCount, limit.MaxTools},
+		{"name bytes", names, limit.MaxNameBytes},
+		{"title bytes", titles, limit.MaxTitleBytes},
+		{"description bytes", descriptions, limit.MaxDescriptionBytes},
+		{"input schema bytes", inputSchemas, limit.MaxInputSchemaBytes},
+		{"output schema bytes", outputSchemas, limit.MaxOutputSchemaBytes},
+	} {
+		if field.max == 0 {
+			return nil, fmt.Errorf("invalid zero catalog limit for %s", field.name)
+		}
+		if field.actual > field.max {
+			return nil, fmt.Errorf("catalog %s %d exceeds %d", field.name, field.actual, field.max)
+		}
+	}
+	return measurement, nil
+}
+
+func catalogCost(bytes uint64) wireCatalogCost {
+	return wireCatalogCost{Bytes: bytes, ApproxTokens: approxTokensBytes4(bytes)}
 }
 
 func consistentWireTotals(m WireMeasurement) bool {

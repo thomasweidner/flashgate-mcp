@@ -105,6 +105,10 @@ the snapshot and completeness families in its test evidence.
 
 ## Wire coverage
 
+The same gate checks [catalog and entry budgets](planning/efficiency.md#tool-catalog-and-initialization-budgets)
+on captured executable responses. It reports catalog text and schema costs
+and checks instruction presence and size separately from each complete frame.
+
 The [wire efficiency gate](../benchmarks/README.md#deterministic-wire-efficiency)
 reuses the registry, revision/profile matrix, executable cases and reviewed
 snapshots. It captures complete frames with framing intact. Add the matching
