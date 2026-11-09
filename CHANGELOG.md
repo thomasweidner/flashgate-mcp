@@ -12,6 +12,10 @@ the intended release date. Publication evidence is separate.
 
 ### Validation
 
+- Check effective tool count, name/title/description and schema costs on
+  captured catalogs, and instruction bounds on MCP initialize and discovery
+  responses. Bind future tool and profile owners to the same catalog contract.
+
 - Check exact MCP wire bytes, semantic payload placement, observed response
   operations and hard budgets for registered variants in the ordinary Go
   test suite. Include candidate-policy and synthetic delivery fixtures.

@@ -126,9 +126,11 @@ capability. Therefore `subscriptions/listen` is unavailable; it advertises no
 change stream and maintains no notification queue. The active MCP extension set
 is empty. Later resource/list capabilities require their own owner work.
 
-The adapter derives the active profile/capability tool catalog, compact server instructions, exact-revision catalog fingerprint, and cache invalidation inputs from current server state. None of these artifacts grants authorization.
-
-The server instructions prioritize efficient usage: batch rather than repeated scalar calls, ranges/pages rather than unbounded content, exact field selection, dry-run before risky multi-step work, and cursor continuation for process/search results. Instructions are bounded and benchmarked.
+The target adapter derives the effective tool catalog, profile instructions,
+exact-revision fingerprint and cache invalidation inputs from current server
+state. Authorization remains with server policy. Current initialize and
+discover fixtures omit instructions. BL-216 owns future guidance using the
+[revision-specific catalog and entry budgets](planning/efficiency.md#tool-catalog-and-initialization-budgets).
 
 ## Tool discovery
 

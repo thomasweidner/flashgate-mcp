@@ -49,6 +49,13 @@ public contracts, and retrofit targets. `BL-315` owns continuing consistency
 review and planned machine checks; `BL-305` and `BL-306` remain completion
 controls, and `BL-308` remains the architecture and ADR owner.
 
+Any owner that adds or materially changes a public tool, schema, effective
+profile or capability composition, protocol revision, entry instructions, or
+adapter that affects the public wire contract inherits
+[BL-215 catalog acceptance](#bl-215-catalog-and-entry-budget-binding), including
+Post-1.0 owners. An internal-only adapter records that its catalog and entry
+delta is absent and measures its own affected cost under its existing contract.
+
 ## Foundation and consumer order
 
 `SPR-048` defines release/protocol/payload/native policy contracts that can be built before profiles and Jobs. `SPR-053` establishes configuration and named-root/profile contracts, then BL-236 context, BL-159 authorization, BL-110 effective catalog, BL-166 audit/correlation, and BL-239 state binding; it completes BL-216/219/256 against those contracts. `SPR-049` builds BL-084–BL-089 lifecycle, then BL-090 storage, then dependent Operations, BL-210 Tasks mapping, BL-218 MCP resource handoff, and BL-258 payload/resource CI. Later domains consume these foundations. BL-213 single-transmission work does not require BL-090; BL-218 does. BL-220 defines early native/no-interpreter policy; BL-163 and typed-execution owners implement it later. Exact hard edges and validation/retrofit owners are maintained in [architecture traceability](architecture-traceability.md).
@@ -204,6 +211,47 @@ prove the negotiated profile/revision/transport and feature availability, and
 exercise real output through the common measurement and budget gate. Closure
 requires executable coverage mutations, unchanged historical artifact semantics,
 applicable native gates and independent review before integration.
+
+## BL-215 catalog and entry budget binding
+
+BL-215 is the SPR-048 MCP adapter and validation contract for bounded effective
+catalogs and revision-specific entry. Reuse the BL-189–BL-199 benchmark
+references, BL-207/208 exact revisions, BL-204/212/257 registry and schema
+conformance, BL-213 result contracts, and the available BL-214 wire harness
+and fixtures. The SPR-048 order in [BACKLOG.md](../../BACKLOG.md) allows BL-215
+to proceed independently of BL-214's formal closure. Retrofit the existing wire
+gate and [tool planning inventory](tool-adapters.md#20-public-tool-inventory-by-target)
+in place. The public runtime contract stays byte-compatible. The budget gate
+consumes the server-authorized effective registry and does not confer visibility
+or execution rights.
+
+Before advertisement or activation, the responsible owner must:
+
+1. Bind the canonical name, milestone, exposure prerequisites and budget class
+   in the [tool and adapter plan](tool-adapters.md) for each affected public
+   family. Enumerate supported effective compositions, including platform and
+   policy differences that change output.
+2. Measure actual catalog and entry responses for every affected executable
+   exact revision, effective profile and transport. Extend the existing
+   conformance snapshots, schema and registry parity, wire fixture and budget
+   bindings. Include entry instructions when that revision supports them. For
+   every new tool or result variant, preserve the separate BL-214 call budgets.
+3. Apply the [effective limits and composition rules](efficiency.md#tool-catalog-and-initialization-budgets)
+   to the full catalog. Record field, schema, instruction, frame, JSON-RPC and
+   revision costs. Test missing or stale bindings, oversize output, unsupported
+   compositions and capability denials as applicable. Keep planned fixtures
+   separate from executable production and candidate-policy paths.
+4. Show that all activated combinations fit. If they do not, reduce safe
+   representational overhead or narrow the authorized composition under the
+   owning contract. A change to an accepted ceiling requires an explicit
+   decision backed by measurements and compatibility evidence.
+
+New functions consume the accepted BL-215 contract and extend their fixtures,
+budgets and tests under their own backlog owner. This does not reopen BL-215.
+BL-103/110 own effective composition, BL-216 owns instructions, BL-219 owns
+fingerprints and cache behavior, and BL-256 owns comprehensive CI and runtime
+enforcement. These are successor consumers, not prerequisites for the current
+executable budget gate.
 
 ## BL-372 release-oriented product versioning
 

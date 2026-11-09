@@ -88,6 +88,11 @@ defines accounting and the producer integration rule.
 
 ## Accepted Version 1.0 target
 
+The [catalog and entry contract](../planning/efficiency.md#tool-catalog-and-initialization-budgets)
+binds budgets to exact executable paths and caps the entire effective
+composition. Later public wire producers extend the existing wire gate under
+their own backlog owner.
+
 Search pages, trees, process output, and media use the same single-transmission
 rule as the current filesystem payloads. Paged and resource delivery, jobs,
 notifications, and streaming are separate mechanisms owned by their feature

@@ -197,17 +197,34 @@
     "entry": {
       "max_response_bytes": 400,
       "max_result_bytes": 350,
-      "max_overhead_bytes": 400
+      "max_overhead_bytes": 400,
+      "max_instructions_bytes": 0
     },
     "catalog-default": {
       "max_response_bytes": 7500,
       "max_result_bytes": 7450,
-      "max_overhead_bytes": 7500
+      "max_overhead_bytes": 7500,
+      "catalog": {
+        "max_tools": 10,
+        "max_name_bytes": 192,
+        "max_title_bytes": 256,
+        "max_description_bytes": 900,
+        "max_input_schema_bytes": 3200,
+        "max_output_schema_bytes": 2150
+      }
     },
     "catalog-read-only": {
       "max_response_bytes": 3200,
       "max_result_bytes": 3150,
-      "max_overhead_bytes": 3200
+      "max_overhead_bytes": 3200,
+      "catalog": {
+        "max_tools": 5,
+        "max_name_bytes": 64,
+        "max_title_bytes": 64,
+        "max_description_bytes": 320,
+        "max_input_schema_bytes": 1024,
+        "max_output_schema_bytes": 1050
+      }
     },
     "metadata": {
       "max_response_bytes": 500,

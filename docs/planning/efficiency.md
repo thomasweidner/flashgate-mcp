@@ -221,32 +221,76 @@ Resource support is an adapter feature. Core domains return local result referen
 
 ## Tool catalog and initialization budgets
 
-Profiles minimize both privilege and model context.
+### Executable baseline and planning ceilings
 
-Initial planning budgets are deliberately conservative and must be confirmed by the reproducible benchmark suite:
+[Historical benchmark budgets](../../benchmarks/budgets.json) cap the
+original benchmark request, response and result fixtures. Those reference
+limits and versioned baselines retain their original meanings. The current
+[wire budgets](../../benchmarks/wire-budgets.json) cap complete captured
+frames, including framing. They also cap result values, revision-specific
+overhead, unique tool count, and catalog field totals. Each executable path
+selects its entry and catalog class by exact source policy, revision,
+effective profile and transport. A missing, stale or conflicting binding fails
+the acceptance gate. A synthetic fixture cannot satisfy an executable binding.
 
-| Profile | Planning target |
-|---|---:|
-| Safe read | no more than approximately 750 `tools/list` tokens |
-| Standard filesystem | no more than approximately 2,000 `tools/list` tokens |
-| Process | separate opt-in profile/addition within measured aggregate budget |
-| Command | separate opt-in profile/addition within measured aggregate budget |
-| Diagnostics | absent unless explicitly enabled |
+Version 1.0 compositions use these bounded planning classes until their owners
+measure and bind the actual output:
 
-Budgets cover:
+| Effective class | Catalog ceiling | Composition |
+|---|---|---|
+| R, safe read | `catalog-read-only` field and wire limits, with an additional planning ceiling of 750 approximate framed catalog tokens | Authorized read base only |
+| F, standard filesystem | `catalog-default` field and wire limits within the original planning envelope of about 2,000 approximate tokens | Explicit filesystem base with only the approved operations |
+| O, opt-in | At most the `catalog-default` field and wire limits for the whole effective view | Explicitly approved profile or composition for bounded search, process, command, diagnostics or other optional capabilities |
 
-- tool count;
-- name/title/description bytes;
-- input/output schema bytes;
-- approximate tokens;
-- server instructions;
-- deterministic ordering and catalog fingerprint.
+The wire JSON is the source for the named limits. Approximate tokens are
+`ceil(UTF8Bytes / 4)`. Apply this independently to the aggregate frame or
+field, with no addition of separately rounded values. For future transports,
+keep the same effective catalog ceiling for the JSON-RPC message plus the
+reference STDIO delimiter and bind the actual transport framing and complete
+wire limit separately. Include every page in the effective total if a later
+owner supports paginated discovery.
 
-A profile must not expose tools that cannot succeed under its effective capabilities.
+### Effective composition
+
+The server first resolves the allowed base and optional capability components
+using the authorized principal, root, risk, backend, platform and protocol
+context. BL-103/110 define the accepted configurations. The safe default admits
+no optional component. Every opt-in combination needs an explicit finite
+binding for its effective set, including any authorized subsets with different
+wire contracts. A budget class cannot add visibility or execution rights.
+
+Merge by canonical public tool name after policy filtering. Count identical
+overlaps once and retain deterministic registry ordering. Conflicting
+definitions for the same name fail acceptance. The serialized catalog must
+contain each name at most once. An unknown combination or one that exceeds
+any effective limit fails its acceptance gate. Per-family limits cannot be
+added to raise the effective ceiling. Keep authorization checks on direct calls.
+
+The measured baseline leaves room for limited schema evolution. The two
+catalog count ceilings allow two additional slots over the measured baseline
+in each class. The remaining frame headroom may be smaller than the cost of
+using those slots. Field caps bound descriptive and schema growth independently
+of the whole frame. Existing candidates fit both historical planning targets.
+Placing all Version 1.0 families into one default view would exceed the
+standard count ceiling. Profile owners can measure a smaller authorized view
+or compact equivalent schemas and text. The ceilings never justify omitting
+required schema constraints or silently trimming tools from an accepted profile.
 
 ## Compact server instructions
 
-The MCP adapter may publish short profile-specific instructions within a fixed token budget. They should tell compatible clients to:
+Current entry bindings require instructions to be absent. BL-216 may bind
+supported revision and profile combinations with up to 96 decoded UTF-8
+instruction bytes as a Version 1.0 planning limit. Use the `entry` class
+response and result ceilings for Version 1.0 entry, with the separate framing
+rule for future transports. Verify the exact emitted field and full entry
+response separately. The candidate discovery fixture
+has 129 bytes of result-value headroom before instructions. A 96-byte
+unescaped string with its field syntax fits that reference. Escaping or
+future metadata can reduce the headroom. Use a shorter string if needed.
+For a revision without a supported instruction field, retain absence.
+
+Short instructions should prioritize the applicable operations in the
+effective view:
 
 - batch independent reads and metadata requests;
 - request ranges instead of complete files;

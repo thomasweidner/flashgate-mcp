@@ -426,7 +426,16 @@ Version 1.0 implementation priority:
 
 PowerShell and shell scripts may be development, installation, validation, or administrator tooling. They are not normal FlashGate runtime dependencies.
 
-The [future tool and adapter plan](planning/tool-adapters.md) is a planning inventory under `BL-215`. Its candidate MCP names stay in the adapter, core operations stay in the owning domain, and Windows/Linux or archive-format details stay in platform adapters. The optional public agent skill (`BL-350`) is one portable guidance surface with a small strategy core and progressively loaded capability references; it is not a runtime dependency, does not duplicate tool schemas, and cannot become an authorization mechanism.
+The [future tool and adapter plan](planning/tool-adapters.md) binds planned names
+to their implementation owners. Each owner maintains its portion of the
+inventory and applies the
+[BL-215 budget contract](planning/implementation-contract.md#bl-215-catalog-and-entry-budget-binding).
+MCP names stay in the adapter, core operations stay in the owning domain, and
+Windows/Linux or archive-format details stay in platform adapters. The optional
+public agent skill (`BL-350`) is one portable guidance surface with a small
+strategy core and progressively loaded capability references. It runs outside
+the server and uses the public tool contracts. Authorization remains with the
+server.
 
 ## Runtime and deployment model
 

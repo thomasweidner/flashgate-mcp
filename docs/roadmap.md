@@ -106,7 +106,11 @@ Accepted post-Version-1.0 work includes:
 - local cloud/placeholder semantics, filesystem watch, and archives (`BL-345`, `BL-347`–`BL-348`);
 - allowlisted OS-settings reads, a portable public agent skill, and scoped path compression (`BL-349`–`BL-351`).
 
-The [future tool and adapter plan](planning/tool-adapters.md) records candidate names, domain/core/MCP/OS-adapter ownership, risk, execution form, platform, and milestone. `BL-215` maintains that catalog planning input; it does not promote future tools into the Version 1.0 release.
+The [future tool and adapter plan](planning/tool-adapters.md) records planned
+names, ownership, risk, execution form, platform and milestone. Each
+implementation owner updates the inventory and validates its own
+[catalog and entry budgets](planning/implementation-contract.md#bl-215-catalog-and-entry-budget-binding)
+within the existing release placement.
 
 No post-Version-1.0 item may be pulled into Version 1.0 without an explicit backlog/milestone change and corresponding risk, resource, and documentation review.
 
