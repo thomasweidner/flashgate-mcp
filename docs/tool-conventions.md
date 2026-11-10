@@ -172,7 +172,7 @@ Range, page, field-selection, and cursor arguments are explicit and closed. Defa
 
 Command execution never accepts a shell command string. A command tool selects a server-defined `command_id` and supplies a closed typed argument object. Each definition fixes or constrains:
 
-- resolved executable path and optional identity/hash/publisher requirement;
+- resolved executable and identity evidence required by policy;
 - subcommand and allowed flags;
 - positional argument count and type;
 - path arguments and their authorized root binding;
@@ -186,11 +186,7 @@ The server constructs an argument vector and starts the executable directly. It 
 
 ### Native adapter rule
 
-Runtime implementation preference is:
-
-1. Go standard library;
-2. small platform-specific Go adapter;
-3. direct operating-system API or stable system interface;
-4. allowlisted external native operating-system program only after benchmark and security evidence.
-
-Python, PHP, Node.js, Java, or another interpreter is not a normal runtime dependency. Explicit operating-system scripts may be separate administrator/deployment assets, not hidden runtime requirements of MCP tools.
+Bind the implementing owner to the [BL-220 adapter policy](planning/tool-adapters.md#bl-220-adapter-selection).
+Backend choice cannot change tool names, effective permissions or required
+enforcement. Version 1.0 tools run without interpreter adapters. Explicit
+administrator or deployment scripts run separately from the tool runtime.

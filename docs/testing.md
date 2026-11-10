@@ -204,6 +204,40 @@ gate on both platforms with the compare-only command and propagates failure.
 Use the [MCP conformance guide](mcp-conformance.md) for local reproduction
 and intentional contract updates.
 
+### Native runtime source gate
+
+Run `go run -mod=vendor ./cmd/doccheck` from the repository and
+`go test ./cmd/doccheck` for the focused fixtures. The existing blocking
+doccheck CI step runs the source gate and checks the exact successor family
+for every applicable active owner, including internal owners absent from
+the public inventory. Public rows also have to agree with the owning
+backlog task's applicability. No separate CI job or product dependency is
+needed.
+
+The source gate uses the Go toolchain to resolve non-test dependencies of
+`./cmd/server` for the four released Windows/Linux amd64/arm64 configurations
+with CGO disabled and default build tags. It inspects the active non-standard
+Go sources, including reachable vendored packages. Development commands
+such as `cmd/mcpcheck`, test files and ignored build-tag variants remain
+outside these graphs. The checker fails on graph or source inspection errors
+and detects process/loader imports and selected OS API references, including
+renamed imports, function values and direct syscall escape hatches. Assembly
+and linker directives that bypass this source inspection require separate
+review. A sensitive package selector with a shadowed qualifier may be flagged
+conservatively. Release-generated resource objects remain subject to artifact
+verification.
+
+This check covers the declared shipped Go graphs and recognized source
+boundaries. It cannot establish executable identity, environment/argv safety
+in a future approved launch site, kernel enforcement, packaged asset safety,
+or arbitrary behavior hidden in external code or untested build variants.
+BL-151 binds any future reviewed launch call to the exact central symbol,
+package and platform and adds bypass negatives. BL-152 proves runtime
+enforcement. BL-242 validates actual mode/artifact availability with no
+interpreter dependency and keeps new shipped build variants covered.
+Each adapter owner supplies the platform and behavior tests under the
+[BL-220 binding](planning/implementation-contract.md#bl-220-adapter-acceptance-binding).
+
 ## Native Linux validation
 
 Run Linux validation from a native Linux checkout on a native filesystem. A
@@ -446,6 +480,13 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 - slow-reader and audit/log backpressure behavior.
 
 ### Typed command tests
+
+For the [Managed Process activation boundary](planning/implementation-contract.md#managed-process-activation),
+SPR-056 validates observation, non-launching native components and fixture
+lifecycle paths. BL-151 owns the corresponding real Windows/Linux launch,
+denial, lifecycle, race and CI acceptance. BL-152 and BL-168 validate the
+unadvertised native candidate before productive activation. Fixture or source
+results alone cannot establish native enforcement or cleanup.
 
 - executable ID resolves only to approved absolute binary;
 - fixed subcommand and allowed flags/value rules;

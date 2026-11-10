@@ -62,6 +62,12 @@ Every change must preserve or strengthen:
 
 Security-relevant changes require negative tests for bypass, cross-user access, unsafe fallback, and information disclosure.
 
+Bind new runtime adapters and affected tools to the
+[BL-220 implementation contract](docs/planning/implementation-contract.md#bl-220-adapter-acceptance-binding).
+Run the [native runtime source gate](docs/testing.md#native-runtime-source-gate)
+and add tests for the actual backend, authorization and unsupported paths
+before activation.
+
 ## Efficiency requirements
 
 New or changed tools must document and test:

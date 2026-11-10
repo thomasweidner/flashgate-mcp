@@ -60,6 +60,80 @@ delta is absent and measures its own affected cost under its existing contract.
 
 `SPR-048` defines release/protocol/payload/native policy contracts that can be built before profiles and Jobs. `SPR-053` establishes configuration and named-root/profile contracts, then BL-236 context, BL-159 authorization, BL-110 effective catalog, BL-166 audit/correlation, and BL-239 state binding; it completes BL-216/219/256 against those contracts. `SPR-049` builds BL-084–BL-089 lifecycle, then BL-090 storage, then dependent Operations, BL-210 Tasks mapping, BL-218 MCP resource handoff, and BL-258 payload/resource CI. Later domains consume these foundations. BL-213 single-transmission work does not require BL-090; BL-218 does. BL-220 defines early native/no-interpreter policy; BL-163 and typed-execution owners implement it later. Exact hard edges and validation/retrofit owners are maintained in [architecture traceability](architecture-traceability.md).
 
+## BL-220 adapter acceptance binding
+
+For every new tool, platform or Native Tool adapter, execution backend,
+process-launch path, host, transport or provider, name the first owning BL
+and classify the affected code under the [adapter selection
+policy](tool-adapters.md#bl-220-adapter-selection). Bind the applicable
+[successor acceptance](tool-adapters.md#bl-220-successor-acceptance) directly
+from the canonical backlog row and include the owner in that family's
+applicability declaration. Record the selected native path, alternatives
+considered, fallback or unsupported result, security and resource bounds,
+reuse and retrofit targets, and any required later activation decision in
+the existing planning and traceability sources. Public tools also update
+the [public inventory](tool-adapters.md#20-public-tool-inventory-by-target)
+with the required family for the surface. The doccheck gate compares the
+inventory, family applicability and canonical backlog acceptance.
+
+Before activation, exercise authorization before dispatch, backend and
+platform parity, the affected negative and unsupported cases, enforcement
+strength, cancellation and cleanup, and operation-specific efficiency
+budgets. The static source baseline is reusable for unchanged paths. Actual
+new call sites, behavior, deployment modes and binaries need owner-specific
+runtime evidence. Update the [source gate](../testing.md#native-runtime-source-gate)
+with any new shipped entry point, build variant or reviewed centralized
+launch site and include bypass fixtures. A separate approved security and
+architecture decision remains required for a provider, dependency or runtime
+model outside the existing contract.
+
+BL-220 supplies the policy, canonical successor bindings and source gate.
+BL-163 owns executable runtime policy. BL-134 owns the platform components.
+BL-137/138/144/146/147 own their identity, argument, environment and isolation
+contracts. BL-151 owns productive integration and the central launch-site
+gate under the [staged activation contract](#managed-process-activation).
+BL-152 owns runtime execution negatives. BL-242 owns artifact/mode verification. The
+operation owners implement and test their own adapters without reopening BL-220.
+
+### Managed Process activation
+
+SPR-056 delivers the Managed Process registry, identity, typed interfaces,
+bounded output and lifecycle contracts, and reusable CI for the non-launching
+paths. BL-129 and the earlier Operations owners retain their contracts and
+the evidence they can prove independently of productive children. Use
+injected outcomes and safe isolated platform or observation tests. Keep
+`start_process` and unsupported managed-child routes out of the effective
+catalog. Reject direct calls and leave raw or alternate process-launch
+paths blocked. Earlier owner closure requires proof of its revised scope
+and the two-sided launch transfer in BACKLOG.md.
+
+In SPR-057, establish BL-163 policy and the applicable typed, identity, root,
+environment, limit, redaction and platform predecessors in the
+[architecture traceability](architecture-traceability.md#domains-runtime-and-release-validation)
+table. BL-151 then integrates the BL-122 request/dispatch foundation, the
+BL-134 platform components and the shared registry and lifecycle into one
+reviewable native launcher. Build and test the candidate with its public
+routes unavailable. Any source-gate exception must bind the exact reviewed
+central launch path. All other launch paths remain blocked.
+
+Before activation, BL-151 owns the native Windows/Linux execution and
+denial, lifecycle, restart, race, resource and cleanup evidence transferred
+by the earlier owners. Reuse the BL-135 tests, BL-252 race commands and
+BL-253/254 CI harnesses. Run the real managed-child and Operations scenarios
+in them without a separate launcher or duplicate CI harness. BL-152 and
+BL-168 retain ownership of security negatives and least-privilege evidence
+respectively. They may develop fixtures independently and run native
+scenarios against the unadvertised BL-151 candidate. Their passing evidence
+is required before productive activation. This evidence gate is separate
+from the hard prerequisites for starting BL-151 implementation.
+
+BL-151 enables the reviewed routes only when policy is effective before
+every dispatch and native enforcement meets the requested strength. Reuse
+the same boundary for BL-143 and applicable Native Tool adapters. The
+synchronous wrapper and its result schema are separate from the prerequisites
+for managed start. Later discovery and deployment owners expose only verified,
+authorized support under their own acceptance.
+
 ## BL-204 conformance binding
 
 BL-204 owns test and validation code at the MCP adapter and STDIO boundary.

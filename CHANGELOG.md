@@ -12,6 +12,11 @@ the intended release date. Publication evidence is separate.
 
 ### Validation
 
+- Check shipped Go runtime dependency graphs for uncontrolled process launch
+  and interpreter adapter paths. Require canonical backlog acceptance for
+  future public tool adapters. Record the typed no-shell contract and the
+  runtime enforcement obligations of its successors.
+
 - Check effective tool count, name/title/description and schema costs on
   captured catalogs, and instruction bounds on MCP initialize and discovery
   responses. Bind future tool and profile owners to the same catalog contract.

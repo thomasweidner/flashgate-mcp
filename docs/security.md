@@ -392,9 +392,14 @@ stdout and stderr are separately bounded. Command lines, environments, and outpu
 
 ### Typed command execution boundary
 
+The [staged launch boundary](planning/implementation-contract.md#managed-process-activation)
+keeps productive starts and managed-child advertisement disabled during
+SPR-056. BL-151 verifies actual BL-163 enforcement and consumes the native
+BL-152 security evidence before enabling reviewed routes in SPR-057.
+
 Version 1.0 command execution uses server-defined command IDs. A definition fixes or constrains:
 
-- absolute executable path and optional binary identity;
+- canonical executable location and the identity evidence required by policy;
 - fixed subcommand;
 - allowed flags and typed values;
 - path arguments bound to named roots;
@@ -412,14 +417,15 @@ Interactive shell and process input remain post-Version 1.0.
 
 ### Native OS and interpreter boundary
 
-Normal Version 1.0 runtime prefers:
-
-1. Go standard library;
-2. platform-specific Go adapter;
-3. direct OS API or stable OS virtual filesystem;
-4. allowlisted native OS program without a shell only after benchmark/security evidence.
-
-Python, PHP, Node.js, Java, PowerShell, Bash, or another interpreter is not a required runtime layer for the FlashGate core/service. Scripts may remain development, installation, smoke, or administrator tooling.
+The [BL-220 adapter policy](planning/tool-adapters.md#bl-220-adapter-selection)
+binds native selection, executable identity, typed argv, explicit environment,
+and effective OS enforcement. Required protections must be established before
+dispatch. Denied calls cannot fall back to a different backend. Version 1.0
+runtime excludes interpreter adapters. Development, installation, smoke and
+administrator scripts stay outside that boundary. The
+[static source gate](testing.md#native-runtime-source-gate) checks the current
+launch surface. BL-163 and the typed execution owners own effective runtime
+enforcement and negative tests.
 
 ### Hybrid service execution identity
 

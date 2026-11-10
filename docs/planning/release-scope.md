@@ -227,6 +227,11 @@ Version 1.0 includes the planned bounded implementations for:
 - Operations/Job Manager support for bounded long-running work;
 - reusable content fingerprints plus bounded file/tree comparison and batch expected-state verification (`BL-048`, `BL-346`).
 
+The [Managed Process activation contract](implementation-contract.md#managed-process-activation)
+separates SPR-056 foundations from BL-151 productive launch acceptance in
+SPR-057. The Version 1.0 release gate consumes the activated, validated
+lifecycle rather than the foundation fixtures.
+
 ### Safe defaults
 
 Version 1.0 defaults to:
