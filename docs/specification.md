@@ -123,7 +123,10 @@ Version 1.0 shall:
 
 ## Native dependency rule
 
-Implementation order is Go standard library, platform-specific Go adapter, direct OS API/stable OS interface, then an external native program only after measured need and security review. Runtime interpreter dependencies are excluded. Administrator deployment scripts may use the target OS scripting environment when clearly separated from the MCP runtime.
+The [BL-220 adapter policy](planning/tool-adapters.md#bl-220-adapter-selection)
+governs native backend selection, fallback, executable identity and resource
+enforcement. Version 1.0 product runtime excludes interpreter adapters.
+Administrator deployment scripts run separately from the MCP runtime.
 
 ## Protocol requirements
 

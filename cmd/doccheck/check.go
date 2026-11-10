@@ -210,6 +210,9 @@ func checkDocuments(documents map[string]string, inventory map[string]bool) (r r
 	for name, text := range documents {
 		anchors[name] = headingAnchors(text)
 	}
+	if plan, present := documents[adapterPlan]; present {
+		r.Findings = append(r.Findings, checkAdapterBindings(plan, documents["BACKLOG.md"])...)
+	}
 	for _, name := range r.DocumentPaths {
 		text := documents[name]
 		if !validName(name) {

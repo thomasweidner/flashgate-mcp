@@ -357,21 +357,15 @@ Tool input uses typed fields or enumerations. The server constructs argv and rej
 
 This keeps the tool catalog smaller than one tool per flag combination while avoiding an unrestricted command line.
 
+The example requests network denial. The selected execution backend must
+prove that it can enforce the request before dispatch.
+
 ## Native OS adapter policy
 
-Version 1.0 implementation preference:
-
-1. Go standard library;
-2. small platform-specific Go adapter;
-3. direct Windows/Linux OS API or documented virtual filesystem such as `/proc` or `/sys`;
-4. allowlisted native OS program invoked without a shell only when benchmark and security evidence justify it;
-5. interpreter-based scripts are excluded from the Version 1.0 product path.
-
-PowerShell or shell scripts may remain development, installation, smoke, or administrator tooling. They are not runtime dependencies of the FlashGate core/service.
-
-Development and validation tooling remains outside the FlashGate runtime. The
-portable contributor and CI commands are defined in `CONTRIBUTING.md` and
-`docs/testing.md`.
+Use the [BL-220 selection and evidence contract](tool-adapters.md#bl-220-adapter-selection).
+Compare an optional accelerator with the Go baseline under equivalent policy
+and semantics, including startup and dependency cost. Run measurements under
+the [benchmark workspace gate](../testing.md#authoritative-benchmark-workspace-gate).
 
 ## Content identity, verification, and conditional retrieval
 

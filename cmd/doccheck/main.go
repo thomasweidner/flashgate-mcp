@@ -12,6 +12,7 @@ func main() {
 	root := flag.String("root", ".", "repository root")
 	flag.Parse()
 	result := checkRepository(*root)
+	result.Findings = append(result.Findings, checkRuntime(*root)...)
 	if flag.NArg() != 0 {
 		result.Findings = append(result.Findings, finding{Rule: "ARGUMENTS", Detail: "Unexpected positional arguments."})
 	}

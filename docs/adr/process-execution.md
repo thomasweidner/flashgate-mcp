@@ -16,7 +16,17 @@ Stopping defaults to server-managed processes. External PID control requires a d
 
 Command execution uses configured executable IDs resolved server-side to allowed absolute program paths. Arguments are separate arrays. Working directories must be within allowed roots. Environment propagation is allowlisted or explicitly defined. stdout and stderr are separate and bounded. Runtime, output, and concurrency are limited.
 
-A future `run_command` is a synchronous wrapper over the Managed Process Engine. No second execution engine is permitted. Free shell strings and interactive shells are disabled by default.
+A future `run_command` is a synchronous wrapper over the Managed Process Engine.
+Native Tool adapters use that same central launch and lifecycle boundary under
+the [BL-220 policy](../planning/tool-adapters.md#bl-220-managed-execution).
+Version 1.0 permits only typed no-shell execution with the configured
+executable identity and effective platform controls. Interactive shells
+require a separate future decision.
+
+The [staged activation contract](../planning/implementation-contract.md#managed-process-activation)
+keeps the SPR-056 foundations non-launching. BL-151 integrates the native
+launcher in SPR-057 with effective BL-163 policy and native security and
+lifecycle evidence before enabling public routes.
 
 ## Rationale
 

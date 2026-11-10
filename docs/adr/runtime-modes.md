@@ -21,6 +21,12 @@ FlashGate MCP will retain one repository, one shared local core, and one primary
 
 The current no-argument invocation remains direct STDIO for backward compatibility. Future client templates may recommend an explicit `--mode auto` only after the service deployment passes its security, compatibility, test, packaging, and benchmark gates.
 
+The [BL-220 host contract](../planning/tool-adapters.md#bl-220-host-and-transport)
+applies to each shipped role. Host integration uses native APIs, and BL-242
+tests the actual modes and packaged service assets without an interpreter.
+Any separately approved same-binary worker uses the central identity-bound
+launch and supervision path.
+
 Windows system hosting will integrate with the Service Control Manager and use a local Named Pipe. Linux system hosting will integrate with systemd and use a local Unix Domain Socket. Linux `systemd --user` hosting and a Windows per-user background host are accepted post-Version-1.0 options. They are not required for Version 1.0 because direct STDIO already provides the non-administrative path. A Windows per-user host must not be described as a Windows Service unless registered with SCM.
 
 The local service transport is an internal versioned IPC protocol. It may carry MCP-compatible messages, but it must define framing, handshake, compatibility, limits, cancellation, errors, disconnect behavior, and feature negotiation independently from an implicit unversioned byte stream. It is local-only and does not add TCP, HTTP, remote-host, or firewall-listener support.

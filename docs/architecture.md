@@ -264,6 +264,11 @@ The normal execution unit is a cancellable Go goroutine. A subprocess is justifi
 
 ## Managed processes and typed command execution
 
+SPR-056 delivers [non-launching foundations](planning/implementation-contract.md#managed-process-activation).
+BL-151 owns productive activation in SPR-057 after BL-163 and the applicable
+execution controls are effective. The unadvertised candidate provides the
+native validation surface before the same reviewed launcher is enabled.
+
 Managed process handles are the primary identity; PIDs are diagnostic only because of reuse risk.
 
 Process output uses separate bounded stdout/stderr buffers, truncation markers, and cursors. Status, wait, output, and stop operations require the owning execution context.
@@ -416,15 +421,14 @@ See [Efficiency Improvement Plan](planning/efficiency.md).
 
 ## Native OS adapter policy
 
-Version 1.0 implementation priority:
-
-1. Go standard library;
-2. small platform-specific Go adapters;
-3. direct Windows/Linux APIs or stable OS virtual filesystems;
-4. an allowlisted native OS program invoked without a shell only when security and benchmark evidence justify it;
-5. no interpreter-based runtime adapter.
-
-PowerShell and shell scripts may be development, installation, validation, or administrator tooling. They are not normal FlashGate runtime dependencies.
+The [BL-220 adapter selection policy](planning/tool-adapters.md#bl-220-adapter-selection)
+prefers Go and native OS interfaces. An external executable needs the shared
+typed execution and Managed Process boundary, with proven identity, effective
+enforcement and bounded behavior. Version 1.0 product runtime excludes
+interpreter adapters. Development and administrator scripts stay outside
+that runtime. The [source gate](testing.md#native-runtime-source-gate) checks
+the current product dependency graphs. Later runtime owners prove actual
+launch, OS enforcement and mode behavior under their own acceptance.
 
 The [future tool and adapter plan](planning/tool-adapters.md) binds planned names
 to their implementation owners. Each owner maintains its portion of the
