@@ -418,21 +418,23 @@ Minimum Version 1.0 requirements:
 
 ## Configuration
 
-Version 1.0 defines:
+The planned [BL-233 configuration contract](../adr/runtime-modes.md#configuration-contract)
+defines selection, trust, and validation of the single TOML file per
+instance. BL-233 owns the complete, valid, documented TOML template.
+BL-223 owns the explicit `config init` workflow and any CLI validation,
+using the BL-233 template and shared schema and validator. BL-228 and
+BL-229 consume the typed endpoint settings, timeouts,
+compatibility policy, and managed-required or fallback-allowed behavior.
+Endpoint discovery does not search for configuration files. Configuration
+denial stops startup before the endpoint fallback rules apply.
 
-- CLI, environment, user config, and system config precedence;
-- explicit endpoint override and discovery;
-- managed-required versus fallback-allowed policy;
-- connection, request, shutdown, and retry timeouts;
-- system service account/runtime directories;
-- allowed users/groups and profile mapping;
-- root execution backend;
-- root/capability/limit policy;
-- log destinations and verbosity;
-- proxy/service compatibility window;
-- update and rollback behavior.
-
-Secrets do not appear in command-line arguments or logs. Validation finishes before the service accepts clients.
+BL-230 and BL-231 provision the secure role default or bind an explicit
+trusted absolute path during installation. Their service integration owns
+the account, runtime directories, update, and rollback behavior. BL-232
+uses the executing user's configuration path. The service owns its caller
+and profile mappings, root backend, capability, and limit policies, using
+the effective configuration. Secrets stay out of process arguments and logs.
+BL-243 documents the configuration and installation paths actually supported.
 
 ## Logging, audit, and tracing
 
@@ -512,7 +514,7 @@ Portable extraction and direct STDIO remain possible without an installer.
 - service-account backend behavior;
 - identity-bound handles and resources;
 - per-principal quotas and fairness;
-- config precedence and redaction;
+- single-file selection, trust checks, startup rejection, and redaction;
 - shutdown and cancellation;
 - unsupported user-worker configuration.
 
