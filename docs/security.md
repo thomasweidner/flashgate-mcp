@@ -287,6 +287,27 @@ Post-Version-1.0 security work includes the Variant B user-worker implementation
 
 Except where the current-state sections above state otherwise, the controls below are planned and are not implemented yet.
 
+### Configuration trust and administration
+
+BL-233's [configuration contract](adr/runtime-modes.md#configuration-contract)
+binds the only authoritative file to the executing identity and runtime role.
+Validate the selected file and its trust boundary before initializing affected
+runtime functions. An invalid file, redirection, an untrusted location, or a
+missing required file stops startup without falling back to another source.
+An alternate path must be absolute and satisfy the same trust checks. A client
+or proxy cannot replace the service's configuration or select its execution
+identity. Diagnostics must redact secrets and sensitive paths and keep STDIO
+stdout protocol-only.
+
+Planned Post-1.0 [BL-373 configuration management](planning/implementation-contract.md#bl-373-authorized-mcp-configuration-management)
+requires an explicitly authorized effective catalog and server-side checks for
+viewing, preparing, and committing changes. Enforce current authorization and
+configuration version at commit time. Protect secrets, sensitive paths, and
+administrative policy in views, proposals, errors, and audit. Discovery,
+transport availability, and client or agent confirmation grant no authority.
+Any future HTTP exposure also requires BL-370's own security and activation
+gates.
+
 ### Gate as a server-enforced boundary
 
 The “Gate” is the authoritative server-side boundary. Tool visibility, descriptions, annotations, profile names, proxy payload claims, and extension negotiation are not authorization.

@@ -352,7 +352,7 @@ separate authorization. The published v0.3.0 identity is retained.
 | Family and BL binding | Required reuse, target boundary, and retrofit |
 |---|---|
 | MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258, BL-371 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
-| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Migrate `MCP_ROOT`, `MCP_READ_ONLY`, current path controls, and direct MCP-to-filesystem dispatch. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
+| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Migrate `MCP_ROOT`, `MCP_READ_ONLY`, current path controls, and direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
 | Capability and authorization verification — BL-100, BL-171 | Keep functional rights distinct from profile and risk classification; verify MCP annotations never grant authority. Reuse the central BL-159 decision and its negative tests. |
 | Filesystem — BL-036–BL-067, BL-346 | Extend `internal/fs` and the existing `internal/security` path guard. Use named root IDs and relative paths, bounded reads/writes/trees, existing hash and tree primitives, and the shared result lifecycle. Migrate the current eight-tool contracts where their owners require it. |
 | Search — BL-068–BL-082 | Extend the accepted `search_paths` and `search_text` public families over confined roots, bounded scanning, pages, and context-bound cursors. Pure Go is the portable baseline. Do not add a public tool per backlog row. |
@@ -360,11 +360,92 @@ separate authorization. The published v0.3.0 identity is retained.
 | Process — BL-113–BL-135, BL-162, BL-165, BL-252–BL-254 | Reuse execution context and Operations for owned handles, bounded output, cancellation, and cleanup. External PID control is separate Post-1.0 scope. Do not use a PID alone as authority. |
 | Typed execution and Native Tool adapters — BL-136–BL-152, BL-167–BL-170, BL-220, BL-353 | Resolve server-approved command IDs to executables and typed argv, with limits, redaction, and OS isolation. Native Tool adapters are optional, policy-constrained accelerators, never public aliases or interpreter/raw-shell passthrough. |
 | System information — BL-062, BL-153–BL-158 | Expose only scoped, explicitly released facts through domain and OS adapters; filter environment and identity data, bound results, and retain Post-1.0 network/administrative decisions outside Version 1.0. |
-| Runtime and service modes — BL-221–BL-231, BL-234–BL-238, BL-240–BL-244, BL-341, BL-370 | Keep one core behind direct STDIO and local proxy/service transports. BL-233 owns configuration precedence; BL-236 owns backend-neutral dispatch. Variant A service account is the Version 1.0 backend; unsupported user-worker selection fails closed. Preserve host ownership and stdout purity. |
+| Runtime and service modes — BL-221–BL-232, BL-234–BL-238, BL-240–BL-244, BL-341, BL-370 | Keep one core behind direct STDIO and local proxy/service transports. Consume BL-233's validated configuration per runtime role. BL-236 owns backend-neutral dispatch. Variant A service account is the Version 1.0 backend; unsupported user-worker selection fails closed. Preserve host ownership and stdout purity. |
 | Release, artifacts, and validation — BL-203–BL-204, BL-215–BL-216, BL-241–BL-263, BL-305–BL-315, BL-363, BL-364, BL-366, BL-367, BL-369 | Reuse root `VERSION`, BL-245 changelog/tag semantics, BL-248 verification and current CI gates. BL-255 builds/verifies candidates, then promotes the exact bytes locally with immutable identity and no additional remote publication. BL-262 supplies evidence/rollback controls. BL-363 consumes verified candidates and evidence for explicit persistent public pre-1.0 GitHub prereleases with `prerelease=true`, exact version/source/artifact identity, no publication-time rebuild or silent asset replacement, minimal separate release-write permissions, and remote readback. Finalize release-relevant source and dated changelog notes before public candidate freeze. BL-263 separately requires stable Version 1.0 traceability/gate closure and reuses the publication foundation; prerelease success never passes that gate. Retrofit the tag-gated build/validation path, transient Actions-artifact handoff and public download guidance. BL-364 owns the accepted five-asset distribution target for all releases including v0.3.0: four original archives and shared SHA256SUMS, preserving complete verification and required temporary evidence within regular Actions retention. Release-unassigned BL-366 owns SBOM security management; release-unassigned BL-367 owns GitHub-native signed attestations. Neither blocks a release or is implicitly implemented here; see the task bindings below. |
 | Response and benchmark quality — BL-172–BL-173, BL-177–BL-179, BL-205, BL-317–BL-323, BL-325–BL-329, BL-331–BL-332 | Reuse current benchmark schemas, deterministic workflow/corpus controls, host/platform evidence, and documentation gates. Strengthen checks at their existing owners without weakening result, supply-chain, platform, or public documentation truth; no benchmark result itself authorizes product behavior. |
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
 | Documentation navigation tooling — BL-368 | Independent release-unassigned development tooling, outside the product runtime and release-security owners. Reuse completed documentation validation and extend its local/read-only CI consumers under the [BL-368 binding](#bl-368-documentation-navigation); no hard dependency on BL-365 or release obligation. |
+
+## BL-233 central runtime configuration
+
+**Role and prerequisites.** SPR-053 bootstrap and core configuration owner.
+Implement the [ADR-014 configuration contract](../adr/runtime-modes.md#configuration-contract).
+The traceability row has no hard BL predecessor. Selecting and adopting a
+reviewed TOML library requires a separate dependency decision. BL-223 and the
+runtime, policy, and domain owners consume the model.
+
+**Reuse and retrofit.** Reuse existing configuration and startup code where
+it fits. BL-233 may reorganize the internals when the implementation shows
+a simpler design, better maintainability, and lower resource use. Preserve
+PathGuard, root confinement, existing limits and read-only controls,
+fail-closed startup, safe startup errors, and protocol and compatibility
+guarantees. Migrate the current `MCP_*` runtime inputs, including path policy,
+payload limits, and diagnostics. BL-101/103 retain their named-root and profile
+semantics. BL-166 consumes the logging path and owns the audit lifecycle.
+
+**Public delta and invariants.** The future startup configuration contract
+changes from environment inputs to one trusted TOML file per instance.
+Publish the actual compatibility, conversion, and rollback behavior in
+[migration](../migration.md#root-configuration) and the affected client
+guidance. Keep STDIO invocation and protocol output compatible under the
+new configuration contract. Apply the same source trust, immutable effective
+state, rejection, redaction, and no-startup-write rules for every role.
+BL-233 owns a complete, valid, documented TOML configuration template for
+its supported settings. BL-223 owns explicit CLI creation through
+`config init`, consumes that template, and uses the same schema and validator
+for creation and any CLI validation. BL-373 owns later MCP management. This
+binding defines no new MCP schema or tool and assigns no product version or
+release.
+
+**Acceptance.** Test role and identity selection, secure default and absolute
+override, absent, invalid, redirected and untrusted inputs, invalid security
+fields, current-policy migration, validation before initialization, immutable
+consumer state, log limits/redaction, stdout purity, and absence of startup
+writes on native Windows and Linux. Prove that configuration denial cannot
+trigger endpoint or weaker-source fallback. Verify that the documented TOML
+template covers the supported settings and passes the shared validator.
+BL-241/242 validate the enabled managed-mode integrations, and BL-243
+documents the delivered paths.
+
+## BL-373 authorized MCP configuration management
+
+**Role and prerequisites.** Post-1.0 application and authorization owner.
+Implementation requires BL-233 (typed model and validation), BL-236 (trusted
+caller and execution context), BL-159 (central authorization), BL-110
+(effective catalog), and BL-166 (audit and correlation). Reuse named roots,
+profiles, capabilities, and identity bindings from those foundations.
+BL-370 is a later transport consumer. Each supported transport must meet
+its own activation conditions before it exposes management.
+
+**Reuse and retrofit.** Extend BL-233's model and effective-state access
+with one transport-neutral management function in the shared Go core.
+Route enabled direct, proxy, and service paths to it through the existing
+dispatch, authorization, effective catalog, and audit contracts. The service
+keeps its own configuration authority. A compatible MCP Apps client may
+provide a graphical interface through the same management API and checks.
+Any later Streamable HTTP exposure uses the same core functions after
+BL-370's authentication, security, and activation gates. There is no second
+configuration engine or client-side mutation path.
+
+**Public delta and invariants.** Provide a bounded, redacted view of effective
+configuration and typed change preparation, validation, and a readable
+preview before any mutation. Require explicit server-side authorization for
+each step, including current authorization at commit time. Protect secrets,
+sensitive paths, and administrative policy from exposure or unauthorized
+change. Only an explicitly authorized effective tool catalog can expose
+management. Discovery, transport availability, and client or agent
+confirmation confer no permission. The implementation owner decides the
+public tool names, schemas, and errors before activation.
+
+**Acceptance.** Define version/concurrency conflicts, compare-and-swap (CAS),
+safe persistence and postwrite readback, failure and recovery behavior,
+and when restart makes a persisted change effective. Preserve BL-233's
+immutable running configuration. Prove native Windows/Linux behavior with
+positive, security, negative, consistency, and integration tests across the
+authorized paths. Cover stale or competing proposals, denied catalog access
+and direct calls, authorization changes before commit, redaction, persistence
+failures, and restart. Verify optional UI and later transport exposure
+against the same server-side policy before enabling them.
 
 ## BL-369 human-readable release quality reporting
 
@@ -400,7 +481,8 @@ release-unassigned owner does not block existing prereleases or stable BL-263.
 
 **Architecture role and prerequisites.** Separate accepted Post-1.0
 transport/host/security implementation owner. Reuse BL-224 transport/core
-separation, BL-204 exact-revision conformance/snapshot tests, BL-212 schema
+separation, BL-233 effective configuration, BL-204 exact-revision
+conformance/snapshot tests, BL-212 schema
 validation and, when effective state is involved, BL-219/239 bindings. Before
 implementation, explicitly decide listener/network exposure, endpoint,
 authentication and principal binding, TLS/origin/DNS-rebinding/CSRF,
@@ -409,7 +491,10 @@ own ADR and security review. No Version 1.0 release prerequisite or premature
 HTTP support advertisement.
 
 **Target and acceptance.** Implement the actual supported Streamable HTTP MCP
-transport by adapting the existing Go core, never as a second MCP engine.
+transport directly against the existing Go core. HTTP transport availability
+does not authorize BL-373 management. Expose management only if it is
+implemented, explicitly authorized in the effective catalog, and covered
+by the HTTP authentication, security and activation gates.
 Extend the existing conformance/snapshot contract for each exposed pair of
 exact protocol revision and HTTP transport, including official HTTP server
 conformance against the real isolated test listener plus negative security,

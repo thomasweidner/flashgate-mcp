@@ -2,7 +2,7 @@
 
 ## Authority and dependency semantics
 
-This living matrix maps accepted Version 1.0 and explicitly release-unassigned
+This living matrix maps accepted Version 1.0, Post-1.0, and release-unassigned
 architecture requirements to implementation, retrofit, validation, and closure
 owners. [BACKLOG.md](../../BACKLOG.md)
 owns BL status, sprint placement, and task acceptance. The [implementation
@@ -64,7 +64,7 @@ is resolved. BL-363 is Completed. SPR-048 and stable BL-263 closure remain separ
 
 | Requirement / authority | Owner BL | Hard predecessors | Reuse / later consumers | Current retrofit target | Validation / gate | Target closure |
 |---|---|---|---|---|---|---|
-| One canonical configuration and precedence model (A, S, ADR runtime modes) | BL-233 | — | BL-101/103/236 and later direct/service/proxy modes consume it | Environment-only `internal/config` | BL-233, BL-241 | One precedence model with mode parity and safe diagnostics |
+| [Single-file typed runtime configuration](implementation-contract.md#bl-233-central-runtime-configuration) (A, S, ADR runtime modes) | BL-233 | — | BL-101–BL-110 and future domain owners extend the model; BL-223 consumes the TOML template and schema; BL-228–BL-232, BL-236, BL-370 and BL-373 consume the model | `internal/config` environment loader, `cmd/server` bootstrap and current public `MCP_*` settings | BL-233, BL-241/242 | Trusted role-bound TOML, validation before initialization, immutable effective state, safe diagnostics, no startup writes, documented migration and a complete, valid, documented TOML template |
 | Functional rights distinct from risk/profile (A, S, ADR capability profiles) | BL-100 | BL-233 | BL-103 and BL-159 consume rights | Current read-only exposure | BL-100, BL-160 | Functional capability inputs separate from profile and risk |
 | Named-root configuration and single-root migration (A, S, ADR filesystem abstraction) | BL-101 | BL-233 | BL-102/103/236 and domains consume roots; reuse current path guard | `MCP_ROOT` bootstrap in `internal/config` | BL-101, BL-161 | Compatible migration and multiple validated roots |
 | `root_id` plus relative paths (A, S, ADR filesystem abstraction) | BL-102 | BL-101 | BL-236 and domains consume path contract; reuse realpath/reparse controls | Current tool paths and `internal/security/path.go` | BL-102, BL-161 | No model-visible host path or second validator |
@@ -111,10 +111,11 @@ is resolved. BL-363 is Completed. SPR-048 and stable BL-263 closure remain separ
 | Typed result and command discovery contracts (A, S, TA) | BL-142, BL-353 | BL-163, BL-220, BL-239 | Define result schema and authorized discovery without requiring a managed start to implement the contracts. | No current command engine | Schema, authorized exposure and truthful availability | Discover only supported commands and avoid raw executable identity disclosure. |
 | Synchronous command wrapper (A, S, TA) | BL-143 | BL-142, BL-151, BL-163, BL-220, BL-239 | Reuse the one activated launch boundary | No current command engine | Synchronous results, matching denial and lifecycle | Productive wrapper over Managed Process. |
 | Scoped system information (A, S, TA) | BL-062, BL-153–BL-157 | BL-159, BL-236 | Reuse domain/context/redaction | No current system-information domain | BL-158, BL-241 | Explicit fields and bounded redacted results |
-| Direct/proxy/service host modes (A, R, ADR runtime modes/host lifecycle) | BL-221–BL-231, BL-234–BL-235, BL-237–BL-238, BL-341 | BL-166, BL-233, BL-236, BL-239 | One core behind STDIO/local IPC; Variant A only for Version 1.0 | Current `cmd/server` direct STDIO | BL-241–BL-244, BL-263 | Local-only modes, trusted peer identity, stdout purity and cleanup |
+| Direct/proxy/service host modes (A, R, ADR runtime modes/host lifecycle) | BL-221–BL-231, BL-234–BL-235, BL-237–BL-238, BL-341 | BL-166, BL-233, BL-236, BL-239 | One core behind STDIO/local IPC; BL-223 explicit CLI creation using the BL-233 template and shared schema; BL-228/229 endpoint policy; BL-230/231 trusted installation paths; Variant A only for Version 1.0 | Current `cmd/server` direct STDIO | BL-241–BL-244, BL-263 | Local-only modes, trusted peer identity, stdout purity and cleanup |
+| User-scoped persistent host (A, S, R, ADR runtime modes) | BL-232 | BL-233 | Reuse native host/lifecycle contracts and load under the executing user's identity | Current direct user STDIO bootstrap; no persistent user host | BL-232 native identity, lifecycle, configuration and orphan tests | Post-1.0 host with the user-role default or an explicitly bound trusted path |
 | Multi-client security/lifecycle integration (A, S, T) | BL-241 | BL-090, BL-159, BL-166, BL-239, BL-341 | Validates integrated host and domains | Direct-mode smoke baseline | BL-241, BL-263 | Cross-client, ownership and host-lifecycle evidence |
 | Windows/Linux mode release validation (R, T) | BL-242 | BL-241 | Consumes direct/proxy/service artifacts | Platform CI and service asset plans | BL-242, BL-263 | Native mode parity, no interpreter and assets verified |
-| Installation/removal/operation documentation (R, T) | BL-243 | BL-241, BL-242 | Documents implemented modes; BL-255 promotion does not imply service availability | Current direct-mode guidance | BL-243, BL-263 | Portable user/admin instructions with current/planned status |
+| Installation/removal/operation documentation (R, T) | BL-243 | BL-241, BL-242 | Documents implemented modes and actual CLI creation, configuration selection, installation and migration paths. BL-255 promotion does not imply service availability. | Current direct-mode guidance | BL-243, BL-263 | Portable user/admin instructions with current/planned status |
 | Direct/proxy/service benchmarks (R, T) | BL-244 | BL-241, BL-242 | Consumes modes and measurement baseline | Current direct-mode baseline | BL-244, BL-263 | Evidence-based managed-mode thresholds |
 | Benchmark CI execution (R, T) | BL-249 | — | BL-250 consumes suite | Current benchmark runner | BL-249, BL-263 | Stable CI selection and artifacted measurements |
 | Benchmark baseline comparison (R, T) | BL-250 | BL-249 | BL-261 consumes comparable evidence | BL-199 budgets and baseline schema | BL-250, BL-263 | CI fails on hard budget regression |
@@ -144,7 +145,13 @@ passes.
 
 | Requirement / authority | Owner BL | Hard predecessors | Reuse / later consumers | Current retrofit target | Validation / gate | Target closure |
 |---|---|---|---|---|---|---|
-| Streamable HTTP MCP transport, conformance and activation (A, S, T, R; [binding](implementation-contract.md#bl-370-future-streamable-http-mcp-transport)) | BL-370 | BL-204, BL-212, BL-219, BL-224 | Existing Go core, exact revision policy, schema/snapshot tests, BL-239 context binding and protocol/host-lifecycle testing | No current HTTP MCP listener; later isolated HTTP adapter and explicit public transport/revision support matrix | Independent ADR/threat-model decision; HTTP security and Windows/Linux negative tests; official server conformance against real HTTP endpoint; automatic coverage completeness and activation denial on drift | Only explicitly authorized HTTP support after every technical and publication gate; BL-204 stays closed |
+| Streamable HTTP MCP transport, conformance and activation (A, S, T, R; [binding](implementation-contract.md#bl-370-future-streamable-http-mcp-transport)) | BL-370 | BL-204, BL-212, BL-219, BL-224, BL-233 | Existing Go core, exact revision policy, schema/snapshot tests, BL-239 context binding and protocol/host-lifecycle testing; conditional BL-373 consumer | No current HTTP MCP listener; later direct core adapter and explicit public transport/revision support matrix | Independent ADR/threat-model decision; HTTP security and Windows/Linux negative tests; official server conformance against real HTTP endpoint; automatic coverage completeness and activation denial on drift | Only explicitly authorized HTTP support after every technical and publication gate; administrative exposure separately gated; BL-204 stays closed |
+
+## Future MCP configuration management
+
+| Requirement / authority | Owner BL | Hard predecessors | Reuse / later consumers | Current retrofit target | Validation / gate | Target closure |
+|---|---|---|---|---|---|---|
+| [Authorized MCP configuration management](implementation-contract.md#bl-373-authorized-mcp-configuration-management) (A, S, T, TA) | BL-373 | BL-110, BL-159, BL-166, BL-233, BL-236 | Extend the one typed model, trusted context, root/profile/capability policy, effective catalog and audit; BL-370 may consume the management API after HTTP gates | Extend BL-233's startup-only configuration and the existing authorized MCP dispatch; no current management API | [BL-220 context and policy](tool-adapters.md#bl-220-context-and-policy); native Windows/Linux security, negatives, conflict/CAS and readback, failure/restart consistency, authorized transport integration | Post-1.0 bounded views and previewed, authorized changes through one core; optional MCP Apps UI uses the same policy |
 
 ## Release-unassigned security contracts
 

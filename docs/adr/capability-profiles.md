@@ -39,7 +39,7 @@ Centralize effective-capability calculation and registration. Apply the same dec
 
 ## Deferred Decisions
 
-- final profile names and configuration format
+- final profile names and profile field definitions in the [central configuration model](runtime-modes.md#configuration-contract)
 - exact named-root request schema
 - whether a supported legacy client justifies optional deprecated MCP Roots compatibility
 

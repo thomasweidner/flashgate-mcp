@@ -1,8 +1,7 @@
 # Migration
 
 This guide collects compatibility changes relevant to clients using early
-FlashGate builds. It describes the current implementation, not an internal
-sprint procedure. Follow the current [tool reference](tools.md),
+FlashGate builds. Follow the current [tool reference](tools.md),
 [protocol reference](protocol.md), and [changelog](../CHANGELOG.md) when
 updating an integration. Internal task renumbering is not a product migration.
 
@@ -31,6 +30,16 @@ repository-rename operations, rewrite Git history, or treat an old redirect as
 the canonical installation path.
 
 ## Root configuration
+
+The current release uses the environment-based setup below. BL-233's planned
+[TOML configuration contract](adr/runtime-modes.md#configuration-contract)
+will replace runtime configuration through `MCP_*`. Its implementation
+must publish the supported conversion, compatibility, and rollback steps
+for affected pre-1.0 integrations, including root and read-only settings,
+limits, path-policy flags, and diagnostics. BL-101 and BL-103 own the
+named-root and safe-default profile semantics. Use the current
+[client setup](client-setup.md) until the corresponding release makes the
+new path available.
 
 Older builds could fall back to the process working directory when `MCP_ROOT`
 was absent or empty. That implicit fallback is no longer supported.

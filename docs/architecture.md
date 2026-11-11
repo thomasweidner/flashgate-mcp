@@ -140,6 +140,20 @@ The [technical backlog implementation contract](planning/implementation-contract
 
 ## Dependency direction
 
+BL-233 defines the [single-file configuration contract](adr/runtime-modes.md#configuration-contract)
+for direct operation and later proxy, auto, user-host, and system-service roles.
+The shared core validates the role's trusted TOML file before initializing
+runtime consumers and supplies an immutable effective configuration. Domain
+owners add their fields to that model. Current STDIO still uses the environment
+settings described in [client setup](client-setup.md).
+
+Post-1.0 BL-373 owns transport-neutral configuration management in the same
+core, with explicit server-side authorization and catalog exposure. BL-370
+connects the future Streamable HTTP adapter directly to the shared core and
+consumes its configuration. HTTP access to management remains subject to
+BL-370's authentication, security, and activation gates and to BL-373's own
+authorization policy.
+
 The local system core is independent of MCP, JSON-RPC, STDIO, Named Pipes, Unix sockets, SCM, systemd, and protocol-specific resource types.
 
 The MCP adapter owns:

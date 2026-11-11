@@ -363,6 +363,11 @@ The following remain outside the accepted local Version 1.0 architecture and req
 - arbitrary script or workflow languages;
 - unrestricted plugin loading.
 
+Post-1.0 [BL-373](implementation-contract.md#bl-373-authorized-mcp-configuration-management)
+owns authorized configuration management through MCP clients. Version 1.0
+configuration uses the [BL-233 file contract](../adr/runtime-modes.md#configuration-contract)
+and explicit CLI and installation paths. BL-373 adds no Version 1.0 prerequisite.
+
 ## Release-unassigned human-readable release quality reporting
 
 BL-369 is a separate accepted Planned reporting capability, not an implicit

@@ -97,6 +97,7 @@ Accepted post-Version-1.0 work includes:
 
 - per-user worker execution backend;
 - Linux user service and Windows per-user persistent host;
+- authorized configuration management through MCP clients (BL-373);
 - conditional read/not-modified optimization;
 - optional ripgrep adapter and search index;
 - deprecated MCP Roots compatibility only for a demonstrated supported `2025-11-25` client need;

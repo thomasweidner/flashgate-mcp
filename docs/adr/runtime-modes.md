@@ -54,6 +54,61 @@ One executable minimizes release and operational complexity while preserving a p
 
 The fail-closed fallback rule prevents `auto` from becoming a policy-bypass mechanism. Operating-system-derived peer identity prevents a compromised or user-controlled proxy from asserting privileges it does not have.
 
+## Configuration contract
+
+BL-233 owns the planned implementation of K2, a central, typed, extensible
+configuration model in the shared Go core. Use TOML with an existing reviewed
+Go library. Library selection and adoption require separate approval.
+
+Each server instance has one authoritative configuration file. The default
+location follows the runtime role:
+
+| Runtime role | Default file |
+|---|---|
+| Direct user operation and future user-scoped service or host | `~/.flashgate/flashgate_config.toml` under the home of the executing user |
+| Windows system service | `C:\ProgramData\FlashGate\flashgate_config.toml` |
+| Linux system service | `/etc/flashgate-mcp/flashgate_config.toml` |
+
+An explicitly supplied absolute path replaces the role default and must
+satisfy the same trust and service boundaries. Service installation can
+provision the secure default or explicitly bind an alternate trusted path.
+The standard service launch needs no additional path argument. Each process
+uses the configuration for its own role. A proxy edge uses the invoking user's
+configuration for its routing policy, and the service retains authority over
+its own policy and effective configuration.
+
+The loader does not search system, user, executable, or project locations,
+merge files, or layer environment overrides over TOML. BL-233 replaces the
+current `MCP_*` runtime settings through an explicit migration that accounts
+for released pre-1.0 behavior. Any environment exception requires a specific
+decision for its use case.
+
+Missing, invalid, redirected, or untrusted required configuration causes
+startup to fail closed without trying another source. Validate the full
+configuration before initializing affected runtime functions and pass an
+immutable effective configuration to them. Normal MCP startup performs no
+configuration writes. BL-223 owns explicit CLI creation via `config init`
+and any CLI validation command, using the same model and validation.
+
+The planned configuration domains are Runtime, Endpoints, Protocol, Roots,
+Profiles, Capabilities, Authorization, Filesystem, Search, Operations,
+Results, Resources, Processes, Commands, System, Platform, Services, Scheduling,
+Adapters, Providers, Logging, Audit, and Diagnostics. These groups organize
+future fields. Each domain owner adds and validates its own fields and
+consumers in the central model. Group names alone enable no runtime behavior
+or tool registration. Unknown or disallowed security settings cannot confer
+rights.
+
+BL-233 provides logging configuration for level, destination, format, and
+applicable limits through one logging path with protocol-clean stdout and
+redacted diagnostics. BL-166 owns structured audit, rotation, retention,
+backpressure, and correlation.
+
+BL-373 owns planned Post-1.0
+[configuration management through authorized MCP clients](../planning/implementation-contract.md#bl-373-authorized-mcp-configuration-management).
+It extends the same core and is subject to server-side authorization and an
+explicit effective tool catalog.
+
 ## Consequences
 
 ### Positive
@@ -99,7 +154,7 @@ The service boundary is security-sensitive. The implementation must:
 ## Implementation Guidance
 
 1. Refactor bootstrap so the MCP adapter and core can run behind STDIO or local IPC without duplicating domain logic.
-2. Define the CLI, configuration precedence, endpoint discovery, exit codes, and graceful-shutdown contract.
+2. Define the CLI, apply the configuration contract, and define endpoint discovery, exit codes, and graceful shutdown.
 3. Specify a bounded versioned local IPC protocol before implementing platform transports.
 4. Implement and test Windows Named Pipes and Linux Unix Domain Sockets with OS-derived peer identity.
 5. Implement proxy and auto behavior, including the fail-closed fallback matrix.
@@ -112,7 +167,7 @@ The service boundary is security-sensitive. The implementation must:
 The following details remain implementation decisions within this accepted direction:
 
 - exact CLI subcommand syntax for service/user-host management;
-- exact endpoint names and configuration paths;
+- exact endpoint names and the syntax for binding an alternate absolute configuration path;
 - internal IPC framing/envelope format;
 - exact dedicated Windows/Linux service-account form and ACL deployment model within ADR-015;
 - future per-user worker launch/session/resource-isolation model;

@@ -785,7 +785,15 @@ capability and budget bindings as a built-in family.
 
 - STDIO uses the current Go transport. BL-224 retains it during runtime wiring.
 - Windows Named Pipe (BL-226) and Unix Domain Socket (BL-227) bind OS peer identity.
-- Streamable HTTP (BL-370) has a separate Post-1.0 transport decision.
+- Streamable HTTP (BL-370) has a separate Post-1.0 transport decision and
+  connects directly to the shared Go core and BL-233 configuration.
+
+Post-1.0 [BL-373](implementation-contract.md#bl-373-authorized-mcp-configuration-management)
+owns configuration management across explicitly authorized direct, proxy, and
+service transports. The eventual HTTP adapter may expose the same core
+operations only after its own activation gates and an explicit effective
+catalog decision. Optional MCP Apps clients use the same authorized API.
+Public tool names and schemas belong to BL-373's later implementation planning.
 
 ### Host adapters
 
@@ -884,7 +892,7 @@ cleanup for affected work and prove bounded queues and temporary resources.
 
 ### BL-220 context and policy
 
-**Applicable owners** BL-100–BL-111, BL-159–BL-161, BL-165–BL-168, BL-170, BL-217, BL-236, BL-239, BL-256, BL-352
+**Applicable owners** BL-100–BL-111, BL-159–BL-161, BL-165–BL-168, BL-170, BL-217, BL-236, BL-239, BL-256, BL-352, BL-373
 
 Reuse BL-159 authorization, BL-236 caller/backend separation, BL-166 audit,
 BL-239 state binding and the applicable root/profile contracts. Keep discovery,
@@ -924,7 +932,10 @@ boundary. Managed account, service and scheduler commands have no shell escape.
 **Applicable owners** BL-221–BL-235, BL-237–BL-238, BL-240–BL-244, BL-341, BL-370
 
 Reuse the single native binary, transport-neutral core, process-root lifecycle
-and OS-derived caller identity. Use the applicable native IPC, service-manager
+and OS-derived caller identity for local managed transports. Apply the
+[BL-233 configuration contract](../adr/runtime-modes.md#configuration-contract)
+at bootstrap and keep file selection separate from endpoint discovery.
+Use the applicable native IPC, service-manager
 and supervision APIs. Test unauthorized peers, absent endpoints, restart,
 shutdown and effective identity; auto fallback cannot follow policy rejection.
 Any same-binary worker launch must use an exact reviewed host role and image
