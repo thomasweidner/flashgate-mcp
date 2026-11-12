@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
+	"github.com/thomasweidner/flashgate-mcp/internal/testconfig"
 )
 
 func documentWithRoot(t *testing.T, root string) string {
@@ -158,9 +159,7 @@ func TestLoadUsesExactlyTheTrustedOverride(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(t.TempDir(), "server.toml")
 	document := documentWithRoot(t, root) + "read_only = true\n"
-	if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, path, []byte(document))
 	t.Setenv("MCP_ROOT", "/legacy")
 	t.Setenv("MCP_READ_ONLY", "false")
 	t.Setenv("HOME", t.TempDir())
@@ -207,9 +206,7 @@ func TestDefaultConfigSourceMustBeOutsideTheDataRoot(t *testing.T) {
 		{base, security.ErrProtectedPath},
 		{dataRoot, nil},
 	} {
-		if err := os.WriteFile(path, []byte(documentWithRoot(t, test.root)), 0o600); err != nil {
-			t.Fatal(err)
-		}
+		testconfig.Write(t, path, []byte(documentWithRoot(t, test.root)))
 		cfg, err := load(Source{Role: Direct}, resolve)
 		if err != nil {
 			t.Fatal(err)
@@ -221,6 +218,9 @@ func TestDefaultConfigSourceMustBeOutsideTheDataRoot(t *testing.T) {
 		if got := cfg.ValidateDataRoot(guard); !errors.Is(got, test.want) {
 			t.Errorf("default source isolation = %v, want %v", got, test.want)
 		}
+		if err := os.Remove(path); err != nil {
+			t.Fatal("removing the default configuration fixture failed")
+		}
 	}
 }
 
@@ -229,9 +229,7 @@ func TestSourceIdentityChangeDeniesDataRoot(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(t.TempDir(), defaultFileName)
 	document := []byte(documentWithRoot(t, root))
-	if err := os.WriteFile(source, document, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, source, document)
 	cfg, err := Load(Source{Role: Direct, Path: source})
 	if err != nil {
 		t.Fatal(err)
@@ -239,9 +237,7 @@ func TestSourceIdentityChangeDeniesDataRoot(t *testing.T) {
 	if err := os.Rename(source, filepath.Join(root, "moved.toml")); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(source, document, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, source, document)
 	guard, err := security.NewPathGuard(root)
 	if err != nil {
 		t.Fatal(err)
@@ -256,9 +252,7 @@ func TestDataRootRejectsUnprovableSourceIdentity(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(t.TempDir(), defaultFileName)
 	document := []byte(documentWithRoot(t, root))
-	if err := os.WriteFile(source, document, 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, source, document)
 	guard, err := security.NewPathGuard(root)
 	if err != nil {
 		t.Fatal(err)
@@ -284,9 +278,7 @@ func TestLoadRejectsLinkedAndOversizedSources(t *testing.T) {
 	t.Parallel()
 	base := t.TempDir()
 	path := filepath.Join(base, "source.toml")
-	if err := os.WriteFile(path, []byte(strings.Repeat("#\n", MaxDocumentBytes)), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, path, []byte(strings.Repeat("#\n", MaxDocumentBytes)))
 	_, err := Load(Source{Role: Direct, Path: path})
 	assertCategory(t, err, CategoryInvalidConfig)
 	if err := os.Link(path, filepath.Join(base, "hardlink.toml")); err != nil {
@@ -304,9 +296,7 @@ func TestLoadRejectsSymlinkParentsAndLeaves(t *testing.T) {
 		t.Fatal(err)
 	}
 	file := filepath.Join(dir, "config.toml")
-	if err := os.WriteFile(file, []byte(documentWithRoot(t, dir)), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, file, []byte(documentWithRoot(t, dir)))
 	for _, tc := range []struct{ target, link, child string }{
 		{file, filepath.Join(base, "leaf.toml"), ""},
 		{dir, filepath.Join(base, "parent"), "config.toml"},

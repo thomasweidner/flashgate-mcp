@@ -16,6 +16,7 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
+	"github.com/thomasweidner/flashgate-mcp/internal/testconfig"
 )
 
 func TestRunMainMapsSafeStartupCategoriesAndExitCodes(t *testing.T) {
@@ -372,9 +373,7 @@ func TestStartupRejectsConfigInsideMCPRoot(t *testing.T) {
 				settings = "read_only = true\n"
 			}
 			document := configDocument(t, root, settings)
-			if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
-				t.Fatal(err)
-			}
+			testconfig.Write(t, path, []byte(document))
 			var stdout, stderr bytes.Buffer
 			runner := func(ctx context.Context, selectedPath string) error {
 				deps := defaultBootstrapDependencies(selectedPath)
@@ -460,9 +459,7 @@ func TestStartupRejectsConfigInsideEffectiveSymlinkRoot(t *testing.T) {
 	}
 	path := filepath.Join(root, "private-config.toml")
 	document := configDocument(t, alias, "[security]\nfollow_symlinks = true\n")
-	if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, path, []byte(document))
 	var stdout, stderr bytes.Buffer
 	deps := defaultBootstrapDependencies(path)
 	deps.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {

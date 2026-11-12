@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
+	"github.com/thomasweidner/flashgate-mcp/internal/testconfig"
 )
 
 func configDocument(t *testing.T, root, settings string) string {
@@ -21,9 +21,7 @@ func configDocument(t *testing.T, root, settings string) string {
 func writeConfig(t *testing.T, document string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "flashgate_config.toml")
-	if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, path, []byte(document))
 	return path
 }
 

@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"testing"
 	"unsafe"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/testconfig"
 )
 
 func TestWindowsConfigPaths(t *testing.T) {
@@ -39,9 +41,7 @@ func TestWindowsRejectsJunction(t *testing.T) {
 	if err := os.Mkdir(target, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(target, "config.toml"), []byte(documentWithRoot(t, target)), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	testconfig.Write(t, filepath.Join(target, "config.toml"), []byte(documentWithRoot(t, target)))
 	junction := filepath.Join(dir, "junction")
 	cmd := exec.Command("cmd.exe", "/d", "/c", "mklink", "/J", junction, target)
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -94,7 +94,7 @@ func TestWindowsRejectsConfigWithUntrustedWriter(t *testing.T) {
 	}
 	// Set the initial DACL on this new fixture only. The executing user
 	// owns it and an unrelated principal is granted file-data write access.
-	sddl, err := syscall.UTF16PtrFromString("D:P(A;;FA;;;" + user + ")(A;;0x2;;;WD)")
+	sddl, err := syscall.UTF16PtrFromString("O:" + user + "D:P(A;;FA;;;" + user + ")(A;;0x2;;;WD)")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestWindowsRejectsConfigWithUntrustedWriter(t *testing.T) {
 	if ok == 0 {
 		t.Fatal(callErr)
 	}
-	defer syscall.LocalFree(syscall.Handle(descriptor))
+	defer func() { _, _ = syscall.LocalFree(syscall.Handle(descriptor)) }()
 	attributes := syscall.SecurityAttributes{SecurityDescriptor: descriptor}
 	attributes.Length = uint32(unsafe.Sizeof(attributes))
 	name, err := syscall.UTF16PtrFromString(path)
@@ -125,4 +125,34 @@ func TestWindowsRejectsConfigWithUntrustedWriter(t *testing.T) {
 	}
 	_, err = Load(Source{Role: Direct, Path: path})
 	assertCategory(t, err, CategoryUntrustedConfig)
+}
+
+func TestWindowsRequiresExactSourceOwner(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	testconfig.Write(t, path, []byte(documentWithRoot(t, dir)))
+	if _, err := Load(Source{Role: Direct, Path: path}); err != nil {
+		t.Fatalf("user-owned configuration did not load: %v", err)
+	}
+	user, err := windowsProcessSID()
+	if err != nil {
+		t.Fatal("reading token user failed")
+	}
+	handle, err := openWindowsNode(path, user, false)
+	if err != nil {
+		t.Fatal("opening user-owned fixture failed")
+	}
+	defer func() { _ = syscall.CloseHandle(handle) }()
+
+	// The same trusted handle is rejected for a different role identity.
+	// Both alternatives are trusted principals, but neither stands in for
+	// the exact owner of this direct configuration.
+	other := "S-1-5-32-544"
+	if other == user {
+		other = "S-1-5-18"
+	}
+	if err := windowsTrust(handle, other, false); err == nil {
+		t.Fatal("different role identity accepted the configuration owner")
+	}
 }

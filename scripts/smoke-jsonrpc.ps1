@@ -1,6 +1,7 @@
 param([switch]$ReadOnly)
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'WindowsConfigFixture.ps1')
 
 $repoRoot = Resolve-Path "$PSScriptRoot\.."
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
@@ -105,7 +106,7 @@ try {
     $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
     $readOnlyValue = ([bool]$ReadOnly).ToString().ToLowerInvariant()
     $document = "[filesystem]`nroot = $quotedRoot`nread_only = $readOnlyValue`n"
-    [IO.File]::WriteAllText($configPath, $document, [Text.UTF8Encoding]::new($false))
+    New-WindowsConfigFixture -Path $configPath -Document $document
     if ($ReadOnly) {
         foreach ($fixturePath in @($readOnlyDeletePath, $readOnlyCopySourcePath, $readOnlyMoveSourcePath)) {
             [System.IO.File]::WriteAllText($fixturePath, "read-only-smoke-fixture", [System.Text.UTF8Encoding]::new($false))

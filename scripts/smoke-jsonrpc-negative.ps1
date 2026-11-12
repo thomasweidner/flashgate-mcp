@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'WindowsConfigFixture.ps1')
 
 $repoRoot = Resolve-Path "$PSScriptRoot\.."
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
@@ -18,7 +19,7 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 try {
     $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
     $document = "[filesystem]`nroot = $quotedRoot`n"
-    [IO.File]::WriteAllText($configPath, $document, [Text.UTF8Encoding]::new($false))
+    New-WindowsConfigFixture -Path $configPath -Document $document
     $requests = @(
         '{"jsonrpc":"2.0","id":1,"method":'
         '{"jsonrpc":"2.0","id":2,"method":"unknown/method","params":{}}'

@@ -1,9 +1,9 @@
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'WindowsConfigFixture.ps1')
 
 $repoRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
 [string]$stamp = "{0}-{1}" -f ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()), $PID
-$configPath = Join-Path ([IO.Path]::GetTempPath()) "flashgate-startup-config-$stamp.toml"
 $rootFile = Join-Path $repoRoot "build\startup-root-file-$stamp.txt"
 $missingRoot = Join-Path $repoRoot "build\startup-missing-root-$stamp"
 
@@ -36,18 +36,20 @@ function Invoke-StartupCase {
     $startInfo.RedirectStandardError = $true
     $startInfo.CreateNoWindow = $true
 
+    $fixtureId = [Guid]::NewGuid().ToString('N')
+    $configPath = Join-Path ([IO.Path]::GetTempPath()) "flashgate-startup-config-$stamp-$fixtureId.toml"
     [void]$startInfo.ArgumentList.Add('--config')
     [void]$startInfo.ArgumentList.Add($configPath)
     $startInfo.Environment['MCP_ROOT'] = $repoRoot
     $startInfo.Environment['MCP_READ_ONLY'] = 'true'
-    if ($Document -ne 'ABSENT') {
-        [IO.File]::WriteAllText($configPath, $Document, [Text.UTF8Encoding]::new($false))
-    }
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
     $started = $false
     try {
+        if ($Document -ne 'ABSENT') {
+            New-WindowsConfigFixture -Path $configPath -Document $Document
+        }
         $started = $process.Start()
         if (-not $started) {
             throw "Failed to start case '$Name'"
@@ -75,6 +77,7 @@ function Invoke-StartupCase {
             $process.WaitForExit()
         }
         $process.Dispose()
+        Remove-Item -LiteralPath $configPath -Force -ErrorAction SilentlyContinue
     }
 }
 
@@ -109,5 +112,5 @@ try {
 
     Write-Host "Startup negative smoke test passed."
 } finally {
-    Remove-Item -LiteralPath $configPath, $rootFile -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $rootFile -Force -ErrorAction SilentlyContinue
 }
