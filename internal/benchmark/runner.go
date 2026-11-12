@@ -70,7 +70,7 @@ func Run(ctx context.Context, options Options) (Result, error) {
 	defer func() {
 		_ = fixtures.remove()
 	}()
-	configDir, err := os.MkdirTemp("", "flashgate-bench-config-")
+	configDir, err := makeConfigFixtureDir()
 	if err != nil {
 		return Result{}, fmt.Errorf("create benchmark configuration directory: %w", err)
 	}
@@ -82,8 +82,7 @@ func Run(ctx context.Context, options Options) (Result, error) {
 		return Result{}, fmt.Errorf("encode benchmark root: %w", err)
 	}
 	for path, readOnly := range map[string]bool{readOnlyConfig: true, writeConfig: false} {
-		document := fmt.Sprintf("[filesystem]\nroot = %s\nread_only = %t\n", root, readOnly)
-		if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
+		if err := writeBenchmarkConfig(path, root, readOnly); err != nil {
 			return Result{}, fmt.Errorf("write benchmark configuration: %w", err)
 		}
 	}
@@ -176,6 +175,11 @@ func Run(ctx context.Context, options Options) (Result, error) {
 	}
 
 	return result, nil
+}
+
+func writeBenchmarkConfig(path string, encodedRoot []byte, readOnly bool) error {
+	document := fmt.Sprintf("[filesystem]\nroot = %s\nread_only = %t\n", encodedRoot, readOnly)
+	return writeConfigFixture(path, []byte(document))
 }
 
 func applyBudgetEvaluation(path string, result *Result) error {

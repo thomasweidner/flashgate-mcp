@@ -73,6 +73,32 @@ func readTrustedConfig(path string, role Role) (trustedDocument, error) {
 }
 
 func withTrustedConfig(path string, role Role, inspect func(*os.File) error) error {
+	return withTrustedWindowsParents(path, role, func(current, userSID string) error {
+		handle, err := openWindowsNode(current, userSID, false)
+		if err != nil {
+			return sourceError(err)
+		}
+		file := os.NewFile(uintptr(handle), defaultFileName)
+		defer file.Close()
+		if err := inspect(file); err != nil {
+			return err
+		}
+		if err := verifyWindowsNode(handle, current, userSID, false); err != nil {
+			return sourceError(err)
+		}
+		return nil
+	})
+}
+
+// WithTrustedUserConfigParent validates and holds the same Windows directory
+// chain as the direct configuration loader while use creates a fixture.
+func WithTrustedUserConfigParent(path string, use func(string) error) error {
+	return withTrustedWindowsParents(path, Direct, func(current, _ string) error {
+		return use(current)
+	})
+}
+
+func withTrustedWindowsParents(path string, role Role, use func(string, string) error) error {
 	volume, components, ok := splitWindowsPath(path)
 	if !ok {
 		return invalidSourcePath()
@@ -108,19 +134,7 @@ func withTrustedConfig(path string, role Role, inspect func(*os.File) error) err
 		directories = append(directories, handle)
 		current = filepath.Join(current, component)
 	}
-	handle, err := openWindowsNode(current, userSID, false)
-	if err != nil {
-		return sourceError(err)
-	}
-	file := os.NewFile(uintptr(handle), defaultFileName)
-	defer file.Close()
-	if err := inspect(file); err != nil {
-		return err
-	}
-	if err := verifyWindowsNode(handle, current, userSID, false); err != nil {
-		return sourceError(err)
-	}
-	return nil
+	return use(current, userSID)
 }
 
 func checkRootAliases(_ string, guard *security.PathGuard) error {
