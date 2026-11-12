@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/benchmark"
+	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -30,15 +31,21 @@ type wireSnapshot struct {
 }
 
 type serverWireCase struct {
-	id        benchmark.WireIdentity
-	args      string
-	body      string
-	want      json.RawMessage
-	fields    []benchmark.WireField
-	reference []benchmark.WirePayload
-	encode    uint64
-	copyBytes uint64
-	setup     func(string) error
+	id           benchmark.WireIdentity
+	args         string
+	body         string
+	want         json.RawMessage
+	fields       []benchmark.WireField
+	reference    []benchmark.WirePayload
+	encode       uint64
+	copies       uint64
+	copyBytes    uint64
+	setup        func(string) error
+	request      string
+	responseID   string
+	tightLimits  bool
+	backendError error
+	registry     func(*tools.Registry) error
 }
 
 type wireGateMutation struct {
@@ -132,6 +139,9 @@ func runServerWireGate(t *testing.T, budgets benchmark.WireBudgets, mutation wir
 		id := fixture.Identity
 		budget := budgets.Classes[budgets.Cases[id.BudgetCase()].Class]
 		measurement, err := benchmark.MeasureWire(fixture)
+		if err == nil && id.Source != benchmark.WireSynthetic {
+			err = checkExactSTDIOResponseSize(fixture.Frames[0], measurement.Counts.ResponseBytes)
+		}
 		if err == nil {
 			err = benchmark.CheckWireBudget(measurement, budget, budgets.Paths[id.BudgetPath()])
 		}
@@ -152,7 +162,7 @@ func runServerWireGate(t *testing.T, budgets benchmark.WireBudgets, mutation wir
 	for _, fixture := range cases {
 		captured, err := captureServerWire(t, fixture, mutation)
 		if err != nil {
-			return fmt.Errorf("%s: %w", fixture.id.BudgetCase(), err)
+			return fmt.Errorf("%s/%s: %w", fixture.id.BudgetPath(), fixture.id.BudgetCase(), err)
 		}
 		if err := check(captured); err != nil {
 			return err
@@ -196,10 +206,7 @@ func serverWireCases(base benchmark.WireIdentity, registry *tools.Registry) ([]s
 		wireControlCase(base, entry, "entry", args, snapshot.Entry),
 		wireControlCase(base, "tools/list", base.Profile, "{}", snapshot.ToolsList),
 	}
-	unknown := wireControlCase(base, "tools/call", "unknown-tool", `{"name":"fixture_unregistered"}`,
-		json.RawMessage(`{"code":-32602,"message":"invalid params"}`))
-	unknown.id.Outcome, unknown.body = "error", "error"
-	plan = append(plan, unknown)
+	plan = append(plan, wireRPCErrors(base, testCases)...)
 	if base.Revision == protocol.ProtocolVersion {
 		plan = append(plan, wireControlCase(base, "ping", "empty-result", "{}", json.RawMessage(`{}`)))
 	}
@@ -249,6 +256,7 @@ func serverWireCases(base benchmark.WireIdentity, registry *tools.Registry) ([]s
 		}
 		id := base
 		id.Route, id.Tool, id.Variant, id.Fixture, id.Outcome = "tools/call", name, "error", "denied", "error"
+		id.Contract = "result/invalid_path"
 		errorCase := serverWireCase{id: id, args: test.denied, want: outcomes["denied"], encode: 2}
 		errorCase.fields = append(revisionWireFields(errorCase.want), wireField(benchmark.WireDomain, "content", "0", "text"))
 		errorCase.copyBytes, err = wireCompatibilityCopyBytes(errorCase.want)
@@ -256,6 +264,17 @@ func serverWireCases(base benchmark.WireIdentity, registry *tools.Registry) ([]s
 			return nil, err
 		}
 		plan = append(plan, errorCase)
+		for _, category := range mcpAdditionalErrorCategories {
+			fixture := test.errors[category]
+			if fixture.arguments == "" {
+				continue
+			}
+			row, err := wireExpectedToolError(id, category, fixture, outcomes["denied"])
+			if err != nil {
+				return nil, fmt.Errorf("%s/%s: %w", name, category, err)
+			}
+			plan = append(plan, row)
+		}
 	}
 	return plan, nil
 }
@@ -442,7 +461,18 @@ func replaceWireBody(template json.RawMessage, fields map[string]any) (json.RawM
 
 func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMutation) (benchmark.WireFixture, error) {
 	id := fixture.id
-	registry, root := mcpRegistryWithLimit(t, id.Profile == "read-only", wireFileLimit)
+	limits := fs.DefaultLimits()
+	if fixture.tightLimits {
+		limits.MaxWriteBytes, limits.MaxCopyBytes = 3, 3
+		limits.MaxListEntries, limits.MaxDeleteEntries = 1, 1
+	}
+	var wrap func(fs.FileSystem) fs.FileSystem
+	if fixture.backendError != nil {
+		wrap = func(fs.FileSystem) fs.FileSystem {
+			return wireFailingFilesystem{fmt.Errorf("%s: %w", wirePrivateMarker, fixture.backendError)}
+		}
+	}
+	registry, root := mcpWireRegistry(t, id.Profile == "read-only", wireFileLimit, limits, wrap)
 	if fixture.setup != nil {
 		if err := fixture.setup(root); err != nil {
 			return benchmark.WireFixture{}, err
@@ -450,6 +480,11 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 	}
 	if mutation.registry != nil {
 		if err := mutation.registry(registry); err != nil {
+			return benchmark.WireFixture{}, err
+		}
+	}
+	if fixture.registry != nil {
+		if err := fixture.registry(registry); err != nil {
 			return benchmark.WireFixture{}, err
 		}
 	}
@@ -470,7 +505,11 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 	if body == "" {
 		body = "result"
 	}
-	frame := benchmark.WireFrame{ID: "1", Body: body, Suffix: []byte{'\n'},
+	responseID := fixture.responseID
+	if responseID == "" {
+		responseID = "1"
+	}
+	frame := benchmark.WireFrame{ID: responseID, Body: body, Suffix: []byte{'\n'},
 		Delivery: "response", Expected: fixture.want, Fields: fixture.fields, CopiesObserved: true}
 	ctx := wiretrace.Observe(context.Background(), func(event wiretrace.Event) {
 		switch event.Operation {
@@ -483,12 +522,28 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 			frame.ExplicitCopyBytes += uint64(event.Bytes)
 		}
 	})
-	wire, err := mcpStdout(ctx, mcpRouter(registry, id.Source == benchmark.WireCandidate), mcpRequest(id.Route, args, id.Revision))
+	request := fixture.request
+	if request == "" {
+		request = mcpRequest(id.Route, args, id.Revision)
+	}
+	wire, err := mcpStdout(ctx, mcpRouter(registry, id.Source == benchmark.WireCandidate), request)
 	if err != nil {
 		return benchmark.WireFixture{}, err
 	}
-	if bytes.Count(wire, []byte{'\n'}) != 1 {
-		return benchmark.WireFixture{}, fmt.Errorf("expected exactly one STDIO response frame")
+	if mutation.frame != nil {
+		wire = mutation.frame(id, wire)
+	}
+	if err := checkSingleSTDIOFrame(wire); err != nil {
+		return benchmark.WireFixture{}, err
+	}
+	if id.Outcome == "error" {
+		escapedRoot, err := json.Marshal(root)
+		if err != nil {
+			return benchmark.WireFixture{}, err
+		}
+		if bytes.Contains(wire, []byte(wirePrivateMarker)) || bytes.Contains(wire, escapedRoot[1:len(escapedRoot)-1]) {
+			return benchmark.WireFixture{}, fmt.Errorf("error frame leaked a private fixture value")
+		}
 	}
 	if observed != nil && id.Outcome == "success" && observed.variant != id.Variant {
 		return benchmark.WireFixture{}, fmt.Errorf("executed variant %q, want %q", observed.variant, id.Variant)
@@ -497,8 +552,8 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 	if id.Revision == revision.Stateless && body == "result" {
 		encode, decode = encode+3, 1
 	}
-	copies := uint64(0)
-	if fixture.copyBytes != 0 {
+	copies := fixture.copies
+	if copies == 0 && fixture.copyBytes != 0 {
 		copies = 1
 	}
 	if frame.EncodingPasses != encode || frame.DecodingPasses != decode ||
@@ -506,11 +561,40 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 		return benchmark.WireFixture{}, fmt.Errorf("explicit serialization or payload copy trace changed: encode=%d decode=%d copies=%d copied bytes=%d",
 			frame.EncodingPasses, frame.DecodingPasses, frame.PayloadCopies, frame.ExplicitCopyBytes)
 	}
-	if mutation.frame != nil {
-		wire = mutation.frame(id, wire)
-	}
 	frame.Wire = wire
 	return benchmark.WireFixture{Identity: id, Reference: fixture.reference, Frames: []benchmark.WireFrame{frame}}, nil
+}
+
+func checkSingleSTDIOFrame(wire []byte) error {
+	if len(wire) < 3 || wire[len(wire)-1] != '\n' || bytes.Count(wire, []byte{'\n'}) != 1 {
+		return fmt.Errorf("expected exactly one LF-terminated STDIO response frame")
+	}
+	if wire[0] != '{' || wire[len(wire)-2] != '}' {
+		return fmt.Errorf("unexpected STDIO framing or surrounding output")
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, wire[:len(wire)-1]); err != nil {
+		return fmt.Errorf("invalid STDIO response JSON: %w", err)
+	}
+	if compact.Len() != len(wire)-1 {
+		return fmt.Errorf("unexpected STDIO JSON whitespace")
+	}
+	return nil
+}
+
+func checkExactSTDIOResponseSize(frame benchmark.WireFrame, actual uint64) error {
+	// Compact the independent semantic fixture using the accepted JSON escaping.
+	// Count a fixed response envelope and terminal LF. MeasureWire supplies the
+	// actual byte count, including framing.
+	var body bytes.Buffer
+	if err := json.Compact(&body, frame.Expected); err != nil {
+		return err
+	}
+	want := uint64(len(`{"jsonrpc":"2.0","id":`+frame.ID+`,"`+frame.Body+`":`+"}\n") + body.Len())
+	if actual != want {
+		return fmt.Errorf("exact response bytes: got %d, want %d", actual, want)
+	}
+	return nil
 }
 
 func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
@@ -534,6 +618,9 @@ func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 		{"missing semantic fixture", "missing fixture", nil, wireGateMutation{cases: func(rows []serverWireCase) []serverWireCase {
 			return removeWireCase(rows, "read_file", "escaped")
 		}}},
+		{"missing error wire fixture", "missing fixture", nil, wireGateMutation{cases: func(rows []serverWireCase) []serverWireCase {
+			return removeWireCase(rows, "read_file", "invalid_text_encoding")
+		}}},
 		{"missing budget", "missing wire budget", func(b *benchmark.WireBudgets) {
 			delete(b.Cases, "tools/call/read_file/complete/reference")
 		}, wireGateMutation{}},
@@ -542,6 +629,9 @@ func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 		}, wireGateMutation{}},
 		{"stale budget", "unexpected or unused", func(b *benchmark.WireBudgets) {
 			b.Classes["stale"] = b.Classes["entry"]
+		}, wireGateMutation{}},
+		{"stale error budget", "missing fixture", func(b *benchmark.WireBudgets) {
+			b.Cases["tools/call/read_file/error/stale"] = b.Cases["tools/call/read_file/error/not_found"]
 		}, wireGateMutation{}},
 		{"missing candidate profile", "missing or duplicate wire path", func(b *benchmark.WireBudgets) {
 			delete(b.Paths, "candidate/2026-07-28/read-only/stdio-lf")
@@ -561,6 +651,19 @@ func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 		{"duplicated payload", "payload placement", nil, wireGateMutation{frame: mutateReadReference(`"size":4`, `"size":4,"text":"seed"`)}},
 		{"forged size", "payload placement", nil, wireGateMutation{frame: mutateReadReference(`"size":4`, `"size":5`)}},
 		{"forged same-length content", "payload placement", nil, wireGateMutation{frame: mutateReadReference(`"text":"seed"`, `"text":"fake"`)}},
+		{"size increase with identical semantics", "exact response bytes", nil, wireGateMutation{frame: mutateReadReference(`"text":"seed"`, `"text":"\u0073eed"`)}},
+		{"extra result metadata", "payload placement", nil, wireGateMutation{frame: mutateReadReference(`"size":4`, `"size":4,"extra":0`)}},
+		{"missing LF", "LF-terminated", nil, wireGateMutation{frame: mutateReadReference("}\n", "}")}},
+		{"extra LF", "LF-terminated", nil, wireGateMutation{frame: mutateReadReference("}\n", "}\n\n")}},
+		{"extra response frame", "LF-terminated", nil, wireGateMutation{frame: mutateReadReference("}\n", "}\n{}\n")}},
+		{"physical newline in frame", "LF-terminated", nil, wireGateMutation{frame: mutateReadReference(`,"result":`, ",\n\"result\":")}},
+		{"CRLF", "STDIO framing", nil, wireGateMutation{frame: mutateReadReference("}\n", "}\r\n")}},
+		{"leading whitespace", "STDIO framing", nil, wireGateMutation{frame: mutateReadReference(`{"jsonrpc"`, ` {"jsonrpc"`)}},
+		{"trailing whitespace", "STDIO framing", nil, wireGateMutation{frame: mutateReadReference("}\n", "} \n")}},
+		{"internal whitespace", "JSON whitespace", nil, wireGateMutation{frame: mutateReadReference(`"size":4`, `"size": 4`)}},
+		{"changed tool error representation", "unexpected wire envelope", nil, wireGateMutation{frame: mutateWireCase("tools/call/read_file/error/not_found", `"result":`, `"error":`)}},
+		{"changed protocol error representation", "unexpected wire envelope", nil, wireGateMutation{frame: mutateWireCase("tools/call///unknown-tool", `"error":`, `"result":`)}},
+		{"private error payload", "private fixture value", nil, wireGateMutation{frame: mutateWireCase("tools/call///internal-io", "internal error", wirePrivateMarker)}},
 		{"malformed encoding", "invalid", nil, wireGateMutation{frame: mutateReadReference(`"text":"seed"`, `"text":"\x"`)}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -582,8 +685,12 @@ func removeWireCase(rows []serverWireCase, tool, name string) []serverWireCase {
 }
 
 func mutateReadReference(before, after string) func(benchmark.WireIdentity, []byte) []byte {
+	return mutateWireCase("tools/call/read_file/complete/reference", before, after)
+}
+
+func mutateWireCase(key, before, after string) func(benchmark.WireIdentity, []byte) []byte {
 	return func(id benchmark.WireIdentity, data []byte) []byte {
-		if id.Tool == "read_file" && id.Fixture == "reference" {
+		if id.BudgetCase() == key {
 			return bytes.Replace(data, []byte(before), []byte(after), 1)
 		}
 		return data

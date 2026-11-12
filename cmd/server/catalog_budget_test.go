@@ -22,7 +22,7 @@ func testCatalogBudgetMutations(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, row := range cases {
-		if row.id.Route != "initialize" && row.id.Route != "tools/list" {
+		if row.id.Outcome != "success" || (row.id.Route != "initialize" && row.id.Route != "tools/list") {
 			continue
 		}
 		t.Run(row.id.Route, func(t *testing.T) {

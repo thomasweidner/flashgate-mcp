@@ -390,6 +390,24 @@ copies, and synthetic delivery costs. Negative tests exercise the same gate.
 See the [benchmark wire contract](../benchmarks/README.md#deterministic-wire-efficiency)
 for accounting, budget updates and future producer bindings.
 
+BL-205 uses the same executable cases and budget bindings. Each STDIO case
+requires one compact UTF-8 JSON-RPC object and a terminal LF. The gate
+measures the unmodified frame and independently checks the decoded envelope,
+semantic body and payload placement. Its exact expectation comes from the
+accepted compact fixture, response envelope and framing. The current
+deterministic fixtures allow zero byte tolerance. The existing hard wire
+ceilings still apply alongside this regression check.
+
+The per-tool cases record applicability for all active BL-203 categories.
+They exercise portable domain errors on a temporary filesystem and inject
+permission and cross-volume errors at the filesystem interface to reach the
+real adapter without relying on host ACLs or mount layout. Protocol cases
+exercise malformed requests, invalid outer parameters, unknown and removed
+names, hidden tools, unsupported methods and revisions, and generic internal
+errors. The production and candidate-policy paths each run with both
+current profiles. Synthetic deliveries remain measurement fixtures.
+Future changes follow the [owner acceptance gate](planning/tool-adapters.md#22-implementation-gate-for-every-new-public-tool).
+
 ### MCP Compatibility Testing
 
 `internal/protocol` strictly decodes the

@@ -60,9 +60,11 @@ func TestCreateToolRegistryRegistersResolvableTools(t *testing.T) {
 	}
 }
 
+var mcpRemovedToolNames = []string{"list_files", "stat_path", "exists_path", "mkdir", "rename_path"}
+
 func TestCreateToolRegistryDoesNotResolveRemovedTools(t *testing.T) {
 	registry := requireToolRegistry(t, noopFileSystem{}, 1024, toolCapabilities{filesystemWrite: true})
-	for _, name := range []string{"list_files", "stat_path", "exists_path", "mkdir", "rename_path"} {
+	for _, name := range mcpRemovedToolNames {
 		if _, ok := registry.Get(name); ok {
 			t.Fatalf("expected removed tool %q to be unavailable", name)
 		}

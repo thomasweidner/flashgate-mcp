@@ -23,6 +23,7 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcptest"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 var updateMCPSnapshots = flag.Bool("update-mcp-snapshots", false, "explicitly replace reviewed MCP wire snapshots")
@@ -54,6 +55,7 @@ type mcpToolCase struct {
 	success  map[string]mcpSuccessCase
 	denied   string
 	readOnly bool
+	errors   map[string]mcpErrorCase
 }
 
 type mcpSuccessCase struct {
@@ -63,27 +65,74 @@ type mcpSuccessCase struct {
 	content   []protocol.ContentBlock
 }
 
-func mcpCompleteCase(arguments, denied, field string, want any, readOnly bool) mcpToolCase {
-	return mcpToolCase{map[string]mcpSuccessCase{"complete": {arguments: arguments, field: field, want: want}}, denied, readOnly}
+func mcpCompleteCase(arguments, denied, field string, errors map[string]mcpErrorCase) mcpToolCase {
+	return mcpToolCase{success: map[string]mcpSuccessCase{"complete": {arguments: arguments, field: field, want: true}}, denied: denied, errors: errors}
 }
 
 func mcpToolCases() map[string]mcpToolCase {
 	return map[string]mcpToolCase{
-		"list_directory": {map[string]mcpSuccessCase{
+		"list_directory": {success: map[string]mcpSuccessCase{
 			"complete": {`{}`, "entries", []any{map[string]any{"name": "seed.txt", "isDir": false, "size": json.Number("4")}}, []protocol.ContentBlock{protocol.NewTextContent("See structuredContent for the result.")}},
-		}, `{"path":"../outside"}`, true},
-		"read_file": {map[string]mcpSuccessCase{
+		}, denied: `{"path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{}`, map[string]mcpErrorCase{
+			"not_found":             {arguments: `{"path":"missing.txt"}`},
+			"already_exists":        {reason: "Listing does not create or replace a path."},
+			"unsupported_path_type": {reason: "Listing uses native directory enumeration. A non-directory enumeration error has no portable BL-203 path-type mapping here."},
+			"limit_exceeded":        {arguments: `{}`, setup: wireSecondFile, tightLimits: true},
+		})},
+		"read_file": {success: map[string]mcpSuccessCase{
 			"complete": {`{"path":"seed.txt"}`, "size", json.Number("4"), []protocol.ContentBlock{protocol.NewTextContent("seed")}},
-		}, `{"path":"../outside"}`, true},
-		"get_path_info": {map[string]mcpSuccessCase{
+		}, denied: `{"path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"path":"seed.txt"}`, map[string]mcpErrorCase{
+			"not_found":             {arguments: `{"path":"missing.txt"}`},
+			"already_exists":        {reason: "Reading does not create or replace a path."},
+			"unsupported_path_type": {arguments: `{"path":"directory"}`, setup: wireDirectory},
+			"invalid_text_encoding": {arguments: `{"path":"invalid.txt"}`, setup: wireInvalidText, copiedBytes: uint64(len(wireInvalidTextBytes))},
+			"limit_exceeded":        {arguments: `{"path":"seed.txt","maxBytes":3}`},
+		})},
+		"get_path_info": {success: map[string]mcpSuccessCase{
 			"existing": {arguments: `{"path":"seed.txt"}`, field: "exists", want: true},
 			"missing":  {arguments: `{"path":"missing.txt"}`, field: "exists", want: false},
-		}, `{"path":"../outside"}`, true},
-		"write_file":       mcpCompleteCase(`{"path":"written.txt","content":"new"}`, `{"path":"../outside","content":"new"}`, "written", true, false),
-		"create_directory": mcpCompleteCase(`{"path":"new-directory"}`, `{"path":"../outside"}`, "created", true, false),
-		"delete_path":      mcpCompleteCase(`{"path":"seed.txt"}`, `{"path":"../outside"}`, "deleted", true, false),
-		"copy_path":        mcpCompleteCase(`{"source":"seed.txt","target":"copied.txt"}`, `{"source":"../outside","target":"copied.txt"}`, "copied", true, false),
-		"move_path":        mcpCompleteCase(`{"source":"seed.txt","target":"moved.txt"}`, `{"source":"../outside","target":"moved.txt"}`, "moved", true, false),
+		}, denied: `{"path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"path":"seed.txt"}`, map[string]mcpErrorCase{
+			"not_found":             {reason: "A missing path is the existing successful missing variant."},
+			"already_exists":        {reason: "Stat does not create or replace a path."},
+			"unsupported_path_type": {reason: "Stat supports files and directories. PathGuard denials use invalid_path."},
+			"limit_exceeded":        {reason: "Stat does not read content, traverse a collection or accept a variable-size result projection."},
+		})},
+		"write_file": mcpCompleteCase(`{"path":"written.txt","content":"new"}`, `{"path":"../outside","content":"new"}`, "written",
+			mcpFilesystemErrors(`{"path":"written.txt","content":"new"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"path":"missing/file.txt"}`},
+				"already_exists":        {arguments: `{"path":"seed.txt"}`},
+				"unsupported_path_type": {arguments: `{"path":"directory"}`, setup: wireDirectory},
+				"limit_exceeded":        {arguments: `{"path":"written.txt","content":"too large"}`, tightLimits: true},
+			})),
+		"create_directory": mcpCompleteCase(`{"path":"new-directory"}`, `{"path":"../outside"}`, "created",
+			mcpFilesystemErrors(`{"path":"new-directory"}`, map[string]mcpErrorCase{
+				"not_found":             {reason: "Mkdir creates missing ancestors and leaf."},
+				"already_exists":        {reason: "An existing directory returns created:false; an existing file is a path-type error."},
+				"unsupported_path_type": {arguments: `{"path":"seed.txt"}`},
+				"limit_exceeded":        {reason: "Mkdir has no filesystem traversal, content or collection quota for its receipt."},
+			})),
+		"delete_path": mcpCompleteCase(`{"path":"seed.txt"}`, `{"path":"../outside"}`, "deleted",
+			mcpFilesystemErrors(`{"path":"seed.txt"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"path":"missing.txt"}`},
+				"already_exists":        {reason: "Deletion requires an existing source and creates no destination."},
+				"unsupported_path_type": {arguments: `{"path":"directory"}`, setup: wireNonemptyDirectory},
+				"limit_exceeded":        {arguments: `{"path":"directory","recursive":true}`, setup: wireNonemptyDirectory, tightLimits: true},
+			})),
+		"copy_path": mcpCompleteCase(`{"source":"seed.txt","target":"copied.txt"}`, `{"source":"../outside","target":"copied.txt"}`, "copied",
+			mcpFilesystemErrors(`{"source":"seed.txt","target":"copied.txt"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"source":"missing.txt","target":"copied.txt"}`},
+				"already_exists":        {arguments: `{"source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
+				"unsupported_path_type": {arguments: `{"source":"directory","target":"copied.txt"}`, setup: wireDirectory},
+				"limit_exceeded":        {arguments: `{"source":"seed.txt","target":"copied.txt"}`, tightLimits: true},
+			})),
+		"move_path": mcpCompleteCase(`{"source":"seed.txt","target":"moved.txt"}`, `{"source":"../outside","target":"moved.txt"}`, "moved",
+			mcpFilesystemErrors(`{"source":"seed.txt","target":"moved.txt"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"source":"missing.txt","target":"moved.txt"}`},
+				"already_exists":        {arguments: `{"source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
+				"unsupported_path_type": {arguments: `{"source":"seed.txt","target":"directory","overwrite":true}`, setup: wireDirectory},
+				"unsupported_operation": {arguments: `{"source":"seed.txt","target":"moved.txt"}`, backendError: fs.ErrCrossVolumeMoveUnsupported},
+				"limit_exceeded":        {reason: "Same-volume rename does not traverse or transfer content and has no operation quota."},
+			})),
 	}
 }
 
@@ -121,13 +170,22 @@ func mcpRegistry(t *testing.T, readOnly bool) (*tools.Registry, string) {
 
 func mcpRegistryWithLimit(t *testing.T, readOnly bool, maxFileBytes int64) (*tools.Registry, string) {
 	t.Helper()
+	return mcpWireRegistry(t, readOnly, maxFileBytes, fs.DefaultLimits(), nil)
+}
+
+func mcpWireRegistry(t *testing.T, readOnly bool, maxFileBytes int64, limits fs.Limits, wrap func(fs.FileSystem) fs.FileSystem) (*tools.Registry, string) {
+	t.Helper()
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "seed.txt"), []byte("seed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	filesystem, err := fs.NewLocalFileSystem(root)
+	local, err := fs.NewLocalFileSystemWithPolicyAndLimits(root, security.DefaultPolicy(), limits)
 	if err != nil {
 		t.Fatal(err)
+	}
+	var filesystem fs.FileSystem = local
+	if wrap != nil {
+		filesystem = wrap(local)
 	}
 	return requireToolRegistry(t, filesystem, maxFileBytes, capabilitiesFromReadOnly(readOnly)), root
 }
@@ -243,6 +301,9 @@ func mcpInventory(definitions []protocol.Tool, cases map[string]mcpToolCase, rea
 		test := cases[definition.Name]
 		if len(test.success) == 0 || test.denied == "" {
 			return fmt.Errorf("missing executable contract case for %q", definition.Name)
+		}
+		if err := mcpErrorCoverage(test.errors); err != nil {
+			return fmt.Errorf("%s: %w", definition.Name, err)
 		}
 	}
 	if len(expected) != 0 {
@@ -534,6 +595,20 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 		delete(cases, "missing")
 		if mcpVariantCoverage(tool.ResultContract(), cases) == nil {
 			t.Fatal("untested result variant escaped the conformance gate")
+		}
+	})
+	t.Run("missing-error-applicability", func(t *testing.T) {
+		cases := mcpToolCases()
+		delete(cases["get_path_info"].errors, "not_found")
+		if err := mcpInventory(definitions, cases, false); err == nil || !strings.Contains(err.Error(), "missing error applicability") {
+			t.Fatalf("missing applicability escaped the conformance gate: %v", err)
+		}
+	})
+	t.Run("missing-applicable-error-fixture", func(t *testing.T) {
+		cases := mcpToolCases()
+		cases["read_file"].errors["not_found"] = mcpErrorCase{}
+		if err := mcpInventory(definitions, cases, false); err == nil || !strings.Contains(err.Error(), "missing applicable error fixture") {
+			t.Fatalf("missing error fixture escaped the conformance gate: %v", err)
 		}
 	})
 	t.Run("duplicated-payload", func(t *testing.T) {

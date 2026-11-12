@@ -26,10 +26,9 @@ BL-207/208. BL-257 retains its independent prerequisites. The
 `2026-07-28` ping receiver remains unsupported, and BL-158 network probing
 remains separate.
 
-**Remaining executable lane.** In SPR-048, BL-214 builds efficiency metrics
-on completed BL-213. BL-205 is the recommended response-size regression
-follow-up, with no hard BL-214 dependency. BL-215 and BL-220 can proceed
-independently or earlier.
+**Remaining executable lane.** In SPR-048, BL-205 extends the completed
+BL-213/214/215 result, measurement and catalog contracts with response-size
+regressions. BL-220 can proceed independently.
 
 SPR-053 establishes the configuration, root and profile, context,
 authorization, effective catalog, audit, and state-binding contracts.
