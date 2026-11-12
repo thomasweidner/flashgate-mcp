@@ -32,6 +32,13 @@ attribution; the ICO is a deterministic raster derivative of that SVG.
 - Purpose: Windows COFF resource generation
 - License: MIT
 
+## go-toml
+
+- Module: `github.com/pelletier/go-toml/v2`
+- Version: `v2.4.3`
+- Purpose: strict decoding of FlashGate's startup configuration
+- License: MIT
+
 ## jsonschema
 
 - Module: `github.com/santhosh-tekuri/jsonschema/v6`

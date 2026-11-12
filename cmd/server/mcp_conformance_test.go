@@ -40,7 +40,7 @@ func mcpMatrixCoverage(versions, profiles []string) error {
 	if !slices.Equal(slices.Sorted(slices.Values(versions)), policyVersions) {
 		return fmt.Errorf("snapshot revisions %v must cover production and candidate policy revisions %v exactly once", versions, policyVersions)
 	}
-	// These are the two startup modes selected by MCP_READ_ONLY. The owner
+	// These are the two tool catalogs selected by filesystem.read_only. The owner
 	// of effective profiles must bind that replacement selector here.
 	if !slices.Equal(slices.Sorted(slices.Values(profiles)), []string{"default", "read-only"}) {
 		return fmt.Errorf("snapshot profiles %v must cover both startup modes exactly once", profiles)

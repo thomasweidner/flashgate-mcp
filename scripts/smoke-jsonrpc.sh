@@ -5,7 +5,13 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 BINARY_PATH="${REPO_ROOT}/build/flashgate-mcp"
-STAMP="$$-$(date +%s%N)"
+read_only=false
+case "$#:${1:-}" in
+  0:) ;;
+  1:--read-only) read_only=true ;;
+  *) printf '%s\n' 'Usage: smoke-jsonrpc.sh [--read-only]' >&2; exit 2 ;;
+esac
+STAMP="$-$(date +%s%N)"
 REQUEST_PATH="${REPO_ROOT}/build/smoke-jsonrpc-${STAMP}-request.jsonl"
 RESPONSE_PATH="${REPO_ROOT}/build/smoke-jsonrpc-${STAMP}-response.jsonl"
 MOVE_SOURCE_RELATIVE="build/smoke-move-${STAMP}-source.txt"
@@ -28,11 +34,14 @@ READ_ONLY_MOVE_SOURCE_PATH="${REPO_ROOT}/${READ_ONLY_MOVE_SOURCE_RELATIVE}"
 READ_ONLY_MOVE_TARGET_PATH="${REPO_ROOT}/${READ_ONLY_MOVE_TARGET_RELATIVE}"
 
 cleanup() {
-  rm -f "${REQUEST_PATH}" "${RESPONSE_PATH}" "${MOVE_SOURCE_PATH}" "${MOVE_TARGET_PATH}" \
+  rm -f "${CONFIG_PATH}" "${REQUEST_PATH}" "${RESPONSE_PATH}" "${MOVE_SOURCE_PATH}" "${MOVE_TARGET_PATH}" \
     "${READ_ONLY_WRITE_PATH}" "${READ_ONLY_DELETE_PATH}" "${READ_ONLY_COPY_SOURCE_PATH}" \
     "${READ_ONLY_COPY_TARGET_PATH}" "${READ_ONLY_MOVE_SOURCE_PATH}" "${READ_ONLY_MOVE_TARGET_PATH}"
   rm -rf "${READ_ONLY_CREATE_PATH}"
+  rmdir -- "${CONFIG_DIR}"
 }
+CONFIG_DIR="$(mktemp -d -- "${TMPDIR:-/tmp}/flashgate-config.XXXXXXXX")"
+CONFIG_PATH="${CONFIG_DIR}/flashgate_config.toml"
 trap cleanup EXIT
 
 if [[ ! -x "${BINARY_PATH}" ]]; then
@@ -41,9 +50,8 @@ if [[ ! -x "${BINARY_PATH}" ]]; then
   exit 1
 fi
 
-export MCP_ROOT="${REPO_ROOT}"
-
 mkdir -p "${REPO_ROOT}/build"
+(umask 077; python3 -c 'import json,sys; print("[filesystem]\nroot = " + json.dumps(sys.argv[1], ensure_ascii=False) + "\nread_only = " + sys.argv[2])' "${REPO_ROOT}" "$read_only" > "$CONFIG_PATH")
 
 cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke-test","version":"dev"}}}
@@ -54,7 +62,7 @@ cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_path_info","arguments":{"path":"smoke-missing-path"}}}
 JSONRPC
 
-if [[ "${MCP_READ_ONLY:-}" != "true" ]]; then
+if [[ "$read_only" != "true" ]]; then
   printf '%s' 'move-smoke' > "${MOVE_SOURCE_PATH}"
   printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"move_path\",\"arguments\":{\"source\":\"${MOVE_SOURCE_RELATIVE}\",\"target\":\"${MOVE_TARGET_RELATIVE}\"}}}" >> "${REQUEST_PATH}"
 else
@@ -70,9 +78,9 @@ else
 JSONRPC
 fi
 
-"${BINARY_PATH}" < "${REQUEST_PATH}" > "${RESPONSE_PATH}"
+"${BINARY_PATH}" --config "$CONFIG_PATH" < "${REQUEST_PATH}" > "${RESPONSE_PATH}"
 
-python3 - "${RESPONSE_PATH}" "${MOVE_TARGET_PATH}" "${REPO_ROOT}/README.md" <<'PY'
+python3 - "${RESPONSE_PATH}" "${MOVE_TARGET_PATH}" "${REPO_ROOT}/README.md" "$read_only" <<'PY'
 import json
 import os
 import sys
@@ -83,7 +91,7 @@ move_target_path = sys.argv[2]
 with open(response_path, "r", encoding="utf-8") as handle:
     responses = [json.loads(line) for line in handle if line.strip()]
 
-expected_response_count = 11 if os.environ.get("MCP_READ_ONLY") == "true" else 7
+expected_response_count = 11 if sys.argv[4] == "true" else 7
 if len(responses) != expected_response_count:
     raise SystemExit(f"Expected {expected_response_count} JSON-RPC responses, got {len(responses)}. Response file: {response_path}")
 
@@ -120,7 +128,7 @@ expected_tools = [
     "get_path_info",
 ]
 
-if os.environ.get("MCP_READ_ONLY") != "true":
+if sys.argv[4] != "true":
     expected_tools.extend([
         "write_file",
         "create_directory",
@@ -187,7 +195,7 @@ if existing_result.get("exists") is not True or existing_result.get("path") != "
     raise SystemExit("get_path_info did not report README.md as existing")
 if missing_result != {"path": "smoke-missing-path", "exists": False}:
     raise SystemExit("get_path_info did not report the missing path correctly")
-if os.environ.get("MCP_READ_ONLY") != "true":
+if sys.argv[4] != "true":
     move_result = decode_call_tool_result(responses[6], 7)
     if move_result.get("moved") is not True:
         raise SystemExit("move_path did not return moved=true")
@@ -204,7 +212,7 @@ print(f"Protocol version: {protocol_version}")
 print(f"Tools: {', '.join(tool_names)}")
 PY
 
-if [[ "${MCP_READ_ONLY:-}" == "true" ]]; then
+if [[ "$read_only" == "true" ]]; then
   for expected_fixture in "${READ_ONLY_DELETE_PATH}" "${READ_ONLY_COPY_SOURCE_PATH}" "${READ_ONLY_MOVE_SOURCE_PATH}"; do
     if [[ ! -f "${expected_fixture}" ]]; then
       echo "Read-only smoke fixture was modified or removed: ${expected_fixture}" >&2

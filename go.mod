@@ -4,6 +4,8 @@ go 1.26.4
 
 require github.com/josephspurrier/goversioninfo v1.7.0
 
+require github.com/pelletier/go-toml/v2 v2.4.3
+
 require github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
 
 require github.com/akavel/rsrc v0.10.2 // indirect

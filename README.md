@@ -14,9 +14,9 @@ vendor-neutral core has no proprietary client or infrastructure dependency.
 
 **Start with the [public prerelease downloads](https://github.com/thomasweidner/flashgate-mcp/releases).**
 [Version 0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0)
-is an available prerelease, not a stable Version 1.0 release. The examples below
-use that exact version. Set `MCP_READ_ONLY=true` explicitly for initial use;
-the current default otherwise exposes write-capable tools too.
+is an available prerelease. The download and extraction examples below use
+that exact version. For v0.3.0 startup, follow the documentation tagged with
+that release. The client examples on this branch apply to TOML-enabled builds.
 
 ## Contents
 
@@ -180,8 +180,7 @@ remaining output and choose a different absent destination before retrying.
 For ARM64, use the ARM64 archive
 and versioned directory instead. No installer or service registration is needed.
 
-Use that executable path and an existing data directory, for example
-`C:\FlashGateData\ReadOnlyRoot`, in a [client example](#connect-your-mcp-client).
+For this v0.3.0 executable, use the [v0.3.0 startup instructions](https://github.com/thomasweidner/flashgate-mcp/blob/v0.3.0/README.md#basic-usage).
 To inspect full build identity, add `--version --verbose`. Version/help modes
 exit without starting an MCP session.
 
@@ -218,14 +217,19 @@ command is run. For ARM64, use its archive and directory. The extracted binary
 needs execute permission on a filesystem that
 allows execution; see [client setup](docs/client-setup.md#stdio-launch-contract).
 
-For the Linux client examples below, the extracted directory is assumed to be
-at `/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64`, and the existing data
-directory at `/data/flashgate-example/flashgate-readonly-root`. Substitute your real
-absolute paths. These are native Linux examples; keep Windows paths separate.
+For this v0.3.0 executable, use the [v0.3.0 startup instructions](https://github.com/thomasweidner/flashgate-mcp/blob/v0.3.0/README.md#basic-usage).
 
 ## Connect your MCP client
 
-The client launches the binary with **no arguments** and supplies its environment.
+Use a TOML-enabled binary for these client examples. Replace the example
+executable and data paths with your actual absolute paths.
+
+Copy the [TOML template](docs/flashgate-config.toml) to the executing user's
+`~/.flashgate/flashgate_config.toml`. Set `filesystem.root` to your existing
+data directory and keep `filesystem.read_only = true` for initial use.
+See [runtime configuration](docs/configuration.md) for path and ownership rules.
+The client can launch with an empty argument array for that default or pass
+`--config` and an absolute path to a trusted alternate file.
 Normal invocation waits for newline-delimited JSON-RPC on stdin; an idle terminal
 with no banner does not prove a successful MCP connection. Stdout is reserved
 for protocol messages; diagnostics use stderr.
@@ -233,9 +237,9 @@ for protocol messages; diagnostics use stderr.
 Use one platform example for your client. Back up its existing configuration,
 add or update only the `flashgate` entry, and preserve unrelated settings and
 servers. The examples describe an operator-applied change, not an automatic
-registration. Never put the binary inside `MCP_ROOT`, use `MCP_ROOT=.`, or
-recommend a build/`go run` on every startup. Detailed acceptance and rollback
-remain in [client setup](docs/client-setup.md).
+registration. Keep the binary and TOML outside the configured data root.
+Use an existing absolute data root for client setup and a prebuilt executable.
+See [client setup](docs/client-setup.md) for acceptance and rollback.
 
 ### Codex: config.toml
 
@@ -243,40 +247,22 @@ Add the entry to your user `~/.codex/config.toml` (Windows:
 `%USERPROFILE%\.codex\config.toml`). Follow the official
 [Codex MCP guide](https://developers.openai.com/codex/mcp) and
 [configuration reference](https://developers.openai.com/codex/config-reference).
-The `command` is one absolute executable path; environment values are strings.
+The `command` is one absolute executable path.
 
 **Windows x64 example** (TOML literal strings preserve backslashes):
 
 ```toml
 [mcp_servers.flashgate]
-command = 'C:\Tools\FlashGate\flashgate-mcp_0.3.0_windows_x64\flashgate-mcp.exe'
+command = 'C:\Tools\FlashGate\current\flashgate-mcp.exe'
 args = []
-
-[mcp_servers.flashgate.env]
-MCP_ROOT = 'C:\FlashGateData\ReadOnlyRoot'
-MCP_READ_ONLY = "true"
-MCP_ALLOW_CWD_ROOT = "false"
-MCP_ALLOW_HIDDEN_FILES = "false"
-MCP_ALLOW_UNC_PATHS = "false"
-MCP_FOLLOW_SYMLINKS = "false"
-MCP_DEBUG = "false"
 ```
 
 **Linux x64 example** (alternative entry for a native Linux client):
 
 ```toml
 [mcp_servers.flashgate]
-command = "/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp"
+command = "/data/flashgate-example/tools/current/flashgate-mcp"
 args = []
-
-[mcp_servers.flashgate.env]
-MCP_ROOT = "/data/flashgate-example/flashgate-readonly-root"
-MCP_READ_ONLY = "true"
-MCP_ALLOW_CWD_ROOT = "false"
-MCP_ALLOW_HIDDEN_FILES = "false"
-MCP_ALLOW_UNC_PATHS = "false"
-MCP_FOLLOW_SYMLINKS = "false"
-MCP_DEBUG = "false"
 ```
 
 Reload/restart the client as required by its version, then inspect its MCP
@@ -303,17 +289,8 @@ runs its own native executable.
 {
   "mcpServers": {
     "flashgate": {
-      "command": "C:\\Tools\\FlashGate\\flashgate-mcp_0.3.0_windows_x64\\flashgate-mcp.exe",
-      "args": [],
-      "env": {
-        "MCP_ROOT": "C:\\FlashGateData\\ReadOnlyRoot",
-        "MCP_READ_ONLY": "true",
-        "MCP_ALLOW_CWD_ROOT": "false",
-        "MCP_ALLOW_HIDDEN_FILES": "false",
-        "MCP_ALLOW_UNC_PATHS": "false",
-        "MCP_FOLLOW_SYMLINKS": "false",
-        "MCP_DEBUG": "false"
-      }
+      "command": "C:\\Tools\\FlashGate\\current\\flashgate-mcp.exe",
+      "args": []
     }
   }
 }
@@ -325,17 +302,8 @@ runs its own native executable.
 {
   "mcpServers": {
     "flashgate": {
-      "command": "/data/flashgate-example/tools/flashgate-mcp_0.3.0_linux_x64/flashgate-mcp",
-      "args": [],
-      "env": {
-        "MCP_ROOT": "/data/flashgate-example/flashgate-readonly-root",
-        "MCP_READ_ONLY": "true",
-        "MCP_ALLOW_CWD_ROOT": "false",
-        "MCP_ALLOW_HIDDEN_FILES": "false",
-        "MCP_ALLOW_UNC_PATHS": "false",
-        "MCP_FOLLOW_SYMLINKS": "false",
-        "MCP_DEBUG": "false"
-      }
+      "command": "/data/flashgate-example/tools/current/flashgate-mcp",
+      "args": []
     }
   }
 }
@@ -357,7 +325,7 @@ client discover exactly these three tools in read-only mode, in order:
 3. `get_path_info`
 
 A client may display a server prefix on tool names. If write tools appear,
-check that this server entry explicitly sets `MCP_READ_ONLY=true` and reload it.
+check `read_only = true` in the TOML selected by this entry and reload it.
 
 Ask your client:
 
@@ -378,7 +346,7 @@ The corresponding current tool calls are:
 | `read_file` | `{"path":"hello.txt","maxBytes":4096}` | `content` matches the text; `size` reports returned bytes. |
 
 Choose a small file no larger than 4096 bytes for this example. All arguments are
-relative to `MCP_ROOT`, not absolute host paths. In a protocol trace, successful
+relative to `filesystem.root`. In a protocol trace, successful
 `tools/call` results have one JSON text block in MCP `content[]` and the same
 domain object in `structuredContent`. A missing metadata path returns
 `exists:false`; that alone does not verify a real-file read.
@@ -393,14 +361,14 @@ in the [tool reference](docs/tools.md).
 
 ## Security by design
 
-- **Explicit root:** `MCP_ROOT` must be an existing absolute directory that
+- **Explicit root:** `filesystem.root` must be an existing absolute directory that
   passes policy. Missing, relative, nonexistent, file, or denied roots fail
   before tool registration. Expected configuration failures exit with code 3,
   leave stdout empty, and report a safe category on stderr.
 - **Server-side confinement:** relative tool paths pass lexical and effective
   containment checks. Traversal, absolute tool paths, and out-of-root resolution
   are rejected. Tools use the central filesystem abstraction and path guard.
-- **Explicit read-only operation:** `MCP_READ_ONLY=true` registers only the
+- **Explicit read-only operation:** `filesystem.read_only = true` registers only the
   three read tools. Write-capable names are unavailable even when called
   directly. Tool annotations and visibility are not authorization.
 - **Restrictive path policy:** the examples deny hidden files, UNC paths,
@@ -409,7 +377,7 @@ in the [tool reference](docs/tools.md).
 - **Bounded work and disclosure:** configurable limits cap JSON-RPC messages,
   arguments, reads/writes, listings, copies, recursive deletes, and responses.
   Errors are generic; optional diagnostics are redacted and use stderr.
-  `MCP_DEBUG=false` keeps initial operation quiet. Current diagnostics create no
+  The default `logging.level = "off"` keeps initial operation quiet. Current diagnostics create no
   persistent logfiles.
 
 FlashGate runs under the launching OS account. Root and operation checks are
@@ -453,7 +421,8 @@ extensions. Planned runtime flags are not current CLI arguments.
 
 ## Documentation and roadmap
 
-The [documentation index](docs/README.md) is the main route to detailed guidance.
+The [documentation index](docs/README.md) links to detailed guidance, including
+[runtime configuration](docs/configuration.md) and [migration](docs/migration.md).
 
 | Topic | Reference |
 |---|---|

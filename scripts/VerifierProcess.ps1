@@ -1229,17 +1229,29 @@ function Get-FlashGateMissingHelpLines {
         [string] $Output
     )
 
-    $Missing = [System.Collections.Generic.List[string]]::new()
-    foreach ($ExpectedLine in @(
+    [string[]] $ExpectedLines = @(
         'flashgate-mcp'
         'Usage:'
         'flashgate-mcp --version'
         'flashgate-mcp --version --verbose'
         'flashgate-mcp --help'
-        'MCP_ROOT'
-        'MCP_READ_ONLY'
-        'MCP_ALLOW_CWD_ROOT'
-    )) {
+    )
+    if ($Output.Contains('--config') -or $Output.Contains('Configuration:') -or
+        $Output.Contains('flashgate_config.toml')) {
+        $ExpectedLines += @(
+            'flashgate-mcp --config <absolute-path>'
+            'Configuration:'
+            '.flashgate/flashgate_config.toml'
+            'filesystem root'
+        )
+    }
+    else {
+        # Existing release artifacts carry the environment help contract.
+        $ExpectedLines += @('MCP_ROOT', 'MCP_READ_ONLY', 'MCP_ALLOW_CWD_ROOT')
+    }
+
+    $Missing = [System.Collections.Generic.List[string]]::new()
+    foreach ($ExpectedLine in $ExpectedLines) {
         if (-not $Output.Contains(
             $ExpectedLine,
             [StringComparison]::Ordinal

@@ -118,10 +118,25 @@ func NewLocalFileSystemWithPolicyAndLimits(root string, policy security.Policy, 
 		return nil, err
 	}
 
+	return newLocalFileSystem(guard, limits), nil
+}
+
+// NewLocalFileSystemWithGuard creates a filesystem from a validated PathGuard.
+func NewLocalFileSystemWithGuard(guard *security.PathGuard, limits Limits) (*LocalFileSystem, error) {
+	if guard == nil {
+		return nil, security.ErrEmptyRoot
+	}
+	if err := validateLimits(limits); err != nil {
+		return nil, err
+	}
+	return newLocalFileSystem(guard, limits), nil
+}
+
+func newLocalFileSystem(guard *security.PathGuard, limits Limits) *LocalFileSystem {
 	return &LocalFileSystem{
 		guard:  guard,
 		limits: limits,
-	}, nil
+	}
 }
 
 func validateLimits(limits Limits) error {

@@ -216,7 +216,9 @@ needed.
 
 The source gate uses the Go toolchain to resolve non-test dependencies of
 `./cmd/server` for the four released Windows/Linux amd64/arm64 configurations
-with CGO disabled and default build tags. It inspects the active non-standard
+with CGO disabled and default build tags. The two fixed Windows system DLLs
+used by the configuration source checks are permitted only in that bootstrap
+source. It inspects the active non-standard
 Go sources, including reachable vendored packages. Development commands
 such as `cmd/mcpcheck`, test files and ignored build-tag variants remain
 outside these graphs. The checker fails on graph or source inspection errors
@@ -295,7 +297,10 @@ Test helper functions may use `os.WriteFile`, `os.ReadFile`, `os.MkdirAll` and `
 
 This is allowed in tests.
 
-Production code outside `internal/fs` must not use direct filesystem operations.
+Runtime tool filesystem access goes through `internal/fs`. The one-time
+`internal/config` bootstrap can read the selected role-bound configuration
+and the trusted OS account mapping for its default path. This source read
+uses native handle and identity checks independently of data-root PathGuard.
 
 ### Security Tests
 
@@ -313,15 +318,18 @@ Security tests must cover:
 
 ### Integration Tests
 
-JSON-RPC smoke tests exercise the built server binary over STDIO.
+JSON-RPC smoke tests exercise the built server binary over STDIO with a
+separate TOML fixture. On Windows, direct `TMP` and `TEMP` to a trusted
+local test directory if the system temporary path grants other accounts
+write access. The directory and its parents must satisfy the same
+[configuration source checks](configuration.md#source-and-trust) as the
+server's normal configuration.
 
 On Windows:
 
 ```powershell
 .\scripts\smoke-jsonrpc.ps1
-$env:MCP_READ_ONLY = "true"
-.\scripts\smoke-jsonrpc.ps1
-Remove-Item Env:\MCP_READ_ONLY
+.\scripts\smoke-jsonrpc.ps1 -ReadOnly
 .\scripts\smoke-jsonrpc-negative.ps1
 ```
 
@@ -329,7 +337,7 @@ On Linux:
 
 ```bash
 bash scripts/smoke-jsonrpc.sh
-MCP_READ_ONLY=true bash scripts/smoke-jsonrpc.sh
+bash scripts/smoke-jsonrpc.sh --read-only
 bash scripts/smoke-jsonrpc-negative.sh
 ```
 
@@ -898,7 +906,8 @@ rejected before dispatch; invalid or nil typed status values remain generic.
 
 Run go test -mod=vendor ./cmd/releaseaudit -run '^TestSupply' first, then the full
 releaseaudit package and applicable repository quality chain. Tests cover stable
-SPDX/statement/index bytes, package/relationship identity, h1 checksum taxonomy,
+SPDX/statement/index bytes, the exact TOML version and runtime relationship,
+previous module graphs, package/relationship identity, h1 checksum taxonomy,
 go.mod/go.sum/vendor parity, all four artifact subjects, no invented builder or
 invocation facts, the exact versioned Candidate-Verification predicate, rejection
 of the superseded SLSA predicate and shape even with rebound digest anchors,

@@ -134,7 +134,7 @@ bash scripts/build.sh \
     --output build/flashgate-mcp >"$logs_dir/build-linux-x64.log" 2>&1
 
 bash scripts/smoke-jsonrpc.sh >"$logs_dir/smoke-default.log" 2>&1
-MCP_READ_ONLY=true bash scripts/smoke-jsonrpc.sh >"$logs_dir/smoke-readonly.log" 2>&1
+bash scripts/smoke-jsonrpc.sh --read-only >"$logs_dir/smoke-readonly.log" 2>&1
 bash scripts/smoke-jsonrpc-negative.sh >"$logs_dir/smoke-negative.log" 2>&1
 bash scripts/smoke-startup-negative.sh >"$logs_dir/smoke-startup-negative.log" 2>&1
 

@@ -50,8 +50,8 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 - environment-based configuration;
 - JSON-RPC validation, routing, initialization, `tools/list`, and `tools/call`;
 - eight filesystem tools;
-- one required root through `MCP_ROOT`;
-- optional read-only tool registration through `MCP_READ_ONLY`;
+- one required data root through `filesystem.root` in the [runtime TOML](configuration.md);
+- optional read-only tool registration through `filesystem.read_only`;
 - central path validation and filesystem abstraction;
 - hard protocol, argument, filesystem, and response limits;
 - redacted diagnostics on stderr;
@@ -85,7 +85,7 @@ PathGuard and current policies
 Operating-system filesystem
 ```
 
-Startup fails closed before runtime exposure. Production roots must be explicit absolute directories and pass existence/type/effective-path policy. `MCP_ROOT=.` remains development-only and requires `MCP_ALLOW_CWD_ROOT=true`.
+Startup fails closed before runtime exposure. Production roots must be explicit absolute directories and pass existence/type/effective-path policy. An explicit `filesystem.root = "."` requires the STDIO development opt-in `filesystem.allow_cwd_root = true`.
 
 Not yet implemented:
 
@@ -136,7 +136,7 @@ Not yet implemented:
 
 The user-worker backend is represented because interfaces are Version 1.0 work. Its runtime implementation is post-Version 1.0.
 
-The [technical backlog implementation contract](planning/implementation-contract.md) makes each planned owner inherit this target architecture; [architecture traceability](planning/architecture-traceability.md) records prerequisites, current implementation retrofit targets, validation owners, and closure state. SPR-053 establishes named roots, profiles/capabilities, central authorization, configuration, audit/correlation, backend-neutral dispatch, and context binding before Operations, filesystem expansion, and search consume those interfaces. Current `MCP_ROOT`, `MCP_READ_ONLY`, and direct MCP-to-filesystem paths remain implementation facts until their planned owners migrate them.
+The [technical backlog implementation contract](planning/implementation-contract.md) makes each planned owner inherit this target architecture; [architecture traceability](planning/architecture-traceability.md) records prerequisites, current implementation retrofit targets, validation owners, and closure state. SPR-053 establishes named roots, profiles/capabilities, central authorization, configuration, audit/correlation, backend-neutral dispatch, and context binding before Operations, filesystem expansion, and search consume those interfaces. BL-101 and BL-103 extend the TOML model's current single-root and read-only settings. BL-236 owns migration of direct MCP-to-filesystem dispatch.
 
 ## Dependency direction
 

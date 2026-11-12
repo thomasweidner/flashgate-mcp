@@ -5,13 +5,16 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
 BINARY_PATH="${REPO_ROOT}/build/flashgate-mcp"
-STAMP="$$-$(date +%s%N)"
+STAMP="$-$(date +%s%N)"
 REQUEST_PATH="${REPO_ROOT}/build/smoke-jsonrpc-negative-${STAMP}-request.jsonl"
 RESPONSE_PATH="${REPO_ROOT}/build/smoke-jsonrpc-negative-${STAMP}-response.jsonl"
 
 cleanup() {
-  rm -f "${REQUEST_PATH}" "${RESPONSE_PATH}"
+  rm -f "${CONFIG_PATH}" "${REQUEST_PATH}" "${RESPONSE_PATH}"
+  rmdir -- "${CONFIG_DIR}"
 }
+CONFIG_DIR="$(mktemp -d -- "${TMPDIR:-/tmp}/flashgate-config.XXXXXXXX")"
+CONFIG_PATH="${CONFIG_DIR}/flashgate_config.toml"
 trap cleanup EXIT
 
 if [[ ! -x "${BINARY_PATH}" ]]; then
@@ -20,9 +23,8 @@ if [[ ! -x "${BINARY_PATH}" ]]; then
   exit 1
 fi
 
-export MCP_ROOT="${REPO_ROOT}"
-
 mkdir -p "${REPO_ROOT}/build"
+(umask 077; python3 -c 'import json,sys; print("[filesystem]\nroot = " + json.dumps(sys.argv[1], ensure_ascii=False))' "${REPO_ROOT}" > "$CONFIG_PATH")
 
 cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":1,"method":
@@ -37,9 +39,9 @@ cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"../outside.txt"}}}
 JSONRPC
 
-"${BINARY_PATH}" < "${REQUEST_PATH}" > "${RESPONSE_PATH}"
+"${BINARY_PATH}" --config "$CONFIG_PATH" < "${REQUEST_PATH}" > "${RESPONSE_PATH}"
 
-python3 - "${RESPONSE_PATH}" <<'PY'
+python3 - "${RESPONSE_PATH}" "${REPO_ROOT}" <<'PY'
 import json
 import sys
 
@@ -105,7 +107,7 @@ if block.get("type") != "text" or payload != {"category": "invalid_path", "messa
     raise SystemExit("Unexpected safe path-error payload")
 if block["text"] != json.dumps(payload, separators=(",", ":")):
     raise SystemExit("Tool-error text must be compact deterministic JSON")
-if __import__("os").environ["MCP_ROOT"] in json.dumps(tool_error):
+if sys.argv[2] in json.dumps(tool_error):
     raise SystemExit("Root path leaked")
 print("Negative JSON-RPC smoke test passed.")
 PY

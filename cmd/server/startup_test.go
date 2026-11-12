@@ -40,7 +40,7 @@ func TestRunMainMapsSafeStartupCategoriesAndExitCodes(t *testing.T) {
 			t.Parallel()
 			var stdout bytes.Buffer
 			var stderr bytes.Buffer
-			runner := func(context.Context) error {
+			runner := func(context.Context, string) error {
 				return config.NewError(test.category, errors.New(`C:\private\root: raw failure`))
 			}
 
@@ -65,7 +65,7 @@ func TestRunMainMapsUnexpectedErrorToStartupFailed(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	exitCode := runMain(context.Background(), nil, &stdout, &stderr, func(context.Context) error {
+	exitCode := runMain(context.Background(), nil, &stdout, &stderr, func(context.Context, string) error {
 		return errors.New(`/private/root: raw startup failure`)
 	})
 
@@ -118,7 +118,7 @@ func TestRunMainSuccessfulStartHasNoBanner(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	exitCode := runMain(context.Background(), nil, &stdout, &stderr, func(context.Context) error { return nil })
+	exitCode := runMain(context.Background(), nil, &stdout, &stderr, func(context.Context, string) error { return nil })
 	if exitCode != 0 || stdout.Len() != 0 || stderr.Len() != 0 {
 		t.Fatalf("expected silent successful start, exit=%d stdout=%q stderr=%q", exitCode, stdout.String(), stderr.String())
 	}
@@ -129,7 +129,7 @@ func TestRunMainContextCancellationIsSilentSuccess(t *testing.T) {
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	exitCode := runMain(context.Background(), nil, &stdout, &stderr, func(context.Context) error {
+	exitCode := runMain(context.Background(), nil, &stdout, &stderr, func(context.Context, string) error {
 		return context.Canceled
 	})
 	if exitCode != 0 || stdout.Len() != 0 || stderr.Len() != 0 {
@@ -138,92 +138,44 @@ func TestRunMainContextCancellationIsSilentSuccess(t *testing.T) {
 }
 
 func TestRunMainActualConfigurationFailuresAreSafe(t *testing.T) {
+	root := t.TempDir()
+	rootFile := filepath.Join(root, "not-a-directory")
+	if err := os.WriteFile(rootFile, []byte("file"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name     string
-		prepare  func(*testing.T) string
+		path     string
 		category config.ErrorCategory
 	}{
-		{
-			name: "missing root",
-			prepare: func(t *testing.T) string {
-				unsetEnvForTest(t, "MCP_ROOT")
-				return ""
-			},
-			category: config.CategoryMissingRoot,
-		},
-		{
-			name: "empty root",
-			prepare: func(t *testing.T) string {
-				t.Setenv("MCP_ROOT", "")
-				return ""
-			},
-			category: config.CategoryInvalidRoot,
-		},
-		{
-			name: "missing path",
-			prepare: func(t *testing.T) string {
-				root := filepath.Join(t.TempDir(), "missing-root")
-				t.Setenv("MCP_ROOT", root)
-				return root
-			},
-			category: config.CategoryRootNotFound,
-		},
-		{
-			name: "file root",
-			prepare: func(t *testing.T) string {
-				root := filepath.Join(t.TempDir(), "root.txt")
-				if err := os.WriteFile(root, []byte("file"), 0o600); err != nil {
-					t.Fatal(err)
-				}
-				t.Setenv("MCP_ROOT", root)
-				return root
-			},
-			category: config.CategoryRootNotDirectory,
-		},
-		{
-			name: "invalid profile",
-			prepare: func(t *testing.T) string {
-				root := t.TempDir()
-				t.Setenv("MCP_ROOT", root)
-				t.Setenv("MCP_READ_ONLY", "invalid")
-				return root
-			},
-			category: config.CategoryInvalidProfile,
-		},
-		{
-			name: "invalid development option",
-			prepare: func(t *testing.T) string {
-				root := t.TempDir()
-				t.Setenv("MCP_ROOT", root)
-				t.Setenv("MCP_ALLOW_CWD_ROOT", "TRUE")
-				return root
-			},
-			category: config.CategoryInvalidDevelopmentOption,
-		},
+		{"missing config", filepath.Join(root, "absent.toml"), config.CategoryMissingConfig},
+		{"relative override", "private.toml", config.CategoryUntrustedConfig},
+		{"missing root", writeConfig(t, "[filesystem]\nread_only = true\n"), config.CategoryMissingRoot},
+		{"empty root", writeConfig(t, configDocument(t, "", "")), config.CategoryInvalidRoot},
+		{"missing filesystem root", writeConfig(t, configDocument(t, filepath.Join(root, "missing"), "")), config.CategoryRootNotFound},
+		{"file root", writeConfig(t, configDocument(t, rootFile, "")), config.CategoryRootNotDirectory},
+		{"invalid settings", writeConfig(t, configDocument(t, root, "allow_cwd_root = \"raw-secret\"\n")), config.CategoryInvalidConfig},
+		{"unsupported mode", writeConfig(t, configDocument(t, root, "[runtime]\nmode = \"proxy\"\n")), config.CategoryUnsupportedRuntime},
 	}
-
+	t.Setenv("MCP_ROOT", root)
+	t.Setenv("MCP_READ_ONLY", "true")
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			root := test.prepare(t)
-			var stdout bytes.Buffer
-			var stderr bytes.Buffer
-			runner := func(ctx context.Context) error {
-				return runWithIO(ctx, strings.NewReader(""), &stdout, &stderr, defaultBootstrapDependencies())
+			var stdout, stderr bytes.Buffer
+			runner := func(ctx context.Context, configPath string) error {
+				dependencies := defaultBootstrapDependencies(configPath)
+				if test.category != config.CategoryRootNotFound && test.category != config.CategoryRootNotDirectory {
+					dependencies.newFilesystem = func(config.Config) (fs.FileSystem, error) {
+						t.Fatal("filesystem initialized before config validation")
+						return nil, nil
+					}
+				}
+				return runWithIO(ctx, strings.NewReader(""), &stdout, &stderr, dependencies)
 			}
-
-			exitCode := runMain(context.Background(), nil, &stdout, &stderr, runner)
-			if exitCode != 3 {
-				t.Fatalf("expected exit code 3, got %d", exitCode)
-			}
-			if stdout.Len() != 0 {
-				t.Fatalf("expected empty stdout, got %q", stdout.String())
-			}
+			exitCode := runMain(context.Background(), []string{"--config", test.path}, &stdout, &stderr, runner)
 			expected := "flashgate-mcp: startup failed (" + string(test.category) + ")\n"
-			if stderr.String() != expected {
-				t.Fatalf("expected stderr %q, got %q", expected, stderr.String())
-			}
-			if root != "" && strings.Contains(stderr.String(), root) {
-				t.Fatalf("stderr leaked root %q: %q", root, stderr.String())
+			if exitCode != 3 || stdout.Len() != 0 || stderr.String() != expected {
+				t.Fatalf("unexpected startup result: exit=%d stdout=%q stderr=%q", exitCode, stdout.String(), stderr.String())
 			}
 			assertNoHostPathLeak(t, stderr.String())
 		})
@@ -231,11 +183,10 @@ func TestRunMainActualConfigurationFailuresAreSafe(t *testing.T) {
 }
 
 func TestRunWithIODevelopmentWarningExactlyOnce(t *testing.T) {
-	t.Setenv("MCP_ROOT", ".")
-	t.Setenv("MCP_ALLOW_CWD_ROOT", "true")
+	path := writeConfig(t, configDocument(t, ".", "allow_cwd_root = true\n"))
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	dependencies := defaultBootstrapDependencies()
+	dependencies := defaultBootstrapDependencies(path)
 	dependencies.newServer = func(_ io.Reader, _ io.Writer, _ *router.Router, _ server.Options) runnableServer {
 		return stubRunnableServer{}
 	}
@@ -254,8 +205,8 @@ func TestRunWithIODevelopmentWarningExactlyOnce(t *testing.T) {
 }
 
 func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
-	t.Setenv("MCP_ROOT", t.TempDir())
-	dependencies := defaultBootstrapDependencies()
+	path := writeConfig(t, configDocument(t, t.TempDir(), ""))
+	dependencies := defaultBootstrapDependencies(path)
 	dependencies.newFilesystem = func(config.Config) (fs.FileSystem, error) {
 		return nil, security.ErrUNCPathDenied
 	}
@@ -287,8 +238,8 @@ func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 }
 
 func TestRunWithIOPropagatesToolRegistrationFailure(t *testing.T) {
-	t.Setenv("MCP_ROOT", t.TempDir())
-	dependencies := defaultBootstrapDependencies()
+	path := writeConfig(t, configDocument(t, t.TempDir(), ""))
+	dependencies := defaultBootstrapDependencies(path)
 	var registrationErr error
 	dependencies.newToolRegistry = func(filesystem fs.FileSystem, _ int64, capabilities toolCapabilities) (*tools.Registry, error) {
 		registry, err := createToolRegistry(filesystem, 0, capabilities)
@@ -317,7 +268,7 @@ func TestRunWithIOPropagatesToolRegistrationFailure(t *testing.T) {
 }
 
 func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) {
-	t.Setenv("MCP_ROOT", t.TempDir())
+	path := writeConfig(t, configDocument(t, t.TempDir(), ""))
 
 	tests := map[string]func(bootstrapDependencies) bootstrapDependencies{
 		"missing config loader": func(dependencies bootstrapDependencies) bootstrapDependencies {
@@ -365,7 +316,7 @@ func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) 
 				strings.NewReader(""),
 				io.Discard,
 				io.Discard,
-				mutate(defaultBootstrapDependencies()),
+				mutate(defaultBootstrapDependencies(path)),
 			)
 			category, ok := config.CategoryOf(err)
 			if !ok || category != config.CategoryStartupFailed {
@@ -411,17 +362,144 @@ func assertNoHostPathLeak(t *testing.T, output string) {
 	}
 }
 
-func unsetEnvForTest(t *testing.T, name string) {
-	t.Helper()
-	previous, existed := os.LookupEnv(name)
-	if err := os.Unsetenv(name); err != nil {
+func TestStartupRejectsConfigInsideMCPRoot(t *testing.T) {
+	for _, profile := range []string{"write", "read-only"} {
+		t.Run(profile, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, "private-config.toml")
+			settings := "read_only = false\n"
+			if profile == "read-only" {
+				settings = "read_only = true\n"
+			}
+			document := configDocument(t, root, settings)
+			if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var stdout, stderr bytes.Buffer
+			runner := func(ctx context.Context, selectedPath string) error {
+				deps := defaultBootstrapDependencies(selectedPath)
+				deps.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
+					t.Error("overlapping configuration reached tool registration")
+					return nil, nil
+				}
+				return runWithIO(ctx, strings.NewReader(""), &stdout, &stderr, deps)
+			}
+			code := runMain(context.Background(), []string{"--config", path}, &stdout, &stderr, runner)
+			if code != 3 || stdout.Len() != 0 ||
+				stderr.String() != "flashgate-mcp: startup failed (root_not_allowed)\n" {
+				t.Errorf("startup result: code=%d, stdout=%q, stderr=%q", code, stdout.String(), stderr.String())
+			}
+			assertNoHostPathLeak(t, stderr.String())
+			after, err := os.ReadFile(path)
+			if err != nil || string(after) != document {
+				t.Fatal("startup changed the configuration")
+			}
+		})
+	}
+}
+
+func TestStartupRejectsConfigHardlinkAddedAfterLoad(t *testing.T) {
+	for _, profile := range []string{"writable", "read-only"} {
+		t.Run(profile, func(t *testing.T) {
+			root := t.TempDir()
+			settings := "read_only = false\n"
+			if profile == "read-only" {
+				settings = "read_only = true\n"
+			}
+			document := configDocument(t, root, settings)
+			path := writeConfig(t, document)
+			alias := filepath.Join(root, "linked-config.toml")
+			var stdout, stderr bytes.Buffer
+			runner := func(ctx context.Context, selectedPath string) error {
+				deps := defaultBootstrapDependencies(selectedPath)
+				load := deps.loadConfig
+				deps.loadConfig = func() (config.Config, error) {
+					cfg, err := load()
+					if err != nil {
+						t.Fatalf("single-link source failed to load: %v", err)
+					}
+					if err := os.Link(path, alias); err != nil {
+						t.Fatalf("creating native hardlink fixture: %v", err)
+					}
+					return cfg, nil
+				}
+				deps.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
+					t.Error("source hardlink reached tool registration")
+					return &tools.Registry{}, nil
+				}
+				deps.newRouter = func(string, string, *tools.Registry) *router.Router {
+					t.Error("source hardlink reached router creation")
+					return &router.Router{}
+				}
+				deps.newServer = func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer {
+					t.Error("source hardlink reached MCP initialization")
+					return nil
+				}
+				return runWithIO(ctx, strings.NewReader(""), &stdout, &stderr, deps)
+			}
+			code := runMain(context.Background(), []string{"--config", path}, &stdout, &stderr, runner)
+			if code != 3 || stdout.Len() != 0 ||
+				stderr.String() != "flashgate-mcp: startup failed (root_not_allowed)\n" {
+				t.Errorf("startup result: code=%d, stdout=%q, stderr=%q", code, stdout.String(), stderr.String())
+			}
+			for _, name := range []string{path, alias} {
+				after, err := os.ReadFile(name)
+				if err != nil || string(after) != document {
+					t.Fatal("startup changed the source or fixture alias")
+				}
+			}
+		})
+	}
+}
+
+func TestStartupRejectsConfigInsideEffectiveSymlinkRoot(t *testing.T) {
+	root := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "data-alias")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skipf("native directory symlinks unavailable: %v", err)
+	}
+	path := filepath.Join(root, "private-config.toml")
+	document := configDocument(t, alias, "[security]\nfollow_symlinks = true\n")
+	if err := os.WriteFile(path, []byte(document), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if existed {
-			_ = os.Setenv(name, previous)
-		} else {
-			_ = os.Unsetenv(name)
-		}
-	})
+	var stdout, stderr bytes.Buffer
+	deps := defaultBootstrapDependencies(path)
+	deps.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
+		t.Error("aliased configuration reached tool registration")
+		return nil, nil
+	}
+	err := runWithIO(context.Background(), strings.NewReader(""), &stdout, &stderr, deps)
+	if category, _ := config.CategoryOf(err); category != config.CategoryRootNotAllowed ||
+		stdout.Len() != 0 || stderr.Len() != 0 {
+		t.Fatalf("alias denial: error=%v stdout=%q stderr=%q", err, stdout.String(), stderr.String())
+	}
+}
+
+func TestDocumentedTemplateStartsServer(t *testing.T) {
+	template, err := os.ReadFile("../../docs/flashgate-config.toml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	boundRoot := strings.TrimSuffix(strings.TrimPrefix(configDocument(t, root, ""), "[filesystem]\n"), "\n")
+	document := strings.Replace(string(template), "root = \"\"", boundRoot, 1)
+	path := writeConfig(t, document)
+	var stdout, stderr bytes.Buffer
+	input := strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"template\",\"version\":\"1\"}}}\n")
+	deps := defaultBootstrapDependencies(path)
+	cfg, err := deps.loadConfig()
+	if err != nil || cfg.Filesystem().RootPath() != root || !cfg.Filesystem().ReadOnly() {
+		t.Fatalf("template did not validate with a bound root: %v", err)
+	}
+	if err := runWithIO(context.Background(), input, &stdout, &stderr, deps); err != nil {
+		t.Fatal(err)
+	}
+	if stderr.Len() != 0 || !strings.Contains(stdout.String(), "\"protocolVersion\":\"2025-11-25\"") {
+		t.Fatalf("template launch failed: stdout=%q stderr=%q", stdout.String(), stderr.String())
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != document {
+		t.Fatal("normal startup modified the template instance")
+	}
 }

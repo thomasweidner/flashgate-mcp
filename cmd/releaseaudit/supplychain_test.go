@@ -191,10 +191,11 @@ func TestSupplyDeterminismAndSPDX(t *testing.T) {
 		t.Fatal("invalid SPDX identity")
 	}
 	packages := sbom["packages"].([]any)
-	if len(packages) != 7 {
+	if len(packages) != 8 {
 		t.Fatal("incomplete source inventory")
 	}
 	ids := map[string]bool{"SPDXRef-DOCUMENT": true}
+	var tomlID string
 	for _, p := range packages {
 		pkg := p.(map[string]any)
 		id := pkg["SPDXID"].(string)
@@ -202,6 +203,12 @@ func TestSupplyDeterminismAndSPDX(t *testing.T) {
 			t.Fatal("duplicate package")
 		}
 		ids[id] = true
+		if pkg["name"] == tomlModule {
+			if pkg["versionInfo"] != tomlVersion || pkg["licenseDeclared"] != "MIT" {
+				t.Fatal("incorrect TOML version or license")
+			}
+			tomlID = id
+		}
 		if strings.HasPrefix(id, "SPDXRef-GoModule") {
 			if _, ok := pkg["checksums"]; ok {
 				t.Fatal("h1 misclassified as archive checksum")
@@ -211,11 +218,19 @@ func TestSupplyDeterminismAndSPDX(t *testing.T) {
 			}
 		}
 	}
+	var runtimeBound bool
 	for _, r := range sbom["relationships"].([]any) {
 		rel := r.(map[string]any)
 		if !ids[rel["spdxElementId"].(string)] || !ids[rel["relatedSpdxElement"].(string)] {
 			t.Fatal("dangling relationship")
 		}
+		if tomlID != "" && rel["spdxElementId"] == tomlID && rel["relatedSpdxElement"] == "SPDXRef-FlashGate" &&
+			rel["relationshipType"] == runtimeDependency {
+			runtimeBound = true
+		}
+	}
+	if !runtimeBound {
+		t.Fatal("TOML runtime relationship missing")
 	}
 	for _, record := range manifest.Records {
 		data, _ := os.ReadFile(filepath.Join(outputs[0], "provenance-"+record.Platform+"-"+record.Architecture+".json"))
@@ -594,13 +609,20 @@ func TestSupplyModuleConsistency(t *testing.T) {
 	mod, _ := os.ReadFile(filepath.Join(root, "go.mod"))
 	sums, _ := os.ReadFile(filepath.Join(root, "go.sum"))
 	vendor, _ := os.ReadFile(filepath.Join(root, "vendor/modules.txt"))
-	if modules, err := supplyModules(mod, sums, vendor); err != nil || len(modules) != 4 {
+	if modules, err := supplyModules(mod, sums, vendor); err != nil || len(modules) != 5 {
 		t.Fatal("valid inventory rejected", err)
 	}
-	legacyMod := bytes.ReplaceAll(mod, []byte("require "+schemaModule+" v6.0.3\n"), nil)
+	schemaMod := bytes.ReplaceAll(mod, []byte("require "+tomlModule+" "+tomlVersion+"\n"), nil)
+	vendorBeforeTOML, tail, tomlFound := bytes.Cut(vendor, []byte("# "+tomlModule+" "))
+	_, schemaSuffix, schemaFound := bytes.Cut(tail, []byte("# "+schemaModule+" "))
+	schemaVendor := append(bytes.Clone(vendorBeforeTOML), []byte("# "+schemaModule+" ")...)
+	schemaVendor = append(schemaVendor, schemaSuffix...)
+	if modules, err := supplyModules(schemaMod, sums, schemaVendor); !tomlFound || !schemaFound || err != nil || len(modules) != 4 {
+		t.Fatal("previous schema-test inventory rejected", err)
+	}
+	legacyMod := bytes.ReplaceAll(schemaMod, []byte("require "+schemaModule+" v6.0.3\n"), nil)
 	legacyMod = bytes.ReplaceAll(legacyMod, []byte("require "+textModule+" v0.41.0 // indirect\n"), nil)
-	legacyVendor, _, found := bytes.Cut(vendor, []byte("# "+schemaModule+" "))
-	if modules, err := supplyModules(legacyMod, sums, legacyVendor); !found || err != nil || len(modules) != 2 {
+	if modules, err := supplyModules(legacyMod, sums, vendorBeforeTOML); err != nil || len(modules) != 2 {
 		t.Fatal("previously supported inventory rejected", err)
 	}
 	for name, mutate := range map[string]func() ([]byte, []byte, []byte){
@@ -610,6 +632,12 @@ func TestSupplyModuleConsistency(t *testing.T) {
 		"unreviewed test version": func() ([]byte, []byte, []byte) {
 			change := func(data []byte) []byte {
 				return bytes.ReplaceAll(data, []byte("v0.41.0"), []byte("v0.42.0"))
+			}
+			return change(mod), change(sums), change(vendor)
+		},
+		"unreviewed runtime version": func() ([]byte, []byte, []byte) {
+			change := func(data []byte) []byte {
+				return bytes.ReplaceAll(data, []byte(tomlVersion), []byte("v2.4.4"))
 			}
 			return change(mod), change(sums), change(vendor)
 		},

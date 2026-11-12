@@ -9,22 +9,23 @@ import (
 )
 
 func TestBenchmarkEnvironmentIsMinimalAndDeterministic(t *testing.T) {
+	t.Setenv("SYSTEMROOT", "test-system-root")
+	t.Setenv("WINDIR", "test-windows-directory")
+	t.Setenv("MCP_ROOT", "legacy-root")
 	t.Setenv("MCP_MAX_LIST_ENTRIES", "1")
 	t.Setenv("FLASHGATE_PRIVATE_TEST_VALUE", "must-not-be-copied")
 
-	environment := benchmarkEnvironment("benchmark-root", true)
+	environment := benchmarkEnvironment()
 	joined := strings.Join(environment, "\n")
 	for _, required := range []string{
-		"MCP_ROOT=benchmark-root",
-		"MCP_READ_ONLY=true",
-		"MCP_ALLOW_CWD_ROOT=false",
-		"MCP_DEBUG=false",
+		"SYSTEMROOT=test-system-root",
+		"WINDIR=test-windows-directory",
 	} {
 		if !strings.Contains(joined, required) {
 			t.Fatalf("benchmark environment omitted %q: %q", required, environment)
 		}
 	}
-	for _, forbidden := range []string{"MCP_MAX_LIST_ENTRIES=", "FLASHGATE_PRIVATE_TEST_VALUE="} {
+	for _, forbidden := range []string{"MCP_ROOT=", "MCP_MAX_LIST_ENTRIES=", "FLASHGATE_PRIVATE_TEST_VALUE="} {
 		if strings.Contains(joined, forbidden) {
 			t.Fatalf("benchmark environment copied %q", forbidden)
 		}

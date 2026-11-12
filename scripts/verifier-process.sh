@@ -57,15 +57,26 @@ flashgate_execution_state() {
 flashgate_missing_help_lines() {
     local output="$1"
     local expected_line
-    for expected_line in \
-        "flashgate-mcp" \
-        "Usage:" \
-        "flashgate-mcp --version" \
-        "flashgate-mcp --version --verbose" \
-        "flashgate-mcp --help" \
-        "MCP_ROOT" \
-        "MCP_READ_ONLY" \
-        "MCP_ALLOW_CWD_ROOT"; do
+    local -a expected_lines=(
+        "flashgate-mcp"
+        "Usage:"
+        "flashgate-mcp --version"
+        "flashgate-mcp --version --verbose"
+        "flashgate-mcp --help"
+    )
+    if [[ "$output" == *--config* || "$output" == *Configuration:* ||
+        "$output" == *flashgate_config.toml* ]]; then
+        expected_lines+=(
+            "flashgate-mcp --config <absolute-path>"
+            "Configuration:"
+            ".flashgate/flashgate_config.toml"
+            "filesystem root"
+        )
+    else
+        # Existing release artifacts carry the environment help contract.
+        expected_lines+=("MCP_ROOT" "MCP_READ_ONLY" "MCP_ALLOW_CWD_ROOT")
+    fi
+    for expected_line in "${expected_lines[@]}"; do
         [[ "$output" == *"$expected_line"* ]] ||
             printf '%s\n' "$expected_line"
     done

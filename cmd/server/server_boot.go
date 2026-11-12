@@ -33,19 +33,24 @@ type bootstrapDependencies struct {
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
 }
 
-func run(ctx context.Context) error {
-	return runWithIO(ctx, os.Stdin, os.Stdout, os.Stderr, defaultBootstrapDependencies())
+func run(ctx context.Context, configPath string) error {
+	return runWithIO(ctx, os.Stdin, os.Stdout, os.Stderr, defaultBootstrapDependencies(configPath))
 }
 
-func defaultBootstrapDependencies() bootstrapDependencies {
+func defaultBootstrapDependencies(configPath string) bootstrapDependencies {
 	return bootstrapDependencies{
-		loadConfig: config.LoadFromEnvironment,
+		loadConfig: func() (config.Config, error) {
+			return config.Load(config.Source{Role: config.Direct, Path: configPath})
+		},
 		newFilesystem: func(cfg config.Config) (fs.FileSystem, error) {
-			return fs.NewLocalFileSystemWithPolicyAndLimits(
-				cfg.Filesystem().RootPath(),
-				securityPolicyFromConfig(cfg),
-				filesystemLimitsFromConfig(cfg),
-			)
+			guard, err := security.NewPathGuardWithPolicy(cfg.Filesystem().RootPath(), securityPolicyFromConfig(cfg))
+			if err != nil {
+				return nil, err
+			}
+			if err := cfg.ValidateDataRoot(guard); err != nil {
+				return nil, err
+			}
+			return fs.NewLocalFileSystemWithGuard(guard, filesystemLimitsFromConfig(cfg))
 		},
 		newToolRegistry: createToolRegistry,
 		newRouter:       createRouter,
@@ -143,6 +148,7 @@ func categorizeRootError(err error) error {
 		errors.Is(err, security.ErrUNCPathDenied),
 		errors.Is(err, security.ErrSymlinkDenied),
 		errors.Is(err, security.ErrReparsePointDenied),
+		errors.Is(err, security.ErrProtectedPath),
 		errors.Is(err, security.ErrOutsideRoot):
 		return config.NewError(config.CategoryRootNotAllowed, err)
 	default:
@@ -168,10 +174,14 @@ func securityPolicyFromConfig(cfg config.Config) security.Policy {
 }
 
 func serverOptionsFromConfig(cfg config.Config, stderr io.Writer) server.Options {
+	logging := cfg.Logging()
 	return server.Options{
 		MaxMessageBytes:  cfg.Server().MaxMessageBytes(),
 		MaxArgumentBytes: cfg.Server().MaxArgumentBytes(),
 		MaxResponseBytes: cfg.Server().MaxResponseBytes(),
-		Diagnostics:      diagnostics.NewLogger(cfg.Server().Debug(), stderr),
+		Diagnostics: diagnostics.NewBoundedLogger(
+			logging.Level == config.LogDebug, logging.Format == config.LogJSON,
+			logging.MaxRecordBytes, logging.MaxRecords, stderr,
+		),
 	}
 }

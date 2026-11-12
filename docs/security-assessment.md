@@ -22,8 +22,8 @@ The inventory covers active source Go modules. It excludes retained historical
 SPDX build/runtime relationships determine exposure. Missing declarations stay
 UNKNOWN; contradictions make the assessment incomplete. Build-only findings
 still require triage. A runtime declaration is not symbol reachability, and an
-absent reachability proof never means not affected. The current two modules are
-build dependencies; the server has no external Go runtime module dependency.
+absent reachability proof never means not affected. The current graph contains
+two build modules, two test modules and the direct runtime module `go-toml/v2`.
 Go toolchain, standard library, OS libraries, CI tools and branding are not
 covered by this Go advisory assessment. No full platform-binary CVE claim follows.
 

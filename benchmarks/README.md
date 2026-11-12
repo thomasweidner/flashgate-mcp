@@ -8,6 +8,11 @@ FlashGate provides one reproducible benchmark system with three layers. It exten
 2. `cmd/benchmark` starts the real previously built FlashGate binary and exchanges JSON-RPC over STDIO.
 3. Ten reference workflows use a deterministic temporary corpus and report calls, wire sizes, result sizes, duration, filesystem counters, entry counts, resources, and the optional byte-based token approximation.
 
+Use a TOML-enabled server binary with this benchmark runner. It creates
+separate trusted TOML fixtures for the read-only and default scenarios in the
+process temporary directory. Set the temporary directory to a trusted local
+path if its default does not pass the [configuration checks](../docs/configuration.md#source-and-trust).
+
 `cmd/benchmark` is a development tool. Release workflows continue to build and publish only `cmd/server`.
 
 ## Commands

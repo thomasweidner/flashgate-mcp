@@ -59,7 +59,13 @@ func TestMCPConformancePingSTDIO(t *testing.T) {
 			_, root := mcpRegistry(t, profile.readOnly == "true")
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
-			command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$")
+			level := "off"
+			if profile.debug == "true" {
+				level = "debug"
+			}
+			settings := "read_only = " + profile.readOnly + "\n[protocol]\nmax_message_bytes = 1024\n[logging]\nlevel = \"" + level + "\"\n"
+			configPath := writeConfig(t, configDocument(t, root, settings))
+			command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$", "--", configPath)
 			command.WaitDelay = time.Second
 			for _, entry := range command.Environ() {
 				key := strings.ToUpper(strings.SplitN(entry, "=", 2)[0])
@@ -67,8 +73,7 @@ func TestMCPConformancePingSTDIO(t *testing.T) {
 					command.Env = append(command.Env, entry)
 				}
 			}
-			command.Env = append(command.Env, "MCP_ROOT="+root, "MCP_READ_ONLY="+profile.readOnly,
-				"MCP_DEBUG="+profile.debug, "MCP_MAX_JSONRPC_MESSAGE_BYTES=1024", "FLASHGATE_MCP_CONFORMANCE_HELPER=1")
+			command.Env = append(command.Env, "FLASHGATE_MCP_CONFORMANCE_HELPER=1")
 
 			var input strings.Builder
 			input.WriteString(`{"jsonrpc":"2.0","id":"pre","method":"ping"}` + "\n")
@@ -108,7 +113,7 @@ func TestMCPConformancePingSTDIO(t *testing.T) {
 			if err := command.Run(); err != nil {
 				t.Fatalf("STDIO process: %v, stderr=%q", err, stderr.String())
 			}
-			if profile.debug == "true" && !strings.Contains(stderr.String(), "notification ignored method=ping") {
+			if profile.debug == "true" && !strings.Contains(stderr.String(), "notification ignored") {
 				t.Fatalf("missing stderr diagnostic: %q", stderr.String())
 			}
 			if profile.debug == "false" && stderr.Len() != 0 {

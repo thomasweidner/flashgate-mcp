@@ -15,7 +15,7 @@ move_path
 
 The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
 
-For initial read-only client setup, set `MCP_READ_ONLY=true` explicitly and use an absolute preflighted `MCP_ROOT`. See [client setup](client-setup.md).
+For initial read-only client setup, set `filesystem.read_only = true` and use an existing absolute `filesystem.root` in TOML. See [client setup](client-setup.md).
 
 All paths are relative to the configured root. Absolute paths, traversal, denied hidden/UNC paths, and denied symlink, junction, or reparse access remain server-side errors. Inputs are strict JSON objects: unknown properties, malformed JSON, trailing JSON values, wrong field types, explicit `null` field values, missing required fields, and blank required paths are rejected.
 

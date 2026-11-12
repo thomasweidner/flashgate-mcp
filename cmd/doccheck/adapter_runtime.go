@@ -160,6 +160,39 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 			}
 		}
 	}
+	systemDLLCalls := map[*ast.SelectorExpr]bool{}
+	if name == "internal/config/source_windows.go" && strings.HasPrefix(target, "windows/") {
+		// BL-233 uses these fixed system libraries to inspect the security
+		// descriptor and final path of the already opened bootstrap file.
+		ast.Inspect(file, func(node ast.Node) bool {
+			call, ok := node.(*ast.CallExpr)
+			if !ok || len(call.Args) != 1 {
+				return true
+			}
+			method, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || method.Sel.Name != "NewProc" {
+				return true
+			}
+			library, ok := method.X.(*ast.CallExpr)
+			procedure, literal := call.Args[0].(*ast.BasicLit)
+			if !ok || len(library.Args) != 1 || !literal || procedure.Kind != token.STRING {
+				return true
+			}
+			selector, ok := library.Fun.(*ast.SelectorExpr)
+			if !ok || selector.Sel.Name != "NewLazyDLL" {
+				return true
+			}
+			qualifier, ok := selector.X.(*ast.Ident)
+			value, literal := library.Args[0].(*ast.BasicLit)
+			if ok && imports[qualifier.Name] == "syscall" && literal && value.Kind == token.STRING &&
+				(value.Value == `"advapi32.dll"` && procedure.Value == `"GetSecurityInfo"` ||
+					value.Value == `"kernel32.dll"` && (procedure.Value == `"GetFinalPathNameByHandleW"` ||
+						procedure.Value == `"GetDriveTypeW"`)) {
+				systemDLLCalls[selector] = true
+			}
+			return true
+		})
+	}
 	ast.Inspect(file, func(node ast.Node) bool {
 		selector, ok := node.(*ast.SelectorExpr)
 		if !ok {
@@ -170,7 +203,7 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 			return true
 		}
 		importPath := imports[qualifier.Name]
-		if sensitiveRuntimeAPI(importPath, selector.Sel.Name) {
+		if sensitiveRuntimeAPI(importPath, selector.Sel.Name) && !systemDLLCalls[selector] {
 			add(selector.Pos(), fmt.Sprintf("Product API requires a reviewed execution or loading boundary: %s.%s", importPath, selector.Sel.Name))
 		}
 		return true

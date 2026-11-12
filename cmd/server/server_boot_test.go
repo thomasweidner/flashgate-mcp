@@ -25,16 +25,8 @@ func TestSecurityPolicyFromConfigUsesSecureDefaults(t *testing.T) {
 	}
 }
 
-func TestSecurityPolicyFromConfigUsesEnvironment(t *testing.T) {
-	t.Setenv("MCP_ROOT", t.TempDir())
-	t.Setenv("MCP_ALLOW_HIDDEN_FILES", "true")
-	t.Setenv("MCP_ALLOW_UNC_PATHS", "true")
-	t.Setenv("MCP_FOLLOW_SYMLINKS", "true")
-
-	cfg, err := config.LoadFromEnvironment()
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+func TestSecurityPolicyFromConfigUsesTOML(t *testing.T) {
+	cfg := decodeTestConfig(t, "[security]\nallow_hidden_files = true\nallow_unc_paths = true\nfollow_symlinks = true\n")
 
 	policy := securityPolicyFromConfig(cfg)
 
@@ -51,17 +43,8 @@ func TestSecurityPolicyFromConfigUsesEnvironment(t *testing.T) {
 	}
 }
 
-func TestFilesystemLimitsFromConfigUsesEnvironment(t *testing.T) {
-	t.Setenv("MCP_ROOT", t.TempDir())
-	t.Setenv("MCP_MAX_WRITE_BYTES", "111")
-	t.Setenv("MCP_MAX_LIST_ENTRIES", "22")
-	t.Setenv("MCP_MAX_COPY_BYTES", "333")
-	t.Setenv("MCP_MAX_DELETE_ENTRIES", "44")
-
-	cfg, err := config.LoadFromEnvironment()
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+func TestFilesystemLimitsFromConfigUsesTOML(t *testing.T) {
+	cfg := decodeTestConfig(t, "max_write_bytes = 111\nmax_list_entries = 22\nmax_copy_bytes = 333\nmax_delete_entries = 44\n")
 
 	limits := filesystemLimitsFromConfig(cfg)
 
@@ -82,17 +65,8 @@ func TestFilesystemLimitsFromConfigUsesEnvironment(t *testing.T) {
 	}
 }
 
-func TestServerOptionsFromConfigUsesEnvironment(t *testing.T) {
-	t.Setenv("MCP_ROOT", t.TempDir())
-	t.Setenv("MCP_DEBUG", "true")
-	t.Setenv("MCP_MAX_JSONRPC_MESSAGE_BYTES", "111")
-	t.Setenv("MCP_MAX_TOOL_ARGUMENT_BYTES", "222")
-	t.Setenv("MCP_MAX_RESPONSE_BYTES", "333")
-
-	cfg, err := config.LoadFromEnvironment()
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
+func TestServerOptionsFromConfigUsesTOML(t *testing.T) {
+	cfg := decodeTestConfig(t, "[protocol]\nmax_message_bytes = 111\nmax_argument_bytes = 222\nmax_response_bytes = 333\n[logging]\nlevel = \"debug\"\n")
 
 	options := serverOptionsFromConfig(cfg, io.Discard)
 

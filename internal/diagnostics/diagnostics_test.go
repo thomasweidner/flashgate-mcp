@@ -2,6 +2,7 @@ package diagnostics
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -61,5 +62,25 @@ func TestLoggerWritesOnlyWhenDebugEnabled(t *testing.T) {
 
 	if strings.Contains(output, "secret") {
 		t.Fatalf("expected secret to be redacted, got %q", output)
+	}
+}
+
+func TestBoundedDiagnosticsRejectLogInjection(t *testing.T) {
+	var out bytes.Buffer
+	logger := NewBoundedLogger(true, true, 128, 2, &out)
+	logger.Debugf("token=secret\nforged\rline")
+	logger.Debugf("%s", strings.Repeat("x", 1000))
+	logger.Debugf("third")
+	lines := strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n")
+	if len(lines) != 2 || strings.Contains(out.String(), "secret") || strings.Contains(out.String(), "third") {
+		t.Fatalf("diagnostics exceeded policy: %q", out.String())
+	}
+	for _, line := range lines {
+		if len(line)+1 > 128 || !json.Valid([]byte(line)) || strings.ContainsRune(line, '\r') {
+			t.Fatalf("unbounded or malformed record: %q", line)
+		}
+	}
+	if !strings.Contains(lines[1], "[TRUNCATED]") {
+		t.Fatal("oversized record was not replaced")
 	}
 }

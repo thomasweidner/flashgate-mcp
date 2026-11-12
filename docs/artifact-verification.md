@@ -51,6 +51,11 @@ release version can only assert equality with `VERSION`. Public `x64` maps to Go
 |---|---|---|
 | Windows binary | `scripts/Test-WindowsMetadata.ps1`, `scripts/VerifierProcess.ps1`, `cmd/versionmanifest`, `cmd/iconverify` | PE x64/ARM64 machine type, `VERSIONINFO`, canonical product fields, embedded build manifest, icon identity, Go target, and bounded compact/verbose/help execution only after all static checks pass and the target matches the actual Windows OS architecture |
 | Linux binary | `scripts/Test-LinuxMetadata.sh`, `scripts/verifier-process.sh`, `scripts/bounded-process-runner.py`, `cmd/versionmanifest` | ELF x64/ARM64 machine type, static linkage, Go build ID, Go/VCS provenance, canonical build manifest, and bounded compact/verbose/help execution only after all static checks pass and the target matches the intrinsic `uname -m` host architecture |
+
+Both binary verifiers check the common version and help usage lines. For
+TOML-enabled binaries they also require the explicit configuration argument,
+the default file, and the root requirement in help. Previously issued
+environment-based binaries retain their original help verification contract.
 | Release package | `scripts/Test-ReleaseArtifact.ps1`, `scripts/test-release-artifact.sh`, `cmd/releaseaudit` | exact ZIP/TAR.GZ names and inventory, regular-file entry types, checksum match, controlled extraction, and rejection of traversal, links, special entries, duplicates, missing files, or unexpected files |
 | Reproducibility and leaks | `cmd/releaseaudit compare`, `scan`, and `scan-file` | two-build binary/archive/checksum/inventory identity plus machine-readable host-path, credential-pattern, private-key, and caller-supplied forbidden-value findings |
 | Orchestration | `.github/workflows/metadata-regression.yml`, `.github/workflows/release-build.yml`, and the controlled native Linux validation driver | Windows and Linux x64/ARM64 build and static validation; native execution on matching x64 hosts; deterministic reports and aggregated nonzero failure status |
@@ -292,7 +297,7 @@ cryptographic author or builder authentication.
 The SBOM describes the current source dependency set, not an exhaustive inventory
 of each platform binary. goversioninfo and rsrc are build-only Windows resource
 generators. `jsonschema/v6` and `golang.org/x/text` are vendored test-only
-dependencies. The current server has no external Go runtime module dependency.
+dependencies. `go-toml/v2` is the vendored MIT-licensed runtime configuration parser.
 The pinned Font Awesome Free SVG and derived ICO are separately identified
 third-party branding assets with actual file SHA-256 and CC-BY-4.0 attribution.
 Go standard library, compiler, OS libraries, runner tools and their transitive
@@ -305,9 +310,10 @@ Go h1 values identify normalized module directory or go.mod checksums; they are
 recorded as Go-specific facts and never labeled ordinary archive SHA-256.
 Active module requirements, versions, both h1 entries, vendor module headers,
 explicit markers and package ownership must agree. SPDX relationships bind the
-application, its build and test dependencies, the module-to-module edges and
-branding derivation. Test modules use `TEST_DEPENDENCY_OF`. Previously issued
-two-module bundles retain their original inventory representation.
+application, its build, runtime and test dependencies, the module-to-module
+edges and branding derivation. Test modules use `TEST_DEPENDENCY_OF` and the
+TOML parser uses `RUNTIME_DEPENDENCY_OF`. Earlier two- and four-module
+bundles retain their original inventory representation.
 `filesAnalyzed=false` limits the package claim to source metadata.
 
 The four unsigned in-toto Statement/v1 subjects each name exactly one platform

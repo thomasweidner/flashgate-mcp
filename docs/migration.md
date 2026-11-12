@@ -31,49 +31,50 @@ the canonical installation path.
 
 ## Root configuration
 
-The current release uses the environment-based setup below. BL-233's planned
-[TOML configuration contract](adr/runtime-modes.md#configuration-contract)
-will replace runtime configuration through `MCP_*`. Its implementation
-must publish the supported conversion, compatibility, and rollback steps
-for affected pre-1.0 integrations, including root and read-only settings,
-limits, path-policy flags, and diagnostics. BL-101 and BL-103 own the
-named-root and safe-default profile semantics. Use the current
-[client setup](client-setup.md) until the corresponding release makes the
-new path available.
+TOML-enabled builds replace the pre-1.0 runtime environment contract with
+one [trusted TOML file](configuration.md#source-and-trust). Use the
+[template](flashgate-config.toml) and convert only the settings used by the
+affected client entry. Write TOML booleans as unquoted `true` or `false`,
+integers as unquoted decimal values, and paths as strings.
 
-Older builds could fall back to the process working directory when `MCP_ROOT`
-was absent or empty. That implicit fallback is no longer supported.
-`MCP_ROOT` must be absolute, existing, accessible under policy, and a directory.
-
-| Configuration | Current startup result |
+| Previous environment setting | TOML key |
 |---|---|
-| Missing `MCP_ROOT` | `missing_root`, exit 3 |
-| Empty, whitespace, general relative root, or `..` | `invalid_root`, exit 3 |
-| Nonexistent root | `root_not_found`, exit 3 |
-| File instead of a directory | `root_not_directory`, exit 3 |
-| Permission or policy denial | `root_not_allowed`, exit 3 |
+| `MCP_ROOT` | `filesystem.root` |
+| `MCP_READ_ONLY` | `filesystem.read_only` |
+| `MCP_ALLOW_CWD_ROOT` | `filesystem.allow_cwd_root` |
+| `MCP_ALLOW_HIDDEN_FILES` | `security.allow_hidden_files` |
+| `MCP_ALLOW_UNC_PATHS` | `security.allow_unc_paths` |
+| `MCP_FOLLOW_SYMLINKS` | `security.follow_symlinks` |
+| `MCP_MAX_FILE_SIZE` | `filesystem.max_file_size` |
+| `MCP_MAX_WRITE_BYTES` | `filesystem.max_write_bytes` |
+| `MCP_MAX_LIST_ENTRIES` | `filesystem.max_list_entries` |
+| `MCP_MAX_COPY_BYTES` | `filesystem.max_copy_bytes` |
+| `MCP_MAX_DELETE_ENTRIES` | `filesystem.max_delete_entries` |
+| `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `protocol.max_message_bytes` |
+| `MCP_MAX_TOOL_ARGUMENT_BYTES` | `protocol.max_argument_bytes` |
+| `MCP_MAX_RESPONSE_BYTES` | `protocol.max_response_bytes` |
+| `MCP_DEBUG` | `logging.level`: use `"debug"` for true and `"off"` for false |
 
-Expected failures produce no JSON-RPC output and only a safe stderr category.
-Do not restore an implicit root or weaken PathGuard policy to make an old
-configuration start.
+Use an existing absolute directory for production. Explicit development STDIO
+can use `root = "."` with `allow_cwd_root = true` under `[filesystem]`.
+The runtime default for `read_only` remains false. The template explicitly
+enables read-only for initial setup. BL-101 and BL-103 own named roots and
+safe-default profiles.
 
-The process working directory is available only for explicit development use:
+Before switching binaries, back up the client entry and retain the verified
+previous release binary, its checksum, and its launch settings. Update the
+affected entry to point to the TOML-enabled binary. For a non-default TOML
+path, add `--config` and the absolute path as two arguments. Remove the old
+`MCP_*` settings from that entry. The TOML-enabled binary ignores them and
+fails closed when the selected file is unavailable or invalid. Restart the
+client and perform the [acceptance checks](client-setup.md#acceptance-checks).
 
-```text
-MCP_ROOT=.
-MCP_ALLOW_CWD_ROOT=true
-```
-
-`MCP_ALLOW_CWD_ROOT` accepts only lowercase `true` and `false`. It neither
-supplies a missing root nor enables any other relative root. A successful
-opt-in emits one safe stderr warning. Production client setup uses an absolute
-root and `MCP_ALLOW_CWD_ROOT=false`.
-
-For initial read-only acceptance, also set `MCP_READ_ONLY=true`. The current
-implicit profile is not read-only; changing that default remains planned
-work. Back up and update the affected client entry, then run the checks in
-[client setup](client-setup.md). Roll back the entry rather than bypassing
-security if acceptance fails.
+To roll back, stop the affected client session, restore the verified prior
+binary and its backed-up entry together, and restore that release's
+`MCP_*` values. Remove the `--config` arguments from the restored entry.
+Restart and verify binary identity, initialization, and read-only exposure
+under the restored configuration. Keep the TOML file separately for the next
+migration attempt.
 
 ## Tool names
 
@@ -149,7 +150,7 @@ Valid text retains its original UTF-8 bytes after JSON decoding.
 
 `list_directory` clients read `result.structuredContent.entries`. Its text
 block gives a short pointer to the structured data. The server's
-`MCP_MAX_LIST_ENTRIES` limit now counts filtered entries too. A directory can
+list-entry limit now counts filtered entries too. A directory can
 return `limit_exceeded` even if few entries would be visible. Small metadata
 receipts still offer a compact JSON text copy within the 8 KiB compatibility budget.
 Read authoritative metadata from `structuredContent`, including

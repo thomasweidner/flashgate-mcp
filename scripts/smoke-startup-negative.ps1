@@ -2,7 +2,8 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path "$PSScriptRoot\..").Path
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
-$stamp = "{0}-{1}" -f ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()), $PID
+[string]$stamp = "{0}-{1}" -f ([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()), $PID
+$configPath = Join-Path ([IO.Path]::GetTempPath()) "flashgate-startup-config-$stamp.toml"
 $rootFile = Join-Path $repoRoot "build\startup-root-file-$stamp.txt"
 $missingRoot = Join-Path $repoRoot "build\startup-missing-root-$stamp"
 
@@ -21,7 +22,7 @@ function Assert-NoHostPathLeak {
 function Invoke-StartupCase {
     param(
         [string]$Name,
-        [hashtable]$Environment,
+        [AllowNull()][string]$Document,
         [int]$ExpectedExitCode,
         [string]$ExpectedStderr
     )
@@ -35,17 +36,20 @@ function Invoke-StartupCase {
     $startInfo.RedirectStandardError = $true
     $startInfo.CreateNoWindow = $true
 
-    foreach ($nameToRemove in @("MCP_ROOT", "MCP_ALLOW_CWD_ROOT", "MCP_READ_ONLY")) {
-        [void]$startInfo.Environment.Remove($nameToRemove)
-    }
-    foreach ($entry in $Environment.GetEnumerator()) {
-        $startInfo.Environment[$entry.Key] = [string]$entry.Value
+    [void]$startInfo.ArgumentList.Add('--config')
+    [void]$startInfo.ArgumentList.Add($configPath)
+    $startInfo.Environment['MCP_ROOT'] = $repoRoot
+    $startInfo.Environment['MCP_READ_ONLY'] = 'true'
+    if ($Document -ne 'ABSENT') {
+        [IO.File]::WriteAllText($configPath, $Document, [Text.UTF8Encoding]::new($false))
     }
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
+    $started = $false
     try {
-        if (-not $process.Start()) {
+        $started = $process.Start()
+        if (-not $started) {
             throw "Failed to start case '$Name'"
         }
         $process.StandardInput.Close()
@@ -60,13 +64,13 @@ function Invoke-StartupCase {
             throw "Case '$Name': expected empty stdout, got $stdout"
         }
 
-        $normalizedStderr = $stderr -replace "`r`n", "`n"
+        [string]$normalizedStderr = $stderr -replace "`r`n", "`n"
         if ($normalizedStderr -ne $ExpectedStderr) {
             throw "Case '$Name': expected stderr '$ExpectedStderr', got '$normalizedStderr'"
         }
         Assert-NoHostPathLeak -Value $normalizedStderr
     } finally {
-        if (-not $process.HasExited) {
+        if ($started -and -not $process.HasExited) {
             $process.Kill($true)
             $process.WaitForExit()
         }
@@ -78,27 +82,32 @@ New-Item -ItemType Directory -Path (Split-Path $rootFile) -Force | Out-Null
 [System.IO.File]::WriteAllText($rootFile, "not a directory", [System.Text.UTF8Encoding]::new($false))
 
 try {
+    $absolute = "[filesystem]`nroot = $(ConvertTo-Json -InputObject $repoRoot -Compress)`n"
+    $missing = "[filesystem]`nroot = $(ConvertTo-Json -InputObject $missingRoot -Compress)`n"
+    $file = "[filesystem]`nroot = $(ConvertTo-Json -InputObject $rootFile -Compress)`n"
     $cases = @(
-        @{ Name = "missing root"; Environment = @{}; Exit = 3; Stderr = "flashgate-mcp: startup failed (missing_root)`n" }
-        @{ Name = "empty root"; Environment = @{ MCP_ROOT = "" }; Exit = 3; Stderr = "flashgate-mcp: startup failed (invalid_root)`n" }
-        @{ Name = "whitespace root"; Environment = @{ MCP_ROOT = "   " }; Exit = 3; Stderr = "flashgate-mcp: startup failed (invalid_root)`n" }
-        @{ Name = "relative root"; Environment = @{ MCP_ROOT = "subdir" }; Exit = 3; Stderr = "flashgate-mcp: startup failed (invalid_root)`n" }
-        @{ Name = "parent root"; Environment = @{ MCP_ROOT = ".." }; Exit = 3; Stderr = "flashgate-mcp: startup failed (invalid_root)`n" }
-        @{ Name = "dot without opt-in"; Environment = @{ MCP_ROOT = "." }; Exit = 3; Stderr = "flashgate-mcp: startup failed (invalid_root)`n" }
-        @{ Name = "opt-in without root"; Environment = @{ MCP_ALLOW_CWD_ROOT = "true" }; Exit = 3; Stderr = "flashgate-mcp: startup failed (missing_root)`n" }
-        @{ Name = "invalid development option"; Environment = @{ MCP_ROOT = $repoRoot; MCP_ALLOW_CWD_ROOT = "TRUE" }; Exit = 3; Stderr = "flashgate-mcp: startup failed (invalid_development_option)`n" }
-        @{ Name = "missing filesystem root"; Environment = @{ MCP_ROOT = $missingRoot }; Exit = 3; Stderr = "flashgate-mcp: startup failed (root_not_found)`n" }
-        @{ Name = "file root"; Environment = @{ MCP_ROOT = $rootFile }; Exit = 3; Stderr = "flashgate-mcp: startup failed (root_not_directory)`n" }
-        @{ Name = "invalid read-only profile"; Environment = @{ MCP_ROOT = $repoRoot; MCP_READ_ONLY = "invalid" }; Exit = 3; Stderr = "flashgate-mcp: startup failed (invalid_profile)`n" }
-        @{ Name = "valid absolute root"; Environment = @{ MCP_ROOT = $repoRoot; MCP_READ_ONLY = "true" }; Exit = 0; Stderr = "" }
-        @{ Name = "development CWD"; Environment = @{ MCP_ROOT = "."; MCP_ALLOW_CWD_ROOT = "true"; MCP_READ_ONLY = "true" }; Exit = 0; Stderr = "flashgate-mcp: warning: development CWD root enabled`n" }
+        @{ Name = 'missing config'; Document = 'ABSENT'; Exit = 3; Category = 'missing_config' }
+        @{ Name = 'missing root'; Document = '[filesystem]'; Exit = 3; Category = 'missing_root' }
+        @{ Name = 'empty root'; Document = "[filesystem]`nroot = ''"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'whitespace root'; Document = "[filesystem]`nroot = '   '"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'relative root'; Document = "[filesystem]`nroot = 'subdir'"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'parent root'; Document = "[filesystem]`nroot = '..'"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'dot without opt-in'; Document = "[filesystem]`nroot = '.'"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'opt-in without root'; Document = "[filesystem]`nallow_cwd_root = true"; Exit = 3; Category = 'missing_root' }
+        @{ Name = 'invalid development option'; Document = "$($absolute)allow_cwd_root = 'TRUE'"; Exit = 3; Category = 'invalid_config' }
+        @{ Name = 'missing filesystem root'; Document = $missing; Exit = 3; Category = 'root_not_found' }
+        @{ Name = 'file root'; Document = $file; Exit = 3; Category = 'root_not_directory' }
+        @{ Name = 'invalid read-only option'; Document = "$($absolute)read_only = 'invalid'"; Exit = 3; Category = 'invalid_config' }
+        @{ Name = 'valid absolute root'; Document = $absolute; Exit = 0; Stderr = '' }
+        @{ Name = 'development CWD'; Document = "[filesystem]`nroot = '.'`nallow_cwd_root = true"; Exit = 0; Stderr = "flashgate-mcp: warning: development CWD root enabled`n" }
     )
 
     foreach ($case in $cases) {
-        Invoke-StartupCase -Name $case.Name -Environment $case.Environment -ExpectedExitCode $case.Exit -ExpectedStderr $case.Stderr
+        $expected = if ($case.Exit -eq 0) { $case.Stderr } else { "flashgate-mcp: startup failed ($($case.Category))`n" }
+        Invoke-StartupCase -Name $case.Name -Document $case.Document -ExpectedExitCode $case.Exit -ExpectedStderr $expected
     }
 
     Write-Host "Startup negative smoke test passed."
 } finally {
-    Remove-Item -LiteralPath $rootFile, $missingRoot -Force -Recurse -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $configPath, $rootFile -Force -ErrorAction SilentlyContinue
 }
