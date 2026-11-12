@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -151,7 +152,7 @@ func TestMCPConformanceProcessHelper(t *testing.T) {
 	if os.Getenv("FLASHGATE_MCP_CONFORMANCE_HELPER") != "1" {
 		return
 	}
-	os.Exit(runMain(context.Background(), nil, os.Stdout, os.Stderr, run))
+	os.Exit(runMain(context.Background(), []string{"--config", os.Args[len(os.Args)-1]}, os.Stdout, os.Stderr, run))
 }
 
 func TestMCPConformanceSTDIOProcess(t *testing.T) {
@@ -162,7 +163,8 @@ func TestMCPConformanceSTDIOProcess(t *testing.T) {
 	for _, readOnly := range []bool{false, true} {
 		_, root := mcpRegistry(t, readOnly)
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$")
+		configPath := writeConfig(t, configDocument(t, root, fmt.Sprintf("read_only = %t\n", readOnly)))
+		command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$", "--", configPath)
 		command.WaitDelay = time.Second
 		for _, entry := range os.Environ() {
 			key := strings.ToUpper(strings.SplitN(entry, "=", 2)[0])
@@ -170,7 +172,7 @@ func TestMCPConformanceSTDIOProcess(t *testing.T) {
 				command.Env = append(command.Env, entry)
 			}
 		}
-		command.Env = append(command.Env, "MCP_ROOT="+root, "MCP_READ_ONLY="+map[bool]string{true: "true", false: "false"}[readOnly], "FLASHGATE_MCP_CONFORMANCE_HELPER=1")
+		command.Env = append(command.Env, "FLASHGATE_MCP_CONFORMANCE_HELPER=1")
 		command.Stdin = strings.NewReader(
 			mcpRequest("initialize", `{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"contract","version":"1"}}`, protocol.ProtocolVersion) +
 				`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +

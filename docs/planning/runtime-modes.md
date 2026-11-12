@@ -420,7 +420,8 @@ Minimum Version 1.0 requirements:
 
 The planned [BL-233 configuration contract](../adr/runtime-modes.md#configuration-contract)
 defines selection, trust, and validation of the single TOML file per
-instance. BL-233 owns the complete, valid, documented TOML template.
+instance. BL-233 owns the [TOML template](../flashgate-config.toml) and
+[runtime configuration reference](../configuration.md).
 BL-223 owns the explicit `config init` workflow and any CLI validation,
 using the BL-233 template and shared schema and validator. BL-228 and
 BL-229 consume the typed endpoint settings, timeouts,

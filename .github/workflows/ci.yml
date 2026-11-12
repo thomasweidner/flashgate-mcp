@@ -230,6 +230,15 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Bind Windows configuration fixtures to the runner profile
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $profileRoot = [Environment]::GetFolderPath('UserProfile')
+          $fixtureRoot = Join-Path $profileRoot ('flashgate-ci-' + [Guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $fixtureRoot -ErrorAction Stop | Out-Null
+          @("TMP=$fixtureRoot", "TEMP=$fixtureRoot") | Add-Content -LiteralPath $env:GITHUB_ENV -Encoding utf8
+
       - name: Check MCP conformance and snapshots
         shell: bash
         run: go run -mod=vendor ./cmd/mcpcheck -report "$RUNNER_TEMP/mcp-conformance.md"
@@ -277,9 +286,7 @@ jobs:
       - name: JSON-RPC smoke test (Ubuntu read-only)
         if: matrix.os == 'ubuntu-latest'
         shell: bash
-        env:
-          MCP_READ_ONLY: "true"
-        run: bash scripts/smoke-jsonrpc.sh
+        run: bash scripts/smoke-jsonrpc.sh --read-only
 
       - name: Negative JSON-RPC smoke test (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
@@ -299,9 +306,7 @@ jobs:
       - name: JSON-RPC smoke test (Windows read-only)
         if: matrix.os == 'windows-latest'
         shell: pwsh
-        env:
-          MCP_READ_ONLY: "true"
-        run: .\scripts\smoke-jsonrpc.ps1
+        run: .\scripts\smoke-jsonrpc.ps1 -ReadOnly
 
       - name: Negative JSON-RPC smoke test (Windows)
         if: matrix.os == 'windows-latest'

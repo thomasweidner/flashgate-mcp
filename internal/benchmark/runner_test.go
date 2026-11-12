@@ -3,28 +3,113 @@ package benchmark
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
+	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
+func TestBenchmarkConfigFixtures(t *testing.T) {
+	t.Parallel()
+	dir, dataRoot := t.TempDir(), t.TempDir()
+	encodedRoot, err := json.Marshal(dataRoot)
+	if err != nil {
+		t.Fatal("encoding fixture root failed")
+	}
+	guard, err := security.NewPathGuard(dataRoot)
+	if err != nil {
+		t.Fatal("opening fixture data root failed")
+	}
+	for _, tc := range []struct {
+		name     string
+		readOnly bool
+	}{
+		{"read-only.toml", true},
+		{"write.toml", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(dir, tc.name)
+			if err := writeBenchmarkConfig(path, encodedRoot, tc.readOnly); err != nil {
+				t.Fatalf("creating benchmark configuration failed: %v", err)
+			}
+			cfg, err := config.Load(config.Source{Role: config.Direct, Path: path})
+			if err != nil {
+				t.Fatalf("loading trusted benchmark configuration failed: %v", err)
+			}
+			if cfg.Filesystem().RootPath() != dataRoot || cfg.Filesystem().ReadOnly() != tc.readOnly {
+				t.Fatal("benchmark configuration profile changed")
+			}
+			if err := cfg.ValidateDataRoot(guard); err != nil {
+				t.Fatal("benchmark configuration and data root were not separate")
+			}
+			info, err := os.Lstat(path)
+			if err != nil || !info.Mode().IsRegular() {
+				t.Fatal("benchmark configuration is not a regular file")
+			}
+			if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+				t.Fatal("benchmark configuration is not owner-only")
+			}
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal("reading benchmark fixture failed")
+			}
+			if err := writeBenchmarkConfig(path, encodedRoot, !tc.readOnly); err == nil {
+				t.Fatal("existing benchmark fixture was accepted for replacement")
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("existing benchmark fixture changed")
+			}
+			if err := os.Remove(path); err != nil {
+				t.Fatal("benchmark fixture handle was not released")
+			}
+		})
+	}
+}
+
+func TestBenchmarkConfigRejectsAliasedParent(t *testing.T) {
+	t.Parallel()
+	target := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "alias")
+	if runtime.GOOS == "windows" {
+		if err := exec.Command("cmd.exe", "/d", "/c", "mklink", "/J", alias, target).Run(); err != nil {
+			t.Fatal("creating native junction fixture failed")
+		}
+	} else if err := os.Symlink(target, alias); err != nil {
+		t.Fatal("creating native symlink fixture failed")
+	}
+	if err := writeConfigFixture(filepath.Join(alias, "config.toml"), []byte("data")); err == nil {
+		t.Fatal("aliased configuration parent was accepted")
+	}
+	if _, err := os.Lstat(filepath.Join(target, "config.toml")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("configuration write reached the alias target")
+	}
+}
+
 func TestBenchmarkEnvironmentIsMinimalAndDeterministic(t *testing.T) {
+	t.Setenv("SYSTEMROOT", "test-system-root")
+	t.Setenv("WINDIR", "test-windows-directory")
+	t.Setenv("MCP_ROOT", "legacy-root")
 	t.Setenv("MCP_MAX_LIST_ENTRIES", "1")
 	t.Setenv("FLASHGATE_PRIVATE_TEST_VALUE", "must-not-be-copied")
 
-	environment := benchmarkEnvironment("benchmark-root", true)
+	environment := benchmarkEnvironment()
 	joined := strings.Join(environment, "\n")
 	for _, required := range []string{
-		"MCP_ROOT=benchmark-root",
-		"MCP_READ_ONLY=true",
-		"MCP_ALLOW_CWD_ROOT=false",
-		"MCP_DEBUG=false",
+		"SYSTEMROOT=test-system-root",
+		"WINDIR=test-windows-directory",
 	} {
 		if !strings.Contains(joined, required) {
 			t.Fatalf("benchmark environment omitted %q: %q", required, environment)
 		}
 	}
-	for _, forbidden := range []string{"MCP_MAX_LIST_ENTRIES=", "FLASHGATE_PRIVATE_TEST_VALUE="} {
+	for _, forbidden := range []string{"MCP_ROOT=", "MCP_MAX_LIST_ENTRIES=", "FLASHGATE_PRIVATE_TEST_VALUE="} {
 		if strings.Contains(joined, forbidden) {
 			t.Fatalf("benchmark environment copied %q", forbidden)
 		}

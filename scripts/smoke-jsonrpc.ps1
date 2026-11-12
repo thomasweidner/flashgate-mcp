@@ -1,4 +1,7 @@
+param([switch]$ReadOnly)
+
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'WindowsConfigFixture.ps1')
 
 $repoRoot = Resolve-Path "$PSScriptRoot\.."
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
@@ -29,7 +32,7 @@ if (-not (Test-Path $binaryPath)) {
     throw "Binary not found: $binaryPath. Run: go build -o build/flashgate-mcp.exe ./cmd/server"
 }
 
-$env:MCP_ROOT = $repoRoot
+$configPath = Join-Path ([IO.Path]::GetTempPath()) "flashgate-smoke-config-$stamp.toml"
 
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
@@ -100,7 +103,11 @@ function Get-CallToolStructuredContent {
 }
 
 try {
-    if ($env:MCP_READ_ONLY -eq "true") {
+    $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
+    $readOnlyValue = ([bool]$ReadOnly).ToString().ToLowerInvariant()
+    $document = "[filesystem]`nroot = $quotedRoot`nread_only = $readOnlyValue`n"
+    New-WindowsConfigFixture -Path $configPath -Document $document
+    if ($ReadOnly) {
         foreach ($fixturePath in @($readOnlyDeletePath, $readOnlyCopySourcePath, $readOnlyMoveSourcePath)) {
             [System.IO.File]::WriteAllText($fixturePath, "read-only-smoke-fixture", [System.Text.UTF8Encoding]::new($false))
         }
@@ -115,7 +122,7 @@ try {
         '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_path_info","arguments":{"path":"smoke-missing-path"}}}'
     )
 
-    if ($env:MCP_READ_ONLY -ne "true") {
+    if (-not $ReadOnly) {
         [System.IO.File]::WriteAllText($moveSourcePath, "move-smoke", [System.Text.UTF8Encoding]::new($false))
         $requests += '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"' + $moveSourceRelative + '","target":"' + $moveTargetRelative + '"}}}'
     } else {
@@ -131,7 +138,7 @@ try {
     $lineFeed = [string][char]10
     [System.IO.File]::WriteAllText($requestPath, (($requests -join $lineFeed) + $lineFeed), [System.Text.UTF8Encoding]::new($false))
 
-    cmd /c "`"$binaryPath`" < `"$requestPath`" > `"$responsePath`""
+    Get-Content -LiteralPath $requestPath | & $binaryPath --config $configPath > $responsePath
 
     if ($LASTEXITCODE -ne 0) {
         throw "Smoke test process failed with exit code $LASTEXITCODE"
@@ -139,7 +146,7 @@ try {
 
     $responses = Get-Content $responsePath | Where-Object { $_.Trim().Length -gt 0 }
 
-    $expectedResponseCount = if ($env:MCP_READ_ONLY -eq "true") { 11 } else { 7 }
+    $expectedResponseCount = if ($ReadOnly) { 11 } else { 7 }
     if ($responses.Count -ne $expectedResponseCount) {
         throw "Expected $expectedResponseCount JSON-RPC responses, got $($responses.Count). Response file: $responsePath"
     }
@@ -179,7 +186,7 @@ try {
         "get_path_info"
     )
 
-    if ($env:MCP_READ_ONLY -ne "true") {
+    if (-not $ReadOnly) {
         $expectedTools += @(
             "write_file",
             "create_directory",
@@ -225,7 +232,7 @@ try {
     if ($missingResult.exists -or $missingResult.path -ne "smoke-missing-path" -or @($missingResult.PSObject.Properties).Count -ne 2) {
         throw "get_path_info did not report the missing path correctly"
     }
-    if ($env:MCP_READ_ONLY -ne "true") {
+    if (-not $ReadOnly) {
         $moveResult = $responses[6] | ConvertFrom-Json
         $moveStructured = Get-CallToolStructuredContent -Response $moveResult -ExpectedId 7
         if (-not $moveStructured.moved -or -not (Test-Path -LiteralPath $moveTargetPath)) {
@@ -256,6 +263,6 @@ try {
     Write-Host "Protocol version: $($initialize.result.protocolVersion)"
     Write-Host ("Tools: {0}" -f ($toolNames -join ', '))
 } finally {
-    Remove-Item -LiteralPath $requestPath, $responsePath, $moveSourcePath, $moveTargetPath, $readOnlyWritePath, $readOnlyDeletePath, $readOnlyCopySourcePath, $readOnlyCopyTargetPath, $readOnlyMoveSourcePath, $readOnlyMoveTargetPath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $configPath, $requestPath, $responsePath, $moveSourcePath, $moveTargetPath, $readOnlyWritePath, $readOnlyDeletePath, $readOnlyCopySourcePath, $readOnlyCopyTargetPath, $readOnlyMoveSourcePath, $readOnlyMoveTargetPath -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $readOnlyCreatePath -Recurse -Force -ErrorAction SilentlyContinue
 }

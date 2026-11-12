@@ -11,18 +11,18 @@
       "runtimeOutputSchema": true
     },
     "rootConfiguration": {
-      "environmentVariable": "MCP_ROOT",
+      "tomlKey": "filesystem.root",
       "pathMode": "relative tool paths below an absolute configured root",
       "required": true,
       "productionRootMustBeAbsolute": true,
       "developmentCurrentDirectory": {
         "rootValue": ".",
-        "optInEnvironmentVariable": "MCP_ALLOW_CWD_ROOT",
-        "requiredOptInValue": "true"
+        "optInTomlKey": "filesystem.allow_cwd_root",
+        "requiredOptInValue": true
       },
       "codexReadOnlyExampleRequires": {
-        "environmentVariable": "MCP_READ_ONLY",
-        "value": "true"
+        "tomlKey": "filesystem.read_only",
+        "value": true
       }
     }
   },

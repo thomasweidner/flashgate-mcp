@@ -4,16 +4,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 BINARY_PATH="${REPO_ROOT}/build/flashgate-mcp"
-STAMP="$$-$(date +%s%N)"
+STAMP="$-$(date +%s%N)"
 STDOUT_PATH="${REPO_ROOT}/build/startup-smoke-${STAMP}-stdout.txt"
 STDERR_PATH="${REPO_ROOT}/build/startup-smoke-${STAMP}-stderr.txt"
 ROOT_FILE="${REPO_ROOT}/build/startup-root-file-${STAMP}.txt"
 MISSING_ROOT="${REPO_ROOT}/build/startup-missing-root-${STAMP}"
 
 cleanup() {
-  rm -f "${STDOUT_PATH}" "${STDERR_PATH}" "${ROOT_FILE}"
-  rm -rf "${MISSING_ROOT}"
+  rm -f "${CONFIG_PATH}" "${STDOUT_PATH}" "${STDERR_PATH}" "${ROOT_FILE}"
+  rmdir -- "${CONFIG_DIR}"
 }
+CONFIG_DIR="$(mktemp -d -- "${TMPDIR:-/tmp}/flashgate-config.XXXXXXXX")"
+CONFIG_PATH="${CONFIG_DIR}/flashgate_config.toml"
 trap cleanup EXIT
 
 if [[ ! -x "${BINARY_PATH}" ]]; then
@@ -37,7 +39,7 @@ run_case() {
   local name="$1"
   local expected_exit="$2"
   local expected_stderr="$3"
-  shift 3
+  local document="$4"
 
   : > "${STDOUT_PATH}"
   : > "${STDERR_PATH}"
@@ -45,8 +47,11 @@ run_case() {
   set +e
   (
     cd "${REPO_ROOT}"
-    env -u MCP_ROOT -u MCP_ALLOW_CWD_ROOT -u MCP_READ_ONLY "$@" \
-      "${BINARY_PATH}" < /dev/null > "${STDOUT_PATH}" 2> "${STDERR_PATH}"
+    if [[ "$document" != "ABSENT" ]]; then
+      (umask 077; printf '%s\n' "$document" > "$CONFIG_PATH")
+    fi
+    MCP_ROOT="${REPO_ROOT}" MCP_READ_ONLY=true \
+      "${BINARY_PATH}" --config "$CONFIG_PATH" < /dev/null > "${STDOUT_PATH}" 2> "${STDERR_PATH}"
   )
   local exit_code=$?
   set -e
@@ -71,18 +76,23 @@ run_case() {
   assert_no_host_path_leak "${stderr_value}"
 }
 
-run_case "missing root" 3 "flashgate-mcp: startup failed (missing_root)"
-run_case "empty root" 3 "flashgate-mcp: startup failed (invalid_root)" MCP_ROOT=
-run_case "whitespace root" 3 "flashgate-mcp: startup failed (invalid_root)" "MCP_ROOT=   "
-run_case "relative root" 3 "flashgate-mcp: startup failed (invalid_root)" MCP_ROOT=subdir
-run_case "parent root" 3 "flashgate-mcp: startup failed (invalid_root)" MCP_ROOT=..
-run_case "dot without opt-in" 3 "flashgate-mcp: startup failed (invalid_root)" MCP_ROOT=.
-run_case "opt-in without root" 3 "flashgate-mcp: startup failed (missing_root)" MCP_ALLOW_CWD_ROOT=true
-run_case "invalid development option" 3 "flashgate-mcp: startup failed (invalid_development_option)" "MCP_ROOT=${REPO_ROOT}" MCP_ALLOW_CWD_ROOT=TRUE
-run_case "missing filesystem root" 3 "flashgate-mcp: startup failed (root_not_found)" "MCP_ROOT=${MISSING_ROOT}"
-run_case "file root" 3 "flashgate-mcp: startup failed (root_not_directory)" "MCP_ROOT=${ROOT_FILE}"
-run_case "invalid read-only profile" 3 "flashgate-mcp: startup failed (invalid_profile)" "MCP_ROOT=${REPO_ROOT}" MCP_READ_ONLY=invalid
-run_case "valid absolute root" 0 "" "MCP_ROOT=${REPO_ROOT}" MCP_READ_ONLY=true
-run_case "development CWD" 0 "flashgate-mcp: warning: development CWD root enabled" MCP_ROOT=. MCP_ALLOW_CWD_ROOT=true MCP_READ_ONLY=true
+root_toml() {
+  python3 -c 'import json,sys; print("[filesystem]\nroot = " + json.dumps(sys.argv[1], ensure_ascii=False))' "$1"
+}
+
+run_case "missing config" 3 "flashgate-mcp: startup failed (missing_config)" ABSENT
+run_case "missing root" 3 "flashgate-mcp: startup failed (missing_root)" '[filesystem]'
+run_case "empty root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml '')"
+run_case "whitespace root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml '   ')"
+run_case "relative root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml subdir)"
+run_case "parent root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml ..)"
+run_case "dot without opt-in" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml .)"
+run_case "opt-in without root" 3 "flashgate-mcp: startup failed (missing_root)" $'[filesystem]\nallow_cwd_root = true'
+run_case "invalid development option" 3 "flashgate-mcp: startup failed (invalid_config)" "$(root_toml "${REPO_ROOT}")"$'\nallow_cwd_root = "TRUE"'
+run_case "missing filesystem root" 3 "flashgate-mcp: startup failed (root_not_found)" "$(root_toml "${MISSING_ROOT}")"
+run_case "file root" 3 "flashgate-mcp: startup failed (root_not_directory)" "$(root_toml "${ROOT_FILE}")"
+run_case "invalid read-only option" 3 "flashgate-mcp: startup failed (invalid_config)" "$(root_toml "${REPO_ROOT}")"$'\nread_only = "invalid"'
+run_case "valid absolute root" 0 "" "$(root_toml "${REPO_ROOT}")"$'\nread_only = true'
+run_case "development CWD" 0 "flashgate-mcp: warning: development CWD root enabled" "$(root_toml .)"$'\nallow_cwd_root = true\nread_only = true'
 
 echo "Startup negative smoke test passed."

@@ -56,9 +56,9 @@ The fail-closed fallback rule prevents `auto` from becoming a policy-bypass mech
 
 ## Configuration contract
 
-BL-233 owns the planned implementation of K2, a central, typed, extensible
-configuration model in the shared Go core. Use TOML with an existing reviewed
-Go library. Library selection and adoption require separate approval.
+BL-233 owns K2, the central, typed configuration model in the shared Go
+core. See the [runtime configuration reference](../configuration.md) for
+the supported TOML schema, trust requirements, and template.
 
 Each server instance has one authoritative configuration file. The default
 location follows the runtime role:
@@ -78,9 +78,8 @@ configuration for its routing policy, and the service retains authority over
 its own policy and effective configuration.
 
 The loader does not search system, user, executable, or project locations,
-merge files, or layer environment overrides over TOML. BL-233 replaces the
-current `MCP_*` runtime settings through an explicit migration that accounts
-for released pre-1.0 behavior. Any environment exception requires a specific
+merge files, or layer environment overrides over TOML. The [migration guide](../migration.md#root-configuration) maps the
+previous `MCP_*` runtime settings to TOML and describes release rollback. Any environment exception requires a specific
 decision for its use case.
 
 Missing, invalid, redirected, or untrusted required configuration causes
@@ -89,6 +88,10 @@ configuration before initializing affected runtime functions and pass an
 immutable effective configuration to them. Normal MCP startup performs no
 configuration writes. BL-223 owns explicit CLI creation via `config init`
 and any CLI validation command, using the same model and validation.
+
+Before exposing filesystem tools, apply the shared source-separation check
+to each PathGuard-approved data root. An overlapping root or unprovable
+separation stops startup for both read-only and writable profiles.
 
 The planned configuration domains are Runtime, Endpoints, Protocol, Roots,
 Profiles, Capabilities, Authorization, Filesystem, Search, Operations,

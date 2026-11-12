@@ -6,6 +6,10 @@ import "errors"
 type ErrorCategory string
 
 const (
+	CategoryMissingConfig            ErrorCategory = "missing_config"
+	CategoryInvalidConfig            ErrorCategory = "invalid_config"
+	CategoryUntrustedConfig          ErrorCategory = "untrusted_config"
+	CategoryUnsupportedRuntime       ErrorCategory = "unsupported_runtime"
 	CategoryMissingRoot              ErrorCategory = "missing_root"
 	CategoryInvalidRoot              ErrorCategory = "invalid_root"
 	CategoryRootNotFound             ErrorCategory = "root_not_found"

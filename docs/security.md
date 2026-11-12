@@ -6,32 +6,49 @@ Filesystem access is security-sensitive because MCP clients may request operatio
 
 ## Core Security Principles
 
+The one-time configuration read is a bootstrap trust operation. The native
+loader checks executing identity, role, parents, ownership, access, file
+identity, and redirects before the first runtime consumer starts. It does not
+use client-provided paths or the data root policy to authorize the configuration
+source. See [runtime configuration](configuration.md#source-and-trust).
+
+Before tool registration, bootstrap uses PathGuard's effective data root
+and native filesystem identities or mount mappings to verify separation
+from the trusted TOML file. Root containment or an alias of the source
+causes a `root_not_allowed` startup denial. An unprovable boundary also
+fails closed. The final startup check opens the source through the same
+native trust checks used during loading and confirms the loaded file's
+identity and single-link state. A hard link added after loading, a
+replacement file, or a source that cannot be verified stops activation.
+Read-only mode and hidden-file filtering do not establish
+this boundary. Keep the configuration and the data root separate in the
+server's filesystem namespace throughout its lifetime.
+
 ### Sandbox Root
 
 All filesystem paths are resolved relative to a configured root directory.
 
-The root is configured through:
-
-```text
-MCP_ROOT
-```
-
-`MCP_ROOT` is required. Production roots must be absolute, exist, be accessible under the current policy, and resolve to a directory. Missing, empty, whitespace-only, relative, non-existent, file, and policy-denied roots stop startup before Filesystem, Registry, Router or JSON-RPC processing.
+The root is configured by the required `filesystem.root` setting in one
+[trusted TOML file](configuration.md#source-and-trust). Production roots must be absolute, exist, be accessible under the current policy, and resolve to a directory. Missing, empty, whitespace-only, relative, non-existent, file, and policy-denied roots stop startup before Filesystem, Registry, Router or JSON-RPC processing.
 
 Expected configuration/root failures use safe categories on stderr and exit code `3`; stdout remains empty. Unexpected bootstrap failures use `startup_failed` and exit code `1`. Raw roots and operating-system errors are not emitted.
 
 The process working directory is available only for explicit development use:
 
-```text
-MCP_ROOT=.
-MCP_ALLOW_CWD_ROOT=true
+```toml
+[filesystem]
+root = "."
+allow_cwd_root = true
 ```
 
-The opt-in accepts only lowercase `true` or `false`, never supplies a missing root, and never enables other relative roots. A successful CWD-development start emits one safe stderr warning. Production and Codex examples set `MCP_ALLOW_CWD_ROOT=false`.
+The opt-in is a TOML Boolean. It enables only an explicitly configured `.`
+root in direct STDIO. A successful CWD-development start emits one safe
+stderr warning. Production examples use absolute data roots.
 
-### No Direct Filesystem Access Outside `internal/fs`
+### Filesystem access boundaries
 
-Production code outside `internal/fs` must not directly call filesystem APIs such as:
+Runtime tools use the `FileSystem` abstraction for data access. Within the
+tool path, direct filesystem APIs are confined to `internal/fs`, including:
 
 - `os.ReadFile`
 - `os.WriteFile`
@@ -41,7 +58,10 @@ Production code outside `internal/fs` must not directly call filesystem APIs suc
 - `os.Open`
 - `os.Stat`
 
-All filesystem access must go through the `FileSystem` abstraction.
+Before that runtime exists, `internal/config` reads the single trusted
+configuration source and, on Linux, the local OS account mapping needed to
+locate the user default. Those bootstrap reads accept only host-selected
+sources and perform their own native source-trust checks.
 
 ### Central Path Validation
 
@@ -51,7 +71,7 @@ Path validation is centralized in:
 internal/security/PathGuard
 ```
 
-No other package should implement independent path validation.
+All tool paths and the data root use these PathGuard checks.
 
 ## PathGuard
 
@@ -142,15 +162,16 @@ Explicit symlink policy is enforced.
 
 Configuration:
 
-```text
-MCP_FOLLOW_SYMLINKS
+```toml
+[security]
+follow_symlinks = false
 ```
 
 Default: `false`.
 
-When `MCP_FOLLOW_SYMLINKS=false`, existing symlink path components are denied before filesystem operations. Create targets are denied when the nearest existing parent contains a symlink. `list_directory` filters symlink entries instead of exposing them.
+When `follow_symlinks = false`, existing symlink path components are denied before filesystem operations. Create targets are denied when the nearest existing parent contains a symlink. `list_directory` filters symlink entries instead of exposing them.
 
-When `MCP_FOLLOW_SYMLINKS=true`, classic symlinks may be followed only if the effective target remains inside the effective root. Symlink escapes are still denied. Windows junctions and non-symlink reparse points remain denied by default.
+When `follow_symlinks = true`, classic symlinks may be followed only if the effective target remains inside the effective root. Symlink escapes are still denied. Windows junctions and non-symlink reparse points remain denied by default.
 
 ## UNC Paths
 
@@ -158,13 +179,14 @@ UNC path policy is enforced for configured roots and user paths.
 
 Configuration:
 
-```text
-MCP_ALLOW_UNC_PATHS
+```toml
+[security]
+allow_unc_paths = false
 ```
 
 Default: `false`.
 
-When `MCP_ALLOW_UNC_PATHS=false`, UNC roots and UNC-style user paths are rejected. When `MCP_ALLOW_UNC_PATHS=true`, UNC roots do not fail solely because they are UNC paths, but the root must still exist and all root containment, hidden-file, symlink, and reparse policies still apply.
+When `allow_unc_paths = false`, UNC roots and UNC-style user paths are rejected. When `allow_unc_paths = true`, UNC roots do not fail solely because they are UNC paths, but the root must still exist and all root containment, hidden-file, symlink, and reparse policies still apply.
 
 ## Hidden Files
 
@@ -172,15 +194,16 @@ Hidden file policy is enforced for lexical dot-paths and Windows hidden attribut
 
 Configuration:
 
-```text
-MCP_ALLOW_HIDDEN_FILES
+```toml
+[security]
+allow_hidden_files = false
 ```
 
 Default: `false`.
 
-When `MCP_ALLOW_HIDDEN_FILES=false`, path components whose names start with `.` are denied, except for `.` itself. Examples include `.git/config`, `.codex/settings`, and `dir/.secret`. Create targets with hidden names are denied. `list_directory` filters hidden entries instead of failing the parent directory.
+When `allow_hidden_files = false`, path components whose names start with `.` are denied, except for `.` itself. Examples include `.git/config`, `.codex/settings`, and `dir/.secret`. Create targets with hidden names are denied. `list_directory` filters hidden entries instead of failing the parent directory.
 
-When `MCP_ALLOW_HIDDEN_FILES=true`, hidden and dotfile paths are allowed if all other policies pass.
+When `allow_hidden_files = true`, hidden and dotfile paths are allowed if all other policies pass.
 
 ## JSON-RPC Boundary
 
@@ -218,18 +241,18 @@ FlashGate applies configurable hard limits for protocol input, tool arguments, f
 
 | Environment variable | Default | Scope |
 |---|---:|---|
-| `MCP_MAX_FILE_SIZE` | `10485760` | Hard cap for `read_file`; client `maxBytes` can only lower it. |
-| `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `16777216` | Maximum single JSON-RPC message read from stdin. |
-| `MCP_MAX_TOOL_ARGUMENT_BYTES` | `12582912` | Maximum `tools/call` params or arguments payload. |
-| `MCP_MAX_WRITE_BYTES` | `10485760` | Maximum `write_file` content size. |
-| `MCP_MAX_LIST_ENTRIES` | `1000` | Maximum entries scanned by `list_directory`, including hidden or symlink entries filtered by policy. |
-| `MCP_MAX_COPY_BYTES` | `10485760` | Maximum `copy_path` source file size. |
-| `MCP_MAX_DELETE_ENTRIES` | `1000` | Maximum entries for recursive `delete_path`. |
-| `MCP_MAX_RESPONSE_BYTES` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
+| `filesystem.max_file_size` | `10485760` | Hard cap for `read_file`; client `maxBytes` can only lower it. |
+| `protocol.max_message_bytes` | `16777216` | Maximum single JSON-RPC message read from stdin. |
+| `protocol.max_argument_bytes` | `12582912` | Maximum `tools/call` params or arguments payload. |
+| `filesystem.max_write_bytes` | `10485760` | Maximum `write_file` content size. |
+| `filesystem.max_list_entries` | `1000` | Maximum entries scanned by `list_directory`, including hidden or symlink entries filtered by policy. |
+| `filesystem.max_copy_bytes` | `10485760` | Maximum `copy_path` source file size. |
+| `filesystem.max_delete_entries` | `1000` | Maximum entries for recursive `delete_path`. |
+| `protocol.max_response_bytes` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
 
 Limit violations use generic client-visible messages. Filesystem limit denials from registered tools use category `limit_exceeded` in MCP error results with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
 
-`MCP_DEBUG=true` enables minimal stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
+`logging.level = "debug"` enables bounded stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
 
 ## Security Testing
 

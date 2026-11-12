@@ -8,7 +8,7 @@ configuration file wholesale.
 
 ## Prerequisites
 
-Use a verified release binary, or build from a known source commit using the
+Use a verified TOML-enabled release binary, or build from a known source commit using the
 [controlled build procedure](build-metadata.md). Check binary identity,
 `--version`, `--help`, and SHA-256 before configuring a client. Do not run an
 automatic build or `go run` at each MCP startup. Keep the binary outside the
@@ -38,30 +38,24 @@ needs execute permission. Pass paths with spaces as single configuration
 values. Do not mix Windows paths with native Linux or WSL paths. WSL is not a
 FlashGate prerequisite.
 
-Configure these environment variables in the client's FlashGate server entry:
+Copy the [template](flashgate-config.toml) to the
+[trusted user default](configuration.md#source-and-trust) and set
+`filesystem.root` to the data directory. For example:
 
-```text
-MCP_ROOT=<absolute-existing-data-directory>
-MCP_READ_ONLY=true
-MCP_ALLOW_CWD_ROOT=false
-MCP_ALLOW_HIDDEN_FILES=false
-MCP_ALLOW_UNC_PATHS=false
-MCP_FOLLOW_SYMLINKS=false
-MCP_DEBUG=false
+```toml
+[filesystem]
+root = 'C:\FlashGateData\ReadOnlyRoot'
+read_only = true
 ```
 
-No secret or authentication value is required by this local STDIO example.
-Verify any client-specific startup timeout, call timeout, and working-directory
-setting against the client version being used. The executable's parent
-directory is not an implicit data root.
-
-`MCP_ROOT` is mandatory. Production setup must not rely on `.` or an implicit
-working directory. The explicit development-only opt-in is documented in the
-[migration guide](migration.md#root-configuration).
+For Linux, use a Linux absolute data path. To use an alternate configuration
+file, set the client's argument array to `["--config", "<absolute-path>"]`.
+Verify client-specific startup and call timeouts for the client version.
+See [runtime configuration](configuration.md) for all supported settings.
 
 ## Current read-only behavior
 
-Set `MCP_READ_ONLY=true` explicitly. The current default without that setting
+Set `filesystem.read_only = true` explicitly. The current default without that setting
 exposes eight tools; the planned safe-by-default profile system is not yet the
 implemented behavior.
 
@@ -105,13 +99,15 @@ actual server results rather than relying only on a direct command-line test.
 
 | Category | Meaning | Action |
 |---|---|---|
-| `missing_root` | `MCP_ROOT` is absent | Set an explicit absolute root. |
+| `missing_config` | Selected file is absent | Create the file at the selected trusted path. |
+| `untrusted_config` | Path, ownership, access, or file type fails source checks | Use a trusted absolute path under the executing account. |
+| `invalid_config` | Syntax, fields, types, or limits fail validation | Compare the file against the template and supported settings. |
+| `unsupported_runtime` | The configured mode cannot run under this host | Use `runtime.mode = "stdio"` for this client. |
+| `missing_root` | `filesystem.root` is absent | Set an explicit absolute root. |
 | `invalid_root` | Empty, whitespace, relative, or disallowed `.` | Correct the root; do not rely on implicit CWD. |
 | `root_not_found` | Root does not exist | Check the path and local availability. |
 | `root_not_directory` | Root is a file | Select an existing directory. |
-| `root_not_allowed` | Permission or policy denies the root | Correct root choice or access without bypassing policy. |
-| `invalid_profile` | Invalid `MCP_READ_ONLY` | Set a valid Boolean value; use `true` for initial read-only setup. |
-| `invalid_development_option` | Invalid `MCP_ALLOW_CWD_ROOT` | Use exactly lowercase `true` or `false`. |
+| `root_not_allowed` | Root policy denies access or bootstrap cannot prove separation from the TOML file | Select a separate local data root and keep the configuration outside its resolved path. |
 | `startup_failed` | Unexpected bootstrap failure | Inspect safe diagnostics and roll back the configuration. |
 
 Expected root/configuration failures use exit code 3; unexpected failures use
@@ -128,6 +124,7 @@ Inspect the data root for unexpected changes. Removing an installed binary or
 changing its permissions is a separate operator action, not an automatic
 side effect of configuration rollback.
 
-A client update or replacement binary requires a fresh identity and acceptance
-check. Setup examples do not attest that any particular user's client has
+For a rollback to an environment-based binary, restore its paired client entry
+as described in [migration](migration.md#root-configuration). A replacement
+binary requires a fresh identity and acceptance check. Setup examples do not attest that any particular user's client has
 been configured or validated.

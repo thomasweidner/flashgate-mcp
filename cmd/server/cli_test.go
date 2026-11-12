@@ -28,7 +28,7 @@ func TestRunCLIHelp(t *testing.T) {
 		"flashgate-mcp --version",
 		"flashgate-mcp --version --verbose",
 		"flashgate-mcp --help",
-		"MCP_ROOT",
+		"flashgate-mcp --config <absolute-path>",
 	}
 
 	for _, part := range expectedParts {
@@ -196,7 +196,7 @@ func TestRunCLIWithoutArgumentsRunsServer(t *testing.T) {
 		context.Background(),
 		nil,
 		&stdout,
-		func(context.Context) error {
+		func(context.Context, string) error {
 			called = true
 			return nil
 		},
@@ -227,7 +227,7 @@ func TestRunCLIWithoutArgumentsReturnsServerError(t *testing.T) {
 		context.Background(),
 		nil,
 		&stdout,
-		func(context.Context) error {
+		func(context.Context, string) error {
 			return expectedErr
 		},
 	)
@@ -252,7 +252,7 @@ func TestRunCLIContextCancellationIsNormalShutdown(t *testing.T) {
 		context.Background(),
 		nil,
 		&stdout,
-		func(context.Context) error { return context.Canceled },
+		func(context.Context, string) error { return context.Canceled },
 	)
 
 	if err != nil {
@@ -269,8 +269,28 @@ func TestRunCLIContextCancellationIsNormalShutdown(t *testing.T) {
 func failIfServerRuns(t *testing.T) serverRunner {
 	t.Helper()
 
-	return func(context.Context) error {
+	return func(context.Context, string) error {
 		t.Fatal("server runner must not be called")
 		return nil
+	}
+}
+
+func TestRunCLIForwardsOneExplicitPath(t *testing.T) {
+	var stdout bytes.Buffer
+	path := "test absolute path.toml"
+	exit, err := runCLI(context.Background(), []string{"--config", path}, &stdout, func(_ context.Context, got string) error {
+		if got != path {
+			t.Fatalf("expected original path, got %q", got)
+		}
+		return nil
+	})
+	if err != nil || exit != 0 || stdout.Len() != 0 {
+		t.Fatalf("unexpected launch behavior: exit=%d error=%v stdout=%q", exit, err, stdout.String())
+	}
+	for _, args := range [][]string{{"--config"}, {"--config", ""}, {"--config", path, "--help"}} {
+		exit, err := runCLI(context.Background(), args, &stdout, failIfServerRuns(t))
+		if exit != 2 || !errors.Is(err, errInvalidCLIArguments) {
+			t.Fatalf("malformed override accepted: exit=%d error=%v", exit, err)
+		}
 	}
 }

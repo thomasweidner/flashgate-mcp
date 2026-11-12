@@ -38,6 +38,7 @@ func TestSecurityInventoryAnchors(t *testing.T) {
 	want := []securityModule{
 		{resourceModule, "v0.10.2", "INDIRECT", "BUILD"},
 		{versionInfoModule, "v1.7.0", "DIRECT", "BUILD"},
+		{tomlModule, tomlVersion, "DIRECT", "RUNTIME"},
 		{schemaModule, "v6.0.3", "DIRECT", "TEST"},
 		{textModule, "v0.41.0", "INDIRECT", "TEST"},
 	}

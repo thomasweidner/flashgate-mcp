@@ -93,7 +93,7 @@ get_path_info
 
 `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path` are write-gated and absent from the read-only registry.
 
-Client activation must set `MCP_READ_ONLY=true` explicitly; the missing-variable default remains the eight-tool profile. The read-only and negative STDIO smokes require identical generic Invalid params responses for every write-gated and removed legacy name.
+For read-only client activation set `filesystem.read_only = true` in TOML. Omitting that setting preserves the eight-tool profile. The read-only and negative STDIO smokes require identical generic Invalid params responses for every write-gated and removed legacy name.
 
 ## Errors
 
@@ -125,7 +125,7 @@ For a new Version 1.0 configuration:
 - every profile has an explicit tool-count, catalog-byte, approximate-token, and instruction budget;
 - a catalog fingerprint changes when protocol revision, extension set, profile, capability set, schema, annotations, or relevant configuration changes.
 
-The current `MCP_READ_ONLY` environment switch remains a pre-Version-1.0 compatibility mechanism until the profile configuration migration is implemented.
+The current `filesystem.read_only` setting remains the pre-Version-1.0 compatibility path until BL-103 implements profile configuration.
 
 ### Result payload classes
 

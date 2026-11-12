@@ -40,6 +40,27 @@ func TestRuntimeLaunchSource(t *testing.T) {
 	}
 }
 
+func TestRuntimeLoaderExceptionOnlyAllowsFixedWindowsConfigAPIs(t *testing.T) {
+	const config = "internal/config/source_windows.go"
+	for _, test := range []struct {
+		path, target, expression string
+		allowed                  bool
+	}{
+		{config, "windows/amd64", `syscall.NewLazyDLL("advapi32.dll").NewProc("GetSecurityInfo")`, true},
+		{config, "windows/arm64", `syscall.NewLazyDLL("kernel32.dll").NewProc("GetDriveTypeW")`, true},
+		{config, "windows/amd64", `syscall.NewLazyDLL("kernel32.dll").NewProc("CreateProcessW")`, false},
+		{config, "windows/amd64", `syscall.NewLazyDLL(name).NewProc("GetSecurityInfo")`, false},
+		{config, "windows/amd64", `syscall.NewLazyDLL("untrusted.dll").NewProc("GetSecurityInfo")`, false},
+		{config, "linux/amd64", `syscall.NewLazyDLL("advapi32.dll").NewProc("GetSecurityInfo")`, false},
+		{"other.go", "windows/amd64", `syscall.NewLazyDLL("advapi32.dll").NewProc("GetSecurityInfo")`, false},
+	} {
+		source := "package config\nimport \"syscall\"\nvar _ = " + test.expression
+		if findings := inspectRuntimeSource(test.path, test.target, []byte(source)); (len(findings) == 0) != test.allowed {
+			t.Fatalf("%s %s %s: unexpected findings %+v", test.path, test.target, test.expression, findings)
+		}
+	}
+}
+
 func TestRuntimeGraphUsesShippedSources(t *testing.T) {
 	root := t.TempDir()
 	fixtures := map[string]string{

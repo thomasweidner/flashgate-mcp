@@ -352,7 +352,7 @@ separate authorization. The published v0.3.0 identity is retained.
 | Family and BL binding | Required reuse, target boundary, and retrofit |
 |---|---|
 | MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258, BL-371 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
-| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Migrate `MCP_ROOT`, `MCP_READ_ONLY`, current path controls, and direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
+| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Extend `filesystem.root`, `filesystem.read_only` and current path controls in BL-233's model. Migrate direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
 | Capability and authorization verification — BL-100, BL-171 | Keep functional rights distinct from profile and risk classification; verify MCP annotations never grant authority. Reuse the central BL-159 decision and its negative tests. |
 | Filesystem — BL-036–BL-067, BL-346 | Extend `internal/fs` and the existing `internal/security` path guard. Use named root IDs and relative paths, bounded reads/writes/trees, existing hash and tree primitives, and the shared result lifecycle. Migrate the current eight-tool contracts where their owners require it. |
 | Search — BL-068–BL-082 | Extend the accepted `search_paths` and `search_text` public families over confined roots, bounded scanning, pages, and context-bound cursors. Pure Go is the portable baseline. Do not add a public tool per backlog row. |
@@ -382,6 +382,8 @@ fail-closed startup, safe startup errors, and protocol and compatibility
 guarantees. Migrate the current `MCP_*` runtime inputs, including path policy,
 payload limits, and diagnostics. BL-101/103 retain their named-root and profile
 semantics. BL-166 consumes the logging path and owns the audit lifecycle.
+Apply the shared source-separation check after PathGuard resolves each data
+root. BL-101 reuses this check for each named root before exposing it.
 
 **Public delta and invariants.** The future startup configuration contract
 changes from environment inputs to one trusted TOML file per instance.

@@ -43,11 +43,11 @@ policy. Read-only registration, operation limits, redacted errors, and path
 confinement remain separate enforced controls. No direct tool-level OS call
 may bypass them.
 
-Bootstrap requires an explicit absolute `MCP_ROOT`, validates root existence,
+Bootstrap requires an explicit absolute `filesystem.root`, validates root existence,
 policy, effective resolution, and directory type before constructing the
 filesystem, registry, router, and STDIO server, and fails closed for expected
 root/configuration failures. The only relative-root exception is the explicit
-development opt-in `MCP_ROOT=.` with `MCP_ALLOW_CWD_ROOT=true`.
+development opt-in `filesystem.root = "."` with `filesystem.allow_cwd_root = true`.
 
 ## Current implementation
 

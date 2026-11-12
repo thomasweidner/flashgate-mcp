@@ -10,6 +10,14 @@ the intended release date. Publication evidence is separate.
 
 ## [Unreleased]
 
+### Changed
+
+- Runtime startup now requires one trusted TOML configuration file. This
+  pre-1.0 breaking change replaces the old `MCP_*` runtime environment
+  settings. Use the user default or pass `--config <absolute-path>`. See the
+  [template](docs/flashgate-config.toml) and
+  [migration and rollback guide](docs/migration.md#root-configuration).
+
 ### Validation
 
 - Check shipped Go runtime dependency graphs for uncontrolled process launch

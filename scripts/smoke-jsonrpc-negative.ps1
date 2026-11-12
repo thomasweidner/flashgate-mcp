@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot 'WindowsConfigFixture.ps1')
 
 $repoRoot = Resolve-Path "$PSScriptRoot\.."
 $binaryPath = Join-Path $repoRoot "build\flashgate-mcp.exe"
@@ -11,11 +12,14 @@ if (-not (Test-Path $binaryPath)) {
     throw "Binary not found: $binaryPath. Run: go build -o build/flashgate-mcp.exe ./cmd/server"
 }
 
-$env:MCP_ROOT = $repoRoot
+$configPath = Join-Path ([IO.Path]::GetTempPath()) "flashgate-smoke-config-$stamp.toml"
 
 New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
 try {
+    $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
+    $document = "[filesystem]`nroot = $quotedRoot`n"
+    New-WindowsConfigFixture -Path $configPath -Document $document
     $requests = @(
         '{"jsonrpc":"2.0","id":1,"method":'
         '{"jsonrpc":"2.0","id":2,"method":"unknown/method","params":{}}'
@@ -31,7 +35,7 @@ try {
 
     [System.IO.File]::WriteAllText($requestPath, (($requests -join "`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
 
-    cmd /c "`"$binaryPath`" < `"$requestPath`" > `"$responsePath`""
+    Get-Content -LiteralPath $requestPath | & $binaryPath --config $configPath > $responsePath
 
     if ($LASTEXITCODE -ne 0) {
         throw "Negative smoke test process failed with exit code $LASTEXITCODE"
@@ -111,5 +115,5 @@ try {
     }
     Write-Host "Negative JSON-RPC smoke test passed."
 } finally {
-    Remove-Item -LiteralPath $requestPath, $responsePath -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $configPath, $requestPath, $responsePath -Force -ErrorAction SilentlyContinue
 }

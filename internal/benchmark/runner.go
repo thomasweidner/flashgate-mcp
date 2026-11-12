@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -69,6 +70,22 @@ func Run(ctx context.Context, options Options) (Result, error) {
 	defer func() {
 		_ = fixtures.remove()
 	}()
+	configDir, err := makeConfigFixtureDir()
+	if err != nil {
+		return Result{}, fmt.Errorf("create benchmark configuration directory: %w", err)
+	}
+	defer func() { _ = os.RemoveAll(configDir) }()
+	readOnlyConfig := filepath.Join(configDir, "read-only.toml")
+	writeConfig := filepath.Join(configDir, "write.toml")
+	root, err := json.Marshal(fixtures.root)
+	if err != nil {
+		return Result{}, fmt.Errorf("encode benchmark root: %w", err)
+	}
+	for path, readOnly := range map[string]bool{readOnlyConfig: true, writeConfig: false} {
+		if err := writeBenchmarkConfig(path, root, readOnly); err != nil {
+			return Result{}, fmt.Errorf("write benchmark configuration: %w", err)
+		}
+	}
 
 	result := Result{
 		SchemaVersion:          ResultSchemaVersion,
@@ -97,7 +114,7 @@ func Run(ctx context.Context, options Options) (Result, error) {
 	}
 
 	allSamples := make([]processSample, 0, 3+options.Repetitions*11)
-	first, err := executeScenario(ctx, options.BinaryPath, fixtures.root, true, []requestSpec{initializeSpec()})
+	first, err := executeScenario(ctx, options.BinaryPath, fixtures.root, readOnlyConfig, []requestSpec{initializeSpec()})
 	if err != nil {
 		return Result{}, fmt.Errorf("first process start: %w", err)
 	}
@@ -106,7 +123,7 @@ func Run(ctx context.Context, options Options) (Result, error) {
 
 	subsequent := make([]processSample, 0, options.Repetitions)
 	for index := 0; index < options.Repetitions; index++ {
-		sample, err := executeScenario(ctx, options.BinaryPath, fixtures.root, true, []requestSpec{initializeSpec()})
+		sample, err := executeScenario(ctx, options.BinaryPath, fixtures.root, readOnlyConfig, []requestSpec{initializeSpec()})
 		if err != nil {
 			return Result{}, fmt.Errorf("subsequent process start %d: %w", index+1, err)
 		}
@@ -116,13 +133,13 @@ func Run(ctx context.Context, options Options) (Result, error) {
 	result.StartMeasurements.SubsequentProcessStart = startMeasurement(subsequent)
 
 	for _, profile := range []struct {
-		name     string
-		readOnly bool
+		name       string
+		configPath string
 	}{
-		{name: "read_only", readOnly: true},
-		{name: "default", readOnly: false},
+		{name: "read_only", configPath: readOnlyConfig},
+		{name: "default", configPath: writeConfig},
 	} {
-		sample, err := executeScenario(ctx, options.BinaryPath, fixtures.root, profile.readOnly, []requestSpec{initializeSpec(), toolsListSpec()})
+		sample, err := executeScenario(ctx, options.BinaryPath, fixtures.root, profile.configPath, []requestSpec{initializeSpec(), toolsListSpec()})
 		if err != nil {
 			return Result{}, fmt.Errorf("tools/list profile %s: %w", profile.name, err)
 		}
@@ -137,7 +154,7 @@ func Run(ctx context.Context, options Options) (Result, error) {
 	for _, workflow := range referenceWorkflows() {
 		samples := make([]processSample, 0, options.Repetitions)
 		for index := 0; index < options.Repetitions; index++ {
-			sample, err := executeScenario(ctx, options.BinaryPath, fixtures.root, true, workflow.requests)
+			sample, err := executeScenario(ctx, options.BinaryPath, fixtures.root, readOnlyConfig, workflow.requests)
 			if err != nil {
 				return Result{}, fmt.Errorf("workflow %s repetition %d: %w", workflow.name, index+1, err)
 			}
@@ -160,6 +177,11 @@ func Run(ctx context.Context, options Options) (Result, error) {
 	return result, nil
 }
 
+func writeBenchmarkConfig(path string, encodedRoot []byte, readOnly bool) error {
+	document := fmt.Sprintf("[filesystem]\nroot = %s\nread_only = %t\n", encodedRoot, readOnly)
+	return writeConfigFixture(path, []byte(document))
+}
+
 func applyBudgetEvaluation(path string, result *Result) error {
 	evaluation, err := EvaluateBudgets(path, *result)
 	if err != nil {
@@ -169,12 +191,12 @@ func applyBudgetEvaluation(path string, result *Result) error {
 	return nil
 }
 
-func executeScenario(ctx context.Context, binaryPath string, root string, readOnly bool, requests []requestSpec) (sample processSample, returnErr error) {
+func executeScenario(ctx context.Context, binaryPath, root, configPath string, requests []requestSpec) (sample processSample, returnErr error) {
 	scenarioContext, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	command := exec.CommandContext(scenarioContext, binaryPath)
-	command.Env = benchmarkEnvironment(root, readOnly)
+	command := exec.CommandContext(scenarioContext, binaryPath, "--config", configPath)
+	command.Env = benchmarkEnvironment()
 	stdin, err := command.StdinPipe()
 	if err != nil {
 		return processSample{}, fmt.Errorf("open stdin: %w", err)
@@ -339,13 +361,8 @@ func controlledExit(command *exec.Cmd, stdin interface{ Close() error }) (int, e
 	}
 }
 
-func benchmarkEnvironment(root string, readOnly bool) []string {
-	environment := []string{
-		"MCP_ROOT=" + root,
-		"MCP_READ_ONLY=" + strconv.FormatBool(readOnly),
-		"MCP_ALLOW_CWD_ROOT=false",
-		"MCP_DEBUG=false",
-	}
+func benchmarkEnvironment() []string {
+	environment := []string{}
 	for _, key := range []string{"SYSTEMROOT", "WINDIR"} {
 		if value, ok := os.LookupEnv(key); ok {
 			environment = append(environment, key+"="+value)

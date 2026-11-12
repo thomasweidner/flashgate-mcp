@@ -81,7 +81,7 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 
 		if request.notification {
-			s.logDebug("jsonrpc notification ignored method=%s", request.method)
+			s.logDebug("jsonrpc notification ignored")
 			continue
 		}
 
@@ -95,7 +95,7 @@ func (s *Server) Run(ctx context.Context) error {
 func (s *Server) handleRequest(ctx context.Context, request validatedRequest) (response protocol.Response) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			s.logDebug("handler panic recovered method=%s", request.method)
+			s.logDebug("handler panic recovered")
 			response = protocol.Response{
 				JSONRPC: protocol.JSONRPCVersion,
 				ID:      request.id,

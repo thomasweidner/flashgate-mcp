@@ -150,10 +150,13 @@ func supplyOpen(dir string) (*os.Root, error) {
 const (
 	resourceModule    = "github.com/akavel/rsrc"
 	versionInfoModule = "github.com/josephspurrier/goversioninfo"
+	tomlModule        = "github.com/pelletier/go-toml/v2"
+	tomlVersion       = "v2.4.3"
 	schemaModule      = "github.com/santhosh-tekuri/jsonschema/v6"
 	textModule        = "golang.org/x/text"
 	buildDependency   = "BUILD_DEPENDENCY_OF"
 	testDependency    = "TEST_DEPENDENCY_OF"
+	runtimeDependency = "RUNTIME_DEPENDENCY_OF"
 )
 
 type supplyModule struct{ path, version, h1, modH1 string }
@@ -275,11 +278,23 @@ func supplyModules(mod, sums, vendor []byte) ([]supplyModule, error) {
 	if len(seen) != len(required) {
 		return nil, errors.New("missing vendored module")
 	}
-	// Keep already issued two-module bundles verifiable. A source graph with
-	// the schema gate must carry both reviewed test modules at their exact pins.
+	// Keep the earlier two- and four-module bundles verifiable. The current
+	// graph extends the complete schema-test graph by the pinned TOML module.
+	expected := 2
+	if required[schemaModule] != "" || required[textModule] != "" {
+		if required[schemaModule] != "v6.0.3" || required[textModule] != "v0.41.0" {
+			return nil, errors.New("reviewed dependency graph changed")
+		}
+		expected += 2
+	}
+	if required[tomlModule] != "" {
+		if expected != 4 || required[tomlModule] != tomlVersion {
+			return nil, errors.New("reviewed dependency graph changed")
+		}
+		expected++
+	}
 	if required[resourceModule] == "" || required[versionInfoModule] == "" ||
-		(len(required) != 2 && (len(required) != 4 ||
-			required[schemaModule] != "v6.0.3" || required[textModule] != "v0.41.0")) {
+		len(required) != expected {
 		return nil, errors.New("reviewed dependency graph changed")
 	}
 	var result []supplyModule
@@ -327,18 +342,26 @@ func supplyDocuments(manifest candidateManifest, manifestHash, sourceTime string
 	for i, m := range modules {
 		id := fmt.Sprintf("SPDXRef-GoModule-%d", i+1)
 		moduleIDs[m.path] = id
-		purpose, relation := "Build-only Windows resource generator.", buildDependency
-		if m.path == schemaModule || m.path == textModule {
+		purpose, relation, license := "Build-only Windows resource generator.", buildDependency, "NOASSERTION"
+		switch m.path {
+		case schemaModule, textModule:
 			purpose, relation = "Test-only JSON Schema validation dependency.", testDependency
+		case tomlModule:
+			purpose, relation, license = "Runtime TOML configuration parser.", runtimeDependency, "MIT"
 		}
-		packages = append(packages, map[string]any{"SPDXID": id, "name": m.path, "versionInfo": m.version, "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": "NOASSERTION", "copyrightText": "NOASSERTION", "primaryPackagePurpose": "LIBRARY", "comment": purpose + " Go module content h1: " + m.h1 + "; go.mod h1: " + m.modH1 + ". Go h1 is a normalized module directory checksum, not an archive SHA-256."})
+		packages = append(packages, map[string]any{"SPDXID": id, "name": m.path, "versionInfo": m.version, "downloadLocation": "NOASSERTION", "filesAnalyzed": false, "licenseConcluded": "NOASSERTION", "licenseDeclared": license, "copyrightText": "NOASSERTION", "primaryPackagePurpose": "LIBRARY", "comment": purpose + " Go module content h1: " + m.h1 + "; go.mod h1: " + m.modH1 + ". Go h1 is a normalized module directory checksum, not an archive SHA-256."})
 		relations = append(relations, map[string]string{"spdxElementId": id, "relationshipType": relation, "relatedSpdxElement": "SPDXRef-FlashGate"})
 	}
 	relations = append(relations, map[string]string{"spdxElementId": moduleIDs[versionInfoModule], "relationshipType": "DEPENDS_ON", "relatedSpdxElement": moduleIDs[resourceModule]})
 	inventoryPurpose := "Go build dependencies"
+	runtimeNote := "Current server has no external Go runtime module dependency."
 	if moduleIDs[schemaModule] != "" {
 		relations = append(relations, map[string]string{"spdxElementId": moduleIDs[schemaModule], "relationshipType": "DEPENDS_ON", "relatedSpdxElement": moduleIDs[textModule]})
 		inventoryPurpose = "Go build and test dependencies"
+	}
+	if moduleIDs[tomlModule] != "" {
+		inventoryPurpose = "Go build, runtime and test dependencies"
+		runtimeNote = "The server's external Go runtime dependency is the TOML configuration parser."
 	}
 	for i, name := range []string{"assets/branding/fontawesome-bolt-lightning-solid.svg", "assets/branding/flashgate.ico"} {
 		id := fmt.Sprintf("SPDXRef-Branding-%d", i+1)
@@ -346,7 +369,7 @@ func supplyDocuments(manifest candidateManifest, manifestHash, sourceTime string
 		relations = append(relations, map[string]string{"spdxElementId": "SPDXRef-FlashGate", "relationshipType": "CONTAINS", "relatedSpdxElement": id})
 	}
 	relations = append(relations, map[string]string{"spdxElementId": "SPDXRef-Branding-2", "relationshipType": "GENERATED_FROM", "relatedSpdxElement": "SPDXRef-Branding-1"})
-	sbom := map[string]any{"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT", "name": "FlashGate source dependency inventory", "documentNamespace": projectURI + "/sbom/" + manifest.SourceCommitSHA + "/" + manifestHash, "creationInfo": map[string]any{"creators": []string{"Tool: flashgate-releaseaudit"}, "created": sourceTime, "comment": "Deterministic source commit timestamp, not wall-clock generation or build invocation time."}, "documentComment": "Source inventory of active vendored " + inventoryPurpose + " and third-party branding. Current server has no external Go runtime module dependency. Standard library, compiler, OS libraries, CI utilities and platform binary composition are not exhaustively inventoried. Carried go.sum includes retained test/historical checksum entries, which are not active vendored or shipped dependencies.", "packages": packages, "relationships": relations}
+	sbom := map[string]any{"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT", "name": "FlashGate source dependency inventory", "documentNamespace": projectURI + "/sbom/" + manifest.SourceCommitSHA + "/" + manifestHash, "creationInfo": map[string]any{"creators": []string{"Tool: flashgate-releaseaudit"}, "created": sourceTime, "comment": "Deterministic source commit timestamp, not wall-clock generation or build invocation time."}, "documentComment": "Source inventory of active vendored " + inventoryPurpose + " and third-party branding. " + runtimeNote + " Standard library, compiler, OS libraries, CI utilities and platform binary composition are not exhaustively inventoried. Carried go.sum includes retained test/historical checksum entries, which are not active vendored or shipped dependencies.", "packages": packages, "relationships": relations}
 	files[sbomName], err = supplyJSON(sbom)
 	if err != nil {
 		return nil, index, err

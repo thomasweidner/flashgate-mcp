@@ -23,6 +23,9 @@ var (
 	// ErrOutsideRoot is returned when the resolved path is outside the configured root.
 	ErrOutsideRoot = errors.New("access outside root denied")
 
+	// ErrProtectedPath means the root cannot be separated from a protected file.
+	ErrProtectedPath = errors.New("root cannot be separated from a protected file")
+
 	// ErrHiddenPathDenied is returned when hidden path access is disabled.
 	ErrHiddenPathDenied = errors.New("hidden path access denied")
 
@@ -130,6 +133,46 @@ func NewPathGuardWithPolicy(root string, policy Policy) (*PathGuard, error) {
 // Root returns the absolute sandbox root.
 func (g *PathGuard) Root() string {
 	return g.root
+}
+
+// EffectiveRoot returns the validated, resolved data-root path.
+func (g *PathGuard) EffectiveRoot() string {
+	return g.effectiveRoot
+}
+
+// ContainsResolvedPath compares an already resolved absolute path to the root.
+func (g *PathGuard) ContainsResolvedPath(path string) bool {
+	return isInsideRoot(g.effectiveRoot, path)
+}
+
+// RequireOutside checks a trusted file path against the effective root,
+// including directory aliases that can differ in their path spelling.
+func (g *PathGuard) RequireOutside(path string) error {
+	if g == nil || g.ContainsResolvedPath(path) {
+		return ErrProtectedPath
+	}
+	rootInfo, err := openPathInfo(g.effectiveRoot)
+	if err != nil {
+		return ErrProtectedPath
+	}
+	for dir := filepath.Dir(path); ; dir = filepath.Dir(dir) {
+		info, err := openPathInfo(dir)
+		if err != nil || os.SameFile(rootInfo, info) {
+			return ErrProtectedPath
+		}
+		if filepath.Dir(dir) == dir {
+			return nil
+		}
+	}
+}
+
+func openPathInfo(path string) (os.FileInfo, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	return file.Stat()
 }
 
 // Resolve validates and resolves a user path against the sandbox root.
