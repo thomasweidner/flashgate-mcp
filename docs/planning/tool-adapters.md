@@ -974,6 +974,12 @@ structured schema. Bind it to the [BL-214 gate](implementation-contract.md#bl-21
 for each effective profile and exact revision where it can execute.
 The owning BL also applies the [BL-215 catalog and entry acceptance](implementation-contract.md#bl-215-catalog-and-entry-budget-binding)
 to each affected effective catalog and route before activation.
+Apply the [BL-205 response-size gate](implementation-contract.md#bl-205-response-size-regressions)
+to each affected executable path. This obligation applies to Version 1.0
+and Post-1.0, including changes to existing tools and activation of new result
+variants, profiles, revisions, transports and delivery mechanisms. Each owning
+BL extends its own tests, fixtures, hard budgets and documentation before
+activation. Accepted work leaves BL-205 closed.
 
 Before a future tool is advertised, its owner must provide:
 
@@ -989,9 +995,48 @@ Before a future tool is advertised, its owner must provide:
 - actual whole-catalog, field, schema and entry budget measurements;
 - semantic reference payloads, observed placement and hard BL-214 budgets for
   every material result variant or delivery change;
+- deterministic sizes of complete emitted frames for success, applicable
+  protocol and tool errors, and authorization denials. Bind every applicable
+  error to an executable fixture and give an explicit reason for each
+  exclusion. Missing applicability, fixtures and budgets fail the shared gate;
 - Windows/Linux tests where both are in scope;
 - [BL-220 adapter acceptance](implementation-contract.md#bl-220-adapter-acceptance-binding);
 - documentation and current-vs-planned truth.
+
+### Error applicability by family
+
+Use the [BL-203 error contract](../tools.md#machine-readable-tool-errors).
+For every affected route exercise malformed protocol input, method or revision
+mismatches, and direct calls under unauthorized effective profiles, platforms
+or capabilities where applicable. Assert the wire representation at the
+actual dispatch boundary, including generic protocol errors for unresolved
+tools and internal failures. After successful tool resolution, exercise
+applicable argument and domain failures. The owner maps the scenarios below
+to the error categories and representations its accepted behavior actually
+supports. Record a reason for exclusions per operation and executable
+composition. Planned entries in the [public inventory](#20-public-tool-inventory-by-target)
+inherit this obligation before activation. The table defines test obligations
+and confers no capability, registration or category activation.
+
+| Family or delivery path | Error scenarios to disposition |
+|---|---|
+| Named roots and command discovery | Hidden roots or commands, unknown IDs, denied scope, catalog visibility and availability |
+| Filesystem, directory and file operations, comparison, verification and conditional plans | Path escape, links, denied source or target, absence, collisions, unsupported types, encoding, stale conditions, limits and partial failure |
+| Search and path watch | Scope and query errors, denied traversal, invalid encoding, exhausted scan or event buffers, stale or foreign cursors and watch handles, cancellation and deadlines |
+| Archive and content compression | Invalid format or entry, traversal, unsupported codec, denied extraction target, collisions and expansion or size limits |
+| Storage attributes, cloud placeholders, path security, Windows ADS and Linux xattr | Unsupported backend or type, denied mutation, inaccessible content, missing attribute or stream, unsafe descriptor and bounded values |
+| Process observation, managed processes and typed commands | Invisible or stale process identity, foreign handles, denied launch and input, invalid typed parameters, unavailable executables or isolation, output and time limits, cancellation |
+| System and network | Denied system fields or destinations, unavailable probes, bounded lookups and redaction of environment and network details |
+| System logs, services and scheduled jobs | Invalid filter or action, missing or unauthorized source or object, unavailable native interface, persistence or control denial, timeout and result bounds |
+| Windows Registry and Linux sysctl | Unsupported platform, denied key or setting, invalid value or type, missing object, unsupported mutation and bounded enumeration |
+| Git, audit and user-session capabilities | Denied repository, audit scope or session, unsafe executable/configuration, missing reference or record, integrity failure, unsupported clipboard format and sensitive-data redaction |
+| Operations, Tasks and result resources | Invalid, expired or foreign handles, missing extension or capability, quota, cancellation, deadline, indeterminate or failed result, safe fallback and cleanup |
+| Pagination, streams, events and transports | Malformed, expired or foreign cursor/range/subscription, unavailable delivery, overflow, interruption, bounded partial output, peer denial and valid terminal framing |
+| Future providers and configuration management | Denied principal or provider, unavailable capability, invalid or stale configuration, bounded/redacted backend errors and credentials excluded from output |
+
+The reserved categories `unsupported_capability`, `content_not_local`,
+`indeterminate`, `canceled` and `deadline_exceeded` remain inactive until
+the relevant owner implements and validates their public behavior.
 
 ## Related authority
 

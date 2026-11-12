@@ -286,6 +286,38 @@ exercise real output through the common measurement and budget gate. Closure
 requires executable coverage mutations, unchanged historical artifact semantics,
 applicable native gates and independent review before integration.
 
+## BL-205 response-size regressions
+
+BL-205 extends the existing MCP adapter validation for STDIO under
+[ADR-003](../adr/stdio-transport.md), [ADR-012](../adr/efficiency-contracts.md)
+and [ADR-013](../adr/mcp-compatibility.md). Reuse the BL-203
+[error contract](../tools.md#machine-readable-tool-errors), BL-213 result
+variants, BL-214 measurement and budgets, BL-215 catalog budgets and the
+BL-204/212/257 conformance and CI inventory. Retrofit the test harness,
+semantic fixtures and existing budget bindings. The public tool, protocol,
+configuration and runtime contracts stay byte-compatible.
+
+Capture the actual UTF-8 response including its JSON-RPC envelope and
+transport framing. Validate frame count and boundaries before decoding.
+Compare decoded semantics, payload placement and redaction independently of
+exact deterministic size. Document any justified minimal tolerance and keep
+the hard wire ceilings and runtime safety limits separate. Reject missing or
+stale fixtures and budgets through the shared coverage gate. Preserve
+single transmission and explicit authorization checks.
+
+Every owning BL applies the [tool and delivery acceptance gate](tool-adapters.md#22-implementation-gate-for-every-new-public-tool)
+to its executable revisions, effective profiles, platforms, capabilities and
+transports before activation. Bind applicable errors and explicit exclusions
+to the actual operation. Unresolved behavior and reserved categories remain
+with their implementing owners. Extend the existing registry, conformance
+and wire tests and the same budget authority. BL-205 does not add a parallel
+inventory, measurement engine or production dispatch path.
+
+Acceptance requires positive, negative and boundary tests and mutations for
+framing, bytes, semantics, registration, result variants, applicability and
+budget parity, followed by the applicable native quality chain and independent
+review. This contract remains in force after BL-205 closes.
+
 ## BL-215 catalog and entry budget binding
 
 BL-215 is the SPR-048 MCP adapter and validation contract for bounded effective

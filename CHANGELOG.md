@@ -20,6 +20,10 @@ the intended release date. Publication evidence is separate.
 
 ### Validation
 
+- Require exact framed MCP response sizes for deterministic success and error
+  fixtures, with explicit error applicability and authorization coverage
+  under the existing wire budget gate.
+
 - Check shipped Go runtime dependency graphs for uncontrolled process launch
   and interpreter adapter paths. Require canonical backlog acceptance for
   future public tool adapters. Record the typed no-shell contract and the

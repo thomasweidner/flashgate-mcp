@@ -63,6 +63,276 @@
       "class": "error",
       "group": "all"
     },
+    "tools/call///invalid-outer-params": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///missing-tool-name": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///internal-io": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///internal-serialization": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///removed-list_files": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///removed-stat_path": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///removed-exists_path": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///removed-mkdir": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///removed-rename_path": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/call///hidden-write_file": {
+      "class": "error",
+      "group": "read-only"
+    },
+    "tools/call///hidden-create_directory": {
+      "class": "error",
+      "group": "read-only"
+    },
+    "tools/call///hidden-delete_path": {
+      "class": "error",
+      "group": "read-only"
+    },
+    "tools/call///hidden-copy_path": {
+      "class": "error",
+      "group": "read-only"
+    },
+    "tools/call///hidden-move_path": {
+      "class": "error",
+      "group": "read-only"
+    },
+    "jsonrpc///parse-error": {
+      "class": "error",
+      "group": "all"
+    },
+    "jsonrpc///invalid-request": {
+      "class": "error",
+      "group": "all"
+    },
+    "tools/list///unsupported-revision": {
+      "class": "error",
+      "group": "all"
+    },
+    "resources/list///unavailable-method": {
+      "class": "error",
+      "group": "all"
+    },
+    "server/discover///unavailable-method": {
+      "class": "error",
+      "group": "production"
+    },
+    "ping///unavailable-method": {
+      "class": "error",
+      "group": "candidate"
+    },
+    "tools/call/list_directory/error/invalid_arguments": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/list_directory/error/access_denied": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/access_denied"
+    },
+    "tools/call/list_directory/error/not_found": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/not_found"
+    },
+    "tools/call/list_directory/error/limit_exceeded": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/limit_exceeded"
+    },
+    "tools/call/read_file/error/invalid_arguments": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/read_file/error/access_denied": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/access_denied"
+    },
+    "tools/call/read_file/error/not_found": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/not_found"
+    },
+    "tools/call/read_file/error/unsupported_path_type": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/unsupported_path_type"
+    },
+    "tools/call/read_file/error/invalid_text_encoding": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/invalid_text_encoding"
+    },
+    "tools/call/read_file/error/limit_exceeded": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/limit_exceeded"
+    },
+    "tools/call/get_path_info/error/invalid_arguments": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/get_path_info/error/access_denied": {
+      "class": "error",
+      "group": "all",
+      "contract": "result/access_denied"
+    },
+    "tools/call/write_file/error/invalid_arguments": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/write_file/error/access_denied": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/access_denied"
+    },
+    "tools/call/write_file/error/not_found": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/not_found"
+    },
+    "tools/call/write_file/error/already_exists": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/already_exists"
+    },
+    "tools/call/write_file/error/unsupported_path_type": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/unsupported_path_type"
+    },
+    "tools/call/write_file/error/limit_exceeded": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/limit_exceeded"
+    },
+    "tools/call/create_directory/error/invalid_arguments": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/create_directory/error/access_denied": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/access_denied"
+    },
+    "tools/call/create_directory/error/unsupported_path_type": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/unsupported_path_type"
+    },
+    "tools/call/delete_path/error/invalid_arguments": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/delete_path/error/access_denied": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/access_denied"
+    },
+    "tools/call/delete_path/error/not_found": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/not_found"
+    },
+    "tools/call/delete_path/error/unsupported_path_type": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/unsupported_path_type"
+    },
+    "tools/call/delete_path/error/limit_exceeded": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/limit_exceeded"
+    },
+    "tools/call/copy_path/error/invalid_arguments": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/copy_path/error/access_denied": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/access_denied"
+    },
+    "tools/call/copy_path/error/not_found": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/not_found"
+    },
+    "tools/call/copy_path/error/already_exists": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/already_exists"
+    },
+    "tools/call/copy_path/error/unsupported_path_type": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/unsupported_path_type"
+    },
+    "tools/call/copy_path/error/limit_exceeded": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/limit_exceeded"
+    },
+    "tools/call/move_path/error/invalid_arguments": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/invalid_arguments"
+    },
+    "tools/call/move_path/error/access_denied": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/access_denied"
+    },
+    "tools/call/move_path/error/not_found": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/not_found"
+    },
+    "tools/call/move_path/error/already_exists": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/already_exists"
+    },
+    "tools/call/move_path/error/unsupported_path_type": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/unsupported_path_type"
+    },
+    "tools/call/move_path/error/unsupported_operation": {
+      "class": "error",
+      "group": "default",
+      "contract": "result/unsupported_operation"
+    },
     "ping///empty-result": {
       "class": "empty",
       "group": "production"
@@ -79,7 +349,8 @@
     },
     "tools/call/list_directory/error/denied": {
       "class": "error",
-      "group": "all"
+      "group": "all",
+      "contract": "result/invalid_path"
     },
     "tools/call/read_file/complete/reference": {
       "class": "text-small",
@@ -103,7 +374,8 @@
     },
     "tools/call/read_file/error/denied": {
       "class": "error",
-      "group": "all"
+      "group": "all",
+      "contract": "result/invalid_path"
     },
     "tools/call/get_path_info/existing/reference": {
       "class": "metadata",
@@ -117,7 +389,8 @@
     },
     "tools/call/get_path_info/error/denied": {
       "class": "error",
-      "group": "all"
+      "group": "all",
+      "contract": "result/invalid_path"
     },
     "tools/call/write_file/complete/reference": {
       "class": "metadata",
@@ -126,7 +399,8 @@
     },
     "tools/call/write_file/error/denied": {
       "class": "error",
-      "group": "default"
+      "group": "default",
+      "contract": "result/invalid_path"
     },
     "tools/call/create_directory/complete/reference": {
       "class": "metadata",
@@ -135,7 +409,8 @@
     },
     "tools/call/create_directory/error/denied": {
       "class": "error",
-      "group": "default"
+      "group": "default",
+      "contract": "result/invalid_path"
     },
     "tools/call/delete_path/complete/reference": {
       "class": "metadata",
@@ -144,7 +419,8 @@
     },
     "tools/call/delete_path/error/denied": {
       "class": "error",
-      "group": "default"
+      "group": "default",
+      "contract": "result/invalid_path"
     },
     "tools/call/copy_path/complete/reference": {
       "class": "metadata",
@@ -153,7 +429,8 @@
     },
     "tools/call/copy_path/error/denied": {
       "class": "error",
-      "group": "default"
+      "group": "default",
+      "contract": "result/invalid_path"
     },
     "tools/call/move_path/complete/reference": {
       "class": "metadata",
@@ -162,7 +439,8 @@
     },
     "tools/call/move_path/error/denied": {
       "class": "error",
-      "group": "default"
+      "group": "default",
+      "contract": "result/invalid_path"
     },
     "fixture/page///reference": {
       "class": "synthetic",
