@@ -4,6 +4,7 @@ package config
 
 import (
 	"encoding/binary"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -104,7 +105,11 @@ func TestWindowsRejectsConfigWithUntrustedWriter(t *testing.T) {
 	if ok == 0 {
 		t.Fatal(callErr)
 	}
-	defer func() { _, _ = syscall.LocalFree(syscall.Handle(descriptor)) }()
+	t.Cleanup(func() {
+		if remaining, err := syscall.LocalFree(syscall.Handle(descriptor)); remaining != 0 || err != nil {
+			t.Error("releasing the fixture security descriptor failed")
+		}
+	})
 	attributes := syscall.SecurityAttributes{SecurityDescriptor: descriptor}
 	attributes.Length = uint32(unsafe.Sizeof(attributes))
 	name, err := syscall.UTF16PtrFromString(path)
@@ -152,7 +157,41 @@ func TestWindowsRequiresExactSourceOwner(t *testing.T) {
 	if other == user {
 		other = "S-1-5-18"
 	}
-	if err := windowsTrust(handle, other, false); err == nil {
-		t.Fatal("different role identity accepted the configuration owner")
+	privateErr := errors.New(`Win32 fixture details: C:\private\config.toml, S-1-1-0, descriptor 0x1234`)
+	for _, tc := range []struct {
+		name      string
+		user      string
+		remaining syscall.Handle
+		freeErr   error
+		want      error
+	}{
+		{name: "trusted owner and successful release", user: user},
+		{name: "different role identity", user: other, want: os.ErrPermission},
+		{name: "trusted owner and release error", user: user, freeErr: privateErr, want: errSecurityDescriptorRelease},
+		{name: "trusted owner and nonzero release result", user: user, remaining: 1, want: errSecurityDescriptorRelease},
+		{name: "different role identity and release failure", user: other, remaining: 1, freeErr: privateErr, want: os.ErrPermission},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls := 0
+			got := windowsTrust(handle, tc.user, false, func(descriptor syscall.Handle) (syscall.Handle, error) {
+				calls++
+				if descriptor == 0 {
+					t.Fatal("missing security descriptor")
+				}
+				if remaining, err := syscall.LocalFree(descriptor); remaining != 0 || err != nil {
+					t.Fatal("native security descriptor release failed")
+				}
+				return tc.remaining, tc.freeErr
+			})
+			if calls != 1 {
+				t.Fatalf("security descriptor release calls = %d, want 1", calls)
+			}
+			if got != tc.want {
+				t.Fatal("unexpected trust result after security descriptor release")
+			}
+			if got != nil && sourceError(got).Error() != string(CategoryUntrustedConfig) {
+				t.Fatal("source error exposed details outside its safe category")
+			}
+		})
 	}
 }

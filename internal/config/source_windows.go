@@ -23,6 +23,8 @@ const (
 )
 
 var (
+	errSecurityDescriptorRelease = errors.New("could not release configuration security descriptor")
+
 	// syscall registers both libraries as known system DLLs, so its loader
 	// uses LOAD_LIBRARY_SEARCH_SYSTEM32 for these exact names.
 	getSecurityInfo = syscall.NewLazyDLL("advapi32.dll").NewProc("GetSecurityInfo")
@@ -259,10 +261,10 @@ func verifyWindowsNode(handle syscall.Handle, path, userSID string, directory bo
 		!strings.EqualFold(syscall.UTF16ToString(finalName[:length]), "\\\\?\\"+path) {
 		return os.ErrPermission
 	}
-	return windowsTrust(handle, userSID, directory)
+	return windowsTrust(handle, userSID, directory, syscall.LocalFree)
 }
 
-func windowsTrust(handle syscall.Handle, userSID string, directory bool) error {
+func windowsTrust(handle syscall.Handle, userSID string, directory bool, freeDescriptor func(syscall.Handle) (syscall.Handle, error)) (trustErr error) {
 	if err := getSecurityInfo.Find(); err != nil {
 		return err
 	}
@@ -275,7 +277,12 @@ func windowsTrust(handle syscall.Handle, userSID string, directory bool) error {
 	if result != 0 {
 		return syscall.Errno(result)
 	}
-	defer syscall.LocalFree(descriptor)
+	defer func() {
+		remaining, err := freeDescriptor(descriptor)
+		if (remaining != 0 || err != nil) && trustErr == nil {
+			trustErr = errSecurityDescriptorRelease
+		}
+	}()
 	if owner == nil || dacl == nil {
 		return os.ErrPermission
 	}
