@@ -276,6 +276,8 @@ Resource governance includes:
 
 The normal execution unit is a cancellable Go goroutine. A subprocess is justified for an approved external program, hard resource/crash isolation, a different OS identity, or work that cannot be reliably cancelled in-process.
 
+The transport-neutral selector in `internal/operation` implements that decision as a deterministic gate: external executable, hard resource isolation, crash isolation, unreliable in-process cancellation, different execution identity, then platform-only external mechanism. The first applicable reason is recorded. Selection is not authorization; executable allowlisting, identity, capability, platform, resource, and lifecycle checks remain mandatory before dispatch.
+
 ## Managed processes and typed command execution
 
 SPR-056 delivers [non-launching foundations](planning/implementation-contract.md#managed-process-activation).
