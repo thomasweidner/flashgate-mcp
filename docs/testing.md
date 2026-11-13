@@ -22,6 +22,12 @@ branch dispatches, job-level permission overrides, manual version inputs,
 tag-derived versions, and missing source gates. Direct and default script
 builds use `0.0.0-dev` and Windows file version `0.0.0.0`.
 
+Future bounded filesystem plan tests must satisfy the permanent negative,
+race, limit, cancellation, partial-completion, dry-run, and platform gates in
+the [bounded filesystem plan threat model](bounded-filesystem-plans-threat-model.md).
+That contract is test guidance for the planned implementation, not evidence
+that a plan tool currently exists.
+
 ## Test Commands
 
 For native MCP revision/profile contracts, complete schema/wire snapshots,
