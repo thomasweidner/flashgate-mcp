@@ -302,6 +302,12 @@ Runtime tool filesystem access goes through `internal/fs`. The one-time
 and the trusted OS account mapping for its default path. This source read
 uses native handle and identity checks independently of data-root PathGuard.
 
+The focused disk-usage tests require a root-relative existing path, reject
+traversal and missing paths, and check the portable capacity invariants
+`usedBytes <= totalBytes` and `availableBytes <= totalBytes`. Linux executes
+the native filesystem query in Cloud; Windows compilation is checked in Cloud,
+while real Windows volume behavior remains part of Windows finalization.
+
 ### Security Tests
 
 Security tests must cover:
