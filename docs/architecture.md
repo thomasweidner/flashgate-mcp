@@ -276,6 +276,14 @@ Resource governance includes:
 
 The normal execution unit is a cancellable Go goroutine. A subprocess is justified for an approved external program, hard resource/crash isolation, a different OS identity, or work that cannot be reliably cancelled in-process.
 
+Operation deadlines are enforced by a server-owned watchdog. The server selects
+a positive timeout, workers receive only the derived context, and expiry cancels
+that context with `context.DeadlineExceeded` as its cause. Parent cancellation is
+propagated without being misreported as a timeout, and successful completion
+stops the watchdog idempotently. Deadline enforcement is lifecycle
+infrastructure; domain cleanup, result semantics, and external-worker
+termination remain with their respective owners.
+
 ## Managed processes and typed command execution
 
 SPR-056 delivers [non-launching foundations](planning/implementation-contract.md#managed-process-activation).
