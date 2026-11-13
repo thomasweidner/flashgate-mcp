@@ -526,6 +526,12 @@ results alone cannot establish native enforcement or cleanup.
 
 Version 1.0 tests Variant A only:
 
+The platform-neutral `internal/executionidentity` unit gate verifies immutable
+caller attributes, policy-controlled backend selection, complete execution
+context binding, authorization before OS-adapter dispatch, cancellation
+propagation, and fail-closed reserved/unknown/duplicate backends. These tests do
+not substitute for native peer-identity, service-account, or ACL validation.
+
 - Windows SCM and Linux systemd lifecycle;
 - Named Pipe ACL and Unix socket ownership/mode;
 - OS-derived peer identity cannot be overridden by payload;
