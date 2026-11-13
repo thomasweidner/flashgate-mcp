@@ -147,6 +147,22 @@ func TestStrictArtifactValidatorRejectsSecurityRelevantMutations(t *testing.T) {
 			},
 		},
 		{
+			name: "noncanonical workflow exit status", wantArtifact: "baseline.windows-amd64.json", wantCause: "canonical signed decimal exit status",
+			mutate: func(windows, _ *[]byte) {
+				*windows = mutateResultArtifact(t, *windows, func(result *Result) {
+					result.Workflows[0].ExitStatuses = map[string]int{"+0": result.Workflows[0].Repetitions}
+				})
+			},
+		},
+		{
+			name: "workflow exit status count exceeds portable range", wantArtifact: "baseline.windows-amd64.json", wantCause: "outside the schema range",
+			mutate: func(windows, _ *[]byte) {
+				*windows = mutateResultArtifact(t, *windows, func(result *Result) {
+					result.Workflows[0].ExitStatuses = map[string]int{"0": int(benchmarkJSONMaxInt) + 1}
+				})
+			},
+		},
+		{
 			name: "trailing JSON object", wantArtifact: "baseline.windows-amd64.json", wantCause: "trailing JSON data",
 			mutate: func(windows, _ *[]byte) {
 				*windows = append(append([]byte{}, *windows...), []byte("\n{}")...)

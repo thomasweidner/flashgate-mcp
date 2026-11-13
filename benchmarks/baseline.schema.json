@@ -47,7 +47,7 @@
     "execution_backend": { "const": "current_process" },
     "profile": { "const": "read_only" },
     "parallelism": { "const": 1 },
-    "repetitions": { "type": "integer", "minimum": 1 },
+    "repetitions": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
     "start_measurements": {
       "type": "object",
       "additionalProperties": false,
@@ -74,8 +74,8 @@
       "required": ["schema_version", "hard_failures", "soft_warnings", "messages"],
       "properties": {
         "schema_version": { "const": "flashgate-benchmark-budgets/v1" },
-        "hard_failures": { "type": "integer", "minimum": 0 },
-        "soft_warnings": { "type": "integer", "minimum": 0 },
+        "hard_failures": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "soft_warnings": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         "messages": { "type": "array", "items": { "type": "string" } }
       }
     },
@@ -88,11 +88,11 @@
       "additionalProperties": false,
       "required": ["samples", "min", "p50", "p95", "max"],
       "properties": {
-        "samples": { "type": "integer", "minimum": 0 },
-        "min": { "type": "integer", "minimum": 0 },
-        "p50": { "type": "integer", "minimum": 0 },
-        "p95": { "type": "integer", "minimum": 0 },
-        "max": { "type": "integer", "minimum": 0 }
+        "samples": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "min": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "p50": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "p95": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "max": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
       }
     },
     "resources": {
@@ -112,15 +112,15 @@
       "additionalProperties": false,
       "required": ["repetitions", "duration_ns", "request_bytes", "response_bytes", "result_bytes", "resources", "exit_statuses", "stderr_warnings", "stderr_warning_count"],
       "properties": {
-        "repetitions": { "type": "integer", "minimum": 1 },
+        "repetitions": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
         "duration_ns": { "$ref": "#/$defs/metricSummary" },
         "request_bytes": { "$ref": "#/$defs/metricSummary" },
         "response_bytes": { "$ref": "#/$defs/metricSummary" },
         "result_bytes": { "$ref": "#/$defs/metricSummary" },
         "resources": { "$ref": "#/$defs/resources" },
-        "exit_statuses": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "exit_statuses": { "type": "object", "propertyNames": { "pattern": "^-?(0|[1-9][0-9]*)$" }, "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 2147483647 } },
         "stderr_warnings": { "type": "array", "items": { "type": "string" } },
-        "stderr_warning_count": { "type": "integer", "minimum": 0 }
+        "stderr_warning_count": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
       }
     },
     "toolsListMeasurement": {
@@ -129,12 +129,12 @@
       "required": ["profile", "tool_count", "schema_count", "request_bytes", "response_bytes", "result_bytes", "approx_tokens_bytes4"],
       "properties": {
         "profile": { "enum": ["read_only", "default"] },
-        "tool_count": { "type": "integer", "minimum": 0 },
-        "schema_count": { "type": "integer", "minimum": 0 },
-        "request_bytes": { "type": "integer", "minimum": 0 },
-        "response_bytes": { "type": "integer", "minimum": 0 },
-        "result_bytes": { "type": "integer", "minimum": 0 },
-        "approx_tokens_bytes4": { "type": "integer", "minimum": 0 }
+        "tool_count": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "schema_count": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        "request_bytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "response_bytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "result_bytes": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 },
+        "approx_tokens_bytes4": { "type": "integer", "minimum": 0, "maximum": 18446744073709551615 }
       }
     },
     "workflowMeasurement": {
@@ -143,8 +143,8 @@
       "required": ["name", "repetitions", "calls", "request_bytes", "response_bytes", "result_bytes", "duration_ns", "read_bytes", "written_bytes", "scanned_bytes", "entries", "approx_tokens_bytes4", "resources", "exit_statuses", "stderr_warnings", "stderr_warning_count"],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
-        "repetitions": { "type": "integer", "minimum": 1 },
-        "calls": { "type": "integer", "minimum": 0 },
+        "repetitions": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "calls": { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         "request_bytes": { "$ref": "#/$defs/metricSummary" },
         "response_bytes": { "$ref": "#/$defs/metricSummary" },
         "result_bytes": { "$ref": "#/$defs/metricSummary" },
@@ -155,9 +155,9 @@
         "entries": { "$ref": "#/$defs/metricSummary" },
         "approx_tokens_bytes4": { "$ref": "#/$defs/metricSummary" },
         "resources": { "$ref": "#/$defs/resources" },
-        "exit_statuses": { "type": "object" },
+        "exit_statuses": { "type": "object", "propertyNames": { "pattern": "^-?(0|[1-9][0-9]*)$" }, "additionalProperties": { "type": "integer", "minimum": 0, "maximum": 2147483647 } },
         "stderr_warnings": { "type": "array", "items": { "type": "string" } },
-        "stderr_warning_count": { "type": "integer", "minimum": 0 }
+        "stderr_warning_count": { "type": "integer", "minimum": 0, "maximum": 2147483647 }
       }
     }
   }
