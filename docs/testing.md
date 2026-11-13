@@ -362,6 +362,11 @@ The read-only variant verifies the exact three-tool profile and tests generic
 Invalid params for all five write-capable names. The negative smoke covers
 removed names, request errors, notification silence, and safe traversal denial.
 
+`go test ./internal/version` also scans the repository for the former technical
+product identifiers. Their case-insensitive occurrence counts are pinned to the
+historical ADR, changelog, and rename records; a new occurrence, a new path, or
+an unreviewed change to an allowed historical count fails the gate.
+
 The startup-negative smoke covers missing/empty/whitespace/relative roots, `.` with and without the development opt-in, invalid development/read-only values, missing and file roots, a valid absolute root, exit codes, empty stdout, safe stderr categories and cleanup.
 
 GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative smoke variants on both `windows-latest` and `ubuntu-latest`. The smoke scripts create per-run artifacts under `build/` and clean them before exit. Script output is CI diagnostic output; server stdout remains reserved for redirected JSON-RPC protocol messages.
