@@ -123,21 +123,26 @@ func TestLoadRequiredPlatformBaselinesRejectsInvalidSets(t *testing.T) {
 }
 
 func loadRequiredPlatformBaselines(directory string, budgetPath string) (map[string]loadedPlatformBaseline, error) {
-	paths := []string{
-		filepath.Join(directory, "baseline.windows-amd64.json"),
-		filepath.Join(directory, "baseline.linux-amd64.json"),
+	required := []struct {
+		filename     string
+		expectedOS   string
+		expectedArch string
+	}{
+		{filename: "baseline.windows-amd64.json", expectedOS: "windows", expectedArch: "amd64"},
+		{filename: "baseline.linux-amd64.json", expectedOS: "linux", expectedArch: "amd64"},
 	}
-	baselines := make(map[string]loadedPlatformBaseline, len(paths))
-	for _, path := range paths {
+	baselines := make(map[string]loadedPlatformBaseline, len(required))
+	for _, expected := range required {
+		path := filepath.Join(directory, expected.filename)
 		result, raw, err := loadValidatedBaselineArtifact(path, budgetPath)
 		if err != nil {
 			return nil, err
 		}
-		if result.OS != "windows" && result.OS != "linux" {
-			return nil, fmt.Errorf("unknown baseline platform %q", result.OS)
-		}
-		if result.Architecture != expectedBaselineArch {
-			return nil, fmt.Errorf("baseline platform %s architecture=%q", result.OS, result.Architecture)
+		if result.OS != expected.expectedOS || result.Architecture != expected.expectedArch {
+			return nil, fmt.Errorf(
+				"artifact %s embedded platform identity=%s/%s, want %s/%s from filename",
+				expected.filename, result.OS, result.Architecture, expected.expectedOS, expected.expectedArch,
+			)
 		}
 		if _, exists := baselines[result.OS]; exists {
 			return nil, fmt.Errorf("duplicate baseline platform %q", result.OS)
