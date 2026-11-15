@@ -498,6 +498,13 @@ by timing do not establish protection.
 | Native identity and concurrency | Exercise Windows case and supported alternate paths, hardlinks, symlinks, junctions and reparse points and Linux hardlinks, symlinks and relevant bind or mount aliases. Deterministically expose a source, target or parent identity change before the intended effect and require denial. Exercise conflicting FlashGate calls through the actual operation boundary. Test late aliases and replacement after activation, denial before copy output, and supported reads and mutations for unaffected siblings. |
 | Integration and compatibility | Exercise allowed sibling mutations in a protected parent and a safely enforceable overlapping root. Preserve existing root confinement, read-only/catalog behavior, STDIO wire envelopes, error categories or compatible normalization, and secret-safe diagnostics. Test the upgrade and rollback placement contract. |
 
+On Linux, remove the selected name and exercise write, copy and move to
+absent alternate spellings in its directory. Remove a selected ancestor
+and test recursive directory creation through an alternate spelling.
+Verify denial before any namespace change, continued access to existing
+siblings and new destinations in unrelated directories, and sibling
+creation after restoring the selected name.
+
 Successor owners run operation-specific negatives under their actual native
 backend before activation. Exercise permitted roots and grants with forbidden
 effects, including command arguments, environment, descendants, hooks,

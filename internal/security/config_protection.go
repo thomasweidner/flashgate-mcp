@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 // ErrConfigurationAccess denies an ordinary effect on the protected
@@ -108,11 +109,22 @@ func (p *ConfigProtection) Check(path string, info, parent os.FileInfo, mutation
 	if err != nil {
 		return err
 	}
+	// Linux filesystems can fold and normalize names during lookup. When a
+	// protected name is absent, pathname spelling and file identity cannot
+	// establish that a new destination in the same directory is distinct.
+	unprovedLinuxName := runtime.GOOS == "linux" && info == nil
+	if unprovedLinuxName && current == nil &&
+		(sameIdentity(parent, parents[0].info) || sameIdentity(parent, p.parents[0].info)) {
+		return ErrConfigurationAccess
+	}
 	if sameIdentity(parent, parents[0].info) && configNameEqual(filepath.Base(path), filepath.Base(p.source)) {
 		return ErrConfigurationAccess
 	}
 	for i, dir := range parents {
 		if sameIdentity(info, dir.info) || sameIdentity(info, p.parents[i].info) {
+			return ErrConfigurationAccess
+		}
+		if unprovedLinuxName && i > 0 && parents[i-1].info == nil && sameIdentity(parent, dir.info) {
 			return ErrConfigurationAccess
 		}
 	}

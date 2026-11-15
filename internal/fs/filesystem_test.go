@@ -146,6 +146,89 @@ func TestConfigurationEffectsHoldSharedLock(t *testing.T) {
 	concurrent.Wait()
 }
 
+func TestLinuxMissingConfigurationNamesDenyUnprovedDestinations(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux pathname protection")
+	}
+	root := t.TempDir()
+	parent := filepath.Join(root, "config-dir")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(parent, "config.toml")
+	sibling := filepath.Join("config-dir", "sibling")
+	ordinary := []byte("ordinary")
+	for path, content := range map[string][]byte{
+		source: []byte("protected"), filepath.Join(root, sibling): ordinary,
+	} {
+		if err := os.WriteFile(path, content, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard, err := security.NewPathGuard(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Write(filepath.Join("config-dir", "new"), ordinary, false); err != nil {
+		t.Fatalf("present configuration blocked sibling creation: %v", err)
+	}
+	renamedSource := filepath.Join(parent, "loaded.toml")
+	if err := os.Rename(source, renamedSource); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join("config-dir", "CONFIG.TOML")
+	normalizedAlias := filepath.Join("config-dir", "CON\u00adFIG.TOML")
+	deny := func(path string, err error) {
+		t.Helper()
+		if !errors.Is(err, security.ErrConfigurationAccess) {
+			t.Errorf("mutation of %q returned %v", path, err)
+		}
+		if _, err := os.Lstat(filepath.Join(root, path)); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("mutation left a destination for %q: %v", path, err)
+		}
+	}
+	deny(alias, f.Write(alias, ordinary, false))
+	deny(normalizedAlias, f.Copy(sibling, normalizedAlias, false))
+	deny(alias, f.Move(sibling, alias, false))
+	if err := f.Write(sibling, ordinary, true); err != nil {
+		t.Fatalf("missing configuration blocked an existing sibling: %v", err)
+	}
+	if err := f.Copy(sibling, "new-outside-parent", false); err != nil {
+		t.Fatalf("missing configuration blocked a destination in a different parent: %v", err)
+	}
+	renamedParent := filepath.Join(root, "relocated")
+	if err := os.Rename(parent, renamedParent); err != nil {
+		t.Fatal(err)
+	}
+	const aliasParent = "CONFIG-DIR"
+	created, err := f.Mkdir(filepath.Join(aliasParent, "nested"))
+	if created {
+		t.Error("mkdir reported creation through a protected ancestor alias")
+	}
+	deny(aliasParent, err)
+	if err := os.Rename(renamedParent, parent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(renamedSource, source); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Write(filepath.Join("config-dir", "new-after-restore"), ordinary, false); err != nil {
+		t.Fatalf("restored configuration blocked sibling creation: %v", err)
+	}
+}
+
 func TestConfigurationCopyPreEffectDenialPreservesDestination(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "config.toml")

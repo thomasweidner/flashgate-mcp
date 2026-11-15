@@ -354,6 +354,13 @@ Evaluate lexical path and resolved object identity, including
 new hard links, symlinks, Windows case/path aliases, reparse points and
 relevant mount mappings. Preserve normal access to unaffected siblings.
 
+When the selected Linux name or one of its ancestors is absent, deny mutation
+of an absent destination in the directory that would resolve the missing
+component. Linux lookup can fold case and normalize names, and an absent name
+has no object identity that proves the destination is distinct. Existing
+independently identified objects and destinations in unrelated directories
+remain subject to the ordinary policy.
+
 Bind content reads and destructive opens to the inspected native object.
 Serialize conflicting FlashGate operations through validation and effect.
 Use the existing filesystem, PathGuard and authorization boundaries. Deny
