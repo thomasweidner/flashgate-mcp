@@ -237,7 +237,9 @@ for protocol messages; diagnostics use stderr.
 Use one platform example for your client. Back up its existing configuration,
 add or update only the `flashgate` entry, and preserve unrelated settings and
 servers. The examples describe an operator-applied change, not an automatic
-registration. Keep the binary and TOML outside the configured data root.
+registration. Keep the binary and TOML outside the configured data root for
+current builds. See the [configuration rollout](docs/migration.md#configuration-protection-rollout)
+before changing placement during an upgrade or rollback.
 Use an existing absolute data root for client setup and a prebuilt executable.
 See [client setup](docs/client-setup.md) for acceptance and rollback.
 

@@ -113,6 +113,10 @@ actual server results rather than relying only on a direct command-line test.
 Expected root/configuration failures use exit code 3; unexpected failures use
 exit code 1. Failed startup leaves stdout empty.
 
+These steps apply to the current loader. The separate-root guidance remains
+in effect until the [planned protection](configuration.md#planned-configuration-protection)
+is implemented and validated for the affected build.
+
 ## Rollback
 
 Disable the affected FlashGate entry using the client's supported method, or

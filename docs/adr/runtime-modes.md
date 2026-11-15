@@ -56,9 +56,9 @@ The fail-closed fallback rule prevents `auto` from becoming a policy-bypass mech
 
 ## Configuration contract
 
-BL-233 owns K2, the central, typed configuration model in the shared Go
+BL-233 delivered K2, the central typed configuration model in the shared Go
 core. See the [runtime configuration reference](../configuration.md) for
-the supported TOML schema, trust requirements, and template.
+the supported TOML schema, current bootstrap checks, and template.
 
 Each server instance has one authoritative configuration file. The default
 location follows the runtime role:
@@ -89,9 +89,34 @@ immutable effective configuration to them. Normal MCP startup performs no
 configuration writes. BL-223 owns explicit CLI creation via `config init`
 and any CLI validation command, using the same model and validation.
 
-Before exposing filesystem tools, apply the shared source-separation check
-to each PathGuard-approved data root. An overlapping root or unprovable
-separation stops startup for both read-only and writable profiles.
+### Configuration trust and protection amendment
+
+[BL-374](../planning/implementation-contract.md#bl-374-configuration-trust-and-protection)
+implements this accepted target. The role default or an explicit absolute
+override selects one source. OS administrators provision it and control
+permissions. FlashGate binds the selected object for a consistent, bounded
+read. Object binding establishes which bytes the loader validated.
+Administrative ownership, ACLs, UID, groups, mode and edit history provide
+no additional FlashGate trust test.
+
+The instance publishes one immutable effective snapshot after full
+validation. Independent filesystem changes affect a later validated start.
+Only explicit, authorized configuration mechanisms may activate another
+snapshot during operation. BL-373 owns future MCP configuration management
+and optional validated persistence.
+
+The [configuration protection contract](../security.md#configuration-trust-and-protection)
+applies to all effects FlashGate initiates, including through another
+execution identity under [ADR-015](execution-identity.md). Ordinary MCP
+tools deny reads of the selected file and its aliases, prevent derived or
+indirect disclosure, and deny protected mutations. The selected object
+and path determine the boundary. Normal filesystem grants do not waive
+it. BL-373 owns the later server-authorized redacted view. The current
+startup separation check still applies to all effective roots. BL-374 may
+replace the blanket rule only after native Windows and Linux evidence
+proves protection at the read, disclosure and mutation boundaries. Any path
+that cannot enforce protection fails closed. Later tool owners prove their
+own enforcement.
 
 The planned configuration domains are Runtime, Endpoints, Protocol, Roots,
 Profiles, Capabilities, Authorization, Filesystem, Search, Operations,

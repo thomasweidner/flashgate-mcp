@@ -113,6 +113,14 @@ still requires explicit tests for authorization, confinement, disclosure,
 limits, cancellation, cleanup, and race behavior even at 100% statement
 coverage.
 
+BL-100's `internal/capability` package has its own focused statement coverage
+while it remains outside the shipped server graph. Run
+`go test -cover ./internal/capability` and exercise the package under the
+native Linux race suite. Its tests cover exact IDs, invalid and conflicting
+definitions, immutable sets, snapshot boundaries, all-rights evaluation,
+declarative extension and simulated adapter parity. Keep the existing
+platform-specific server coverage gate and STDIO snapshots and smokes.
+
 
 ### Shell script validation
 
@@ -473,6 +481,39 @@ Currently tested:
 ## Version 1.0 Planned Validation Matrix
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
+
+### Configuration protection acceptance
+
+BL-374 owns this planned matrix on native Windows and native Linux. The
+current startup and fixture checks above describe the existing implementation.
+Use the real loader, bootstrap, Go filesystem read and mutation boundary,
+and MCP STDIO wiring. Fixture-only decisions, source scans and races exercised only
+by timing do not establish protection.
+
+| Boundary | Required acceptance |
+|---|---|
+| Source selection and load | Positive role default and explicit absolute override under the normal OS identity. Cover OS-readable files without product ownership or ACL assertions. Deny hidden environment/CWD alternatives, missing or inaccessible files, redirects or non-regular sources that cannot be bound, over-limit input, bad or duplicate keys, schema/type/value/security errors, and detectable concurrent changes or replacement during open/read. Verify one consistent snapshot or safe startup failure, no startup writes, and redacted stderr with empty stdout on failure. |
+| Snapshot | Independent in-place edit, replacement and removal after startup preserve existing consumers. A subsequent validated startup sees new valid bytes or fails closed. Concurrent requests see only the activated immutable state. |
+| Direct reads and copies | With a permitted overlapping root and ordinary valid grants, deny `read_file` on the selected file and its aliases. Deny `copy_path` with a protected source before creating a new destination or changing an existing destination. Deny a protected destination even with an allowed source. Test both the loaded object and a replacement at the selected path, with the running snapshot unchanged. Assert that neither result, stderr, logs, error fields, nor artifacts contain protected content. |
+| Ordinary metadata and siblings | Under the same policy, read and copy ordinary sibling bytes successfully and retain allowed sibling writes. Verify listing and stat return permitted root-relative metadata only. Assert that metadata routes neither open protected contents nor emit content-derived fields. |
+| Direct mutations | Through real tool calls cover create-directory ancestry, create and truncate/overwrite, delete, recursive delete, rename/move, and file copy/overwrite. Check source and destination by effect, including protected endpoints, missing selected path, ancestor mutations, attempted subtree replacement and authorized siblings. Verify protected bytes, path and identity after every denial or supported no-op. |
+| Native identity and races | Windows case and supported alternate path aliases, hardlinks and symlink/junction/reparse targets or parents. Linux hardlinks, symlinks and relevant bind or mount aliases. Deterministically exchange a read source, copy source, mutation target or parent between resolution and effect. Exercise late aliases and external replacement after activation. No protected bytes reach tool output or a copy target. Include a platform path that cannot bind the effect and must deny. Retain protection through each commit and cleanup. |
+| Integration and compatibility | Exercise allowed sibling mutations in a protected parent and a safely enforceable overlapping root. Preserve existing root confinement, read-only/catalog behavior, STDIO wire envelopes, error categories or compatible normalization, and secret-safe diagnostics. Test the upgrade and rollback placement contract. |
+
+Successor owners run operation-specific negatives under their actual native
+backend before activation. Exercise permitted roots and grants with forbidden
+effects, including command arguments, environment, descendants, hooks,
+archive staging and traversal, service callbacks, and late scheduled work
+as applicable. Prove absent enforcement cannot launch or trigger fallback.
+For applicable read or disclosure routes, use identifiable fixture content
+and exercise ranges, streams, batches, search context and counters, hashes,
+compare/verify oracles, archive output, process output/files and retained
+results. Test successful sibling results and safe denial or omission across
+the actual backend and output route. A scan for fixture text alone cannot
+prove absence of content-derived disclosures.
+BL-241/242 exercise actual enabled roles and shipped builds. BL-373 adds
+authorization, snapshot activation, persistence, conflict, rollback and
+restart tests for its later dedicated path.
 
 ### Filesystem identity, compare, and verification tests
 

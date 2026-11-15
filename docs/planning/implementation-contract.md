@@ -385,7 +385,7 @@ separate authorization. The published v0.3.0 identity is retained.
 |---|---|
 | MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258, BL-371 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
 | Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Extend `filesystem.root`, `filesystem.read_only` and current path controls in BL-233's model. Migrate direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
-| Capability and authorization verification — BL-100, BL-171 | Keep functional rights distinct from profile and risk classification; verify MCP annotations never grant authority. Reuse the central BL-159 decision and its negative tests. |
+| Capability and authorization verification — BL-100, BL-171 | Use the [BL-100 functional model](#bl-100-functional-capability-model) for explicit functional requirements. BL-171 verifies that MCP annotations confer no grants through the central BL-159 decision. |
 | Filesystem — BL-036–BL-067, BL-346 | Extend `internal/fs` and the existing `internal/security` path guard. Use named root IDs and relative paths, bounded reads/writes/trees, existing hash and tree primitives, and the shared result lifecycle. Migrate the current eight-tool contracts where their owners require it. |
 | Search — BL-068–BL-082 | Extend the accepted `search_paths` and `search_text` public families over confined roots, bounded scanning, pages, and context-bound cursors. Pure Go is the portable baseline. Do not add a public tool per backlog row. |
 | Operations and jobs — BL-084–BL-099, BL-164 | Own one generic bounded lifecycle, quotas, cancellation, TTL, cleanup, and fair scheduling. Consume policy and execution context before creating state. Keep domain meaning in domains; reuse BL-090 storage. |
@@ -397,6 +397,44 @@ separate authorization. The published v0.3.0 identity is retained.
 | Response and benchmark quality — BL-172–BL-173, BL-177–BL-179, BL-205, BL-317–BL-323, BL-325–BL-329, BL-331–BL-332 | Reuse current benchmark schemas, deterministic workflow/corpus controls, host/platform evidence, and documentation gates. Strengthen checks at their existing owners without weakening result, supply-chain, platform, or public documentation truth; no benchmark result itself authorizes product behavior. |
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
 | Documentation navigation tooling — BL-368 | Independent release-unassigned development tooling, outside the product runtime and release-security owners. Reuse completed documentation validation and extend its local/read-only CI consumers under the [BL-368 binding](#bl-368-documentation-navigation); no hard dependency on BL-365 or release obligation. |
+
+## BL-100 functional capability model
+
+The transport-neutral policy foundation implements the
+[ADR-009 functional capability contract](../adr/capability-profiles.md#functional-capability-contract)
+in `internal/capability`. BL-233 is the completed configuration baseline.
+Capability definitions are reviewed data. A catalog snapshot validates
+definitions, grants and requirements before use. The evaluator checks all
+explicitly required IDs in that snapshot and takes no transport, backend,
+profile, principal or resource inputs.
+
+Use the common catalog and evaluator for future functional rights. The
+implementing owner declares each new operation or variant and any necessary
+new definitions, exercises granted and denied calls including partial grants
+for composed operations, and binds executable coverage to the existing
+authorization, catalog and CI gates. Backend selection and provider trust
+remain independent. See [backlog ownership](../../BACKLOG.md) for the concrete
+requirements of each successor and the
+[traceability matrix](architecture-traceability.md#core-policy-context-catalog-and-state-foundation)
+for integration boundaries.
+
+The current controls are the BL-233 `filesystem.read_only` setting, server
+bootstrap registration and the current MCP call path. BL-103 owns migrating
+that setting, BL-108 owns per-root grant composition, BL-110 owns effective
+registration, and BL-159 owns functional enforcement alongside all other
+checks before dispatch. BL-236 carries the inputs across execution backends,
+and BL-239 applies the effective context to state and handles. BL-100 adds
+the internal model and focused fixtures. The current configuration, registry,
+tool contracts, protocol, dependencies, version and distribution stay as
+implemented.
+
+Validate construction failures, deterministic set operations, all-rights
+matching, concurrent read-only use, declarative extension and backend parity
+with synthetic inputs. Run the existing Windows and native Linux product
+coverage, STDIO, source and documentation gates. BL-111, BL-160 and BL-161
+own runtime visibility, direct-call and root negatives. BL-256 owns
+effective-composition CI. Independent terminal review is required before
+closing BL-100.
 
 ## BL-233 central runtime configuration
 
@@ -414,8 +452,9 @@ fail-closed startup, safe startup errors, and protocol and compatibility
 guarantees. Migrate the current `MCP_*` runtime inputs, including path policy,
 payload limits, and diagnostics. BL-101/103 retain their named-root and profile
 semantics. BL-166 consumes the logging path and owns the audit lifecycle.
-Apply the shared source-separation check after PathGuard resolves each data
-root. BL-101 reuses this check for each named root before exposing it.
+The delivered baseline checks separation after PathGuard resolves the data
+root. BL-374 owns the planned replacement. Keep the historical BL-233
+acceptance and the current protection until that replacement is proven.
 
 **Public delta and invariants.** The future startup configuration contract
 changes from environment inputs to one trusted TOML file per instance.
@@ -441,10 +480,69 @@ template covers the supported settings and passes the shared validator.
 BL-241/242 validate the enabled managed-mode integrations, and BL-243
 documents the delivered paths.
 
+## BL-374 configuration trust and protection
+
+**Role and prerequisites.** SPR-053 bootstrap and filesystem retrofit. The
+completed BL-233 typed model, ADR-014 role selection, PathGuard and the
+existing Go filesystem are prerequisites. BL-374 can run on today's direct
+STDIO path before later authorization or service integration. The
+[ADR-014 amendment](../adr/runtime-modes.md#configuration-trust-and-protection-amendment)
+and [security contract](../security.md#configuration-trust-and-protection)
+are the authorities for the change.
+
+**Reuse and retrofit.** Replace administrative trust checks in
+`internal/config` on Windows and Linux while preserving role-bound selection
+and stable, bounded reads. Reuse the strict typed decoder and immutable
+accessors. Update `cmd/server` bootstrap, the current separation check,
+native fixture helpers, PathGuard resolution and `internal/fs` read, create,
+write, copy, move and delete. Guard `read_file` and both `copy_path`
+operands. Bind the selected source's path, relevant parents and file
+identity to the actual native read or mutation. Reject a protected copy
+source before creating, truncating or modifying the destination. Ordinary
+listing and stat retain authorized content-independent metadata.
+Review destructive opens before truncation, rename/replacement, the complete
+recursive-delete effect, implicit parent creation and temporary output or
+cleanup wherever applicable. Affected current path-based race windows must
+be closed for this resource or the path must deny the operation. Cover a
+read or copy source swapped after resolution and verify bytes cannot escape
+through partial results, diagnostics or outputs. Retain
+current root and capability controls. Bind a safe typed denial through
+existing MCP and bootstrap error paths.
+
+**Public delta and scope.** Keep role defaults, the absolute override, the
+schema, limits, current MCP tool names and STDIO framing. Allow a root that
+contains the selected source only with proved protection. Keep no-startup-write,
+secret-safe diagnostics and empty stdout on startup failure. Use the existing
+Go enforcement points. BL-374 adds no configuration-management API,
+process isolation engine, runtime dependency or tool.
+
+**Acceptance and closure.** Run the native Windows/Linux
+[acceptance matrix](../testing.md#configuration-protection-acceptance) and
+regressions for the affected loader, bootstrap, filesystem and MCP surfaces.
+Prove the normal unprivileged test path and explain any unavailable native
+fixture or operation. Mark the owning backlog row according to actual
+implementation and independent review. Reconcile affected ADRs, guides,
+tests and CI, migration and rollback, security, changelog and version
+disposition, current-version candidate artifacts and release/distribution.
+Bind any accepted deferred deliverable in both this owner and its accepting
+successor.
+
+**Successor rule.** All new or changed tools and adapters screen their
+actual side effects under [BL-220 successor acceptance](tool-adapters.md#bl-220-successor-acceptance).
+Each relevant owner binds denial and positive evidence to its actual dispatch,
+read, mutation and disclosure paths in
+[traceability](architecture-traceability.md#configuration-protection-consumers).
+Cover content-derived results, selected fields, continuations and retained
+payloads wherever they can expose protected content.
+Keep BL-220 and completed BL-374 closed for ordinary extensions. A change
+to the shared protection boundary requires an explicit security decision
+and an identified owner. BL-373 owns authorized configuration changes.
+
 ## BL-373 authorized MCP configuration management
 
 **Role and prerequisites.** Post-1.0 application and authorization owner.
-Implementation requires BL-233 (typed model and validation), BL-236 (trusted
+Implementation requires BL-233 (typed model and validation), BL-374
+(protected source binding), BL-236 (trusted
 caller and execution context), BL-159 (central authorization), BL-110
 (effective catalog), and BL-166 (audit and correlation). Reuse named roots,
 profiles, capabilities, and identity bindings from those foundations.
@@ -461,8 +559,10 @@ Any later Streamable HTTP exposure uses the same core functions after
 BL-370's authentication, security, and activation gates. There is no second
 configuration engine or client-side mutation path.
 
-**Public delta and invariants.** Provide a bounded, redacted view of effective
-configuration and typed change preparation, validation, and a readable
+**Public delta and invariants.** The dedicated, server-authorized management
+route owns bounded, redacted views of effective configuration. Ordinary
+read or copy operations cannot provide a raw-source view. Provide typed
+change preparation, validation, and a readable
 preview before any mutation. Require explicit server-side authorization for
 each step, including current authorization at commit time. Protect secrets,
 sensitive paths, and administrative policy from exposure or unauthorized
@@ -473,8 +573,12 @@ public tool names, schemas, and errors before activation.
 
 **Acceptance.** Define version/concurrency conflicts, compare-and-swap (CAS),
 safe persistence and postwrite readback, failure and recovery behavior,
-and when restart makes a persisted change effective. Preserve BL-233's
-immutable running configuration. Prove native Windows/Linux behavior with
+and when restart makes a persisted change effective. Atomically publish
+one fully validated new snapshot with its corresponding protection binding
+under the existing authorization and generation controls. Where persistence
+is authorized, bind the actual target and validate the bytes and filesystem
+permissions before publication, with CAS, readback and defined recovery.
+Define temporary versus permanent changes during BL-373 design. Prove native Windows/Linux behavior with
 positive, security, negative, consistency, and integration tests across the
 authorized paths. Cover stale or competing proposals, denied catalog access
 and direct calls, authorization changes before commit, redaction, persistence

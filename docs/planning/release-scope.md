@@ -32,6 +32,8 @@ regressions. BL-220 can proceed independently.
 
 SPR-053 establishes the configuration, root and profile, context,
 authorization, effective catalog, audit, and state-binding contracts.
+It includes BL-374's loader and current filesystem protection before
+consumers activate affected mutation paths.
 Its validation, catalog, and protocol gates follow the applicable predecessors.
 SPR-049 establishes BL-084–BL-089 Operations lifecycle and the BL-090 shared
 result store before dependent Operations work, BL-218 resource handoff, and
@@ -364,8 +366,9 @@ The following remain outside the accepted local Version 1.0 architecture and req
 
 Post-1.0 [BL-373](implementation-contract.md#bl-373-authorized-mcp-configuration-management)
 owns authorized configuration management through MCP clients. Version 1.0
-configuration uses the [BL-233 file contract](../adr/runtime-modes.md#configuration-contract)
-and explicit CLI and installation paths. BL-373 adds no Version 1.0 prerequisite.
+configuration uses the [role-selected file contract](../adr/runtime-modes.md#configuration-contract),
+BL-374 protection, and explicit CLI and installation paths. BL-373 adds no
+Version 1.0 prerequisite.
 
 ## Release-unassigned human-readable release quality reporting
 
@@ -383,6 +386,12 @@ separate future implementation/authorization decisions.
 ## Version 1.0 release gate
 
 `BL-263` must verify at minimum:
+
+Bind every enabled tool, transport and backend with applicable read,
+disclosure or mutation effects to passing direct or indirect
+[protection evidence](../testing.md#configuration-protection-acceptance)
+and its canonical owner. Reconcile security, operator guidance, and release
+traceability with the shipped behavior.
 
 1. all tasks assigned to Version 1.0 by the sprint sequence are `Completed` or have a documented explicit waiver approved in the release record, and [architecture traceability](architecture-traceability.md) has no ownerless requirement or unresolved Version 1.0 retrofit except an explicitly approved release waiver;
 2. all remaining Post-1.0 tasks are outside Version 1.0, and release-unassigned BL-366/367/368/369 have no release-blocking obligation;

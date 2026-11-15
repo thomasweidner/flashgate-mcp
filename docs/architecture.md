@@ -138,6 +138,19 @@ The user-worker backend is represented because interfaces are Version 1.0 work. 
 
 The [technical backlog implementation contract](planning/implementation-contract.md) makes each planned owner inherit this target architecture; [architecture traceability](planning/architecture-traceability.md) records prerequisites, current implementation retrofit targets, validation owners, and closure state. SPR-053 establishes named roots, profiles/capabilities, central authorization, configuration, audit/correlation, backend-neutral dispatch, and context binding before Operations, filesystem expansion, and search consume those interfaces. BL-101 and BL-103 extend the TOML model's current single-root and read-only settings. BL-236 owns migration of direct MCP-to-filesystem dispatch.
 
+### Configuration trust and protection
+
+[ADR-014](adr/runtime-modes.md#configuration-trust-and-protection-amendment)
+defines one role-selected TOML source and one validated, immutable snapshot.
+BL-374 retrofits bootstrap, `read_file` and the five current filesystem
+mutation routes, including both operands of `copy_path`, using existing
+Go configuration and PathGuard boundaries. Root policy
+continues to apply, and the selected file remains protected across roots,
+profiles, transports and the [ADR-015 execution backends](adr/execution-identity.md).
+Each later path proves the [same protection](security.md#configuration-trust-and-protection)
+before activation, including direct and derived disclosure. BL-373 owns
+future authorized redacted views, snapshot activation and optional persistence.
+
 ## Dependency direction
 
 BL-233 defines the [single-file configuration contract](adr/runtime-modes.md#configuration-contract)
@@ -303,18 +316,14 @@ A future synchronous `run_command` remains a wrapper over the Managed Process En
 
 Profiles determine tool exposure and policy composition; server-side authorization remains authoritative.
 
-Illustrative capabilities:
-
-```text
-filesystem.read
-filesystem.write
-search.execute
-process.observe
-process.manage
-process.control.external
-command.execute
-system.read
-```
+The [functional capability contract](adr/capability-profiles.md#functional-capability-contract)
+defines the basis rights and the rules for extending them. The Go core
+validates definitions, explicit grants, and per-operation requirements in
+immutable catalog snapshots. A functional decision checks all required IDs
+independently of transport, backend, and technical support. BL-159 composes
+that decision with the other authorization controls, and BL-110 owns the
+effective catalog. The current STDIO registry continues to use
+`filesystem.read_only` until the designated retrofit owners migrate it.
 
 Version 1.0 safe default:
 

@@ -93,6 +93,14 @@ The implementation must:
 - add negative cross-user and privilege-escalation tests;
 - keep all service endpoints local-only.
 
+Every backend inherits the [configuration protection contract](../security.md#configuration-trust-and-protection).
+The service binds its own selected source. Caller, root, effective identity
+and available OS permissions cannot bypass its protection. Variant A and
+any later worker must prove protection where reads, disclosures and
+mutations occur, including delegated work and returned results. The
+backend denies an execution route that cannot preserve the required path
+and object binding or prevent protected content from escaping.
+
 ## Compatibility
 
 - Direct STDIO behavior remains unchanged and runs under the launching user's process identity.
