@@ -22,7 +22,7 @@ func defaultPath(role Role) (string, error) {
 	uid := uint32(os.Geteuid())
 	// Go's CGO-free os/user fallback can consult HOME when no account
 	// record exists. Read only the local account mapping under root trust.
-	accountFile, err := openLinuxFile("/etc/passwd", 0, true)
+	accountFile, err := openLinuxFile("/etc/passwd", true)
 	if err != nil {
 		return "", err
 	}
@@ -59,9 +59,9 @@ func linuxAccountHome(data []byte, uid uint32) (string, error) {
 	return home, nil
 }
 
-func readTrustedConfig(path string, role Role) (trustedDocument, error) {
+func readTrustedConfig(path string, _ Role) (trustedDocument, error) {
 	var document trustedDocument
-	err := withTrustedConfig(path, role, func(file *os.File) error {
+	err := withTrustedConfig(path, func(file *os.File) error {
 		var err error
 		document, err = readLinuxConfig(file)
 		return err
@@ -72,9 +72,8 @@ func readTrustedConfig(path string, role Role) (trustedDocument, error) {
 	return document, nil
 }
 
-func withTrustedConfig(path string, role Role, inspect func(*os.File) error) error {
-	uid, system := uint32(os.Geteuid()), role == SystemService
-	file, err := openLinuxFile(path, uid, system)
+func withTrustedConfig(path string, inspect func(*os.File) error) error {
+	file, err := openLinuxFile(path, false)
 	if err != nil {
 		return sourceError(err)
 	}
@@ -82,8 +81,13 @@ func withTrustedConfig(path string, role Role, inspect func(*os.File) error) err
 	if err := inspect(file); err != nil {
 		return err
 	}
-	if err := verifyLinuxNode(int(file.Fd()), uid, system, false); err != nil {
-		return sourceError(err)
+	current, err := os.Lstat(path)
+	if err != nil || !current.Mode().IsRegular() {
+		return invalidSourcePath()
+	}
+	opened, err := file.Stat()
+	if err != nil || !os.SameFile(current, opened) {
+		return invalidSourcePath()
 	}
 	return nil
 }
@@ -124,18 +128,26 @@ func validLinuxPath(path string) bool {
 
 // Every component is opened relative to the already verified parent. A
 // concurrent name change cannot switch the parent used by the next open.
-func openLinuxFile(path string, uid uint32, system bool) (*os.File, error) {
+func openLinuxFile(path string, accountDatabase bool) (*os.File, error) {
 	if !validLinuxPath(path) {
 		return nil, os.ErrPermission
 	}
-	const directoryFlags = syscall.O_RDONLY | syscall.O_DIRECTORY | syscall.O_NOFOLLOW | syscall.O_CLOEXEC
+	directoryFlags := syscall.O_RDONLY | syscall.O_DIRECTORY | syscall.O_NOFOLLOW | syscall.O_CLOEXEC
+	if !accountDatabase {
+		// The TOML walk needs searchable directories only. openat still
+		// checks search permission when looking up a child of an O_PATH fd.
+		const pathOnly = 0x200000 // Linux O_PATH
+		directoryFlags |= pathOnly
+	}
 	parent, err := syscall.Open("/", directoryFlags, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = syscall.Close(parent) }()
-	if err := verifyLinuxNode(parent, uid, system, true); err != nil {
-		return nil, err
+	if accountDatabase {
+		if err := checkLinuxAccountNode(parent, syscall.S_IFDIR); err != nil {
+			return nil, err
+		}
 	}
 	components := strings.Split(path[1:], "/")
 	for _, component := range components[:len(components)-1] {
@@ -145,8 +157,10 @@ func openLinuxFile(path string, uid uint32, system bool) (*os.File, error) {
 		}
 		_ = syscall.Close(parent)
 		parent = child
-		if err := verifyLinuxNode(parent, uid, system, true); err != nil {
-			return nil, err
+		if accountDatabase {
+			if err := checkLinuxAccountNode(parent, syscall.S_IFDIR); err != nil {
+				return nil, err
+			}
 		}
 	}
 	fd, err := syscall.Openat(parent, components[len(components)-1],
@@ -154,11 +168,20 @@ func openLinuxFile(path string, uid uint32, system bool) (*os.File, error) {
 	if err != nil {
 		return nil, missingLinuxPath(err)
 	}
-	if err := verifyLinuxNode(fd, uid, system, false); err != nil {
-		_ = syscall.Close(fd)
+	file := os.NewFile(uintptr(fd), defaultFileName)
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		_ = file.Close()
+		return nil, os.ErrPermission
+	}
+	if accountDatabase {
+		err = checkLinuxAccountNode(fd, syscall.S_IFREG)
+	}
+	if err != nil {
+		_ = file.Close()
 		return nil, err
 	}
-	return os.NewFile(uintptr(fd), defaultFileName), nil
+	return file, nil
 }
 
 func missingLinuxPath(err error) error {
@@ -168,12 +191,14 @@ func missingLinuxPath(err error) error {
 	return err
 }
 
-func verifyLinuxNode(fd int, uid uint32, system, directory bool) error {
+// The local account database determines the home directory for a default
+// source. Its system integrity is separate from the selected TOML policy.
+func checkLinuxAccountNode(fd int, kind uint32) error {
 	var metadata syscall.Stat_t
 	if err := syscall.Fstat(fd, &metadata); err != nil {
 		return err
 	}
-	if !trustedLinuxNode(&metadata, uid, system, directory) {
+	if metadata.Mode&syscall.S_IFMT != kind || metadata.Uid != 0 || metadata.Mode&0o022 != 0 {
 		return os.ErrPermission
 	}
 	// Remote and user-space filesystems can synthesize owner and mode.
@@ -188,17 +213,4 @@ func verifyLinuxNode(fd int, uid uint32, system, directory bool) error {
 	default:
 		return os.ErrPermission
 	}
-}
-
-func trustedLinuxNode(st *syscall.Stat_t, uid uint32, system, directory bool) bool {
-	if directory {
-		trustedOwner := st.Uid == 0 || !system && st.Uid == uid
-		replacementProtected := st.Mode&0o022 == 0 || st.Mode&syscall.S_ISVTX != 0
-		return st.Mode&syscall.S_IFMT == syscall.S_IFDIR && trustedOwner && replacementProtected
-	}
-	owner := uid
-	if system {
-		owner = 0
-	}
-	return st.Mode&syscall.S_IFMT == syscall.S_IFREG && st.Nlink == 1 && st.Uid == owner && st.Mode&0o022 == 0
 }

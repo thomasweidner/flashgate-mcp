@@ -327,9 +327,8 @@ Security tests must cover:
 ### Integration Tests
 
 JSON-RPC smoke tests exercise the built server binary over STDIO with a
-separate TOML fixture. On Windows, direct `TMP` and `TEMP` to a trusted
-local test directory if the system temporary path grants other accounts
-write access. The directory and its parents must satisfy the same
+separate TOML fixture. On Windows, set `TMP` and `TEMP` to a test directory
+that the native loader can resolve. Its parents must satisfy the same
 [configuration source checks](configuration.md#source-and-trust) as the
 server's normal configuration.
 
@@ -484,8 +483,7 @@ The current tests above describe the implemented filesystem baseline. Version 1.
 
 ### Configuration protection acceptance
 
-BL-374 owns this planned matrix on native Windows and native Linux. The
-current startup and fixture checks above describe the existing implementation.
+BL-374 owns this matrix on native Windows and native Linux.
 Use the real loader, bootstrap, Go filesystem read and mutation boundary,
 and MCP STDIO wiring. Fixture-only decisions, source scans and races exercised only
 by timing do not establish protection.
@@ -497,8 +495,15 @@ by timing do not establish protection.
 | Direct reads and copies | With a permitted overlapping root and ordinary valid grants, deny `read_file` on the selected file and its aliases. Deny `copy_path` with a protected source before creating a new destination or changing an existing destination. Deny a protected destination even with an allowed source. Test both the loaded object and a replacement at the selected path, with the running snapshot unchanged. Assert that neither result, stderr, logs, error fields, nor artifacts contain protected content. |
 | Ordinary metadata and siblings | Under the same policy, read and copy ordinary sibling bytes successfully and retain allowed sibling writes. Verify listing and stat return permitted root-relative metadata only. Assert that metadata routes neither open protected contents nor emit content-derived fields. |
 | Direct mutations | Through real tool calls cover create-directory ancestry, create and truncate/overwrite, delete, recursive delete, rename/move, and file copy/overwrite. Check source and destination by effect, including protected endpoints, missing selected path, ancestor mutations, attempted subtree replacement and authorized siblings. Verify protected bytes, path and identity after every denial or supported no-op. |
-| Native identity and races | Windows case and supported alternate path aliases, hardlinks and symlink/junction/reparse targets or parents. Linux hardlinks, symlinks and relevant bind or mount aliases. Deterministically exchange a read source, copy source, mutation target or parent between resolution and effect. Exercise late aliases and external replacement after activation. No protected bytes reach tool output or a copy target. Include a platform path that cannot bind the effect and must deny. Retain protection through each commit and cleanup. |
+| Native identity and concurrency | Exercise Windows case and supported alternate paths, hardlinks, symlinks, junctions and reparse points and Linux hardlinks, symlinks and relevant bind or mount aliases. Deterministically expose a source, target or parent identity change before the intended effect and require denial. Exercise conflicting FlashGate calls through the actual operation boundary. Test late aliases and replacement after activation, denial before copy output, and supported reads and mutations for unaffected siblings. |
 | Integration and compatibility | Exercise allowed sibling mutations in a protected parent and a safely enforceable overlapping root. Preserve existing root confinement, read-only/catalog behavior, STDIO wire envelopes, error categories or compatible normalization, and secret-safe diagnostics. Test the upgrade and rollback placement contract. |
+
+On Linux, remove the selected name and exercise write, copy and move to
+absent alternate spellings in its directory. Remove a selected ancestor
+and test recursive directory creation through an alternate spelling.
+Verify denial before any namespace change, continued access to existing
+siblings and new destinations in unrelated directories, and sibling
+creation after restoring the selected name.
 
 Successor owners run operation-specific negatives under their actual native
 backend before activation. Exercise permitted roots and grants with forbidden
@@ -511,6 +516,17 @@ compare/verify oracles, archive output, process output/files and retained
 results. Test successful sibling results and safe denial or omission across
 the actual backend and output route. A scan for fixture text alone cannot
 prove absence of content-derived disclosures.
+
+Preserve four deterministic native Linux ext4 residual reproductions with
+independent adversarial namespace changes after the final check: unlink of a
+substituted protected hardlink, rename of a substituted protected source,
+replacement of a substituted protected destination, and truncation of an open
+ordinary file moved into the selected path. Record the checked and affected
+identities, operation, and poststate. These runs demonstrate the
+[accepted OS atomicity limit](security.md#configuration-trust-and-protection).
+They do not satisfy a hard acceptance case. FlashGate's own concurrent calls,
+delegates, detectable drift and aliases remain mandatory negatives.
+
 BL-241/242 exercise actual enabled roles and shipped builds. BL-373 adds
 authorization, snapshot activation, persistence, conflict, rollback and
 restart tests for its later dedicated path.

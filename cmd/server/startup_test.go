@@ -363,113 +363,42 @@ func assertNoHostPathLeak(t *testing.T, output string) {
 	}
 }
 
-func TestStartupRejectsConfigInsideMCPRoot(t *testing.T) {
-	for _, profile := range []string{"write", "read-only"} {
-		t.Run(profile, func(t *testing.T) {
+func TestStartupBindsOverlappingRootsAndHardlinks(t *testing.T) {
+	for _, profile := range []string{"read_only = false\n", "read_only = true\n"} {
+		for _, aliasRoot := range []bool{false, true} {
 			root := t.TempDir()
 			path := filepath.Join(root, "private-config.toml")
-			settings := "read_only = false\n"
-			if profile == "read-only" {
-				settings = "read_only = true\n"
-			}
-			document := configDocument(t, root, settings)
-			testconfig.Write(t, path, []byte(document))
-			var stdout, stderr bytes.Buffer
-			runner := func(ctx context.Context, selectedPath string) error {
-				deps := defaultBootstrapDependencies(selectedPath)
-				deps.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
-					t.Error("overlapping configuration reached tool registration")
-					return nil, nil
+			configuredRoot := root
+			settings := profile
+			if aliasRoot {
+				configuredRoot = filepath.Join(t.TempDir(), "data-alias")
+				if err := os.Symlink(root, configuredRoot); err != nil {
+					t.Logf("native directory symlink unavailable: %v", err)
+					continue
 				}
-				return runWithIO(ctx, strings.NewReader(""), &stdout, &stderr, deps)
+				settings += "[security]\nfollow_symlinks = true\n"
 			}
-			code := runMain(context.Background(), []string{"--config", path}, &stdout, &stderr, runner)
-			if code != 3 || stdout.Len() != 0 ||
-				stderr.String() != "flashgate-mcp: startup failed (root_not_allowed)\n" {
-				t.Errorf("startup result: code=%d, stdout=%q, stderr=%q", code, stdout.String(), stderr.String())
+			document := configDocument(t, configuredRoot, settings)
+			testconfig.Write(t, path, []byte(document))
+			deps := defaultBootstrapDependencies(path)
+			load := deps.loadConfig
+			deps.loadConfig = func() (config.Config, error) {
+				cfg, err := load()
+				if err == nil {
+					err = os.Link(path, filepath.Join(root, "linked.toml"))
+				}
+				return cfg, err
 			}
-			assertNoHostPathLeak(t, stderr.String())
+			var stdout, stderr bytes.Buffer
+			err := runWithIO(context.Background(), strings.NewReader(""), &stdout, &stderr, deps)
+			if err != nil || stdout.Len() != 0 || stderr.Len() != 0 {
+				t.Fatalf("overlapping root failed to start: %v", err)
+			}
 			after, err := os.ReadFile(path)
 			if err != nil || string(after) != document {
 				t.Fatal("startup changed the configuration")
 			}
-		})
-	}
-}
-
-func TestStartupRejectsConfigHardlinkAddedAfterLoad(t *testing.T) {
-	for _, profile := range []string{"writable", "read-only"} {
-		t.Run(profile, func(t *testing.T) {
-			root := t.TempDir()
-			settings := "read_only = false\n"
-			if profile == "read-only" {
-				settings = "read_only = true\n"
-			}
-			document := configDocument(t, root, settings)
-			path := writeConfig(t, document)
-			alias := filepath.Join(root, "linked-config.toml")
-			var stdout, stderr bytes.Buffer
-			runner := func(ctx context.Context, selectedPath string) error {
-				deps := defaultBootstrapDependencies(selectedPath)
-				load := deps.loadConfig
-				deps.loadConfig = func() (config.Config, error) {
-					cfg, err := load()
-					if err != nil {
-						t.Fatalf("single-link source failed to load: %v", err)
-					}
-					if err := os.Link(path, alias); err != nil {
-						t.Fatalf("creating native hardlink fixture: %v", err)
-					}
-					return cfg, nil
-				}
-				deps.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
-					t.Error("source hardlink reached tool registration")
-					return &tools.Registry{}, nil
-				}
-				deps.newRouter = func(string, string, *tools.Registry) *router.Router {
-					t.Error("source hardlink reached router creation")
-					return &router.Router{}
-				}
-				deps.newServer = func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer {
-					t.Error("source hardlink reached MCP initialization")
-					return nil
-				}
-				return runWithIO(ctx, strings.NewReader(""), &stdout, &stderr, deps)
-			}
-			code := runMain(context.Background(), []string{"--config", path}, &stdout, &stderr, runner)
-			if code != 3 || stdout.Len() != 0 ||
-				stderr.String() != "flashgate-mcp: startup failed (root_not_allowed)\n" {
-				t.Errorf("startup result: code=%d, stdout=%q, stderr=%q", code, stdout.String(), stderr.String())
-			}
-			for _, name := range []string{path, alias} {
-				after, err := os.ReadFile(name)
-				if err != nil || string(after) != document {
-					t.Fatal("startup changed the source or fixture alias")
-				}
-			}
-		})
-	}
-}
-
-func TestStartupRejectsConfigInsideEffectiveSymlinkRoot(t *testing.T) {
-	root := t.TempDir()
-	alias := filepath.Join(t.TempDir(), "data-alias")
-	if err := os.Symlink(root, alias); err != nil {
-		t.Skipf("native directory symlinks unavailable: %v", err)
-	}
-	path := filepath.Join(root, "private-config.toml")
-	document := configDocument(t, alias, "[security]\nfollow_symlinks = true\n")
-	testconfig.Write(t, path, []byte(document))
-	var stdout, stderr bytes.Buffer
-	deps := defaultBootstrapDependencies(path)
-	deps.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
-		t.Error("aliased configuration reached tool registration")
-		return nil, nil
-	}
-	err := runWithIO(context.Background(), strings.NewReader(""), &stdout, &stderr, deps)
-	if category, _ := config.CategoryOf(err); category != config.CategoryRootNotAllowed ||
-		stdout.Len() != 0 || stderr.Len() != 0 {
-		t.Fatalf("alias denial: error=%v stdout=%q stderr=%q", err, stdout.String(), stderr.String())
+		}
 	}
 }
 

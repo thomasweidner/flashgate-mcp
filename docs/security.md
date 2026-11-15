@@ -6,23 +6,18 @@ Filesystem access is security-sensitive because MCP clients may request operatio
 
 ## Core Security Principles
 
-The one-time configuration read is a bootstrap trust operation. The native
-loader checks executing identity, role, parents, ownership, access, file
-identity, and redirects before the first runtime consumer starts. It does not
-use client-provided paths or the data root policy to authorize the configuration
-source. See [runtime configuration](configuration.md#source-and-trust).
+The native loader binds one regular file for a consistent, bounded bootstrap
+read and validates it before initializing consumers. The host selects the role
+and source. OS access controls govern provisioning. See
+[runtime configuration](configuration.md#source-and-trust).
 
-Before tool registration, bootstrap uses PathGuard's effective data root
-and native filesystem identities or mount mappings to verify separation
-from the trusted TOML file. Root containment or an alias of the source
-causes a `root_not_allowed` startup denial. An unprovable boundary also
-fails closed. The final startup check opens the source through the same
-native trust checks used during loading and confirms the loaded file's
-identity and single-link state. A hard link added after loading, a
-replacement file, or a source that cannot be verified stops activation.
-Read-only mode and hidden-file filtering do not establish
-this boundary. Keep the configuration and the data root separate in the
-server's filesystem namespace throughout its lifetime.
+Before tool registration, bootstrap validates the effective data root and
+binds the selected name, loaded identity and relevant directories to the
+Go filesystem. An overlapping root can be used where native identity and
+mount checks support that binding. Bootstrap denies an unprovable binding
+or a changed source identity with `root_not_allowed`. During tool execution,
+read-only mode and hidden-file filtering complement the same protection
+applied to other roots and profiles.
 
 ### Sandbox Root
 
@@ -322,8 +317,8 @@ the same resource boundary at its own read, mutation and disclosure
 sites in direct and service execution.
 
 This accepted target follows the [ADR-014 amendment](adr/runtime-modes.md#configuration-trust-and-protection-amendment).
-The [current bootstrap checks](#core-security-principles) remain in force
-until BL-374 implements and validates the replacement.
+The [bootstrap checks](#core-security-principles) bind this policy before
+ordinary MCP tools are exposed.
 
 1. **Provisioning.** The OS and its administrators control permissions and
    provisioning. FlashGate does not reconstruct edit history, verify authors
@@ -359,13 +354,30 @@ Evaluate lexical path and resolved object identity, including
 new hard links, symlinks, Windows case/path aliases, reparse points and
 relevant mount mappings. Preserve normal access to unaffected siblings.
 
-Bind checks to the object used by the native read or mutation. A preflight
-path check followed by an unbound operation leaves a race. Use the existing
-filesystem, PathGuard and authorization boundaries. Deny an effect when
-its object, applicable ancestry, or alias safety cannot be established.
+When the selected Linux name or one of its ancestors is absent, deny mutation
+of an absent destination in the directory that would resolve the missing
+component. Linux lookup can fold case and normalize names, and an absent name
+has no object identity that proves the destination is distinct. Existing
+independently identified objects and destinations in unrelated directories
+remain subject to the ordinary policy.
+
+Bind content reads and destructive opens to the inspected native object.
+Serialize conflicting FlashGate operations through validation and effect.
+Use the existing filesystem, PathGuard and authorization boundaries. Deny
+an effect when a relevant path, identity, root, ancestry or policy change
+can be detected, or when applicable checks cannot establish safety.
 Root, profile, capability, transport, role and execution identity cannot
 waive protection. Unaffected siblings remain readable and writable under
 normal policy.
+
+An independent adversarial OS process with sufficient filesystem permissions
+can still change namespace entries after the final check and redirect a
+native effect. Linux ext4 reproduces unlink, source rename, replacing rename,
+and truncation of an ordinary open object externally moved into the selected
+path. Where the OS cannot make the check and effect atomic, those last-window
+effects are accepted residual risk. Direct or discoverable aliases, detected
+drift, concurrent FlashGate calls, and FlashGate-started helpers or adapters
+remain in the hard boundary.
 
 **Contents and metadata.** Ordinary listing and stat may expose authorized
 root-relative names, existence, type, size and timestamps when obtained

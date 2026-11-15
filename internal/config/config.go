@@ -190,34 +190,26 @@ func load(source Source, locateDefault func(Role) (string, error)) (Config, erro
 	return cfg, nil
 }
 
-// ValidateDataRoot proves that a PathGuard-approved root cannot expose the
-// authoritative configuration. Call it for each root before exposing tools.
-func (c Config) ValidateDataRoot(guard *security.PathGuard) error {
-	if c.sourcePath == "" || c.sourceInfo == nil || guard == nil || guard.ContainsResolvedPath(c.sourcePath) {
-		return security.ErrProtectedPath
+// ProtectDataRoot binds a PathGuard-approved root to the loaded configuration
+// before the host exposes its filesystem tools.
+func (c Config) ProtectDataRoot(guard *security.PathGuard) (*security.ConfigProtection, error) {
+	if c.sourcePath == "" || c.sourceInfo == nil || guard == nil {
+		return nil, security.ErrProtectedPath
 	}
-	if err := checkRootAliases(c.sourcePath, guard); err != nil {
-		return err
-	}
-	if err := guard.RequireOutside(c.sourcePath); err != nil {
-		return err
-	}
-	// Compare the loaded identity on the trusted handle. The native check
-	// then samples trust and link count again before closing that handle.
-	err := withTrustedConfig(c.sourcePath, c.role, func(file *os.File) error {
+	validateRoot := func() error { return checkRootAliases(c.sourcePath, guard) }
+	var protection *security.ConfigProtection
+	err := withTrustedConfig(c.sourcePath, func(file *os.File) error {
 		current, err := file.Stat()
-		if err != nil {
-			return err
-		}
-		if !os.SameFile(c.sourceInfo, current) {
+		if err != nil || !os.SameFile(c.sourceInfo, current) || validateRoot() != nil {
 			return security.ErrProtectedPath
 		}
-		return nil
+		protection, err = guard.BindConfigProtection(c.sourcePath, c.sourceInfo, validateRoot)
+		return err
 	})
 	if err != nil {
-		return security.ErrProtectedPath
+		return nil, security.ErrProtectedPath
 	}
-	return nil
+	return protection, nil
 }
 
 // Decode parses and validates an already selected configuration document. It

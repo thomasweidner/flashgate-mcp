@@ -17,11 +17,11 @@ func TestLinuxMountProjection(t *testing.T) {
 		rejected                    bool
 	}{
 		{"separate", "", "/home/operator/config.toml", "/home/operator/data", false},
-		{"bind directory root", "11 10 8:1 /home/operator/private /data rw - ext4 /dev/root rw\n", "/home/operator/private/config.toml", "/data", true},
-		{"bind file below root", "11 10 8:1 /home/operator/config.toml /data/alias.toml rw - ext4 /dev/root rw\n", "/home/operator/config.toml", "/data", true},
-		{"source is bind alias", "11 10 8:1 /data/config.toml /operator/config.toml rw - ext4 /dev/root rw\n", "/operator/config.toml", "/data", true},
+		{"bind directory root", "11 10 8:1 /home/operator/private /data rw - ext4 /dev/root rw\n", "/home/operator/private/config.toml", "/data", false},
+		{"bind file below root", "11 10 8:1 /home/operator/config.toml /data/alias.toml rw - ext4 /dev/root rw\n", "/home/operator/config.toml", "/data", false},
+		{"source is bind alias", "11 10 8:1 /data/config.toml /operator/config.toml rw - ext4 /dev/root rw\n", "/operator/config.toml", "/data", false},
 		{"unrelated submount", "11 10 8:1 /other /data/other rw - ext4 /dev/root rw\n", "/home/operator/config.toml", "/data", false},
-		{"escaped mountpoint", "11 10 8:1 /home/operator /data/with\\040space rw - ext4 /dev/root rw\n", "/home/operator/config.toml", "/data", true},
+		{"escaped mountpoint", "11 10 8:1 /home/operator /data/with\\040space rw - ext4 /dev/root rw\n", "/home/operator/config.toml", "/data", false},
 		{"unprovable remote subtree", "11 10 8:2 / /data/network rw - cifs //host/share rw\n", "/home/operator/config.toml", "/data", true},
 		{"unprovable overlay", "11 10 0:1 / /data rw - overlay overlay rw\n", "/home/operator/config.toml", "/data", true},
 		{"ambiguous stacked source", "11 10 8:2 / /home rw - ext4 /dev/other rw\n12 10 8:3 / /home rw - ext4 /dev/other rw\n", "/home/operator/config.toml", "/data", true},

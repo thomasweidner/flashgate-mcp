@@ -78,17 +78,15 @@ migration attempt.
 
 ### Configuration protection rollout
 
-Keep the TOML outside the effective data roots while running a build with
-the current [source checks](configuration.md#source-and-trust). BL-374 will
-replace that blanket separation only on validated paths that can enforce
-the [target protection](security.md#configuration-trust-and-protection).
-In those builds an overlapping root grants no ordinary access to the
+Builds with configuration protection can use an overlapping root when the
+[source and root checks](configuration.md#source-and-trust) establish native
+protection. An overlapping root grants no ordinary access to the
 selected configuration's contents, including through copy, and no
 permission to mutate the protected resource.
 Before downgrading from a build that accepts an overlapping root, move the
 configuration to a location the older build accepts, update the explicit
 launch path if needed, and verify startup using the paired client entry.
-The planned change keeps role defaults and the TOML schema intact.
+Role defaults and the TOML schema remain compatible.
 
 ## Tool names
 

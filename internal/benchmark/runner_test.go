@@ -45,8 +45,8 @@ func TestBenchmarkConfigFixtures(t *testing.T) {
 			if cfg.Filesystem().RootPath() != dataRoot || cfg.Filesystem().ReadOnly() != tc.readOnly {
 				t.Fatal("benchmark configuration profile changed")
 			}
-			if err := cfg.ValidateDataRoot(guard); err != nil {
-				t.Fatal("benchmark configuration and data root were not separate")
+			if _, err := cfg.ProtectDataRoot(guard); err != nil {
+				t.Fatal("benchmark configuration protection could not bind the data root")
 			}
 			info, err := os.Lstat(path)
 			if err != nil || !info.Mode().IsRegular() {

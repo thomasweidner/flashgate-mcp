@@ -47,10 +47,11 @@ func defaultBootstrapDependencies(configPath string) bootstrapDependencies {
 			if err != nil {
 				return nil, err
 			}
-			if err := cfg.ValidateDataRoot(guard); err != nil {
+			protection, err := cfg.ProtectDataRoot(guard)
+			if err != nil {
 				return nil, err
 			}
-			return fs.NewLocalFileSystemWithGuard(guard, filesystemLimitsFromConfig(cfg))
+			return fs.NewLocalFileSystemWithConfigProtection(guard, filesystemLimitsFromConfig(cfg), protection)
 		},
 		newToolRegistry: createToolRegistry,
 		newRouter:       createRouter,

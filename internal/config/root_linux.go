@@ -4,6 +4,7 @@ package config
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -30,9 +31,17 @@ func checkRootAliases(source string, guard *security.PathGuard) error {
 	}
 	// Resolve mountpoint spelling through the kernel, including casefolded
 	// directory names. These handles carry metadata access only.
-	source, err = linuxMountPath(source)
-	if err != nil {
-		return security.ErrProtectedPath
+	for {
+		resolved, pathErr := linuxMountPath(source)
+		if pathErr == nil {
+			source = resolved
+			break
+		}
+		parent := filepath.Dir(source)
+		if !errors.Is(pathErr, os.ErrNotExist) || parent == source {
+			return security.ErrProtectedPath
+		}
+		source = parent
 	}
 	root, err := linuxMountPath(guard.EffectiveRoot())
 	if err != nil {
@@ -90,7 +99,7 @@ func checkLinuxMounts(table io.Reader, source, root string) error {
 		}
 		// Btrfs subvolumes can appear under a top-level mount and also as
 		// separate mounts with different device numbers.
-		if mount.device == sourceMount.device || mount.filesystem == "btrfs" && sourceMount.filesystem == "btrfs" {
+		if mount.device != sourceMount.device && mount.filesystem == "btrfs" && sourceMount.filesystem == "btrfs" {
 			if rel, ok := mountRelative(mount.root, location); ok {
 				if _, inside := mountRelative(root, filepath.Join(mount.point, rel)); inside {
 					return security.ErrProtectedPath

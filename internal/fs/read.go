@@ -8,14 +8,21 @@ import (
 
 // Read reads a file up to maxBytes bytes.
 func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
+	f.effects.Lock()
+	defer f.effects.Unlock()
+
 	safePath, err := f.guard.ResolveExisting(path)
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := os.Stat(safePath.String())
+	operand, err := f.inspectEffect(safePath.String(), false)
 	if err != nil {
 		return nil, err
+	}
+	info := operand.info
+	if info == nil {
+		return nil, ErrNotFound
 	}
 
 	if info.IsDir() {
@@ -30,13 +37,26 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 		return nil, ErrFileTooLarge
 	}
 
-	file, err := os.Open(safePath.String())
+	if err := f.recheckEffect(operand, false); err != nil {
+		return nil, err
+	}
+	file, err := os.Open(operand.path)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = file.Close() }()
+	if err := f.checkOpened(file, operand, false); err != nil {
+		return nil, err
+	}
 
-	return readAtMost(file, maxBytes)
+	content, err := readAtMost(file, maxBytes)
+	if err != nil {
+		return nil, err
+	}
+	if err := f.checkOpened(file, operand, false); err != nil {
+		return nil, err
+	}
+	return content, nil
 }
 
 func readAtMost(reader io.Reader, maxBytes int64) ([]byte, error) {

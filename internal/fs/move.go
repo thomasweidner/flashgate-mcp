@@ -9,6 +9,9 @@ import (
 
 // Move moves or renames a file or directory on the same filesystem volume.
 func (f *LocalFileSystem) Move(source string, target string, overwrite bool) error {
+	f.effects.Lock()
+	defer f.effects.Unlock()
+
 	sourcePath, err := f.guard.ResolveExisting(source)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -26,19 +29,21 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool) err
 		return ErrSamePath
 	}
 
-	sourceInfo, err := os.Stat(sourcePath.String())
+	sourceOperand, err := f.inspectEffect(sourcePath.String(), true)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return ErrNotFound
-		}
 		return err
+	}
+	sourceInfo := sourceOperand.info
+	if sourceInfo == nil {
+		return ErrNotFound
 	}
 
-	targetInfo, err := os.Stat(targetPath.String())
-	targetExists := err == nil
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	targetOperand, err := f.inspectEffect(targetPath.String(), true)
+	if err != nil {
 		return err
 	}
+	targetInfo := targetOperand.info
+	targetExists := targetInfo != nil
 	if targetExists && os.SameFile(sourceInfo, targetInfo) {
 		return ErrSamePath
 	}
@@ -77,6 +82,17 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool) err
 	}
 
 	if err := revalidateMoveState(sourcePath.String(), targetPath.String(), sourceInfo, targetInfo, targetExists); err != nil {
+		return err
+	}
+	if f.protection != nil && sourceInfo.IsDir() {
+		if _, err := f.inspectTree(sourceOperand, false); err != nil {
+			return err
+		}
+	}
+	if err := f.recheckEffect(targetOperand, true); err != nil {
+		return err
+	}
+	if err := f.recheckEffect(sourceOperand, true); err != nil {
 		return err
 	}
 

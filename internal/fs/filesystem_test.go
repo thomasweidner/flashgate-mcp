@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
@@ -19,6 +20,431 @@ func TestNewLocalFileSystemRejectsEmptyRoot(t *testing.T) {
 
 	if !errors.Is(err, security.ErrEmptyRoot) {
 		t.Fatalf("expected ErrEmptyRoot, got %v", err)
+	}
+}
+
+func TestConfigurationEffectRecheckRejectsIdentityAndParentDrift(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "config.toml")
+	if err := os.WriteFile(source, []byte("protected"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard, err := security.NewPathGuard(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent := filepath.Join(root, "ordinary")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(parent, "target")
+	if err := os.WriteFile(path, []byte("ordinary"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := f.inspectEffect(path, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(path, filepath.Join(parent, "original")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(source, path); err != nil {
+		t.Fatal(err)
+	}
+	if file, err := f.openDestination(expected, 0o600, nil); !errors.Is(err, security.ErrConfigurationAccess) {
+		if file != nil {
+			_ = file.Close()
+		}
+		t.Fatalf("substituted leaf reached destructive open: %v", err)
+	}
+	opened, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	checkErr := f.checkOpened(opened, expected, false)
+	if err := opened.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !errors.Is(checkErr, security.ErrConfigurationAccess) {
+		t.Fatalf("changed source descriptor reached the read boundary: %v", checkErr)
+	}
+	missing := filepath.Join(parent, "absent")
+	expected, err = f.inspectEffect(missing, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(parent, filepath.Join(root, "old")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.recheckEffect(expected, true); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("substituted parent accepted: %v", err)
+	}
+	if contents, err := os.ReadFile(source); err != nil || string(contents) != "protected" {
+		t.Fatal("protected file changed")
+	}
+}
+
+func TestConfigurationEffectsHoldSharedLock(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "config.toml")
+	if err := os.WriteFile(source, []byte("protected"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard, err := security.NewPathGuard(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f *LocalFileSystem
+	protection, err := guard.BindConfigProtection(source, loaded, func() error {
+		if f.effects.TryLock() {
+			f.effects.Unlock()
+			t.Error("native effect validation ran without the shared operation lock")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err = NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var concurrent sync.WaitGroup
+	for i := range 8 {
+		concurrent.Go(func() {
+			path := fmt.Sprintf("sibling-%d", i)
+			if err := f.Write(path, []byte(path), false); err != nil {
+				t.Error(err)
+			}
+			if err := f.Copy("config.toml", path, true); !errors.Is(err, security.ErrConfigurationAccess) {
+				t.Errorf("protected configuration copy returned %v", err)
+			}
+			if contents, err := f.Read(path, 128); err != nil || string(contents) != path {
+				t.Errorf("sibling operation did not preserve its bytes: %v", err)
+			}
+		})
+	}
+	concurrent.Wait()
+}
+
+func TestLinuxMissingConfigurationNamesDenyUnprovedDestinations(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("Linux pathname protection")
+	}
+	root := t.TempDir()
+	parent := filepath.Join(root, "config-dir")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(parent, "config.toml")
+	sibling := filepath.Join("config-dir", "sibling")
+	ordinary := []byte("ordinary")
+	for path, content := range map[string][]byte{
+		source: []byte("protected"), filepath.Join(root, sibling): ordinary,
+	} {
+		if err := os.WriteFile(path, content, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard, err := security.NewPathGuard(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Write(filepath.Join("config-dir", "new"), ordinary, false); err != nil {
+		t.Fatalf("present configuration blocked sibling creation: %v", err)
+	}
+	renamedSource := filepath.Join(parent, "loaded.toml")
+	if err := os.Rename(source, renamedSource); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join("config-dir", "CONFIG.TOML")
+	normalizedAlias := filepath.Join("config-dir", "CON\u00adFIG.TOML")
+	deny := func(path string, err error) {
+		t.Helper()
+		if !errors.Is(err, security.ErrConfigurationAccess) {
+			t.Errorf("mutation of %q returned %v", path, err)
+		}
+		if _, err := os.Lstat(filepath.Join(root, path)); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("mutation left a destination for %q: %v", path, err)
+		}
+	}
+	deny(alias, f.Write(alias, ordinary, false))
+	deny(normalizedAlias, f.Copy(sibling, normalizedAlias, false))
+	deny(alias, f.Move(sibling, alias, false))
+	if err := f.Write(sibling, ordinary, true); err != nil {
+		t.Fatalf("missing configuration blocked an existing sibling: %v", err)
+	}
+	if err := f.Copy(sibling, "new-outside-parent", false); err != nil {
+		t.Fatalf("missing configuration blocked a destination in a different parent: %v", err)
+	}
+	renamedParent := filepath.Join(root, "relocated")
+	if err := os.Rename(parent, renamedParent); err != nil {
+		t.Fatal(err)
+	}
+	const aliasParent = "CONFIG-DIR"
+	created, err := f.Mkdir(filepath.Join(aliasParent, "nested"))
+	if created {
+		t.Error("mkdir reported creation through a protected ancestor alias")
+	}
+	deny(aliasParent, err)
+	if err := os.Rename(renamedParent, parent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(renamedSource, source); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Write(filepath.Join("config-dir", "new-after-restore"), ordinary, false); err != nil {
+		t.Fatalf("restored configuration blocked sibling creation: %v", err)
+	}
+}
+
+func TestProtectedRecursiveDeleteMaintainsSymlinkEntryIdentity(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "config.toml")
+	writeTestFile(t, source, "protected")
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := security.DefaultPolicy()
+	policy.FollowSymlinks = true
+	guard, err := security.NewPathGuardWithPolicy(root, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	swapped := filepath.Join(root, "swapped")
+	mkdir(t, swapped)
+	link := filepath.Join(swapped, "link")
+	target := filepath.Join(root, "target")
+	writeTestFile(t, target, "ordinary")
+	createTestSymlinkOrSkip(t, target, link)
+	rootEffect, err := f.inspectEffect(swapped, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := f.inspectTree(rootEffect, true)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("inspect link for replacement test: %v", err)
+	}
+	if err := os.Rename(link, filepath.Join(root, "old-link")); err != nil {
+		t.Fatal(err)
+	}
+	createTestSymlinkOrSkip(t, target, link)
+	if err := f.recheckTreeEntry(entries[0]); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("replacement link with the same target was accepted: %v", err)
+	}
+
+	ordinary := filepath.Join(root, "ordinary")
+	mkdir(t, filepath.Join(ordinary, "z-directory"))
+	writeTestFile(t, filepath.Join(ordinary, "z-target"), "ordinary")
+	writeTestFile(t, filepath.Join(ordinary, "z-directory", "child"), "ordinary")
+	createTestSymlinkOrSkip(t, "z-target", filepath.Join(ordinary, "b-link"))
+	createTestSymlinkOrSkip(t, "b-link", filepath.Join(ordinary, "a-chain"))
+	createTestSymlinkOrSkip(t, "z-directory", filepath.Join(ordinary, "c-directory-link"))
+	if err := f.Delete("ordinary", true); err != nil {
+		t.Fatalf("remove ordinary tree with internal links: %v", err)
+	}
+	if _, err := os.Lstat(ordinary); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("ordinary tree remains: %v", err)
+	}
+
+	blocked := filepath.Join(root, "blocked")
+	mkdir(t, blocked)
+	sibling := filepath.Join(blocked, "z-sibling")
+	writeTestFile(t, sibling, "retain")
+	createTestSymlinkOrSkip(t, source, filepath.Join(blocked, "a-link"))
+	if err := f.Delete("blocked", true); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("tree with protected target returned %v", err)
+	}
+	for path, want := range map[string]string{source: "protected", sibling: "retain"} {
+		if data, err := os.ReadFile(path); err != nil || string(data) != want {
+			t.Fatalf("denied tree delete changed %s: %v", filepath.Base(path), err)
+		}
+	}
+}
+
+func TestConfigurationCopyPreEffectDenialPreservesDestination(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "config.toml")
+	if err := os.WriteFile(source, []byte("protected"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard, err := security.NewPathGuard(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, existing := range []bool{false, true} {
+		target := filepath.Join(root, fmt.Sprintf("destination-%t", existing))
+		if existing {
+			if err := os.WriteFile(target, []byte("untouched"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		operand, err := f.inspectEffect(target, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		checks := 0
+		file, err := f.openDestination(operand, 0o600, func() error {
+			checks++
+			return security.ErrConfigurationAccess
+		})
+		if file != nil {
+			_ = file.Close()
+		}
+		if !errors.Is(err, security.ErrConfigurationAccess) || file != nil || checks != 1 {
+			t.Fatalf("pre-effect denial failed for existing=%t: %v", existing, err)
+		}
+		data, err := os.ReadFile(target)
+		if existing && (err != nil || string(data) != "untouched") || !existing && !os.IsNotExist(err) {
+			t.Fatalf("denied copy affected destination for existing=%t", existing)
+		}
+	}
+}
+
+func TestConfigurationRootExchangeDeniesPreparedEffects(t *testing.T) {
+	base := t.TempDir()
+	root := filepath.Join(base, "data")
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(base, "config.toml")
+	if err := os.WriteFile(source, []byte("protected"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	guard, err := security.NewPathGuard(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	limits := DefaultLimits()
+	limits.MaxDeleteEntries = 1
+	f, err := NewLocalFileSystemWithConfigProtection(guard, limits, protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created, err := f.Mkdir("ordinary"); err != nil || !created {
+		t.Fatalf("ordinary directory was not created: %v", err)
+	}
+	if created, err := f.Mkdir("ordinary"); err != nil || created {
+		t.Fatalf("existing ordinary directory did not remain intact: %v", err)
+	}
+	if err := f.Write("file", []byte("ordinary"), false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.Mkdir("file"); !errors.Is(err, ErrPathIsNotDirectory) {
+		t.Fatalf("ordinary file accepted as a directory: %v", err)
+	}
+	for _, path := range []string{"ordinary/first", "ordinary/second"} {
+		if err := f.Write(path, []byte(path), false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.Delete("ordinary", true); !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("recursive delete exceeded the configured protection preflight limit: %v", err)
+	}
+	entries, err := f.List("ordinary")
+	if err != nil || len(entries) != 2 {
+		t.Fatal("denied recursive delete changed entries")
+	}
+	prepared, err := f.inspectEffect(filepath.Join(root, "file"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(root, filepath.Join(base, "original")); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.recheckEffect(prepared, true); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("prepared effect accepted a removed root: %v", err)
+	}
+	if _, err := guard.BindConfigProtection(source, loaded, func() error { return nil }); !errors.Is(err, security.ErrProtectedPath) {
+		t.Fatalf("configuration binding accepted a disappeared root: %v", err)
+	}
+	if err := os.Mkdir(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Link(source, filepath.Join(root, "alias")); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Write("new.txt", []byte("ordinary"), false); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("new root reached authorized effect: %v", err)
+	}
+	if _, err := f.Read("alias", 128); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("replacement root exposed protected data: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "new.txt")); !os.IsNotExist(err) {
+		t.Fatal("denied effect created a file in the replacement root")
+	}
+	if err := os.Rename(source, filepath.Join(base, "original.toml")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := guard.BindConfigProtection(source, loaded, func() error { return nil }); !errors.Is(err, security.ErrProtectedPath) {
+		t.Fatalf("configuration binding accepted an absent selected pathname: %v", err)
+	}
+	if _, err := NewLocalFileSystemWithConfigProtection(guard, limits, nil); !errors.Is(err, security.ErrProtectedPath) {
+		t.Fatalf("protected filesystem accepted an unset protection: %v", err)
+	}
+	limits.MaxDeleteEntries = 0
+	if _, err := NewLocalFileSystemWithConfigProtection(guard, limits, protection); !errors.Is(err, ErrLimitExceeded) {
+		t.Fatalf("protected filesystem accepted invalid limits: %v", err)
 	}
 }
 

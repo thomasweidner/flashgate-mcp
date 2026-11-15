@@ -12,6 +12,11 @@ the intended release date. Publication evidence is separate.
 
 ### Changed
 
+- Protect the selected TOML configuration and its aliases from ordinary
+  filesystem tool reads, copies and mutations. Bootstrap can accept a safely
+  enforceable overlapping data root. The OS governs source permissions and
+  provisioning.
+
 - Define the internal functional capability model and successor acceptance
   for profiles, root policy, effective catalogs, domains, and providers.
   Current STDIO tool exposure continues to follow `filesystem.read_only`.
