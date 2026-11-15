@@ -310,22 +310,93 @@ Post-Version-1.0 security work includes the Variant B user-worker implementation
 
 Except where the current-state sections above state otherwise, the controls below are planned and are not implemented yet.
 
-### Configuration trust and administration
+### Configuration trust and protection
 
-BL-233's [configuration contract](adr/runtime-modes.md#configuration-contract)
-binds the only authoritative file to the executing identity and runtime role.
-Validate the selected file and its trust boundary before initializing affected
-runtime functions. An invalid file, redirection, an untrusted location, or a
-missing required file stops startup without falling back to another source.
-An alternate path must be absolute and satisfy the same trust checks. A client
-or proxy cannot replace the service's configuration or select its execution
-identity. Diagnostics must redact secrets and sensitive paths and keep STDIO
-stdout protocol-only.
+**Threat model.** A client may hold valid read and write grants and select
+the TOML or an alias. The executing identity may have OS permission to
+read or write it. A direct tool, delegated process, or retained result
+could expose configuration even without a filesystem mutation. An
+independent OS process can read, change or replace the file outside
+FlashGate's control. The snapshot stays stable. FlashGate must enforce
+the same resource boundary at its own read, mutation and disclosure
+sites in direct and service execution.
+
+This accepted target follows the [ADR-014 amendment](adr/runtime-modes.md#configuration-trust-and-protection-amendment).
+The [current bootstrap checks](#core-security-principles) remain in force
+until BL-374 implements and validates the replacement.
+
+1. **Provisioning.** The OS and its administrators control permissions and
+   provisioning. FlashGate does not reconstruct edit history, verify authors
+   or signatures, or impose a general ownership, ACL, UID, group, mode or
+   filesystem trust policy. The role default or explicit absolute override
+   selects one source per instance. The loader does not search, merge, take
+   overrides from the environment or working directory, or try another
+   source after failure. Client and proxy claims cannot select the service's
+   source or execution identity.
+2. **Startup.** Bind the selected regular file and its resolution to a
+   consistent bounded read. Validate size, TOML syntax, schema, types,
+   values and security semantics before publishing the immutable effective
+   snapshot or enabling consumers. Missing, unreadable, unstable, unsupported
+   or invalid sources stop startup without partial activation or writes.
+   Keep diagnostics redacted and STDIO stdout protocol-only.
+3. **Runtime.** Independent OS changes leave the running snapshot intact.
+   The design uses neither implicit reload nor persistent watch, historical
+   hash register, file locking or lifetime Windows handles. Transient handles
+   and native object binding may be needed while reading or mutating. Only
+   explicitly authorized FlashGate configuration mechanisms may activate
+   another fully validated snapshot.
+
+Ordinary FlashGate MCP operations must preserve the selected configuration
+resource and the confidentiality of its contents. Deny direct and
+indirect reads for ordinary tool execution, including `read_file` and
+the source of `copy_path`. Reject the copy before materializing an output.
+Deny any direct or indirect write, truncation, overwrite,
+replacement, deletion, rename or move affecting the selected path, its
+loaded or currently bound file object, or a parent whose mutation would
+change that path's identity. Include both sides of compound operations and
+all effects during tree traversal, staging, commit, cancellation and cleanup.
+Evaluate lexical path and resolved object identity, including
+new hard links, symlinks, Windows case/path aliases, reparse points and
+relevant mount mappings. Preserve normal access to unaffected siblings.
+
+Bind checks to the object used by the native read or mutation. A preflight
+path check followed by an unbound operation leaves a race. Use the existing
+filesystem, PathGuard and authorization boundaries. Deny an effect when
+its object, applicable ancestry, or alias safety cannot be established.
+Root, profile, capability, transport, role and execution identity cannot
+waive protection. Unaffected siblings remain readable and writable under
+normal policy.
+
+**Contents and metadata.** Ordinary listing and stat may expose authorized
+root-relative names, existence, type, size and timestamps when obtained
+without reading file contents and when other security rules permit them.
+Configuration text, bytes, parsed values, content signatures or digests,
+match counts, snippets, content equality or verification results and content-derived
+classifications are protected. Deny or omit protected contributions under
+the operation's safe result contract, without exposing bytes or value
+oracles in results, exports, streams, archive members, caches, logs, errors
+or temporary output. Mixed operations preserve permitted sibling results
+where their documented contract supports partial results.
+
+The invariant covers side effects from search/replace, archives, managed
+processes, typed commands, Native Tools, providers, service control and
+scheduled or delayed work. It also covers comparison, verification and
+retained content delivery. Each owner proves that active paths, helpers,
+descendants, inherited handles, late execution and cleanup cannot read,
+mutate or disclose protected contents where applicable. Executable
+selection, validated arguments and output redaction alone cannot bound
+arbitrary child effects. Deny unproved routes without weaker fallback.
+BL-374 owns the initial direct filesystem proof.
+Later owners reuse the common contract and supply additional evidence under
+their own BL. FlashGate covers actions it initiates. Independent OS actions
+and out-of-band administration remain under OS and administrator control.
 
 Planned Post-1.0 [BL-373 configuration management](planning/implementation-contract.md#bl-373-authorized-mcp-configuration-management)
 requires an explicitly authorized effective catalog and server-side checks for
 viewing, preparing, and committing changes. Enforce current authorization and
-configuration version at commit time. Protect secrets, sensitive paths, and
+configuration version at commit time. Only the dedicated management route
+may return an authorized, redacted effective-configuration view. Ordinary
+tools have no raw-source exception. Protect secrets, sensitive paths, and
 administrative policy in views, proposals, errors, and audit. Discovery,
 transport availability, and client or agent confirmation grant no authority.
 Any future HTTP exposure also requires BL-370's own security and activation

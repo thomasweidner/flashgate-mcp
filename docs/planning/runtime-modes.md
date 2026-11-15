@@ -418,10 +418,14 @@ Minimum Version 1.0 requirements:
 
 ## Configuration
 
-The planned [BL-233 configuration contract](../adr/runtime-modes.md#configuration-contract)
-defines selection, trust, and validation of the single TOML file per
-instance. BL-233 owns the [TOML template](../flashgate-config.toml) and
-[runtime configuration reference](../configuration.md).
+The [BL-233 configuration baseline](../adr/runtime-modes.md#configuration-contract)
+delivered the single TOML file per instance, its
+[template](../flashgate-config.toml), and the [configuration reference](../configuration.md).
+Consume the [BL-374 protection contract](../security.md#configuration-trust-and-protection)
+in each implemented host and backend. Provisioning and permissions belong to
+the OS and its administrators. The service opens its own role-selected file.
+The proxy cannot choose the service source, and no client, mode, worker or
+service identity may bypass the protected read, disclosure or mutation boundary.
 BL-223 owns the explicit `config init` workflow and any CLI validation,
 using the BL-233 template and shared schema and validator. BL-228 and
 BL-229 consume the typed endpoint settings, timeouts,
@@ -436,6 +440,10 @@ uses the executing user's configuration path. The service owns its caller
 and profile mappings, root backend, capability, and limit policies, using
 the effective configuration. Secrets stay out of process arguments and logs.
 BL-243 documents the configuration and installation paths actually supported.
+BL-241 and BL-242 validate the source and protection through native enabled
+roles and shipped artifacts, including default and explicit service paths,
+configuration failure before discovery, caller/backend parity and negative
+mutation cases. Planned roles acquire this evidence when implemented.
 
 ## Logging, audit, and tracing
 

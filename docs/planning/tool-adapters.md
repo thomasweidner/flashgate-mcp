@@ -859,6 +859,17 @@ of new authorization for all affected backend choices. The
 [implementation binding](implementation-contract.md#bl-220-adapter-acceptance-binding)
 specifies when to update these contracts and the source gate.
 
+Screen each new or materially changed tool or adapter for actual direct and
+indirect effects on the [protected configuration resource](../security.md#configuration-trust-and-protection).
+The owning BL must prove that every applicable route denies protected
+reads, mutations and disclosure across the real object, path and aliases.
+Bind negatives to the actual native effect, helper and failure paths.
+Read-only routes also prove that results, retained data or derived fields
+cannot disclose protected content. Content-independent observation retains
+its normal policy.
+An unproved route stays disabled or returns a safe denial. BL-374 owns
+initial enforcement for current mutations. The successor owns its delta.
+
 ### BL-220 filesystem
 
 **Applicable owners** BL-036–BL-061, BL-063–BL-067, BL-346
@@ -870,6 +881,13 @@ failure and local-only data. Exercise Windows/Linux native filesystem behavior
 and bounded traversal, bytes, temporary state or result costs as applicable.
 Do not delegate normal filesystem operations to OS commands.
 
+Test the real protected operands of writes, replacements, moves and tree
+mutations, including late alias exchanges and cleanup. Prove allowed
+sibling operations remain available. Exercise protected source reads
+through direct, batch, ranged, streamed, copy and compare/verify routes
+where applicable. Test safe metadata and absence of digests or equality
+oracles for the source.
+
 ### BL-220 search
 
 **Applicable owners** BL-068–BL-080, BL-082–BL-083
@@ -879,6 +897,10 @@ equivalent filters, encoding and regex semantics, ordering and pagination,
 permission failures, scan limits and cancellation before enabling an
 accelerator. Use Go where equivalence is unproved, subject to the shared
 fallback rule. Keep index state within its authorized context and lifecycle.
+
+Exclude protected objects before content scan, indexing and ignore-rule
+reads. Prove aliases, snippets, match indicators and counters cannot reveal
+their contents across accelerators, previews or continuations.
 
 ### BL-220 operations
 
@@ -918,6 +940,12 @@ platform and dependency boundary and adds bypass fixtures. BL-152 proves runtime
 limits, cancellation and cleanup on both OSs. No allowlist flag, package-wide
 exemption or second execution engine can substitute for those controls.
 
+Constrain implicit program, helper and child effects through the actual
+execution identity and native enforcement. Test a permitted executable and
+typed input that would read or mutate it, including reads relayed to
+stdout, stderr, temporary output, helpers or children. Refuse launch if the
+backend cannot prove confinement.
+
 ### BL-220 system and platform
 
 **Applicable owners** BL-062, BL-153–BL-158, BL-345, BL-347, BL-349, BL-351, BL-355–BL-359, BL-361–BL-362
@@ -929,6 +957,12 @@ platform behavior. Separate observation from mutation, user-session authority
 from service identity, and probe destinations from generic command egress.
 Native executables, where separately justified, inherit the complete launch
 boundary. Managed account, service and scheduler commands have no shell escape.
+
+Apply protection to native storage, metadata and security changes. For
+service control and scheduling, verify actual callbacks and deferred
+execution effects under the effective identity, including returned data and
+diagnostics that can disclose the source. Enforce protection again
+at execution when earlier validation cannot bind the object.
 
 ### BL-220 host and transport
 
@@ -958,6 +992,11 @@ behavior, credential/network effects, unsupported behavior and fallback
 before activation. The option matrix, differential tests and performance
 evidence belong to each implementing owner.
 
+Bind implicit native file operations, staging, commit and cleanup. Check
+even read-only invocations for helpers, optional writes and hostile
+configuration. Prove content cannot be relayed through output, intermediate
+files or archive members. Reject an unconfined backend before dispatch.
+
 ### BL-220 provider boundary
 
 **Applicable owners** BL-169, BL-176, BL-181–BL-188, BL-313
@@ -968,6 +1007,10 @@ permissions. Define isolation, identity, resource caps, trust and credential
 scope before loading or dispatch. Prove failures, denials and cleanup at the
 boundary. No arbitrary scripts, dynamic plugins or new interpreter dependency
 enter the trusted core through the provider mechanism.
+
+Prove the protection boundary across provider-owned writes, host callbacks,
+helper processes, returned resources, and shutdown or failure cleanup before
+any dispatch. A provider must not observe or return protected source values.
 
 ## 22. Implementation gate for every new public tool
 
@@ -991,6 +1034,10 @@ Before a future tool is advertised, its owner must provide:
   all required rights for composite operations, the effective catalog
   binding, and granted and denied direct-call tests through BL-159;
 - root/path/identity policy where applicable;
+- a configuration-protection applicability check for reads, disclosures
+  and mutations,
+  with native denial and permitted-operation evidence for each relevant
+  adapter and variant before activation;
 - platform/adapter support and truthful unsupported behavior;
 - hard operation/result/resource limits;
 - redaction and platform-disclosure review;

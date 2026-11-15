@@ -54,6 +54,22 @@ uses a validated snapshot and reads the file again on restart. Startup
 performs no configuration writes. Failed startup leaves stdout empty and
 reports a safe category on stderr. See [startup troubleshooting](client-setup.md#startup-troubleshooting).
 
+## Planned configuration protection
+
+The current loader and source separation rules above apply to current builds.
+[BL-374](planning/implementation-contract.md#bl-374-configuration-trust-and-protection)
+will keep the role defaults, absolute override, typed validation and immutable
+effective configuration. The OS and its administrators will own permissions
+and provisioning. FlashGate will bind one consistent read and protect the
+selected resource from ordinary tool reads, disclosure and mutation.
+Contents remain protected under ordinary root read grants, including when
+the selected file is used as a copy source. Ordinary listing and stat can
+still return allowed content-independent metadata. BL-373 owns future
+server-authorized redacted configuration views. An overlapping data root
+becomes eligible only after native enforcement is delivered. The snapshot stays
+effective after independent file changes until a validated restart or a later
+authorized configuration mechanism. See the [security contract](security.md#configuration-trust-and-protection).
+
 ## Supported settings
 
 TOML booleans use `true` or `false`. Limits are positive integers, in bytes
