@@ -144,7 +144,8 @@ The [technical backlog implementation contract](planning/implementation-contract
 defines one role-selected TOML source and one validated, immutable snapshot.
 BL-374 retrofits bootstrap, `read_file` and the five current filesystem
 mutation routes, including both operands of `copy_path`, using existing
-Go configuration and PathGuard boundaries. Root policy
+Go configuration and PathGuard boundaries. FlashGate coordinates its own
+conflicting effects and denies detectable path or identity drift. Root policy
 continues to apply, and the selected file remains protected across roots,
 profiles, transports and the [ADR-015 execution backends](adr/execution-identity.md).
 Each later path proves the [same protection](security.md#configuration-trust-and-protection)
@@ -157,8 +158,8 @@ BL-233 defines the [single-file configuration contract](adr/runtime-modes.md#con
 for direct operation and later proxy, auto, user-host, and system-service roles.
 The shared core validates the role's trusted TOML file before initializing
 runtime consumers and supplies an immutable effective configuration. Domain
-owners add their fields to that model. Current STDIO still uses the environment
-settings described in [client setup](client-setup.md).
+owners add their fields to that model. Current STDIO uses the role default
+or explicit source described in [client setup](client-setup.md).
 
 Post-1.0 BL-373 owns transport-neutral configuration management in the same
 core, with explicit server-side authorization and catalog exposure. BL-370

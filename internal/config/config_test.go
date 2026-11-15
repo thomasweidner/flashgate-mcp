@@ -182,7 +182,7 @@ func TestLoadUsesExactlyTheTrustedOverride(t *testing.T) {
 	}
 }
 
-func TestDefaultConfigSourceMustBeOutsideTheDataRoot(t *testing.T) {
+func TestDefaultConfigSourceProtectionBindsOverlappingAndSeparateRoots(t *testing.T) {
 	t.Parallel()
 	base := t.TempDir()
 	homeConfig := filepath.Join(base, ".flashgate")
@@ -203,7 +203,7 @@ func TestDefaultConfigSourceMustBeOutsideTheDataRoot(t *testing.T) {
 		root string
 		want error
 	}{
-		{base, security.ErrProtectedPath},
+		{base, nil},
 		{dataRoot, nil},
 	} {
 		testconfig.Write(t, path, []byte(documentWithRoot(t, test.root)))
@@ -215,7 +215,7 @@ func TestDefaultConfigSourceMustBeOutsideTheDataRoot(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := cfg.ValidateDataRoot(guard); !errors.Is(got, test.want) {
+		if _, got := cfg.ProtectDataRoot(guard); !errors.Is(got, test.want) {
 			t.Errorf("default source isolation = %v, want %v", got, test.want)
 		}
 		if err := os.Remove(path); err != nil {
@@ -242,7 +242,7 @@ func TestSourceIdentityChangeDeniesDataRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := cfg.ValidateDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := cfg.ProtectDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("replacement source did not cause a safe denial: %v", err)
 	}
 }
@@ -263,18 +263,18 @@ func TestDataRootRejectsUnprovableSourceIdentity(t *testing.T) {
 	}
 	unbound := cfg
 	unbound.sourceInfo = nil
-	if err := unbound.ValidateDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := unbound.ProtectDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("unbound source identity did not cause a safe denial: %v", err)
 	}
 	if err := os.Rename(source, source+".moved"); err != nil {
 		t.Fatal(err)
 	}
-	if err := cfg.ValidateDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := cfg.ProtectDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("missing source did not cause a safe denial: %v", err)
 	}
 }
 
-func TestLoadRejectsLinkedAndOversizedSources(t *testing.T) {
+func TestLinkedSourceStillAppliesDocumentSizeLimit(t *testing.T) {
 	t.Parallel()
 	base := t.TempDir()
 	path := filepath.Join(base, "source.toml")
@@ -285,7 +285,7 @@ func TestLoadRejectsLinkedAndOversizedSources(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = Load(Source{Role: Direct, Path: path})
-	assertCategory(t, err, CategoryUntrustedConfig)
+	assertCategory(t, err, CategoryInvalidConfig)
 }
 
 func TestLoadRejectsSymlinkParentsAndLeaves(t *testing.T) {

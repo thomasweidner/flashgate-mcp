@@ -496,14 +496,19 @@ and stable, bounded reads. Reuse the strict typed decoder and immutable
 accessors. Update `cmd/server` bootstrap, the current separation check,
 native fixture helpers, PathGuard resolution and `internal/fs` read, create,
 write, copy, move and delete. Guard `read_file` and both `copy_path`
-operands. Bind the selected source's path, relevant parents and file
-identity to the actual native read or mutation. Reject a protected copy
+operands. Protect the selected path, relevant parents and file identity.
+Check opened objects before content access or truncation, coordinate
+FlashGate operations through the effect, and revalidate effect operands for
+detectable path, identity and root drift. Reject a protected copy
 source before creating, truncating or modifying the destination. Ordinary
 listing and stat retain authorized content-independent metadata.
 Review destructive opens before truncation, rename/replacement, the complete
 recursive-delete effect, implicit parent creation and temporary output or
-cleanup wherever applicable. Affected current path-based race windows must
-be closed for this resource or the path must deny the operation. Cover a
+cleanup wherever applicable. The accepted final namespace window covers only
+independent adversarial OS actors where native APIs cannot make the check and
+effect atomic. Preserve and report the four ext4 reproductions separately
+from hard acceptance. FlashGate-initiated helpers and adapters inherit the
+hard requirements. Cover a
 read or copy source swapped after resolution and verify bytes cannot escape
 through partial results, diagnostics or outputs. Retain
 current root and capability controls. Bind a safe typed denial through

@@ -100,22 +100,21 @@ actual server results rather than relying only on a direct command-line test.
 | Category | Meaning | Action |
 |---|---|---|
 | `missing_config` | Selected file is absent | Create the file at the selected trusted path. |
-| `untrusted_config` | Path, ownership, access, or file type fails source checks | Use a trusted absolute path under the executing account. |
+| `untrusted_config` | Path, access, file type, or consistency fails source checks | Use a stable absolute path to an OS-readable regular file. |
 | `invalid_config` | Syntax, fields, types, or limits fail validation | Compare the file against the template and supported settings. |
 | `unsupported_runtime` | The configured mode cannot run under this host | Use `runtime.mode = "stdio"` for this client. |
 | `missing_root` | `filesystem.root` is absent | Set an explicit absolute root. |
 | `invalid_root` | Empty, whitespace, relative, or disallowed `.` | Correct the root; do not rely on implicit CWD. |
 | `root_not_found` | Root does not exist | Check the path and local availability. |
 | `root_not_directory` | Root is a file | Select an existing directory. |
-| `root_not_allowed` | Root policy denies access or bootstrap cannot prove separation from the TOML file | Select a separate local data root and keep the configuration outside its resolved path. |
+| `root_not_allowed` | Root policy denies access or bootstrap cannot bind configuration protection | Check the root policy, then use a local root and a stable configuration source the server can verify. |
 | `startup_failed` | Unexpected bootstrap failure | Inspect safe diagnostics and roll back the configuration. |
 
 Expected root/configuration failures use exit code 3; unexpected failures use
 exit code 1. Failed startup leaves stdout empty.
 
-These steps apply to the current loader. The separate-root guidance remains
-in effect until the [planned protection](configuration.md#planned-configuration-protection)
-is implemented and validated for the affected build.
+Use the [configuration protection rules](configuration.md#configuration-protection)
+when the effective root overlaps the selected source.
 
 ## Rollback
 

@@ -2,6 +2,7 @@ package fs
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
@@ -93,8 +94,10 @@ type FileSystem interface {
 
 // LocalFileSystem implements FileSystem using the local operating system.
 type LocalFileSystem struct {
-	guard  *security.PathGuard
-	limits Limits
+	guard      *security.PathGuard
+	limits     Limits
+	protection *security.ConfigProtection
+	effects    sync.Mutex
 }
 
 // NewLocalFileSystem creates a new local filesystem.
@@ -130,6 +133,20 @@ func NewLocalFileSystemWithGuard(guard *security.PathGuard, limits Limits) (*Loc
 		return nil, err
 	}
 	return newLocalFileSystem(guard, limits), nil
+}
+
+// NewLocalFileSystemWithConfigProtection uses a bound configuration source for
+// ordinary data operations. The server shares this filesystem across tools.
+func NewLocalFileSystemWithConfigProtection(guard *security.PathGuard, limits Limits, protection *security.ConfigProtection) (*LocalFileSystem, error) {
+	if protection == nil {
+		return nil, security.ErrProtectedPath
+	}
+	f, err := NewLocalFileSystemWithGuard(guard, limits)
+	if err != nil {
+		return nil, err
+	}
+	f.protection = protection
+	return f, nil
 }
 
 func newLocalFileSystem(guard *security.PathGuard, limits Limits) *LocalFileSystem {

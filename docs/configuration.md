@@ -22,30 +22,17 @@ The executable directory, project directory, working directory, and
 environment supply no alternative sources. The operating system account
 mapping supplies the user home. The host binds its role before the file opens.
 
-Store the configuration in a locally owned, protected directory outside the
-MCP data root. The file must be a regular file owned by the executing user
-for user roles, with no second hard link and no write access for other
-untrusted identities. Each parent must prevent untrusted replacement. Linux
-uses descriptor-relative lookup on supported local filesystems and checks
-ownership and group/other write permissions. Windows checks a fixed local
-drive, handles, owner, and DACLs. Config paths through symbolic links,
-junctions, reparse points, or remote filesystems are denied. System roles use
-root ownership on Linux and trusted system or administrator ownership on
-Windows. The filesystem tool policy below applies to the data root, independent
-of the configuration file's trust rules.
+Provision the configuration with OS permissions appropriate to the executing
+account. FlashGate requires a readable regular file that it can open
+consistently. Linux opens components relative to verified directories.
+Windows opens the source with short-lived handles and restricted sharing.
+Source paths through symbolic links, junctions or other redirects fail
+source validation.
 
-Startup also requires the authoritative TOML file to be outside every
-effective MCP data root. This applies to the role default and `--config`,
-including read-only profiles, and regardless of hidden-file policy.
-FlashGate checks resolved roots, local directory identities, and relevant
-Linux mount mappings for aliases. It reports `root_not_allowed` if a root
-can expose the file or the separation cannot be established. Before enabling
-tools, FlashGate securely reopens the source and confirms that it still
-identifies the trusted file loaded at startup and still has exactly one
-hard link. A source that fails this recheck also reports `root_not_allowed`.
-Windows network roots and Linux mounts that cannot be compared to the trusted
-source are examples of unprovable separation. Choose a separate local
-data directory and keep its mount namespace stable while the server runs.
+Before enabling tools, FlashGate rechecks the source identity and verifies
+that it can bind protection to the resolved data root. An overlapping root
+is allowed when native identity and mount checks support that binding.
+A failed binding or changed source identity reports `root_not_allowed`.
 
 The file is limited to 64 KiB. Use the exact lowercase key names in the
 template. Unknown keys, duplicate keys, wrong types,
@@ -54,20 +41,16 @@ uses a validated snapshot and reads the file again on restart. Startup
 performs no configuration writes. Failed startup leaves stdout empty and
 reports a safe category on stderr. See [startup troubleshooting](client-setup.md#startup-troubleshooting).
 
-## Planned configuration protection
+## Configuration protection
 
-The current loader and source separation rules above apply to current builds.
-[BL-374](planning/implementation-contract.md#bl-374-configuration-trust-and-protection)
-will keep the role defaults, absolute override, typed validation and immutable
-effective configuration. The OS and its administrators will own permissions
-and provisioning. FlashGate will bind one consistent read and protect the
-selected resource from ordinary tool reads, disclosure and mutation.
+The operating system and its administrators control permissions and
+provisioning. FlashGate protects the selected resource from ordinary tool
+reads, disclosure and mutation.
 Contents remain protected under ordinary root read grants, including when
 the selected file is used as a copy source. Ordinary listing and stat can
 still return allowed content-independent metadata. BL-373 owns future
-server-authorized redacted configuration views. An overlapping data root
-becomes eligible only after native enforcement is delivered. The snapshot stays
-effective after independent file changes until a validated restart or a later
+server-authorized redacted configuration views. The snapshot stays effective
+after independent file changes until a validated restart or a later
 authorized configuration mechanism. See the [security contract](security.md#configuration-trust-and-protection).
 
 ## Supported settings

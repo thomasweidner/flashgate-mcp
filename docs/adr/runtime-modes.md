@@ -111,12 +111,15 @@ execution identity under [ADR-015](execution-identity.md). Ordinary MCP
 tools deny reads of the selected file and its aliases, prevent derived or
 indirect disclosure, and deny protected mutations. The selected object
 and path determine the boundary. Normal filesystem grants do not waive
-it. BL-373 owns the later server-authorized redacted view. The current
-startup separation check still applies to all effective roots. BL-374 may
-replace the blanket rule only after native Windows and Linux evidence
-proves protection at the read, disclosure and mutation boundaries. Any path
-that cannot enforce protection fails closed. Later tool owners prove their
-own enforcement.
+it. BL-373 owns the later server-authorized redacted view. BL-374 requires
+native Windows and Linux evidence at the read, disclosure and mutation
+boundaries before a safely enforceable overlapping root can be used.
+FlashGate coordinates its own operations and denies detectable drift before
+an effect. An independent adversarial OS process can still redirect a native
+effect in a final namespace window the OS cannot bind atomically. That
+specific residual is accepted. Helpers and adapters started by FlashGate
+remain within its responsibility. Later owners prove their own enforcement
+against the same [security contract](../security.md#configuration-trust-and-protection).
 
 The planned configuration domains are Runtime, Endpoints, Protocol, Roots,
 Profiles, Capabilities, Authorization, Filesystem, Search, Operations,

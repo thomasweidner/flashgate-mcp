@@ -863,7 +863,11 @@ Screen each new or materially changed tool or adapter for actual direct and
 indirect effects on the [protected configuration resource](../security.md#configuration-trust-and-protection).
 The owning BL must prove that every applicable route denies protected
 reads, mutations and disclosure across the real object, path and aliases.
-Bind negatives to the actual native effect, helper and failure paths.
+Bind negatives to the actual native effect, helper and failure paths. Prove
+coordination of internal operations and fail-closed behavior for detectable
+drift. The accepted last-window namespace race requires an independent
+adversarial OS actor and a native effect that cannot be checked atomically.
+FlashGate-started helpers and adapters inherit the hard requirements.
 Read-only routes also prove that results, retained data or derived fields
 cannot disclose protected content. Content-independent observation retains
 its normal policy.

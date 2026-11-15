@@ -1,13 +1,15 @@
 package fs
 
 import (
-	"errors"
 	"io"
 	"os"
 )
 
 // Copy copies a file. Directory copy is intentionally unsupported.
 func (f *LocalFileSystem) Copy(source string, target string, overwrite bool) error {
+	f.effects.Lock()
+	defer f.effects.Unlock()
+
 	sourcePath, err := f.guard.ResolveExisting(source)
 	if err != nil {
 		return err
@@ -18,9 +20,13 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool) err
 		return err
 	}
 
-	sourceInfo, err := os.Stat(sourcePath.String())
+	sourceOperand, err := f.inspectEffect(sourcePath.String(), false)
 	if err != nil {
 		return err
+	}
+	sourceInfo := sourceOperand.info
+	if sourceInfo == nil {
+		return ErrNotFound
 	}
 
 	if sourceInfo.IsDir() {
@@ -31,50 +37,42 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool) err
 		return ErrLimitExceeded
 	}
 
-	if err := ensureTargetPolicy(targetPath.String(), overwrite); err != nil {
-		return err
-	}
-
-	sourceFile, err := os.Open(sourcePath.String())
+	targetOperand, err := f.inspectEffect(targetPath.String(), true)
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
-
-	flags := os.O_WRONLY | os.O_CREATE
-	if overwrite {
-		flags |= os.O_TRUNC
-	} else {
-		flags |= os.O_EXCL
-	}
-
-	targetFile, err := os.OpenFile(targetPath.String(), flags, sourceInfo.Mode().Perm())
-	if err != nil {
-		if errors.Is(err, os.ErrExist) {
-			return ErrFileExists
-		}
-
-		return err
-	}
-	defer targetFile.Close()
-
-	_, err = io.Copy(targetFile, sourceFile)
-	return err
-}
-
-func ensureTargetPolicy(targetPath string, overwrite bool) error {
-	info, err := os.Stat(targetPath)
-	if err == nil {
+	if info := targetOperand.info; info != nil {
 		if !overwrite {
 			return ErrFileExists
 		}
 		if info.IsDir() {
 			return ErrPathIsDirectory
 		}
-		return nil
+		if os.SameFile(info, sourceInfo) {
+			return ErrSamePath
+		}
 	}
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
+
+	if err := f.recheckEffect(sourceOperand, false); err != nil {
+		return err
 	}
+	sourceFile, err := os.Open(sourceOperand.path)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+	checkSource := func() error { return f.checkOpened(sourceFile, sourceOperand, false) }
+	targetFile, err := f.openDestination(targetOperand, sourceInfo.Mode().Perm(), checkSource)
+	if err != nil {
+		return err
+	}
+	defer targetFile.Close()
+
+	if err := f.checkDestination(targetFile, targetOperand); err != nil {
+		return err
+	}
+	// Copy at most the admitted size even if an external writer appends
+	// to the source after the size check.
+	_, err = io.Copy(targetFile, io.LimitReader(sourceFile, sourceInfo.Size()))
 	return err
 }
