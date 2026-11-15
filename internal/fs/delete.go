@@ -55,11 +55,16 @@ func (f *LocalFileSystem) Delete(path string, recursive bool) error {
 	return os.Remove(safePath.String())
 }
 
+type treeEffect struct {
+	effectPath
+	link os.FileInfo
+}
+
 // inspectTree checks all entries before changing any of them. WalkDir does
 // not descend into symbolic links. A link whose resolved target is protected
 // is rejected even though removing the link would leave its target intact.
-func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool) ([]effectPath, error) {
-	var entries []effectPath
+func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool) ([]treeEffect, error) {
+	var entries []treeEffect
 	err := filepath.WalkDir(root.path, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -70,15 +75,23 @@ func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool) ([]effectP
 		if deleting && len(entries) >= f.limits.MaxDeleteEntries {
 			return ErrLimitExceeded
 		}
+		var link os.FileInfo
+		symlink := entry.Type()&os.ModeSymlink != 0
+		if deleting && symlink {
+			link, err = security.PathEntryIdentity(path)
+			if err != nil || link.Mode()&os.ModeSymlink == 0 {
+				return security.ErrConfigurationAccess
+			}
+		}
 		operand, err := f.inspectEffect(path, true)
 		if err != nil {
 			return err
 		}
-		if operand.info == nil && entry.Type()&os.ModeSymlink == 0 {
+		if operand.info == nil && !symlink {
 			return security.ErrConfigurationAccess
 		}
 		if deleting {
-			entries = append(entries, operand)
+			entries = append(entries, treeEffect{effectPath: operand, link: link})
 		}
 		return nil
 	})
@@ -97,10 +110,8 @@ func (f *LocalFileSystem) deleteProtectedTree(root effectPath) error {
 	for _, expected := range entries {
 		// Children are reached through the authorized tree without
 		// following directory links or interpreting client-supplied paths.
-		current, err := f.inspectEffect(expected.path, true)
-		if err != nil || !pathsEquivalent(expected.effective, current.effective) ||
-			!sameEffectInfo(expected.info, current.info) || !sameEffectInfo(expected.parent, current.parent) {
-			return security.ErrConfigurationAccess
+		if err := f.recheckTreeEntry(expected); err != nil {
+			return err
 		}
 		if err := os.Remove(expected.path); err != nil {
 			return err
@@ -110,6 +121,24 @@ func (f *LocalFileSystem) deleteProtectedTree(root effectPath) error {
 		return err
 	}
 	return os.Remove(root.path)
+}
+
+func (f *LocalFileSystem) recheckTreeEntry(expected treeEffect) error {
+	// Reapply protection to the current resolved target. For an unlink, the
+	// entry is the operand even if a prior removal made its target disappear.
+	current, err := f.inspectEffect(expected.path, true)
+	if err != nil || !sameEffectInfo(expected.parent, current.parent) {
+		return security.ErrConfigurationAccess
+	}
+	if expected.link != nil {
+		link, err := security.PathEntryIdentity(expected.path)
+		if err != nil || !sameEffectInfo(expected.link, link) {
+			return security.ErrConfigurationAccess
+		}
+	} else if !pathsEquivalent(expected.effective, current.effective) || !sameEffectInfo(expected.info, current.info) {
+		return security.ErrConfigurationAccess
+	}
+	return nil
 }
 
 func (f *LocalFileSystem) ensureRecursiveDeleteWithinLimit(root string) error {

@@ -229,6 +229,79 @@ func TestLinuxMissingConfigurationNamesDenyUnprovedDestinations(t *testing.T) {
 	}
 }
 
+func TestProtectedRecursiveDeleteMaintainsSymlinkEntryIdentity(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "config.toml")
+	writeTestFile(t, source, "protected")
+	loaded, err := security.PathIdentity(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := security.DefaultPolicy()
+	policy.FollowSymlinks = true
+	guard, err := security.NewPathGuardWithPolicy(root, policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	if err != nil {
+		t.Fatal(err)
+	}
+	swapped := filepath.Join(root, "swapped")
+	mkdir(t, swapped)
+	link := filepath.Join(swapped, "link")
+	target := filepath.Join(root, "target")
+	writeTestFile(t, target, "ordinary")
+	createTestSymlinkOrSkip(t, target, link)
+	rootEffect, err := f.inspectEffect(swapped, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := f.inspectTree(rootEffect, true)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("inspect link for replacement test: %v", err)
+	}
+	if err := os.Rename(link, filepath.Join(root, "old-link")); err != nil {
+		t.Fatal(err)
+	}
+	createTestSymlinkOrSkip(t, target, link)
+	if err := f.recheckTreeEntry(entries[0]); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("replacement link with the same target was accepted: %v", err)
+	}
+
+	ordinary := filepath.Join(root, "ordinary")
+	mkdir(t, filepath.Join(ordinary, "z-directory"))
+	writeTestFile(t, filepath.Join(ordinary, "z-target"), "ordinary")
+	writeTestFile(t, filepath.Join(ordinary, "z-directory", "child"), "ordinary")
+	createTestSymlinkOrSkip(t, "z-target", filepath.Join(ordinary, "b-link"))
+	createTestSymlinkOrSkip(t, "b-link", filepath.Join(ordinary, "a-chain"))
+	createTestSymlinkOrSkip(t, "z-directory", filepath.Join(ordinary, "c-directory-link"))
+	if err := f.Delete("ordinary", true); err != nil {
+		t.Fatalf("remove ordinary tree with internal links: %v", err)
+	}
+	if _, err := os.Lstat(ordinary); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("ordinary tree remains: %v", err)
+	}
+
+	blocked := filepath.Join(root, "blocked")
+	mkdir(t, blocked)
+	sibling := filepath.Join(blocked, "z-sibling")
+	writeTestFile(t, sibling, "retain")
+	createTestSymlinkOrSkip(t, source, filepath.Join(blocked, "a-link"))
+	if err := f.Delete("blocked", true); !errors.Is(err, security.ErrConfigurationAccess) {
+		t.Fatalf("tree with protected target returned %v", err)
+	}
+	for path, want := range map[string]string{source: "protected", sibling: "retain"} {
+		if data, err := os.ReadFile(path); err != nil || string(data) != want {
+			t.Fatalf("denied tree delete changed %s: %v", filepath.Base(path), err)
+		}
+	}
+}
+
 func TestConfigurationCopyPreEffectDenialPreservesDestination(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "config.toml")
