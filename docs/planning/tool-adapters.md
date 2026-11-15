@@ -894,7 +894,10 @@ cleanup for affected work and prove bounded queues and temporary resources.
 
 **Applicable owners** BL-100–BL-111, BL-159–BL-161, BL-165–BL-168, BL-170, BL-217, BL-236, BL-239, BL-256, BL-352, BL-373
 
-Reuse BL-159 authorization, BL-236 caller/backend separation, BL-166 audit,
+Use the [BL-100 functional contract](../adr/capability-profiles.md#functional-capability-contract)
+for definitions, explicit grants and operation requirements. BL-100 tests
+the primitives independently of runtime activation. Integrating owners
+reuse BL-159 authorization, BL-236 caller/backend separation, BL-166 audit,
 BL-239 state binding and the applicable root/profile contracts. Keep discovery,
 backend availability and cached results independent of authorization. Test the
 affected direct calls, backend parity and context mismatch, including denial
@@ -984,7 +987,9 @@ activation. Accepted work leaves BL-205 closed.
 Before a future tool is advertised, its owner must provide:
 
 - final name/schema/result contract;
-- capability/profile registration and negative direct-call authorization tests;
+- a validated BL-100 requirement for each operation or variant, including
+  all required rights for composite operations, the effective catalog
+  binding, and granted and denied direct-call tests through BL-159;
 - root/path/identity policy where applicable;
 - platform/adapter support and truthful unsupported behavior;
 - hard operation/result/resource limits;

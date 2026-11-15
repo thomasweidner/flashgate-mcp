@@ -303,18 +303,14 @@ A future synchronous `run_command` remains a wrapper over the Managed Process En
 
 Profiles determine tool exposure and policy composition; server-side authorization remains authoritative.
 
-Illustrative capabilities:
-
-```text
-filesystem.read
-filesystem.write
-search.execute
-process.observe
-process.manage
-process.control.external
-command.execute
-system.read
-```
+The [functional capability contract](adr/capability-profiles.md#functional-capability-contract)
+defines the basis rights and the rules for extending them. The Go core
+validates definitions, explicit grants, and per-operation requirements in
+immutable catalog snapshots. A functional decision checks all required IDs
+independently of transport, backend, and technical support. BL-159 composes
+that decision with the other authorization controls, and BL-110 owns the
+effective catalog. The current STDIO registry continues to use
+`filesystem.read_only` until the designated retrofit owners migrate it.
 
 Version 1.0 safe default:
 

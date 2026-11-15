@@ -113,6 +113,14 @@ still requires explicit tests for authorization, confinement, disclosure,
 limits, cancellation, cleanup, and race behavior even at 100% statement
 coverage.
 
+BL-100's `internal/capability` package has its own focused statement coverage
+while it remains outside the shipped server graph. Run
+`go test -cover ./internal/capability` and exercise the package under the
+native Linux race suite. Its tests cover exact IDs, invalid and conflicting
+definitions, immutable sets, snapshot boundaries, all-rights evaluation,
+declarative extension and simulated adapter parity. Keep the existing
+platform-specific server coverage gate and STDIO snapshots and smokes.
+
 
 ### Shell script validation
 

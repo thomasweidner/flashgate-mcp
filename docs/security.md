@@ -347,6 +347,14 @@ Every operation passes:
 
 External providers, when later implemented, cannot bypass these controls.
 
+The [functional capability contract](adr/capability-profiles.md#functional-capability-contract)
+requires a validated, nonempty operation declaration and explicit grants for
+every required ID in the same definition snapshot. Unknown IDs, missing
+declarations and incompatible snapshots fail closed. Adapter installation,
+provider trust, protocol negotiation and profile names confer no functional
+rights. BL-159 combines functional satisfaction with the applicable principal,
+root, resource, risk, and execution controls before dispatch.
+
 ### Safe default profiles and capability enforcement
 
 Version 1.0 target behavior:

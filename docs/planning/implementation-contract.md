@@ -385,7 +385,7 @@ separate authorization. The published v0.3.0 identity is retained.
 |---|---|
 | MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258, BL-371 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
 | Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Extend `filesystem.root`, `filesystem.read_only` and current path controls in BL-233's model. Migrate direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
-| Capability and authorization verification — BL-100, BL-171 | Keep functional rights distinct from profile and risk classification; verify MCP annotations never grant authority. Reuse the central BL-159 decision and its negative tests. |
+| Capability and authorization verification — BL-100, BL-171 | Use the [BL-100 functional model](#bl-100-functional-capability-model) for explicit functional requirements. BL-171 verifies that MCP annotations confer no grants through the central BL-159 decision. |
 | Filesystem — BL-036–BL-067, BL-346 | Extend `internal/fs` and the existing `internal/security` path guard. Use named root IDs and relative paths, bounded reads/writes/trees, existing hash and tree primitives, and the shared result lifecycle. Migrate the current eight-tool contracts where their owners require it. |
 | Search — BL-068–BL-082 | Extend the accepted `search_paths` and `search_text` public families over confined roots, bounded scanning, pages, and context-bound cursors. Pure Go is the portable baseline. Do not add a public tool per backlog row. |
 | Operations and jobs — BL-084–BL-099, BL-164 | Own one generic bounded lifecycle, quotas, cancellation, TTL, cleanup, and fair scheduling. Consume policy and execution context before creating state. Keep domain meaning in domains; reuse BL-090 storage. |
@@ -397,6 +397,44 @@ separate authorization. The published v0.3.0 identity is retained.
 | Response and benchmark quality — BL-172–BL-173, BL-177–BL-179, BL-205, BL-317–BL-323, BL-325–BL-329, BL-331–BL-332 | Reuse current benchmark schemas, deterministic workflow/corpus controls, host/platform evidence, and documentation gates. Strengthen checks at their existing owners without weakening result, supply-chain, platform, or public documentation truth; no benchmark result itself authorizes product behavior. |
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
 | Documentation navigation tooling — BL-368 | Independent release-unassigned development tooling, outside the product runtime and release-security owners. Reuse completed documentation validation and extend its local/read-only CI consumers under the [BL-368 binding](#bl-368-documentation-navigation); no hard dependency on BL-365 or release obligation. |
+
+## BL-100 functional capability model
+
+The transport-neutral policy foundation implements the
+[ADR-009 functional capability contract](../adr/capability-profiles.md#functional-capability-contract)
+in `internal/capability`. BL-233 is the completed configuration baseline.
+Capability definitions are reviewed data. A catalog snapshot validates
+definitions, grants and requirements before use. The evaluator checks all
+explicitly required IDs in that snapshot and takes no transport, backend,
+profile, principal or resource inputs.
+
+Use the common catalog and evaluator for future functional rights. The
+implementing owner declares each new operation or variant and any necessary
+new definitions, exercises granted and denied calls including partial grants
+for composed operations, and binds executable coverage to the existing
+authorization, catalog and CI gates. Backend selection and provider trust
+remain independent. See [backlog ownership](../../BACKLOG.md) for the concrete
+requirements of each successor and the
+[traceability matrix](architecture-traceability.md#core-policy-context-catalog-and-state-foundation)
+for integration boundaries.
+
+The current controls are the BL-233 `filesystem.read_only` setting, server
+bootstrap registration and the current MCP call path. BL-103 owns migrating
+that setting, BL-108 owns per-root grant composition, BL-110 owns effective
+registration, and BL-159 owns functional enforcement alongside all other
+checks before dispatch. BL-236 carries the inputs across execution backends,
+and BL-239 applies the effective context to state and handles. BL-100 adds
+the internal model and focused fixtures. The current configuration, registry,
+tool contracts, protocol, dependencies, version and distribution stay as
+implemented.
+
+Validate construction failures, deterministic set operations, all-rights
+matching, concurrent read-only use, declarative extension and backend parity
+with synthetic inputs. Run the existing Windows and native Linux product
+coverage, STDIO, source and documentation gates. BL-111, BL-160 and BL-161
+own runtime visibility, direct-call and root negatives. BL-256 owns
+effective-composition CI. Independent terminal review is required before
+closing BL-100.
 
 ## BL-233 central runtime configuration
 

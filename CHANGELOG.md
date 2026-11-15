@@ -12,6 +12,10 @@ the intended release date. Publication evidence is separate.
 
 ### Changed
 
+- Define the internal functional capability model and successor acceptance
+  for profiles, root policy, effective catalogs, domains, and providers.
+  Current STDIO tool exposure continues to follow `filesystem.read_only`.
+
 - Runtime startup now requires one trusted TOML configuration file. This
   pre-1.0 breaking change replaces the old `MCP_*` runtime environment
   settings. Use the user default or pass `--config <absolute-path>`. See the
