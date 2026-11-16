@@ -384,7 +384,7 @@ separate authorization. The published v0.3.0 identity is retained.
 | Family and BL binding | Required reuse, target boundary, and retrofit |
 |---|---|
 | MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258, BL-371 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
-| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Extend `filesystem.root`, `filesystem.read_only` and current path controls in BL-233's model. Migrate direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context; exposure does not authorize. |
+| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Reuse named roots, `files.read_only` and current path controls in the typed TOML model. Migrate direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context. Enforce authorization at dispatch. |
 | Capability and authorization verification — BL-100, BL-171 | Use the [BL-100 functional model](#bl-100-functional-capability-model) for explicit functional requirements. BL-171 verifies that MCP annotations confer no grants through the central BL-159 decision. |
 | Filesystem — BL-036–BL-067, BL-346 | Extend `internal/fs` and the existing `internal/security` path guard. Use named root IDs and relative paths, bounded reads/writes/trees, existing hash and tree primitives, and the shared result lifecycle. Migrate the current eight-tool contracts where their owners require it. |
 | Search — BL-068–BL-082 | Extend the accepted `search_paths` and `search_text` public families over confined roots, bounded scanning, pages, and context-bound cursors. Pure Go is the portable baseline. Do not add a public tool per backlog row. |
@@ -418,7 +418,7 @@ requirements of each successor and the
 [traceability matrix](architecture-traceability.md#core-policy-context-catalog-and-state-foundation)
 for integration boundaries.
 
-The current controls are the BL-233 `filesystem.read_only` setting, server
+The current controls are the `files.read_only` setting, server
 bootstrap registration and the current MCP call path. BL-103 owns migrating
 that setting, BL-108 owns per-root grant composition, BL-110 owns effective
 registration, and BL-159 owns functional enforcement alongside all other
@@ -435,6 +435,37 @@ coverage, STDIO, source and documentation gates. BL-111, BL-160 and BL-161
 own runtime visibility, direct-call and root negatives. BL-256 owns
 effective-composition CI. Independent terminal review is required before
 closing BL-100.
+
+## BL-101 named-root registry
+
+**Role and prerequisites.** BL-101 owns root configuration and the bootstrap
+registry. Reuse the BL-233 typed TOML model, BL-374 configuration protection,
+BL-100 capability boundary and the [filesystem abstraction ADR](../adr/filesystem-abstraction.md).
+
+**Retrofit.** Replace the previous TOML filesystem table in `internal/config`.
+Build the immutable `internal/roots` registry through `cmd/server` bootstrap.
+Construct each root through the current PathGuard and local filesystem
+adapter. Bind the same loaded config identity, selected name and original
+ancestors to every root, with per-root identity and native alias checks.
+Serialize ordinary filesystem effects across the instance.
+
+**Contract.** Require a configured default ID and up to 256 roots within the
+existing 64 KiB document limit. IDs match `^[a-z][a-z0-9_]{0,63}$`, each path is
+an existing absolute directory, and every root must pass validation before the
+registry can be used. Reject the former table and development CWD setting.
+Keep global limits and read-only exposure. Registry access grants no
+functional rights. The current MCP contracts target the default root. BL-102
+owns public root addressing, BL-103 profiles, BL-104–BL-109 per-root policy,
+BL-159 authorization, BL-236 execution context, and BL-352 discovery.
+
+**Acceptance and closure.** Exercise strict TOML decoding, isolated snapshots,
+concurrent lookup, default MCP parity, native startup and overlapping-root
+protection for loaded and replacement objects, aliases and ancestors. Preserve
+allowed sibling and metadata access, redaction and the BL-374 external
+final-window boundary. Run Windows and native Linux gates and review the full
+candidate independently. Update public setup, migration and Unreleased notes
+with `VERSION` unchanged. Release candidates and publication use their
+existing separate owners.
 
 ## BL-233 central runtime configuration
 

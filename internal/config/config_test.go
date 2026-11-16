@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -19,7 +21,7 @@ func documentWithRoot(t *testing.T, root string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return "[filesystem]\nroot = " + string(value) + "\n"
+	return "[files]\ndefault_id = 'work'\nroots.work.path = " + string(value) + "\n"
 }
 
 func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
@@ -29,10 +31,11 @@ func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := cfg.Filesystem()
+	f := cfg.Files()
 	s := cfg.Security()
 	p := cfg.Server()
-	if f.RootPath() != root || f.ReadOnly() || f.AllowCWDRoot() || s.AllowHiddenFiles() ||
+	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root)}}) || f.DefaultID() != "work" ||
+		f.ReadOnly() || s.AllowHiddenFiles() ||
 		s.AllowUNCPaths() || s.FollowSymlinks() || cfg.Role() != Direct {
 		t.Fatal("default filesystem or runtime policy drift")
 	}
@@ -63,20 +66,35 @@ func TestDecodeRejectsInvalidDocuments(t *testing.T) {
 		name, document string
 		category       ErrorCategory
 	}{
-		{"missing root", "[filesystem]\nread_only = true\n", CategoryMissingRoot},
-		{"empty root", "[filesystem]\nroot = \"\"\n", CategoryInvalidRoot},
-		{"whitespace", "[filesystem]\nroot = \"   \"\n", CategoryInvalidRoot},
-		{"relative root", "[filesystem]\nroot = \"other\"\n", CategoryInvalidRoot},
-		{"CWD without opt-in", "[filesystem]\nroot = \".\"\n", CategoryInvalidRoot},
-		{"root type", "[filesystem]\nroot = 42\n", CategoryInvalidConfig},
-		{"duplicate root", root + "root = \"x\"\n", CategoryInvalidConfig},
+		{"missing root", "[files]\ndefault_id = 'work'\n", CategoryMissingRoot},
+		{"missing default", "[files.roots.work]\npath = 'ignored'\n", CategoryMissingRoot},
+		{"empty default", strings.Replace(root, "'work'", "''", 1), CategoryMissingRoot},
+		{"unknown default", strings.Replace(root, "'work'", "'unknown'", 1), CategoryInvalidRoot},
+		{"case alias default", strings.Replace(root, "'work'", "'Work'", 1), CategoryInvalidRoot},
+		{"default type", strings.Replace(root, "'work'", "42", 1), CategoryInvalidConfig},
+		{"empty root", documentWithRoot(t, ""), CategoryInvalidRoot},
+		{"whitespace", documentWithRoot(t, "   "), CategoryInvalidRoot},
+		{"relative root", documentWithRoot(t, "other"), CategoryInvalidRoot},
+		{"CWD", documentWithRoot(t, "."), CategoryInvalidRoot},
+		{"root type", "[files]\ndefault_id = 'work'\nroots.work.path = 42\n", CategoryInvalidConfig},
+		{"duplicate root path", root + "roots.work.path = 'x'\n", CategoryInvalidConfig},
+		{"duplicate root table", root + "[files.roots.work]\npath = 'x'\n", CategoryInvalidConfig},
+		{"duplicate default", root + "default_id = 'work'\n", CategoryInvalidConfig},
+		{"missing secondary path", root + "[files.roots.archive]\n", CategoryInvalidRoot},
+		{"relative secondary path", root + "roots.archive.path = 'subdir'\n", CategoryInvalidRoot},
+		{"unknown root policy", root + "roots.work.read_only = true\n", CategoryInvalidConfig},
+		{"unknown root table", root + "[files.roots.work.policy]\n", CategoryInvalidConfig},
+		{"legacy group", strings.Replace(root, "[files]", "[filesystem]", 1), CategoryInvalidConfig},
+		{"legacy group with named roots", root + "[filesystem]\n", CategoryInvalidConfig},
+		{"legacy CWD opt-in", root + "allow_cwd_root = true\n", CategoryInvalidConfig},
 		{"case alias", root + "read_only = true\nRead_Only = false\n", CategoryInvalidConfig},
-		{"case alias in inline table", "filesystem = { ROOT = \"x\" }\n", CategoryInvalidConfig},
-		{"case alias in table header", "[Filesystem]\nroot = \"x\"\n", CategoryInvalidConfig},
+		{"case alias in inline table", "files = { Default_ID = \"work\" }\n", CategoryInvalidConfig},
+		{"case alias in table header", "[Files]\ndefault_id = \"work\"\n", CategoryInvalidConfig},
+		{"case collision", root + "roots.Work.path = 'x'\n", CategoryInvalidConfig},
 		{"empty unknown domain", root + "[capabilities]\n", CategoryInvalidConfig},
 		{"unknown policy", root + "[security]\nadmin = true\n", CategoryInvalidConfig},
 		{"unknown domain", root + "[capabilities]\nwrite = true\n", CategoryInvalidConfig},
-		{"duplicate table", root + "[filesystem]\nread_only = true\n", CategoryInvalidConfig},
+		{"duplicate table", root + "[files]\nread_only = true\n", CategoryInvalidConfig},
 		{"invalid boolean", root + "read_only = \"true\"\n", CategoryInvalidConfig},
 		{"zero limit", root + "max_write_bytes = 0\n", CategoryInvalidConfig},
 		{"fractional limit", root + "max_write_bytes = 1.0\n", CategoryInvalidConfig},
@@ -99,6 +117,49 @@ func TestDecodeRejectsInvalidDocuments(t *testing.T) {
 			assertCategory(t, err, test.category)
 		})
 	}
+}
+
+func TestDecodeNamedRootDefinitions(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	archive := root + string(filepath.Separator) + "archive" + string(filepath.Separator)
+	document := fmt.Sprintf("[files]\ndefault_id = 'work'\n[files.roots.work]\npath = %q\n[files.roots.a_7]\npath = %q\n", root, archive)
+	cfg, err := Decode([]byte(document), Direct)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []RootDefinition{{ID: "a_7", Path: filepath.Clean(archive)}, {ID: "work", Path: filepath.Clean(root)}}
+	snapshot := cfg.Files().Roots()
+	if !slices.Equal(snapshot, want) {
+		t.Fatalf("unexpected definitions: %v", snapshot)
+	}
+	snapshot[0].ID, snapshot[1].Path = "changed", ""
+	if !slices.Equal(cfg.Files().Roots(), want) {
+		t.Fatal("definition changes escaped the snapshot")
+	}
+	quotedPath, err := json.Marshal(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"", "Upper", "x-y", "é", "a b", "1root", "_root", strings.Repeat("x", 65)} {
+		t.Run(id, func(t *testing.T) {
+			doc := documentWithRoot(t, root) + fmt.Sprintf("roots.%q.path = %s\n", id, quotedPath)
+			if _, err := Decode([]byte(doc), Direct); err == nil {
+				t.Fatal("accepted an invalid root ID")
+			}
+		})
+	}
+	var bounded strings.Builder
+	bounded.WriteString(documentWithRoot(t, root))
+	for i := range MaxRoots - 1 {
+		fmt.Fprintf(&bounded, "roots.r%d.path = %s\n", i, quotedPath)
+	}
+	if cfg, err := Decode([]byte(bounded.String()), Direct); err != nil || len(cfg.Files().Roots()) != MaxRoots {
+		t.Fatalf("root limit rejected: %v", err)
+	}
+	fmt.Fprintf(&bounded, "roots.excess.path = %s\n", quotedPath)
+	_, err = Decode([]byte(bounded.String()), Direct)
+	assertCategory(t, err, CategoryInvalidConfig)
 }
 
 func TestCanonicalTOMLKeysInCollections(t *testing.T) {
@@ -165,7 +226,7 @@ func TestLoadUsesExactlyTheTrustedOverride(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("USERPROFILE", t.TempDir())
 	cfg, err := Load(Source{Role: Direct, Path: path})
-	if err != nil || cfg.Filesystem().RootPath() != root || !cfg.Filesystem().ReadOnly() {
+	if err != nil || cfg.Files().Roots()[0].Path != filepath.Clean(root) || !cfg.Files().ReadOnly() {
 		t.Fatalf("explicit TOML source was not honored: %v", err)
 	}
 	_, err = Load(Source{Role: Direct, Path: filepath.Join(filepath.Dir(path), "absent.toml")})
@@ -211,11 +272,11 @@ func TestDefaultConfigSourceProtectionBindsOverlappingAndSeparateRoots(t *testin
 		if err != nil {
 			t.Fatal(err)
 		}
-		guard, err := security.NewPathGuard(cfg.Filesystem().RootPath())
+		guard, err := security.NewPathGuard(cfg.Files().Roots()[0].Path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, got := cfg.ProtectDataRoot(guard); !errors.Is(got, test.want) {
+		if _, got := cfg.ProtectDataRoots([]*security.PathGuard{guard}); !errors.Is(got, test.want) {
 			t.Errorf("default source isolation = %v, want %v", got, test.want)
 		}
 		if err := os.Remove(path); err != nil {
@@ -242,7 +303,7 @@ func TestSourceIdentityChangeDeniesDataRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cfg.ProtectDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := cfg.ProtectDataRoots([]*security.PathGuard{guard}); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("replacement source did not cause a safe denial: %v", err)
 	}
 }
@@ -263,13 +324,13 @@ func TestDataRootRejectsUnprovableSourceIdentity(t *testing.T) {
 	}
 	unbound := cfg
 	unbound.sourceInfo = nil
-	if _, err := unbound.ProtectDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := unbound.ProtectDataRoots([]*security.PathGuard{guard}); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("unbound source identity did not cause a safe denial: %v", err)
 	}
 	if err := os.Rename(source, source+".moved"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cfg.ProtectDataRoot(guard); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := cfg.ProtectDataRoots([]*security.PathGuard{guard}); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("missing source did not cause a safe denial: %v", err)
 	}
 }

@@ -24,7 +24,7 @@ if [[ ! -x "${BINARY_PATH}" ]]; then
 fi
 
 mkdir -p "${REPO_ROOT}/build"
-(umask 077; python3 -c 'import json,sys; print("[filesystem]\nroot = " + json.dumps(sys.argv[1], ensure_ascii=False))' "${REPO_ROOT}" > "$CONFIG_PATH")
+(umask 077; python3 -c 'import json,sys; print("[files]\ndefault_id = \"work\"\n[files.roots.work]\npath = " + json.dumps(sys.argv[1], ensure_ascii=False))' "${REPO_ROOT}" > "$CONFIG_PATH")
 
 cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":1,"method":

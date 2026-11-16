@@ -79,6 +79,7 @@ func (p SafePath) Dir() string {
 type PathGuard struct {
 	root          string
 	effectiveRoot string
+	rootInfo      os.FileInfo
 	policy        Policy
 }
 
@@ -115,7 +116,7 @@ func NewPathGuardWithPolicy(root string, policy Policy) (*PathGuard, error) {
 		return nil, err
 	}
 
-	effectiveInfo, err := os.Stat(effectiveRoot)
+	effectiveInfo, err := PathIdentity(effectiveRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +127,7 @@ func NewPathGuardWithPolicy(root string, policy Policy) (*PathGuard, error) {
 	return &PathGuard{
 		root:          absoluteRoot,
 		effectiveRoot: effectiveRoot,
+		rootInfo:      effectiveInfo,
 		policy:        policy,
 	}, nil
 }

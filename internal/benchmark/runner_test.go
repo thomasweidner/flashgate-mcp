@@ -42,10 +42,10 @@ func TestBenchmarkConfigFixtures(t *testing.T) {
 			if err != nil {
 				t.Fatalf("loading trusted benchmark configuration failed: %v", err)
 			}
-			if cfg.Filesystem().RootPath() != dataRoot || cfg.Filesystem().ReadOnly() != tc.readOnly {
+			if cfg.Files().Roots()[0].Path != filepath.Clean(dataRoot) || cfg.Files().ReadOnly() != tc.readOnly {
 				t.Fatal("benchmark configuration profile changed")
 			}
-			if _, err := cfg.ProtectDataRoot(guard); err != nil {
+			if _, err := cfg.ProtectDataRoots([]*security.PathGuard{guard}); err != nil {
 				t.Fatal("benchmark configuration protection could not bind the data root")
 			}
 			info, err := os.Lstat(path)

@@ -85,24 +85,31 @@ New-Item -ItemType Directory -Path (Split-Path $rootFile) -Force | Out-Null
 [System.IO.File]::WriteAllText($rootFile, "not a directory", [System.Text.UTF8Encoding]::new($false))
 
 try {
-    $absolute = "[filesystem]`nroot = $(ConvertTo-Json -InputObject $repoRoot -Compress)`n"
-    $missing = "[filesystem]`nroot = $(ConvertTo-Json -InputObject $missingRoot -Compress)`n"
-    $file = "[filesystem]`nroot = $(ConvertTo-Json -InputObject $rootFile -Compress)`n"
+    $header = "[files]`ndefault_id = 'work'`n"
+    $quotedRoot = ConvertTo-Json -InputObject $repoRoot -Compress
+    $quotedMissing = ConvertTo-Json -InputObject $missingRoot -Compress
+    $quotedFile = ConvertTo-Json -InputObject $rootFile -Compress
+    $absolute = "$($header)roots.work.path = $quotedRoot`n"
+    $missing = "$($header)roots.work.path = $quotedMissing`n"
+    $file = "$($header)roots.work.path = $quotedFile`n"
     $cases = @(
         @{ Name = 'missing config'; Document = 'ABSENT'; Exit = 3; Category = 'missing_config' }
-        @{ Name = 'missing root'; Document = '[filesystem]'; Exit = 3; Category = 'missing_root' }
-        @{ Name = 'empty root'; Document = "[filesystem]`nroot = ''"; Exit = 3; Category = 'invalid_root' }
-        @{ Name = 'whitespace root'; Document = "[filesystem]`nroot = '   '"; Exit = 3; Category = 'invalid_root' }
-        @{ Name = 'relative root'; Document = "[filesystem]`nroot = 'subdir'"; Exit = 3; Category = 'invalid_root' }
-        @{ Name = 'parent root'; Document = "[filesystem]`nroot = '..'"; Exit = 3; Category = 'invalid_root' }
-        @{ Name = 'dot without opt-in'; Document = "[filesystem]`nroot = '.'"; Exit = 3; Category = 'invalid_root' }
-        @{ Name = 'opt-in without root'; Document = "[filesystem]`nallow_cwd_root = true"; Exit = 3; Category = 'missing_root' }
-        @{ Name = 'invalid development option'; Document = "$($absolute)allow_cwd_root = 'TRUE'"; Exit = 3; Category = 'invalid_config' }
+        @{ Name = 'missing root'; Document = $header; Exit = 3; Category = 'missing_root' }
+        @{ Name = 'missing default'; Document = "[files.roots.work]`npath = $quotedRoot"; Exit = 3; Category = 'missing_root' }
+        @{ Name = 'unknown default'; Document = $absolute.Replace("'work'", "'unknown'"); Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'empty root'; Document = "$($header)roots.work.path = ''"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'whitespace root'; Document = "$($header)roots.work.path = '   '"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'relative root'; Document = "$($header)roots.work.path = 'subdir'"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'parent root'; Document = "$($header)roots.work.path = '..'"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'dot root'; Document = "$($header)roots.work.path = '.'"; Exit = 3; Category = 'invalid_root' }
+        @{ Name = 'legacy group'; Document = "[filesystem]`nroot = $quotedRoot"; Exit = 3; Category = 'invalid_config' }
+        @{ Name = 'legacy development option'; Document = "$($absolute)allow_cwd_root = true"; Exit = 3; Category = 'invalid_config' }
         @{ Name = 'missing filesystem root'; Document = $missing; Exit = 3; Category = 'root_not_found' }
         @{ Name = 'file root'; Document = $file; Exit = 3; Category = 'root_not_directory' }
+        @{ Name = 'missing secondary root'; Document = "$($absolute)roots.archive.path = $quotedMissing"; Exit = 3; Category = 'root_not_found' }
         @{ Name = 'invalid read-only option'; Document = "$($absolute)read_only = 'invalid'"; Exit = 3; Category = 'invalid_config' }
         @{ Name = 'valid absolute root'; Document = $absolute; Exit = 0; Stderr = '' }
-        @{ Name = 'development CWD'; Document = "[filesystem]`nroot = '.'`nallow_cwd_root = true"; Exit = 0; Stderr = "flashgate-mcp: warning: development CWD root enabled`n" }
+        @{ Name = 'valid overlapping roots'; Document = "$($absolute)roots.archive.path = $quotedRoot"; Exit = 0; Stderr = '' }
     )
 
     foreach ($case in $cases) {

@@ -31,6 +31,25 @@ the canonical installation path.
 
 ## Root configuration
 
+The named-root schema replaces the former `[filesystem]` table. Before
+upgrading a TOML deployment, back up the selected file and retain the
+verified old binary. Convert the configuration manually while the
+client session is stopped:
+
+1. Choose a logical ID such as `work`. Set `default_id = "work"` in `[files]`.
+2. Move the old root value to `path` under `[files.roots.work]`. Replace `.` with
+   the absolute directory intended for the client.
+3. Move `read_only` and the five existing filesystem limits to `[files]`.
+   Remove the old table and `allow_cwd_root`.
+4. Restart with the same selected file and run the
+   [acceptance checks](client-setup.md#acceptance-checks).
+
+The loader rejects the former table and has no automatic conversion.
+Rollback restores the previous binary and its backed-up TOML together.
+The current MCP tool inputs continue to use paths relative to the default.
+
+### From runtime environment variables
+
 TOML-enabled builds replace the pre-1.0 runtime environment contract with
 one [trusted TOML file](configuration.md#source-and-trust). Use the
 [template](flashgate-config.toml) and convert only the settings used by the
@@ -39,27 +58,24 @@ integers as unquoted decimal values, and paths as strings.
 
 | Previous environment setting | TOML key |
 |---|---|
-| `MCP_ROOT` | `filesystem.root` |
-| `MCP_READ_ONLY` | `filesystem.read_only` |
-| `MCP_ALLOW_CWD_ROOT` | `filesystem.allow_cwd_root` |
+| `MCP_ROOT` | Set `files.default_id = "work"` and `files.roots.work.path` to an absolute directory. |
+| `MCP_READ_ONLY` | `files.read_only` |
+| `MCP_ALLOW_CWD_ROOT` | Removed. Use the intended absolute directory. |
 | `MCP_ALLOW_HIDDEN_FILES` | `security.allow_hidden_files` |
 | `MCP_ALLOW_UNC_PATHS` | `security.allow_unc_paths` |
 | `MCP_FOLLOW_SYMLINKS` | `security.follow_symlinks` |
-| `MCP_MAX_FILE_SIZE` | `filesystem.max_file_size` |
-| `MCP_MAX_WRITE_BYTES` | `filesystem.max_write_bytes` |
-| `MCP_MAX_LIST_ENTRIES` | `filesystem.max_list_entries` |
-| `MCP_MAX_COPY_BYTES` | `filesystem.max_copy_bytes` |
-| `MCP_MAX_DELETE_ENTRIES` | `filesystem.max_delete_entries` |
+| `MCP_MAX_FILE_SIZE` | `files.max_file_size` |
+| `MCP_MAX_WRITE_BYTES` | `files.max_write_bytes` |
+| `MCP_MAX_LIST_ENTRIES` | `files.max_list_entries` |
+| `MCP_MAX_COPY_BYTES` | `files.max_copy_bytes` |
+| `MCP_MAX_DELETE_ENTRIES` | `files.max_delete_entries` |
 | `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `protocol.max_message_bytes` |
 | `MCP_MAX_TOOL_ARGUMENT_BYTES` | `protocol.max_argument_bytes` |
 | `MCP_MAX_RESPONSE_BYTES` | `protocol.max_response_bytes` |
 | `MCP_DEBUG` | `logging.level`: use `"debug"` for true and `"off"` for false |
 
-Use an existing absolute directory for production. Explicit development STDIO
-can use `root = "."` with `allow_cwd_root = true` under `[filesystem]`.
 The runtime default for `read_only` remains false. The template explicitly
-enables read-only for initial setup. BL-101 and BL-103 own named roots and
-safe-default profiles.
+enables read-only for initial setup. BL-103 owns safe-default profiles.
 
 Before switching binaries, back up the client entry and retain the verified
 previous release binary, its checksum, and its launch settings. Update the

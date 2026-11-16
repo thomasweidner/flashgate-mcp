@@ -11,34 +11,25 @@ read and validates it before initializing consumers. The host selects the role
 and source. OS access controls govern provisioning. See
 [runtime configuration](configuration.md#source-and-trust).
 
-Before tool registration, bootstrap validates the effective data root and
-binds the selected name, loaded identity and relevant directories to the
-Go filesystem. An overlapping root can be used where native identity and
+Before tool registration, bootstrap validates every effective root and
+binds the selected name, loaded identity and relevant directories to all
+root filesystems. Overlapping roots can be used where native identity and
 mount checks support that binding. Bootstrap denies an unprovable binding
 or a changed source identity with `root_not_allowed`. During tool execution,
-read-only mode and hidden-file filtering complement the same protection
-applied to other roots and profiles.
+read-only mode and hidden-file filtering complement the protection shared
+across roots.
 
 ### Sandbox Root
 
-All filesystem paths are resolved relative to a configured root directory.
-
-The root is configured by the required `filesystem.root` setting in one
-[trusted TOML file](configuration.md#source-and-trust). Production roots must be absolute, exist, be accessible under the current policy, and resolve to a directory. Missing, empty, whitespace-only, relative, non-existent, file, and policy-denied roots stop startup before Filesystem, Registry, Router or JSON-RPC processing.
+The current tools resolve paths relative to the explicit default selected
+by `files.default_id` in the [trusted TOML file](configuration.md#named-roots).
+Every `files.roots.<id>.path` must be absolute, exist, pass policy and resolve to
+a directory. An invalid root anywhere in the configuration stops startup.
 
 Expected configuration/root failures use safe categories on stderr and exit code `3`; stdout remains empty. Unexpected bootstrap failures use `startup_failed` and exit code `1`. Raw roots and operating-system errors are not emitted.
 
-The process working directory is available only for explicit development use:
-
-```toml
-[filesystem]
-root = "."
-allow_cwd_root = true
-```
-
-The opt-in is a TOML Boolean. It enables only an explicitly configured `.`
-root in direct STDIO. A successful CWD-development start emits one safe
-stderr warning. Production examples use absolute data roots.
+Root IDs establish logical identity. Capability and exposure controls still
+determine what a caller can do. Overlap confers no additional rights.
 
 ### Filesystem access boundaries
 
@@ -234,15 +225,15 @@ contracts return generic Internal error.
 
 FlashGate applies configurable hard limits for protocol input, tool arguments, filesystem payloads, and response size.
 
-| Environment variable | Default | Scope |
+| TOML setting | Default | Scope |
 |---|---:|---|
-| `filesystem.max_file_size` | `10485760` | Hard cap for `read_file`; client `maxBytes` can only lower it. |
+| `files.max_file_size` | `10485760` | Hard cap for `read_file`; client `maxBytes` can only lower it. |
 | `protocol.max_message_bytes` | `16777216` | Maximum single JSON-RPC message read from stdin. |
 | `protocol.max_argument_bytes` | `12582912` | Maximum `tools/call` params or arguments payload. |
-| `filesystem.max_write_bytes` | `10485760` | Maximum `write_file` content size. |
-| `filesystem.max_list_entries` | `1000` | Maximum entries scanned by `list_directory`, including hidden or symlink entries filtered by policy. |
-| `filesystem.max_copy_bytes` | `10485760` | Maximum `copy_path` source file size. |
-| `filesystem.max_delete_entries` | `1000` | Maximum entries for recursive `delete_path`. |
+| `files.max_write_bytes` | `10485760` | Maximum `write_file` content size. |
+| `files.max_list_entries` | `1000` | Maximum entries scanned by `list_directory`, including hidden or symlink entries filtered by policy. |
+| `files.max_copy_bytes` | `10485760` | Maximum `copy_path` source file size. |
+| `files.max_delete_entries` | `1000` | Maximum entries for recursive `delete_path`. |
 | `protocol.max_response_bytes` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
 
 Limit violations use generic client-visible messages. Filesystem limit denials from registered tools use category `limit_exceeded` in MCP error results with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
@@ -254,7 +245,7 @@ Limit violations use generic client-visible messages. Filesystem limit denials f
 Security tests currently cover:
 
 - empty root rejection
-- missing, whitespace, relative and development-CWD root contracts
+- missing defaults, invalid root IDs, relative paths and invalid secondary roots
 - root existence and directory type
 - categorized startup errors, exit codes, empty startup stdout and host-path redaction
 - absolute path rejection
@@ -362,7 +353,8 @@ independently identified objects and destinations in unrelated directories
 remain subject to the ordinary policy.
 
 Bind content reads and destructive opens to the inspected native object.
-Serialize conflicting FlashGate operations through validation and effect.
+Serialize FlashGate filesystem operations through validation and effect with
+one coordinator shared by all configured roots, including overlapping roots.
 Use the existing filesystem, PathGuard and authorization boundaries. Deny
 an effect when a relevant path, identity, root, ancestry or policy change
 can be detected, or when applicable checks cannot establish safety.

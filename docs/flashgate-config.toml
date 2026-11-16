@@ -1,22 +1,23 @@
 # FlashGate configuration template for direct STDIO.
-# Replace root with one existing absolute directory you intend to expose.
+# Set files.roots.work.path to an existing absolute data directory.
 # On Windows use forward slashes or double each backslash in a basic string.
 # See configuration.md for trusted paths, settings, and migration.
 
 [runtime]
 mode = "stdio"
 
-[filesystem]
-root = ""
+[files]
+default_id = "work"
 # The template opts into read-only. The decoder default is false.
 read_only = true
-# Development only. Explicit root = "." and allow_cwd_root = true are both needed.
-allow_cwd_root = false
 max_file_size = 10485760
 max_write_bytes = 10485760
 max_list_entries = 1000
 max_copy_bytes = 10485760
 max_delete_entries = 1000
+
+[files.roots.work]
+path = ""
 
 [security]
 allow_hidden_files = false

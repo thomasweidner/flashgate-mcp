@@ -152,14 +152,14 @@ func TestLinuxConfigurationDirectoryAccess(t *testing.T) {
 			if err != nil {
 				t.Fatalf("OS-readable config behind search-only parents failed to load: %v", err)
 			}
-			if cfg.Filesystem().RootPath() != root {
+			if cfg.Files().Roots()[0].Path != root {
 				t.Fatal("loaded snapshot has an unexpected root")
 			}
 			guard, err := security.NewPathGuard(root)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := cfg.ProtectDataRoot(guard); err != nil {
+			if _, err := cfg.ProtectDataRoots([]*security.PathGuard{guard}); err != nil {
 				t.Fatalf("configuration protection failed to bind: %v", err)
 			}
 		})

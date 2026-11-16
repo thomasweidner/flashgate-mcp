@@ -7,6 +7,9 @@ import (
 
 // Stat returns filesystem metadata.
 func (f *LocalFileSystem) Stat(path string) (Metadata, error) {
+	f.effects.Lock()
+	defer f.effects.Unlock()
+
 	safePath, err := f.guard.ResolveExisting(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -15,11 +18,15 @@ func (f *LocalFileSystem) Stat(path string) (Metadata, error) {
 		return Metadata{}, err
 	}
 
-	info, err := os.Stat(safePath.String())
+	operand, err := f.inspectPath(safePath.String())
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return Metadata{}, ErrNotFound
-		}
+		return Metadata{}, err
+	}
+	info := operand.info
+	if info == nil {
+		return Metadata{}, ErrNotFound
+	}
+	if err := f.recheckPath(operand); err != nil {
 		return Metadata{}, err
 	}
 

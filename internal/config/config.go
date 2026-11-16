@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -20,6 +21,7 @@ import (
 
 const (
 	MaxDocumentBytes = 64 * 1024
+	MaxRoots         = 256
 	defaultFileName  = "flashgate_config.toml"
 	defaultFileBytes = int64(10 * 1024 * 1024)
 	defaultWireBytes = int64(16 * 1024 * 1024)
@@ -59,27 +61,40 @@ type trustedDocument struct {
 }
 
 type settings struct {
-	Runtime    runtimeFields    `toml:"runtime"`
-	Filesystem filesystemFields `toml:"filesystem"`
-	Security   securityFields   `toml:"security"`
-	Protocol   protocolFields   `toml:"protocol"`
-	Endpoints  endpointFields   `toml:"endpoints"`
-	Logging    loggingFields    `toml:"logging"`
+	Runtime   runtimeFields  `toml:"runtime"`
+	Files     filesFields    `toml:"files"`
+	Security  securityFields `toml:"security"`
+	Protocol  protocolFields `toml:"protocol"`
+	Endpoints endpointFields `toml:"endpoints"`
+	Logging   loggingFields  `toml:"logging"`
 }
 
 type runtimeFields struct {
 	Mode Role `toml:"mode"`
 }
 
-type filesystemFields struct {
-	Root             *string `toml:"root"`
-	ReadOnly         bool    `toml:"read_only"`
-	AllowCWDRoot     bool    `toml:"allow_cwd_root"`
-	MaxFileSize      int64   `toml:"max_file_size"`
-	MaxWriteBytes    int64   `toml:"max_write_bytes"`
-	MaxListEntries   int     `toml:"max_list_entries"`
-	MaxCopyBytes     int64   `toml:"max_copy_bytes"`
-	MaxDeleteEntries int     `toml:"max_delete_entries"`
+// RootID identifies a configured root independently of its physical path.
+type RootID string
+
+// RootDefinition is a value snapshot of a configured root.
+type RootDefinition struct {
+	ID   RootID
+	Path string
+}
+
+type rootFields struct {
+	Path string `toml:"path"`
+}
+
+type filesFields struct {
+	DefaultID        RootID                `toml:"default_id"`
+	Roots            map[RootID]rootFields `toml:"roots"`
+	ReadOnly         bool                  `toml:"read_only"`
+	MaxFileSize      int64                 `toml:"max_file_size"`
+	MaxWriteBytes    int64                 `toml:"max_write_bytes"`
+	MaxListEntries   int                   `toml:"max_list_entries"`
+	MaxCopyBytes     int64                 `toml:"max_copy_bytes"`
+	MaxDeleteEntries int                   `toml:"max_delete_entries"`
 }
 
 type securityFields struct {
@@ -136,7 +151,7 @@ type loggingFields struct {
 func defaultSettings(role Role) settings {
 	return settings{
 		Runtime: runtimeFields{Mode: role},
-		Filesystem: filesystemFields{
+		Files: filesFields{
 			MaxFileSize: defaultFileBytes, MaxWriteBytes: defaultFileBytes,
 			MaxCopyBytes: defaultFileBytes, MaxListEntries: 1000, MaxDeleteEntries: 1000,
 		},
@@ -190,26 +205,37 @@ func load(source Source, locateDefault func(Role) (string, error)) (Config, erro
 	return cfg, nil
 }
 
-// ProtectDataRoot binds a PathGuard-approved root to the loaded configuration
-// before the host exposes its filesystem tools.
-func (c Config) ProtectDataRoot(guard *security.PathGuard) (*security.ConfigProtection, error) {
-	if c.sourcePath == "" || c.sourceInfo == nil || guard == nil {
+// ProtectDataRoots binds all PathGuard-approved roots to the same loaded
+// configuration before the host exposes its filesystem tools.
+func (c Config) ProtectDataRoots(guards []*security.PathGuard) ([]*security.RootProtection, error) {
+	if c.sourcePath == "" || c.sourceInfo == nil || len(guards) == 0 {
 		return nil, security.ErrProtectedPath
 	}
-	validateRoot := func() error { return checkRootAliases(c.sourcePath, guard) }
-	var protection *security.ConfigProtection
+	bindings := make([]*security.RootProtection, 0, len(guards))
 	err := withTrustedConfig(c.sourcePath, func(file *os.File) error {
 		current, err := file.Stat()
-		if err != nil || !os.SameFile(c.sourceInfo, current) || validateRoot() != nil {
+		if err != nil || !os.SameFile(c.sourceInfo, current) {
 			return security.ErrProtectedPath
 		}
-		protection, err = guard.BindConfigProtection(c.sourcePath, c.sourceInfo, validateRoot)
-		return err
+		protection, err := security.BindConfigProtection(c.sourcePath, c.sourceInfo)
+		if err != nil {
+			return err
+		}
+		for _, guard := range guards {
+			binding, err := protection.BindRoot(guard, func() error {
+				return checkRootAliases(c.sourcePath, guard)
+			})
+			if err != nil {
+				return err
+			}
+			bindings = append(bindings, binding)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, security.ErrProtectedPath
 	}
-	return protection, nil
+	return bindings, nil
 }
 
 // Decode parses and validates an already selected configuration document. It
@@ -233,6 +259,10 @@ func Decode(document []byte, role Role) (Config, error) {
 	cfg := Config{data: wire, role: role}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
+	}
+	for id, root := range wire.Files.Roots {
+		root.Path = filepath.Clean(root.Path)
+		wire.Files.Roots[id] = root
 	}
 	return cfg, nil
 }
@@ -276,14 +306,20 @@ func (c Config) Validate() error {
 	if !validRole(c.role) || c.data.Runtime.Mode != c.role {
 		return NewError(CategoryUnsupportedRuntime, nil)
 	}
-	f := c.data.Filesystem
-	if f.Root == nil {
+	f := c.data.Files
+	if f.DefaultID == "" || len(f.Roots) == 0 {
 		return NewError(CategoryMissingRoot, nil)
 	}
-	root := *f.Root
-	if strings.TrimSpace(root) == "" || strings.IndexByte(root, 0) >= 0 ||
-		!filepath.IsAbs(root) && !(root == "." && f.AllowCWDRoot && c.role == Direct) {
+	if len(f.Roots) > MaxRoots {
+		return NewError(CategoryInvalidConfig, errors.New("too many configured roots"))
+	}
+	if _, exists := f.Roots[f.DefaultID]; !exists {
 		return NewError(CategoryInvalidRoot, nil)
+	}
+	for id, root := range f.Roots {
+		if !validRootID(id) || !filepath.IsAbs(root.Path) || strings.IndexByte(root.Path, 0) >= 0 {
+			return NewError(CategoryInvalidRoot, nil)
+		}
 	}
 	p := c.data.Protocol
 	for _, limit := range []int64{f.MaxFileSize, f.MaxWriteBytes, f.MaxCopyBytes, int64(f.MaxListEntries),
@@ -303,6 +339,18 @@ func (c Config) Validate() error {
 		return NewError(CategoryInvalidConfig, errors.New("unsupported logging settings"))
 	}
 	return nil
+}
+
+func validRootID(id RootID) bool {
+	if len(id) == 0 || len(id) > 64 || id[0] < 'a' || id[0] > 'z' {
+		return false
+	}
+	for _, ch := range id[1:] {
+		if !(ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' || ch == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 func validRole(role Role) bool {
@@ -342,8 +390,8 @@ func (e endpointFields) validate(role Role) error {
 	return nil
 }
 
-// FilesystemConfig, SecurityConfig and ServerConfig expose immutable policy values.
-type FilesystemConfig struct{ data filesystemFields }
+// FilesConfig, SecurityConfig and ServerConfig expose immutable policy values.
+type FilesConfig struct{ data filesFields }
 type SecurityConfig struct{ data securityFields }
 type ServerConfig struct{ data protocolFields }
 
@@ -363,10 +411,10 @@ type LoggingConfig struct {
 	MaxRecordBytes, MaxRecords int
 }
 
-func (c Config) Role() Role                   { return c.role }
-func (c Config) Filesystem() FilesystemConfig { return FilesystemConfig{c.data.Filesystem} }
-func (c Config) Security() SecurityConfig     { return SecurityConfig{c.data.Security} }
-func (c Config) Server() ServerConfig         { return ServerConfig{c.data.Protocol} }
+func (c Config) Role() Role               { return c.role }
+func (c Config) Files() FilesConfig       { return FilesConfig{c.data.Files} }
+func (c Config) Security() SecurityConfig { return SecurityConfig{c.data.Security} }
+func (c Config) Server() ServerConfig     { return ServerConfig{c.data.Protocol} }
 func (c Config) Endpoints() EndpointConfig {
 	e := c.data.Endpoints
 	return EndpointConfig{
@@ -379,27 +427,32 @@ func (c Config) Endpoints() EndpointConfig {
 }
 func (c Config) Logging() LoggingConfig { return LoggingConfig(c.data.Logging) }
 
-func (f FilesystemConfig) RootPath() string {
-	if f.data.Root == nil {
-		return ""
+// Roots returns an independent snapshot ordered by canonical ID.
+func (f FilesConfig) Roots() []RootDefinition {
+	definitions := make([]RootDefinition, 0, len(f.data.Roots))
+	for id, root := range f.data.Roots {
+		definitions = append(definitions, RootDefinition{ID: id, Path: root.Path})
 	}
-	return *f.data.Root
+	slices.SortFunc(definitions, func(a, b RootDefinition) int {
+		return strings.Compare(string(a.ID), string(b.ID))
+	})
+	return definitions
 }
-func (f FilesystemConfig) ReadOnly() bool        { return f.data.ReadOnly }
-func (f FilesystemConfig) AllowCWDRoot() bool    { return f.data.AllowCWDRoot }
-func (f FilesystemConfig) MaxFileSize() int64    { return f.data.MaxFileSize }
-func (f FilesystemConfig) MaxWriteBytes() int64  { return f.data.MaxWriteBytes }
-func (f FilesystemConfig) MaxListEntries() int   { return f.data.MaxListEntries }
-func (f FilesystemConfig) MaxCopyBytes() int64   { return f.data.MaxCopyBytes }
-func (f FilesystemConfig) MaxDeleteEntries() int { return f.data.MaxDeleteEntries }
-func (s SecurityConfig) AllowHiddenFiles() bool  { return s.data.AllowHiddenFiles }
-func (s SecurityConfig) AllowUNCPaths() bool     { return s.data.AllowUNCPaths }
-func (s SecurityConfig) FollowSymlinks() bool    { return s.data.FollowSymlinks }
-func (s ServerConfig) Name() string              { return "flashgate" }
-func (s ServerConfig) Version() string           { return "0.1.0-dev" }
-func (s ServerConfig) MaxMessageBytes() int64    { return s.data.MaxMessageBytes }
-func (s ServerConfig) MaxArgumentBytes() int64   { return s.data.MaxArgumentBytes }
-func (s ServerConfig) MaxResponseBytes() int64   { return s.data.MaxResponseBytes }
+func (f FilesConfig) DefaultID() RootID         { return f.data.DefaultID }
+func (f FilesConfig) ReadOnly() bool            { return f.data.ReadOnly }
+func (f FilesConfig) MaxFileSize() int64        { return f.data.MaxFileSize }
+func (f FilesConfig) MaxWriteBytes() int64      { return f.data.MaxWriteBytes }
+func (f FilesConfig) MaxListEntries() int       { return f.data.MaxListEntries }
+func (f FilesConfig) MaxCopyBytes() int64       { return f.data.MaxCopyBytes }
+func (f FilesConfig) MaxDeleteEntries() int     { return f.data.MaxDeleteEntries }
+func (s SecurityConfig) AllowHiddenFiles() bool { return s.data.AllowHiddenFiles }
+func (s SecurityConfig) AllowUNCPaths() bool    { return s.data.AllowUNCPaths }
+func (s SecurityConfig) FollowSymlinks() bool   { return s.data.FollowSymlinks }
+func (s ServerConfig) Name() string             { return "flashgate" }
+func (s ServerConfig) Version() string          { return "0.1.0-dev" }
+func (s ServerConfig) MaxMessageBytes() int64   { return s.data.MaxMessageBytes }
+func (s ServerConfig) MaxArgumentBytes() int64  { return s.data.MaxArgumentBytes }
+func (s ServerConfig) MaxResponseBytes() int64  { return s.data.MaxResponseBytes }
 
 func invalidSourcePath() error { return NewError(CategoryUntrustedConfig, nil) }
 

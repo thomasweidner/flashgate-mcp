@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"reflect"
@@ -14,10 +13,9 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
+	"github.com/thomasweidner/flashgate-mcp/internal/roots"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
-
-const developmentCWDWarning = "flashgate-mcp: warning: development CWD root enabled"
 
 var errInvalidBootstrapDependencies = errors.New("invalid bootstrap dependencies")
 
@@ -27,7 +25,7 @@ type runnableServer interface {
 
 type bootstrapDependencies struct {
 	loadConfig      func() (config.Config, error)
-	newFilesystem   func(config.Config) (fs.FileSystem, error)
+	newRoots        func(config.Config) (*roots.Registry, error)
 	newToolRegistry func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error)
 	newRouter       func(string, string, *tools.Registry) *router.Router
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
@@ -42,17 +40,7 @@ func defaultBootstrapDependencies(configPath string) bootstrapDependencies {
 		loadConfig: func() (config.Config, error) {
 			return config.Load(config.Source{Role: config.Direct, Path: configPath})
 		},
-		newFilesystem: func(cfg config.Config) (fs.FileSystem, error) {
-			guard, err := security.NewPathGuardWithPolicy(cfg.Filesystem().RootPath(), securityPolicyFromConfig(cfg))
-			if err != nil {
-				return nil, err
-			}
-			protection, err := cfg.ProtectDataRoot(guard)
-			if err != nil {
-				return nil, err
-			}
-			return fs.NewLocalFileSystemWithConfigProtection(guard, filesystemLimitsFromConfig(cfg), protection)
-		},
+		newRoots:        roots.New,
 		newToolRegistry: createToolRegistry,
 		newRouter:       createRouter,
 		newServer: func(in io.Reader, out io.Writer, mcpRouter *router.Router, options server.Options) runnableServer {
@@ -77,18 +65,22 @@ func runWithIO(
 		return err
 	}
 
-	filesystem, err := dependencies.newFilesystem(cfg)
+	rootRegistry, err := dependencies.newRoots(cfg)
 	if err != nil {
 		return categorizeRootError(err)
 	}
-	if isNilBootstrapValue(filesystem) {
+	if rootRegistry == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
+	}
+	filesystem, err := rootRegistry.Lookup(rootRegistry.DefaultID())
+	if err != nil {
+		return config.NewError(config.CategoryStartupFailed, err)
 	}
 
 	toolRegistry, err := dependencies.newToolRegistry(
 		filesystem,
-		cfg.Filesystem().MaxFileSize(),
-		capabilitiesFromReadOnly(cfg.Filesystem().ReadOnly()),
+		cfg.Files().MaxFileSize(),
+		capabilitiesFromReadOnly(cfg.Files().ReadOnly()),
 	)
 	if err != nil {
 		return config.NewError(config.CategoryStartupFailed, err)
@@ -105,16 +97,12 @@ func runWithIO(
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
 
-	if cfg.Filesystem().RootPath() == "." && cfg.Filesystem().AllowCWDRoot() {
-		_, _ = fmt.Fprintln(stderr, developmentCWDWarning)
-	}
-
 	return mcpServer.Run(ctx)
 }
 
 func validateBootstrapDependencies(dependencies bootstrapDependencies) error {
 	if dependencies.loadConfig == nil ||
-		dependencies.newFilesystem == nil ||
+		dependencies.newRoots == nil ||
 		dependencies.newToolRegistry == nil ||
 		dependencies.newRouter == nil ||
 		dependencies.newServer == nil {
@@ -154,23 +142,6 @@ func categorizeRootError(err error) error {
 		return config.NewError(config.CategoryRootNotAllowed, err)
 	default:
 		return config.NewError(config.CategoryStartupFailed, err)
-	}
-}
-
-func filesystemLimitsFromConfig(cfg config.Config) fs.Limits {
-	return fs.Limits{
-		MaxWriteBytes:    cfg.Filesystem().MaxWriteBytes(),
-		MaxListEntries:   cfg.Filesystem().MaxListEntries(),
-		MaxCopyBytes:     cfg.Filesystem().MaxCopyBytes(),
-		MaxDeleteEntries: cfg.Filesystem().MaxDeleteEntries(),
-	}
-}
-
-func securityPolicyFromConfig(cfg config.Config) security.Policy {
-	return security.Policy{
-		AllowHiddenFiles: cfg.Security().AllowHiddenFiles(),
-		AllowUNCPaths:    cfg.Security().AllowUNCPaths(),
-		FollowSymlinks:   cfg.Security().FollowSymlinks(),
 	}
 }
 

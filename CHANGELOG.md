@@ -10,6 +10,13 @@ the intended release date. Publication evidence is separate.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Configure named roots in `[files.roots.<id>]` and set `files.default_id`.
+  Startup validates every root before enabling the existing tools on the
+  default. Replace the former `[filesystem]` table and CWD opt-in using the
+  [migration guide](docs/migration.md#root-configuration).
+
 ### Changed
 
 - Protect the selected TOML configuration and its aliases from ordinary
@@ -19,7 +26,7 @@ the intended release date. Publication evidence is separate.
 
 - Define the internal functional capability model and successor acceptance
   for profiles, root policy, effective catalogs, domains, and providers.
-  Current STDIO tool exposure continues to follow `filesystem.read_only`.
+  Current STDIO tool exposure follows `files.read_only`.
 
 - Runtime startup now requires one trusted TOML configuration file. This
   pre-1.0 breaking change replaces the old `MCP_*` runtime environment

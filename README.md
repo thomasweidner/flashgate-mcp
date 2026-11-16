@@ -225,8 +225,9 @@ Use a TOML-enabled binary for these client examples. Replace the example
 executable and data paths with your actual absolute paths.
 
 Copy the [TOML template](docs/flashgate-config.toml) to the executing user's
-`~/.flashgate/flashgate_config.toml`. Set `filesystem.root` to your existing
-data directory and keep `filesystem.read_only = true` for initial use.
+`~/.flashgate/flashgate_config.toml`. Set `files.roots.work.path` to your existing
+data directory. The template selects `work` as the default and enables
+`files.read_only` for initial use.
 See [runtime configuration](docs/configuration.md) for path and ownership rules.
 The client can launch with an empty argument array for that default or pass
 `--config` and an absolute path to a trusted alternate file.
@@ -348,7 +349,7 @@ The corresponding current tool calls are:
 | `read_file` | `{"path":"hello.txt","maxBytes":4096}` | `content` matches the text; `size` reports returned bytes. |
 
 Choose a small file no larger than 4096 bytes for this example. All arguments are
-relative to `filesystem.root`. In a protocol trace, successful
+relative to the root selected by `files.default_id`. In a protocol trace, successful
 `tools/call` results have one JSON text block in MCP `content[]` and the same
 domain object in `structuredContent`. A missing metadata path returns
 `exists:false`; that alone does not verify a real-file read.
@@ -363,14 +364,14 @@ in the [tool reference](docs/tools.md).
 
 ## Security by design
 
-- **Explicit root:** `filesystem.root` must be an existing absolute directory that
-  passes policy. Missing, relative, nonexistent, file, or denied roots fail
+- **Explicit roots.** Each configured path must be an existing absolute
+  directory that passes policy. Missing, relative, nonexistent, file, or denied roots fail
   before tool registration. Expected configuration failures exit with code 3,
   leave stdout empty, and report a safe category on stderr.
 - **Server-side confinement:** relative tool paths pass lexical and effective
   containment checks. Traversal, absolute tool paths, and out-of-root resolution
   are rejected. Tools use the central filesystem abstraction and path guard.
-- **Explicit read-only operation:** `filesystem.read_only = true` registers only the
+- **Explicit read-only operation.** `files.read_only = true` registers only the
   three read tools. Write-capable names are unavailable even when called
   directly. Tool annotations and visibility are not authorization.
 - **Restrictive path policy:** the examples deny hidden files, UNC paths,
@@ -415,7 +416,7 @@ disabled and unadvertised pending BL-204, BL-212, and BL-219. See
 
 **Planned, not currently available:** Version 1.0 extends that foundation with
 bounded search, managed processes, typed allowlisted execution, system
-information, named roots/profiles, Operations/Jobs, payload-efficient large
+information, MCP root selection and profiles, Operations/Jobs, payload-efficient large
 results, and optional local service/proxy/auto roles. Generic shell/terminal
 execution, remote MCP, installers, and automatic updates are not provided.
 Future modules/providers are post-Version-1.0 work, separate from MCP protocol
