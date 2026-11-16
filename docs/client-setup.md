@@ -58,7 +58,7 @@ See [runtime configuration](configuration.md) for all supported settings.
 
 ## Current read-only behavior
 
-The current tools address the root selected by `files.default_id`.
+The current tools require a configured root ID and relative path for every operand.
 Set `files.read_only = true` explicitly. The current default without that setting
 exposes eight tools; the planned safe-by-default profile system is not yet the
 implemented behavior.
@@ -88,6 +88,9 @@ spaces or Unicode characters, and existing and missing path metadata. Verify
 that out-of-root traversal is denied, and use the provided negative tests to
 check every unavailable mutation and removed tool name. Compare root contents
 before and after testing.
+
+Pass the configured root ID in every filesystem call. For the template's
+`work` root, use `{"root_id":"work","path":"."}` to list its directory.
 
 Read UTF-8 file text from MCP `content[0].text` and its byte size from
 `structuredContent.size`. Invalid UTF-8 returns a tool error. Read directory entries from

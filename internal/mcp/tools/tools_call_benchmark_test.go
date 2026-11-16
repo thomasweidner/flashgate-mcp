@@ -110,7 +110,7 @@ func BenchmarkCallToolHandlerProcessingParallel(b *testing.B) {
 	registry := NewRegistry()
 	requireRegistration(b, registry, NewGetPathInfoTool(benchmarkParallelFileSystem{}))
 	handler := NewCallHandler(registry)
-	params := json.RawMessage(`{"name":"get_path_info","arguments":{"path":"existing.txt"}}`)
+	params := json.RawMessage(`{"name":"get_path_info","arguments":{"root_id":"work","path":"existing.txt"}}`)
 	sample, rpcErr := handler.Handle(handlers.Context{Context: context.Background()}, params)
 	if rpcErr != nil {
 		b.Fatalf("sample tools/call failed: %s", rpcErr.Message)
@@ -148,16 +148,16 @@ func BenchmarkCallToolHandlerProcessingParallel(b *testing.B) {
 
 type benchmarkParallelFileSystem struct{}
 
-func (benchmarkParallelFileSystem) List(string) ([]fs.Entry, error)    { return nil, nil }
-func (benchmarkParallelFileSystem) Read(string, int64) ([]byte, error) { return nil, nil }
-func (benchmarkParallelFileSystem) Stat(string) (fs.Metadata, error) {
+func (benchmarkParallelFileSystem) List(fs.Operand) ([]fs.Entry, error)    { return nil, nil }
+func (benchmarkParallelFileSystem) Read(fs.Operand, int64) ([]byte, error) { return nil, nil }
+func (benchmarkParallelFileSystem) Stat(fs.Operand) (fs.Metadata, error) {
 	return fs.Metadata{Name: "existing.txt", Size: 26}, nil
 }
-func (benchmarkParallelFileSystem) Write(string, []byte, bool) error { return nil }
-func (benchmarkParallelFileSystem) Mkdir(string) (bool, error)       { return false, nil }
-func (benchmarkParallelFileSystem) Delete(string, bool) error        { return nil }
-func (benchmarkParallelFileSystem) Move(string, string, bool) error  { return nil }
-func (benchmarkParallelFileSystem) Copy(string, string, bool) error  { return nil }
+func (benchmarkParallelFileSystem) Write(fs.Operand, []byte, bool) error    { return nil }
+func (benchmarkParallelFileSystem) Mkdir(fs.Operand) (bool, error)          { return false, nil }
+func (benchmarkParallelFileSystem) Delete(fs.Operand, bool) error           { return nil }
+func (benchmarkParallelFileSystem) Move(fs.Operand, fs.Operand, bool) error { return nil }
+func (benchmarkParallelFileSystem) Copy(fs.Operand, fs.Operand, bool) error { return nil }
 
 type callToolHandlerBenchmarkFixture struct {
 	name    string
@@ -176,19 +176,19 @@ func callToolHandlerBenchmarkFixtures(b *testing.B) []callToolHandlerBenchmarkFi
 		case getPathInfoMissingResult:
 			filesystem.statErr = fs.ErrNotFound
 			requireRegistration(b, registry, NewGetPathInfoTool(filesystem))
-			params = json.RawMessage(`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`)
+			params = json.RawMessage(`{"name":"get_path_info","arguments":{"root_id":"work","path":"missing.txt"}}`)
 		case getPathInfoExistingResult:
 			filesystem.statMetadata = fs.Metadata{Name: value.Name, IsDir: value.IsDir, Size: value.Size}
 			requireRegistration(b, registry, NewGetPathInfoTool(filesystem))
-			params = json.RawMessage(`{"name":"get_path_info","arguments":{"path":"docs/readme.txt"}}`)
+			params = json.RawMessage(`{"name":"get_path_info","arguments":{"root_id":"work","path":"docs/readme.txt"}}`)
 		case listDirectoryResult:
 			filesystem.entries = value.Entries
 			requireRegistration(b, registry, NewListDirectoryTool(filesystem))
-			params = json.RawMessage(`{"name":"list_directory","arguments":{"path":"fixtures"}}`)
+			params = json.RawMessage(`{"name":"list_directory","arguments":{"root_id":"work","path":"fixtures"}}`)
 		case historicalReadFileResult:
 			filesystem.readContent = []byte(value.Content)
 			requireRegistration(b, registry, NewReadFileTool(filesystem, 64*1024))
-			params = json.RawMessage(`{"name":"read_file","arguments":{"path":"fixture.txt"}}`)
+			params = json.RawMessage(`{"name":"read_file","arguments":{"root_id":"work","path":"fixture.txt"}}`)
 		default:
 			panic(fmt.Sprintf("unsupported benchmark fixture %T", fixture.value))
 		}

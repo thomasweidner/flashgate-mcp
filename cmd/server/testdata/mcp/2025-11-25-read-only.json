@@ -97,17 +97,22 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+      "description": "Returns existence and metadata for a file or directory below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "path": {
-            "description": "Relative file or directory path below the configured filesystem root.",
+            "description": "Relative file or directory path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "root_id",
           "path"
         ],
         "type": "object"
@@ -171,16 +176,24 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Lists files and directories below the configured filesystem root.",
+      "description": "Lists files and directories below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "path": {
-            "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+            "description": "Relative directory path. Use '.' for the root directory.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
+        "required": [
+          "root_id",
+          "path"
+        ],
         "type": "object"
       },
       "name": "list_directory",
@@ -225,7 +238,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Reads a UTF-8 text file below the configured filesystem root.",
+      "description": "Reads a UTF-8 text file below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -235,12 +248,17 @@
             "type": "integer"
           },
           "path": {
-            "description": "Relative file path below the configured filesystem root.",
+            "description": "Relative file path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "root_id",
           "path"
         ],
         "type": "object"
@@ -287,16 +305,24 @@
           "openWorldHint": false,
           "readOnlyHint": true
         },
-        "description": "Lists files and directories below the configured filesystem root.",
+        "description": "Lists files and directories below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
             "path": {
-              "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+              "description": "Relative directory path. Use '.' for the root directory.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
+          "required": [
+            "root_id",
+            "path"
+          ],
           "type": "object"
         },
         "name": "list_directory",
@@ -341,7 +367,7 @@
           "openWorldHint": false,
           "readOnlyHint": true
         },
-        "description": "Reads a UTF-8 text file below the configured filesystem root.",
+        "description": "Reads a UTF-8 text file below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
@@ -351,12 +377,17 @@
               "type": "integer"
             },
             "path": {
-              "description": "Relative file path below the configured filesystem root.",
+              "description": "Relative file path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "root_id",
             "path"
           ],
           "type": "object"
@@ -384,17 +415,22 @@
           "openWorldHint": false,
           "readOnlyHint": true
         },
-        "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+        "description": "Returns existence and metadata for a file or directory below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
             "path": {
-              "description": "Relative file or directory path below the configured filesystem root.",
+              "description": "Relative file or directory path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "root_id",
             "path"
           ],
           "type": "object"

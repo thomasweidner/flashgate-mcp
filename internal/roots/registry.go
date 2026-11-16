@@ -2,7 +2,6 @@
 package roots
 
 import (
-	"errors"
 	"slices"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
@@ -10,15 +9,11 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
-// ErrUnknownRoot denotes an ID that is not registered exactly as supplied.
-var ErrUnknownRoot = errors.New("unknown root id")
-
 // Registry is an immutable map of configured root IDs to backends. A lookup
 // selects confinement. The caller remains responsible for capability checks.
 type Registry struct {
-	defaultID config.RootID
-	ids       []config.RootID
-	entries   map[config.RootID]fs.FileSystem
+	ids     []config.RootID
+	entries map[config.RootID]*fs.LocalFileSystem
 }
 
 // New validates and binds every root before returning the registry.
@@ -52,9 +47,8 @@ func New(cfg config.Config) (*Registry, error) {
 		return nil, err
 	}
 	registry := &Registry{
-		defaultID: files.DefaultID(),
-		ids:       make([]config.RootID, 0, len(definitions)),
-		entries:   make(map[config.RootID]fs.FileSystem, len(definitions)),
+		ids:     make([]config.RootID, 0, len(definitions)),
+		entries: make(map[config.RootID]*fs.LocalFileSystem, len(definitions)),
 	}
 	for i, def := range definitions {
 		registry.ids = append(registry.ids, def.ID)
@@ -63,17 +57,13 @@ func New(cfg config.Config) (*Registry, error) {
 	return registry, nil
 }
 
-// DefaultID returns the explicitly configured default root.
-func (r *Registry) DefaultID() config.RootID { return r.defaultID }
-
 // IDs returns an independent snapshot in canonical ID order.
 func (r *Registry) IDs() []config.RootID { return slices.Clone(r.ids) }
 
-// Lookup returns the backend bound to an exact configured ID.
-func (r *Registry) Lookup(id config.RootID) (fs.FileSystem, error) {
+func (r *Registry) lookup(id config.RootID) (*fs.LocalFileSystem, error) {
 	backend, ok := r.entries[id]
 	if !ok {
-		return nil, ErrUnknownRoot
+		return nil, fs.ErrUnknownRoot
 	}
 	return backend, nil
 }

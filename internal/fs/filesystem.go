@@ -4,10 +4,17 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 var (
+	// ErrUnknownRoot is returned when an exact root ID is not registered.
+	ErrUnknownRoot = errors.New("unknown root id")
+
+	// ErrCrossRootOperation is returned when an operation requires one root.
+	ErrCrossRootOperation = errors.New("cross-root filesystem operation is not supported")
+
 	// ErrFileTooLarge is returned when a file exceeds the configured read limit.
 	ErrFileTooLarge = errors.New("file exceeds maximum allowed size")
 
@@ -80,19 +87,26 @@ type Metadata struct {
 	Size  int64  `json:"size"`
 }
 
-// FileSystem defines filesystem operations used by MCP tools.
-type FileSystem interface {
-	List(path string) ([]Entry, error)
-	Read(path string, maxBytes int64) ([]byte, error)
-	Stat(path string) (Metadata, error)
-	Write(path string, content []byte, overwrite bool) error
-	Mkdir(path string) (bool, error)
-	Delete(path string, recursive bool) error
-	Move(source string, target string, overwrite bool) error
-	Copy(source string, target string, overwrite bool) error
+// Operand addresses a local filesystem resource by exact ID and relative path.
+// The registry binds the ID and PathGuard validates the path at dispatch.
+type Operand struct {
+	RootID config.RootID
+	Path   string
 }
 
-// LocalFileSystem implements FileSystem using the local operating system.
+// FileSystem is the named-root boundary for local filesystem consumers.
+type FileSystem interface {
+	List(path Operand) ([]Entry, error)
+	Read(path Operand, maxBytes int64) ([]byte, error)
+	Stat(path Operand) (Metadata, error)
+	Write(path Operand, content []byte, overwrite bool) error
+	Mkdir(path Operand) (bool, error)
+	Delete(path Operand, recursive bool) error
+	Move(source, target Operand, overwrite bool) error
+	Copy(source, target Operand, overwrite bool) error
+}
+
+// LocalFileSystem is the native backend bound to one validated root.
 type LocalFileSystem struct {
 	guard      *security.PathGuard
 	limits     Limits

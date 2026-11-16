@@ -59,7 +59,7 @@ func classifyFilesystemError(err error) filesystemErrorCategory {
 		errors.Is(err, fs.ErrMoveTypeMismatch),
 		errors.Is(err, fs.ErrDirectoryNotEmpty):
 		return categoryUnsupportedPathType
-	case errors.Is(err, fs.ErrCrossVolumeMoveUnsupported):
+	case errors.Is(err, fs.ErrCrossVolumeMoveUnsupported), errors.Is(err, fs.ErrCrossRootOperation):
 		return categoryUnsupportedOperation
 	case errors.Is(err, fs.ErrFileTooLarge), errors.Is(err, fs.ErrLimitExceeded):
 		return categoryLimitExceeded
@@ -69,6 +69,9 @@ func classifyFilesystemError(err error) filesystemErrorCategory {
 }
 
 func mapFilesystemError(err error) error {
+	if errors.Is(err, fs.ErrUnknownRoot) || errors.Is(err, security.ErrEmptyPath) {
+		return invalidArgumentsError()
+	}
 	category := classifyFilesystemError(err)
 	if category == categoryUnknown {
 		return err

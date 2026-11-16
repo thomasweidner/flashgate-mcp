@@ -120,9 +120,15 @@ contains eight tools; explicit read-only mode contains three.
 
 ## Input and operation semantics
 
-Tool arguments are closed objects and are strictly decoded. Unknown fields,
-wrong types, explicit nulls, and invalid blank path values are rejected.
-Omitting `list_directory.path` selects `.`; an explicitly blank path does not.
+Update all filesystem calls to include explicit root IDs. Use `root_id` and
+`path` for single-path tools, including `{"root_id":"work","path":"."}` to
+list the configured `work` root. Copy and move require `source_root_id` and
+`source` plus `target_root_id` and `target`, with identical configured IDs.
+Replace `work` with the applicable configured ID. Send the ID even when it
+matches `files.default_id` or is the sole configured root.
+
+Tool arguments are closed objects. Unknown or duplicate fields, wrong types,
+explicit nulls, and blank or missing paths are rejected.
 Omitting `read_file.maxBytes` uses the server limit. An explicit value must be
 at least 1 and is capped at the server maximum.
 
@@ -136,7 +142,8 @@ never converted to absence. Results do not expose resolved absolute host paths.
 `created:false`, and an existing file is a path-type error.
 
 `copy_path` copies files only. Directory or recursive copy is not emulated.
-`move_path` supports file/directory rename and same-volume moves. Cross-volume
+`move_path` supports file/directory rename and same-volume moves within one
+root ID. Both copy and move reject distinct IDs. Cross-volume
 moves fail without copy/delete fallback. The default `overwrite:false`
 rejects existing targets. With `overwrite:true`, replacement is restricted to
 file-to-existing-file; existing directories and type mismatches are rejected.

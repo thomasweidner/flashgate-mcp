@@ -20,15 +20,16 @@ func NewGetPathInfoTool(filesystem fs.FileSystem) *GetPathInfoTool {
 func (t *GetPathInfoTool) Name() string  { return getPathInfoToolName }
 func (t *GetPathInfoTool) Title() string { return "Get Path Info" }
 func (t *GetPathInfoTool) Description() string {
-	return "Returns existence and metadata for a file or directory below the configured filesystem root."
+	return "Returns existence and metadata for a file or directory below the selected root."
 }
 func (t *GetPathInfoTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative file or directory path below the configured filesystem root."},
+			"root_id": rootIDSchema(),
+			"path":    map[string]any{"type": "string", "minLength": 1, "description": "Relative file or directory path."},
 		},
-		"required": []string{"path"}, "additionalProperties": false,
+		"required": []string{"root_id", "path"}, "additionalProperties": false,
 	}
 }
 func (t *GetPathInfoTool) Definition() protocol.Tool {
@@ -39,27 +40,29 @@ func (t *GetPathInfoTool) ResultContract() ResultContract {
 }
 
 func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments getPathInfoArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil || !isNonBlank(arguments.Path) {
+	var path fs.Operand
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"root_id": &path.RootID,
+		"path":    &path.Path,
+	}); err != nil {
+		return ToolResult{}, err
+	}
+	if !validOperand(path) {
 		return ToolResult{}, invalidArgumentsError()
 	}
-
-	metadata, err := t.filesystem.Stat(arguments.Path)
+	metadata, err := t.filesystem.Stat(path)
 	if errors.Is(err, fs.ErrNotFound) {
-		return NewToolResult("missing", getPathInfoMissingResult{Path: arguments.Path, Exists: false}), nil
+		return NewToolResult("missing", getPathInfoMissingResult{Path: path.Path, Exists: false}), nil
 	}
 	if err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
 	return NewToolResult("existing", getPathInfoExistingResult{
-		Path: arguments.Path, Exists: true, Name: metadata.Name, IsDir: metadata.IsDir, Size: metadata.Size,
+		Path: path.Path, Exists: true, Name: metadata.Name, IsDir: metadata.IsDir, Size: metadata.Size,
 	}), nil
 }
 
-type getPathInfoArguments struct {
-	Path string `json:"path"`
-}
 type getPathInfoMissingResult struct {
 	Path   string `json:"path"`
 	Exists bool   `json:"exists"`

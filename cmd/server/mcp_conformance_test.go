@@ -23,7 +23,6 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcptest"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
-	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 var updateMCPSnapshots = flag.Bool("update-mcp-snapshots", false, "explicitly replace reviewed MCP wire snapshots")
@@ -72,65 +71,65 @@ func mcpCompleteCase(arguments, denied, field string, errors map[string]mcpError
 func mcpToolCases() map[string]mcpToolCase {
 	return map[string]mcpToolCase{
 		"list_directory": {success: map[string]mcpSuccessCase{
-			"complete": {`{}`, "entries", []any{map[string]any{"name": "seed.txt", "isDir": false, "size": json.Number("4")}}, []protocol.ContentBlock{protocol.NewTextContent("See structuredContent for the result.")}},
-		}, denied: `{"path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{}`, map[string]mcpErrorCase{
-			"not_found":             {arguments: `{"path":"missing.txt"}`},
+			"complete": {`{"root_id":"work","path":"."}`, "entries", []any{map[string]any{"name": "seed.txt", "isDir": false, "size": json.Number("4")}}, []protocol.ContentBlock{protocol.NewTextContent("See structuredContent for the result.")}},
+		}, denied: `{"root_id":"work","path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"root_id":"work","path":"."}`, map[string]mcpErrorCase{
+			"not_found":             {arguments: `{"root_id":"work","path":"missing.txt"}`},
 			"already_exists":        {reason: "Listing does not create or replace a path."},
 			"unsupported_path_type": {reason: "Listing uses native directory enumeration. A non-directory enumeration error has no portable BL-203 path-type mapping here."},
-			"limit_exceeded":        {arguments: `{}`, setup: wireSecondFile, tightLimits: true},
+			"limit_exceeded":        {arguments: `{"root_id":"work","path":"."}`, setup: wireSecondFile, tightLimits: true},
 		})},
 		"read_file": {success: map[string]mcpSuccessCase{
-			"complete": {`{"path":"seed.txt"}`, "size", json.Number("4"), []protocol.ContentBlock{protocol.NewTextContent("seed")}},
-		}, denied: `{"path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"path":"seed.txt"}`, map[string]mcpErrorCase{
-			"not_found":             {arguments: `{"path":"missing.txt"}`},
+			"complete": {`{"root_id":"work","path":"seed.txt"}`, "size", json.Number("4"), []protocol.ContentBlock{protocol.NewTextContent("seed")}},
+		}, denied: `{"root_id":"work","path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"root_id":"work","path":"seed.txt"}`, map[string]mcpErrorCase{
+			"not_found":             {arguments: `{"root_id":"work","path":"missing.txt"}`},
 			"already_exists":        {reason: "Reading does not create or replace a path."},
-			"unsupported_path_type": {arguments: `{"path":"directory"}`, setup: wireDirectory},
-			"invalid_text_encoding": {arguments: `{"path":"invalid.txt"}`, setup: wireInvalidText, copiedBytes: uint64(len(wireInvalidTextBytes))},
-			"limit_exceeded":        {arguments: `{"path":"seed.txt","maxBytes":3}`},
+			"unsupported_path_type": {arguments: `{"root_id":"work","path":"directory"}`, setup: wireDirectory},
+			"invalid_text_encoding": {arguments: `{"root_id":"work","path":"invalid.txt"}`, setup: wireInvalidText, copiedBytes: uint64(len(wireInvalidTextBytes))},
+			"limit_exceeded":        {arguments: `{"root_id":"work","path":"seed.txt","maxBytes":3}`},
 		})},
 		"get_path_info": {success: map[string]mcpSuccessCase{
-			"existing": {arguments: `{"path":"seed.txt"}`, field: "exists", want: true},
-			"missing":  {arguments: `{"path":"missing.txt"}`, field: "exists", want: false},
-		}, denied: `{"path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"path":"seed.txt"}`, map[string]mcpErrorCase{
+			"existing": {arguments: `{"root_id":"work","path":"seed.txt"}`, field: "exists", want: true},
+			"missing":  {arguments: `{"root_id":"work","path":"missing.txt"}`, field: "exists", want: false},
+		}, denied: `{"root_id":"work","path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"root_id":"work","path":"seed.txt"}`, map[string]mcpErrorCase{
 			"not_found":             {reason: "A missing path is the existing successful missing variant."},
 			"already_exists":        {reason: "Stat does not create or replace a path."},
 			"unsupported_path_type": {reason: "Stat supports files and directories. PathGuard denials use invalid_path."},
 			"limit_exceeded":        {reason: "Stat does not read content, traverse a collection or accept a variable-size result projection."},
 		})},
-		"write_file": mcpCompleteCase(`{"path":"written.txt","content":"new"}`, `{"path":"../outside","content":"new"}`, "written",
-			mcpFilesystemErrors(`{"path":"written.txt","content":"new"}`, map[string]mcpErrorCase{
-				"not_found":             {arguments: `{"path":"missing/file.txt"}`},
-				"already_exists":        {arguments: `{"path":"seed.txt"}`},
-				"unsupported_path_type": {arguments: `{"path":"directory"}`, setup: wireDirectory},
-				"limit_exceeded":        {arguments: `{"path":"written.txt","content":"too large"}`, tightLimits: true},
+		"write_file": mcpCompleteCase(`{"root_id":"work","path":"written.txt","content":"new"}`, `{"root_id":"work","path":"../outside","content":"new"}`, "written",
+			mcpFilesystemErrors(`{"root_id":"work","path":"written.txt","content":"new"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"root_id":"work","path":"missing/file.txt"}`},
+				"already_exists":        {arguments: `{"root_id":"work","path":"seed.txt"}`},
+				"unsupported_path_type": {arguments: `{"root_id":"work","path":"directory"}`, setup: wireDirectory},
+				"limit_exceeded":        {arguments: `{"root_id":"work","path":"written.txt","content":"too large"}`, tightLimits: true},
 			})),
-		"create_directory": mcpCompleteCase(`{"path":"new-directory"}`, `{"path":"../outside"}`, "created",
-			mcpFilesystemErrors(`{"path":"new-directory"}`, map[string]mcpErrorCase{
+		"create_directory": mcpCompleteCase(`{"root_id":"work","path":"new-directory"}`, `{"root_id":"work","path":"../outside"}`, "created",
+			mcpFilesystemErrors(`{"root_id":"work","path":"new-directory"}`, map[string]mcpErrorCase{
 				"not_found":             {reason: "Mkdir creates missing ancestors and leaf."},
 				"already_exists":        {reason: "An existing directory returns created:false; an existing file is a path-type error."},
-				"unsupported_path_type": {arguments: `{"path":"seed.txt"}`},
+				"unsupported_path_type": {arguments: `{"root_id":"work","path":"seed.txt"}`},
 				"limit_exceeded":        {reason: "Mkdir has no filesystem traversal, content or collection quota for its receipt."},
 			})),
-		"delete_path": mcpCompleteCase(`{"path":"seed.txt"}`, `{"path":"../outside"}`, "deleted",
-			mcpFilesystemErrors(`{"path":"seed.txt"}`, map[string]mcpErrorCase{
-				"not_found":             {arguments: `{"path":"missing.txt"}`},
+		"delete_path": mcpCompleteCase(`{"root_id":"work","path":"seed.txt"}`, `{"root_id":"work","path":"../outside"}`, "deleted",
+			mcpFilesystemErrors(`{"root_id":"work","path":"seed.txt"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"root_id":"work","path":"missing.txt"}`},
 				"already_exists":        {reason: "Deletion requires an existing source and creates no destination."},
-				"unsupported_path_type": {arguments: `{"path":"directory"}`, setup: wireNonemptyDirectory},
-				"limit_exceeded":        {arguments: `{"path":"directory","recursive":true}`, setup: wireNonemptyDirectory, tightLimits: true},
+				"unsupported_path_type": {arguments: `{"root_id":"work","path":"directory"}`, setup: wireNonemptyDirectory},
+				"limit_exceeded":        {arguments: `{"root_id":"work","path":"directory","recursive":true}`, setup: wireNonemptyDirectory, tightLimits: true},
 			})),
-		"copy_path": mcpCompleteCase(`{"source":"seed.txt","target":"copied.txt"}`, `{"source":"../outside","target":"copied.txt"}`, "copied",
-			mcpFilesystemErrors(`{"source":"seed.txt","target":"copied.txt"}`, map[string]mcpErrorCase{
-				"not_found":             {arguments: `{"source":"missing.txt","target":"copied.txt"}`},
-				"already_exists":        {arguments: `{"source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
-				"unsupported_path_type": {arguments: `{"source":"directory","target":"copied.txt"}`, setup: wireDirectory},
-				"limit_exceeded":        {arguments: `{"source":"seed.txt","target":"copied.txt"}`, tightLimits: true},
+		"copy_path": mcpCompleteCase(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt"}`, `{"source_root_id":"work","target_root_id":"work","source":"../outside","target":"copied.txt"}`, "copied",
+			mcpFilesystemErrors(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"source_root_id":"work","target_root_id":"work","source":"missing.txt","target":"copied.txt"}`},
+				"already_exists":        {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
+				"unsupported_path_type": {arguments: `{"source_root_id":"work","target_root_id":"work","source":"directory","target":"copied.txt"}`, setup: wireDirectory},
+				"limit_exceeded":        {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt"}`, tightLimits: true},
 			})),
-		"move_path": mcpCompleteCase(`{"source":"seed.txt","target":"moved.txt"}`, `{"source":"../outside","target":"moved.txt"}`, "moved",
-			mcpFilesystemErrors(`{"source":"seed.txt","target":"moved.txt"}`, map[string]mcpErrorCase{
-				"not_found":             {arguments: `{"source":"missing.txt","target":"moved.txt"}`},
-				"already_exists":        {arguments: `{"source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
-				"unsupported_path_type": {arguments: `{"source":"seed.txt","target":"directory","overwrite":true}`, setup: wireDirectory},
-				"unsupported_operation": {arguments: `{"source":"seed.txt","target":"moved.txt"}`, backendError: fs.ErrCrossVolumeMoveUnsupported},
+		"move_path": mcpCompleteCase(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"moved.txt"}`, `{"source_root_id":"work","target_root_id":"work","source":"../outside","target":"moved.txt"}`, "moved",
+			mcpFilesystemErrors(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"moved.txt"}`, map[string]mcpErrorCase{
+				"not_found":             {arguments: `{"source_root_id":"work","target_root_id":"work","source":"missing.txt","target":"moved.txt"}`},
+				"already_exists":        {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
+				"unsupported_path_type": {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"directory","overwrite":true}`, setup: wireDirectory},
+				"unsupported_operation": {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"moved.txt"}`, backendError: fs.ErrCrossVolumeMoveUnsupported},
 				"limit_exceeded":        {reason: "Same-volume rename does not traverse or transfer content and has no operation quota."},
 			})),
 	}
@@ -179,10 +178,7 @@ func mcpWireRegistry(t *testing.T, readOnly bool, maxFileBytes int64, limits fs.
 	if err := os.WriteFile(filepath.Join(root, "seed.txt"), []byte("seed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	local, err := fs.NewLocalFileSystemWithPolicyAndLimits(root, security.DefaultPolicy(), limits)
-	if err != nil {
-		t.Fatal(err)
-	}
+	local := testRootRegistry(t, root, limits)
 	var filesystem fs.FileSystem = local
 	if wrap != nil {
 		filesystem = wrap(local)

@@ -9,24 +9,32 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
 
-func decodeStrictArguments(raw json.RawMessage, target any) *toolExecutionError {
+func decodeStrictArguments(raw json.RawMessage, fields map[string]any) *toolExecutionError {
 	if !isJSONObject(raw) {
 		return invalidArgumentsError()
 	}
 
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &fields); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	if _, err := decoder.Token(); err != nil {
 		return invalidArgumentsError()
 	}
-	for _, value := range fields {
-		if isJSONNull(value) {
+	for decoder.More() {
+		key, err := decoder.Token()
+		if err != nil {
+			return invalidArgumentsError()
+		}
+		name, ok := key.(string)
+		target := fields[name]
+		if !ok || target == nil {
+			return invalidArgumentsError()
+		}
+		delete(fields, name)
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil || isJSONNull(value) || json.Unmarshal(value, target) != nil {
 			return invalidArgumentsError()
 		}
 	}
-
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
+	if _, err := decoder.Token(); err != nil {
 		return invalidArgumentsError()
 	}
 

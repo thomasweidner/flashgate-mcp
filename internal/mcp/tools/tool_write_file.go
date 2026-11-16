@@ -34,7 +34,7 @@ func (t *WriteFileTool) Title() string {
 
 // Description returns the tool description.
 func (t *WriteFileTool) Description() string {
-	return "Writes a text file below the configured filesystem root."
+	return "Writes a text file below the selected root."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -42,10 +42,11 @@ func (t *WriteFileTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"root_id": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative file path below the configured filesystem root.",
+				"description": "Relative file path.",
 			},
 			"content": map[string]any{
 				"type":        "string",
@@ -56,7 +57,7 @@ func (t *WriteFileTool) InputSchema() any {
 				"description": "Whether an existing file may be overwritten. Defaults to false.",
 			},
 		},
-		"required":             []string{"path"},
+		"required":             []string{"root_id", "path"},
 		"additionalProperties": false,
 	}
 }
@@ -79,36 +80,35 @@ func (t *WriteFileTool) ResultContract() ResultContract {
 
 // Execute writes the requested file.
 func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments writeFileArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return ToolResult{}, rpcErr
+	var path fs.Operand
+	var text string
+	var overwrite bool
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"root_id":   &path.RootID,
+		"path":      &path.Path,
+		"content":   &text,
+		"overwrite": &overwrite,
+	}); err != nil {
+		return ToolResult{}, err
 	}
-
-	if !isNonBlank(arguments.Path) {
+	if !validOperand(path) {
 		return ToolResult{}, invalidArgumentsError()
 	}
-
-	if err := validateReceiptPaths(arguments.Path); err != nil {
+	if err := validateReceiptPaths(path.Path); err != nil {
 		return ToolResult{}, err
 	}
 
-	content := []byte(arguments.Content)
+	content := []byte(text)
 
-	if err := t.filesystem.Write(arguments.Path, content, arguments.Overwrite); err != nil {
+	if err := t.filesystem.Write(path, content, overwrite); err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
 	return NewToolResult(defaultVariant, writeFileResult{
-		Path:    arguments.Path,
+		Path:    path.Path,
 		Size:    int64(len(content)),
 		Written: true,
 	}), nil
-}
-
-type writeFileArguments struct {
-	Path      string `json:"path"`
-	Content   string `json:"content,omitempty"`
-	Overwrite bool   `json:"overwrite,omitempty"`
 }
 
 type writeFileResult struct {

@@ -32,10 +32,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "old.txt"), []byte("move"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	filesystem, err := fs.NewLocalFileSystem(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
 	registry := requireToolRegistry(t, filesystem, 1024*1024, toolCapabilities{filesystemWrite: true})
 
 	tests := []struct {
@@ -46,7 +43,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 	}{
 		{
 			name:   "list_directory",
-			params: `{"name":"list_directory","arguments":{}}`,
+			params: `{"name":"list_directory","arguments":{"root_id":"work","path":"."}}`,
 			text:   new("See structuredContent for the result."),
 			assertions: func(t *testing.T, value map[string]any) {
 				if _, ok := value["entries"].([]any); !ok {
@@ -56,7 +53,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 		},
 		{
 			name:   "read_file single transmission",
-			params: `{"name":"read_file","arguments":{"path":"read file.txt"}}`,
+			params: `{"name":"read_file","arguments":{"root_id":"work","path":"read file.txt"}}`,
 			text:   &readContent,
 			assertions: func(t *testing.T, value map[string]any) {
 				if len(value) != 1 || value["size"] != json.Number("50") {
@@ -66,7 +63,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 		},
 		{
 			name:   "get_path_info existing",
-			params: `{"name":"get_path_info","arguments":{"path":"read file.txt"}}`,
+			params: `{"name":"get_path_info","arguments":{"root_id":"work","path":"read file.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {
 				if value["exists"] != true || value["name"] != "read file.txt" {
 					t.Fatalf("unexpected existing result: %#v", value)
@@ -75,7 +72,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 		},
 		{
 			name:   "get_path_info missing",
-			params: `{"name":"get_path_info","arguments":{"path":"does-not-exist.txt"}}`,
+			params: `{"name":"get_path_info","arguments":{"root_id":"work","path":"does-not-exist.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {
 				if value["path"] != "does-not-exist.txt" || value["exists"] != false || len(value) != 2 {
 					t.Fatalf("unexpected missing result: %#v", value)
@@ -84,7 +81,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 		},
 		{
 			name:   "move_path default profile",
-			params: `{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`,
+			params: `{"name":"move_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"old.txt","target":"new.txt"}}`,
 			assertions: func(t *testing.T, value map[string]any) {
 				if value["moved"] != true || value["source"] != "old.txt" || value["target"] != "new.txt" {
 					t.Fatalf("unexpected move result: %#v", value)
@@ -128,10 +125,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 
 func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 	root := t.TempDir()
-	filesystem, err := fs.NewLocalFileSystem(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
 	defaultRegistry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
 	readOnlyRegistry := requireToolRegistry(t, filesystem, 1024, capabilitiesFromReadOnly(true))
 
@@ -142,7 +136,7 @@ func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 		message  string
 	}{
 		{"unknown tool", defaultRegistry, `{"name":"unknown_tool","arguments":{}}`, "invalid params"},
-		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"path":"blocked.txt"}}`, "invalid params"},
+		{"gated write tool", readOnlyRegistry, `{"name":"write_file","arguments":{"root_id":"work","path":"blocked.txt"}}`, "invalid params"},
 		{"legacy tool", defaultRegistry, `{"name":"list_files","arguments":{}}`, "invalid params"},
 	}
 
@@ -183,14 +177,11 @@ func runCallToolWireRequest(t *testing.T, registry *tools.Registry, params strin
 
 func TestFilesystemExpectedToolErrorWireContract(t *testing.T) {
 	root := t.TempDir()
-	filesystem, err := fs.NewLocalFileSystem(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
 	registry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
 	for _, tc := range []struct{ params, category string }{
 		{`{"name":"get_path_info","arguments":{}}`, "invalid_arguments"},
-		{`{"name":"read_file","arguments":{"path":"../outside.txt"}}`, "invalid_path"},
+		{`{"name":"read_file","arguments":{"root_id":"work","path":"../outside.txt"}}`, "invalid_path"},
 	} {
 		response, raw := runCallToolWireRequest(t, registry, tc.params)
 		if response.Error != nil || len(response.Result) == 0 {

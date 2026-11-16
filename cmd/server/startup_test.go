@@ -414,7 +414,7 @@ func TestDocumentedTemplateStartsServer(t *testing.T) {
 	}
 }
 
-func TestRunWithIOUsesOnlyExplicitDefaultRoot(t *testing.T) {
+func TestRunWithIOUsesExplicitNamedRoots(t *testing.T) {
 	work, archive := t.TempDir(), t.TempDir()
 	for dir, content := range map[string]string{work: "work payload", archive: "archive payload"} {
 		testconfig.Write(t, filepath.Join(dir, "input.txt"), []byte(content))
@@ -424,15 +424,17 @@ func TestRunWithIOUsesOnlyExplicitDefaultRoot(t *testing.T) {
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}` + "\n" +
 			`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +
 			`{"jsonrpc":"2.0","id":2,"method":"tools/list"}` + "\n" +
-			`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"input.txt"}}}` + "\n" +
-			`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_directory","arguments":{"path":"created"}}}` + "\n" +
-			`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_directory","arguments":{"path":"input.txt"}}}` + "\n")
+			`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_file","arguments":{"root_id":"work","path":"input.txt"}}}` + "\n" +
+			`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_directory","arguments":{"root_id":"archive","path":"created"}}}` + "\n" +
+			`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"list_directory","arguments":{"root_id":"work","path":"input.txt"}}}` + "\n" +
+			`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"read_file","arguments":{"root_id":"archive","path":"input.txt"}}}` + "\n" +
+			`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"input.txt"}}}` + "\n")
 	var stdout, stderr bytes.Buffer
 	if err := runWithIO(context.Background(), input, &stdout, &stderr, defaultBootstrapDependencies(path)); err != nil {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-	if stderr.Len() != 0 || len(lines) != 5 {
+	if stderr.Len() != 0 || len(lines) != 7 {
 		t.Fatalf("unexpected STDIO response framing: stdout=%q stderr=%q", stdout.String(), stderr.String())
 	}
 	for _, line := range lines {
@@ -447,16 +449,19 @@ func TestRunWithIOUsesOnlyExplicitDefaultRoot(t *testing.T) {
 		}
 	}
 	if err := json.Unmarshal([]byte(lines[1]), &catalog); err != nil || len(catalog.Result.Tools) != 8 {
-		t.Fatalf("default root changed the MCP catalog: %v", err)
+		t.Fatalf("multiple roots changed the MCP catalog: %v", err)
 	}
-	if !strings.Contains(lines[2], "work payload") || strings.Contains(stdout.String(), "archive payload") {
-		t.Fatal("read did not target the explicit default")
+	if !strings.Contains(lines[2], "work payload") || !strings.Contains(lines[5], "archive payload") {
+		t.Fatal("reads did not target the explicitly named roots")
 	}
-	if info, err := os.Stat(filepath.Join(work, "created")); err != nil || !info.IsDir() {
-		t.Fatalf("directory was not created in the default root: %v", err)
+	if !strings.Contains(lines[6], "invalid_arguments") || !strings.Contains(lines[6], `"isError":true`) || strings.Contains(lines[6], "payload") {
+		t.Fatal("missing root ID did not fail closed")
 	}
-	if _, err := os.Stat(filepath.Join(archive, "created")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("directory creation affected the secondary root")
+	if info, err := os.Stat(filepath.Join(archive, "created")); err != nil || !info.IsDir() {
+		t.Fatalf("directory was not created in the selected root: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(work, "created")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("directory creation affected the default root")
 	}
 	var invalidList struct {
 		Error struct{ Code int }

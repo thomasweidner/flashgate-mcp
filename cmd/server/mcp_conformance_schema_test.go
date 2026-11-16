@@ -150,7 +150,7 @@ func TestMCPConformanceSchema202012(t *testing.T) {
 			t.Fatal(err)
 		}
 		schema := schemas[tool.Name()]
-		for _, raw := range []string{`{"path":42}`, `{}`, `{"path":"seed.txt","extra":true}`, `{"path":"seed.txt","maxBytes":0}`, `{"path":null}`, `null`, `{"path":"seed.txt"} {}`} {
+		for _, raw := range []string{`{"root_id":"work","path":42}`, `{}`, `{"root_id":"work","path":"seed.txt","extra":true}`, `{"root_id":"work","path":"seed.txt","maxBytes":0}`, `{"root_id":"work","path":null}`, `null`, `{"root_id":"work","path":"seed.txt"} {}`} {
 			value, err := mcptest.SchemaInstance([]byte(raw))
 			if err == nil && schema.input.Validate(value) == nil {
 				t.Errorf("input schema accepted %s", raw)

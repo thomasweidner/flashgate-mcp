@@ -21,8 +21,8 @@ across roots.
 
 ### Sandbox Root
 
-The current tools resolve paths relative to the explicit default selected
-by `files.default_id` in the [trusted TOML file](configuration.md#named-roots).
+The registry resolves each exact ID against the [trusted TOML file](configuration.md#named-roots).
+PathGuard confines each relative path to the root identified by that operand.
 Every `files.roots.<id>.path` must be absolute, exist, pass policy and resolve to
 a directory. An invalid root anywhere in the configuration stops startup.
 
@@ -446,7 +446,13 @@ MCP annotations are accurate hints only and never grant permission.
 
 ### Per-root policies and execution backend
 
-Named roots use authoritative FlashGate configuration and root IDs plus relative paths. Each root may define:
+The [filesystem operand contract](planning/implementation-contract.md#bl-102-filesystem-resource-contract)
+preserves source protection across overlapping roots and both operands at
+native open and mutation points. Copy and move reject distinct IDs. Capability,
+per-root policy, principal authorization and backend selection remain separate
+controls.
+
+The target allows each root to define:
 
 - read/write permission;
 - file/result/scan/temp limits;

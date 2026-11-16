@@ -37,7 +37,7 @@ func (t *ReadFileTool) Title() string {
 
 // Description returns the tool description.
 func (t *ReadFileTool) Description() string {
-	return "Reads a UTF-8 text file below the configured filesystem root."
+	return "Reads a UTF-8 text file below the selected root."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -45,10 +45,11 @@ func (t *ReadFileTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"root_id": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative file path below the configured filesystem root.",
+				"description": "Relative file path.",
 			},
 			"maxBytes": map[string]any{
 				"type":        "integer",
@@ -56,7 +57,7 @@ func (t *ReadFileTool) InputSchema() any {
 				"minimum":     1,
 			},
 		},
-		"required":             []string{"path"},
+		"required":             []string{"root_id", "path"},
 		"additionalProperties": false,
 	}
 }
@@ -82,27 +83,30 @@ func (t *ReadFileTool) ResultContract() ResultContract {
 
 // Execute reads the requested file.
 func (t *ReadFileTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments readFileArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return ToolResult{}, rpcErr
+	var path fs.Operand
+	var requestedMaxBytes *int64
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"root_id":  &path.RootID,
+		"path":     &path.Path,
+		"maxBytes": &requestedMaxBytes,
+	}); err != nil {
+		return ToolResult{}, err
 	}
-
-	if !isNonBlank(arguments.Path) {
+	if !validOperand(path) {
 		return ToolResult{}, invalidArgumentsError()
 	}
-
 	maxBytes := t.serverMaxBytes
-	if arguments.MaxBytes != nil {
-		if *arguments.MaxBytes < 1 {
+	if requestedMaxBytes != nil {
+		if *requestedMaxBytes < 1 {
 			return ToolResult{}, invalidArgumentsError()
 		}
-		maxBytes = *arguments.MaxBytes
+		maxBytes = *requestedMaxBytes
 	}
 	if maxBytes > t.serverMaxBytes {
 		maxBytes = t.serverMaxBytes
 	}
 
-	content, err := t.filesystem.Read(arguments.Path, maxBytes)
+	content, err := t.filesystem.Read(path, maxBytes)
 	if err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
@@ -119,9 +123,4 @@ func (t *ReadFileTool) Execute(ctx context.Context, rawArguments json.RawMessage
 		}
 	}
 	return NewPayloadResult(defaultVariant, text), nil
-}
-
-type readFileArguments struct {
-	Path     string `json:"path"`
-	MaxBytes *int64 `json:"maxBytes,omitempty"`
 }

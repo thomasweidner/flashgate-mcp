@@ -23,7 +23,7 @@ func TestAllToolsRejectMalformedUnknownTrailingAndWrongTypes(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			for _, raw := range []string{`{`, `[]`, `{"unknown":true}`, `{} {}`, `{"path":1,"source":1,"target":1}`} {
+			for _, raw := range []string{`{`, `[]`, `{"unknown":true}`, `{} {}`, `{"root_id":"work","path":1,"source":1,"target":1}`} {
 				_, rpcErr := test.tool.Execute(context.Background(), json.RawMessage(raw))
 				if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 					t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
@@ -41,13 +41,13 @@ func TestRequiredPathsRejectMissingEmptyAndWhitespace(t *testing.T) {
 		empty   string
 		blank   string
 	}{
-		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024), `{}`, `{"path":""}`, `{"path":"  "}`},
-		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem()), `{}`, `{"path":""}`, `{"path":"  "}`},
-		{"write_file", NewWriteFileTool(newFakeFileSystem()), `{}`, `{"path":""}`, `{"path":"  "}`},
-		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem()), `{}`, `{"path":""}`, `{"path":"  "}`},
-		{"delete_path", NewDeletePathTool(newFakeFileSystem()), `{}`, `{"path":""}`, `{"path":"  "}`},
-		{"copy_path", NewCopyPathTool(newFakeFileSystem()), `{}`, `{"source":"","target":"target"}`, `{"source":"  ","target":"target"}`},
-		{"move_path", NewMovePathTool(newFakeFileSystem()), `{}`, `{"source":"source","target":""}`, `{"source":"source","target":"  "}`},
+		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024), `{}`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":"  "}`},
+		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem()), `{}`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":"  "}`},
+		{"write_file", NewWriteFileTool(newFakeFileSystem()), `{}`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":"  "}`},
+		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem()), `{}`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":"  "}`},
+		{"delete_path", NewDeletePathTool(newFakeFileSystem()), `{}`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":"  "}`},
+		{"copy_path", NewCopyPathTool(newFakeFileSystem()), `{}`, `{"source_root_id":"work","target_root_id":"work","source":"","target":"target"}`, `{"source_root_id":"work","target_root_id":"work","source":"  ","target":"target"}`},
+		{"move_path", NewMovePathTool(newFakeFileSystem()), `{}`, `{"source_root_id":"work","target_root_id":"work","source":"source","target":""}`, `{"source_root_id":"work","target_root_id":"work","source":"source","target":"  "}`},
 	}
 
 	for _, test := range tests {
@@ -68,14 +68,14 @@ func TestAllToolsRejectExplicitNullFields(t *testing.T) {
 		tool Tool
 		raw  []string
 	}{
-		{"list_directory", NewListDirectoryTool(newFakeFileSystem()), []string{`{"path":null}`}},
-		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024), []string{`{"path":null}`, `{"path":"file","maxBytes":null}`}},
-		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem()), []string{`{"path":null}`}},
-		{"write_file", NewWriteFileTool(newFakeFileSystem()), []string{`{"path":"file","content":null}`, `{"path":"file","overwrite":null}`}},
-		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem()), []string{`{"path":null}`}},
-		{"delete_path", NewDeletePathTool(newFakeFileSystem()), []string{`{"path":"file","recursive":null}`}},
-		{"copy_path", NewCopyPathTool(newFakeFileSystem()), []string{`{"source":"a","target":"b","overwrite":null}`}},
-		{"move_path", NewMovePathTool(newFakeFileSystem()), []string{`{"source":"a","target":"b","overwrite":null}`}},
+		{"list_directory", NewListDirectoryTool(newFakeFileSystem()), []string{`{"root_id":"work","path":null}`}},
+		{"read_file", NewReadFileTool(newFakeFileSystem(), 1024), []string{`{"root_id":"work","path":null}`, `{"root_id":"work","path":"file","maxBytes":null}`}},
+		{"get_path_info", NewGetPathInfoTool(newFakeFileSystem()), []string{`{"root_id":"work","path":null}`}},
+		{"write_file", NewWriteFileTool(newFakeFileSystem()), []string{`{"root_id":"work","path":"file","content":null}`, `{"root_id":"work","path":"file","overwrite":null}`}},
+		{"create_directory", NewCreateDirectoryTool(newFakeFileSystem()), []string{`{"root_id":"work","path":null}`}},
+		{"delete_path", NewDeletePathTool(newFakeFileSystem()), []string{`{"root_id":"work","path":"file","recursive":null}`}},
+		{"copy_path", NewCopyPathTool(newFakeFileSystem()), []string{`{"source_root_id":"work","target_root_id":"work","source":"a","target":"b","overwrite":null}`}},
+		{"move_path", NewMovePathTool(newFakeFileSystem()), []string{`{"source_root_id":"work","target_root_id":"work","source":"a","target":"b","overwrite":null}`}},
 	}
 
 	for _, test := range tests {
@@ -94,7 +94,7 @@ func TestStrictArgumentsPreserveValidPathStrings(t *testing.T) {
 	fake := newFakeFileSystem()
 	path := "  directory with spaces  "
 	_, rpcErr := NewListDirectoryTool(fake).Execute(
-		context.Background(), json.RawMessage(`{"path":"  directory with spaces  "}`),
+		context.Background(), json.RawMessage(`{"root_id":"work","path":"  directory with spaces  "}`),
 	)
 	if rpcErr != nil || fake.listPath != path {
 		t.Fatalf("expected path to remain %q, got %q error=%#v", path, fake.listPath, rpcErr)

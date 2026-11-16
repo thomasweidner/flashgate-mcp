@@ -19,10 +19,7 @@ import (
 
 func statelessRouter(t *testing.T) *router.Router {
 	t.Helper()
-	filesystem, err := fs.NewLocalFileSystem(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	filesystem := testRootRegistry(t, t.TempDir(), fs.DefaultLimits())
 	registry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
 	r := router.NewWithPolicy("flashgate", "test-version", revision.NewPolicy(protocol.ProtocolVersion, revision.Stateless))
 	r.Register(initialize.NewHandler("flashgate", "test-version"))
@@ -59,8 +56,8 @@ func TestStatelessCandidateWire(t *testing.T) {
 	requests := []string{
 		`{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{` + meta + `}}`,
 		`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{` + meta + `}}`,
-		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_directory","arguments":{},` + meta + `}}`,
-		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"../outside"},` + meta + `}}`,
+		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_directory","arguments":{"root_id":"work","path":"."},` + meta + `}}`,
+		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_file","arguments":{"root_id":"work","path":"../outside"},` + meta + `}}`,
 		`{"jsonrpc":"2.0","id":5,"method":"subscriptions/listen","params":{` + meta + `}}`,
 		`{"jsonrpc":"2.0","id":6,"method":"initialize","params":{"protocolVersion":"2025-11-25",` + meta + `}}`,
 		`{"jsonrpc":"2.0","id":7,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"client","version":"1"}}}`,

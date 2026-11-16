@@ -51,7 +51,7 @@ func TestReadFileToolExecute(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"README.md","maxBytes":256}`),
+		json.RawMessage(`{"root_id":"work","path":"README.md","maxBytes":256}`),
 	)
 
 	if rpcErr != nil {
@@ -85,7 +85,7 @@ func TestReadFileToolUsesDefaultMaxBytes(t *testing.T) {
 
 	_, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"README.md"}`),
+		json.RawMessage(`{"root_id":"work","path":"README.md"}`),
 	)
 
 	if rpcErr != nil {
@@ -107,7 +107,7 @@ func TestReadFileToolCapsClientMaxBytesAtServerLimit(t *testing.T) {
 
 	_, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"README.md","maxBytes":8192}`),
+		json.RawMessage(`{"root_id":"work","path":"README.md","maxBytes":8192}`),
 	)
 
 	if rpcErr != nil {
@@ -121,7 +121,7 @@ func TestReadFileToolCapsClientMaxBytesAtServerLimit(t *testing.T) {
 
 func TestReadFileToolAcceptsOneByteLimit(t *testing.T) {
 	filesystem := newFakeFileSystem()
-	_, rpcErr := NewReadFileTool(filesystem, 4096).Execute(context.Background(), json.RawMessage(`{"path":"README.md","maxBytes":1}`))
+	_, rpcErr := NewReadFileTool(filesystem, 4096).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"README.md","maxBytes":1}`))
 	if rpcErr != nil || filesystem.readMaxBytes != 1 {
 		t.Fatalf("expected maxBytes=1, got %d error=%v", filesystem.readMaxBytes, rpcErr)
 	}
@@ -130,7 +130,7 @@ func TestReadFileToolAcceptsOneByteLimit(t *testing.T) {
 func TestReadFileToolRejectsNonPositiveMaxBytes(t *testing.T) {
 	for _, maxBytes := range []string{"0", "-1"} {
 		_, rpcErr := NewReadFileTool(newFakeFileSystem(), 4096).Execute(
-			context.Background(), json.RawMessage(`{"path":"README.md","maxBytes":`+maxBytes+`}`),
+			context.Background(), json.RawMessage(`{"root_id":"work","path":"README.md","maxBytes":`+maxBytes+`}`),
 		)
 		if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 			t.Fatalf("expected invalid params for maxBytes=%s, got %#v", maxBytes, rpcErr)
@@ -148,7 +148,7 @@ func TestReadFileToolMapsLimitExceeded(t *testing.T) {
 
 	_, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"README.md"}`),
+		json.RawMessage(`{"root_id":"work","path":"README.md"}`),
 	)
 
 	if rpcErr == nil {
@@ -172,7 +172,7 @@ func TestReadFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":`),
+		json.RawMessage(`{"root_id":"work","path":`),
 	)
 
 	if result.variant != "" {
@@ -222,7 +222,7 @@ func TestReadFileToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"docs"}`),
+		json.RawMessage(`{"root_id":"work","path":"docs"}`),
 	)
 
 	if result.variant != "" {

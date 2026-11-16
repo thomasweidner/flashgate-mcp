@@ -406,7 +406,7 @@ func readFileWireCases(id benchmark.WireIdentity, variant tools.ResultVariant, t
 		if err != nil {
 			return nil, err
 		}
-		row, err := wireToolCase(id, variant, mcpSuccessCase{arguments: `{"path":"seed.txt"}`, content: content}, want)
+		row, err := wireToolCase(id, variant, mcpSuccessCase{arguments: `{"root_id":"work","path":"seed.txt"}`, content: content}, want)
 		if err != nil {
 			return nil, err
 		}
@@ -428,7 +428,7 @@ func collectionWireCase(id benchmark.WireIdentity, variant tools.ResultVariant, 
 	if err != nil {
 		return serverWireCase{}, err
 	}
-	row, err := wireToolCase(id, variant, mcpSuccessCase{arguments: `{"path":"collection"}`, field: "entries", want: entries}, want)
+	row, err := wireToolCase(id, variant, mcpSuccessCase{arguments: `{"root_id":"work","path":"collection"}`, field: "entries", want: entries}, want)
 	row.setup = func(root string) error {
 		dir := filepath.Join(root, "collection")
 		if err := os.Mkdir(dir, 0o700); err != nil {

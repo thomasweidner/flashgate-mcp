@@ -385,7 +385,7 @@ rejected mixed object/part results, multipart byte counts, pre-serialization
 limits, and lossless UTF-8 or explicit encoding failure in both profiles.
 
 The `tools/list` wire test verifies schema and annotation exposure in both
-profiles. It pins 2426/2391 bytes for read-only and 6472/6437 bytes for default
+profiles. It pins 2517/2482 bytes for read-only and 6808/6773 bytes for default
 (response/result). The existing benchmark ceilings and historical comparison
 fixtures remain the historical baseline.
 
@@ -482,6 +482,13 @@ Currently tested:
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
 
 ### Configuration protection acceptance
+
+Exercise the BL-102 operand contract in the native filesystem and wire gates.
+Cover explicit single- and multiple-root selection, missing or unknown IDs,
+strict field names, both operands of copy and move, and cross-root denial
+before effects. Test overlapping roots, allowed sibling operations and
+content-independent metadata alongside protected opens and mutations. Cover
+rooted or drive-relative Windows path forms as part of PathGuard validation.
 
 BL-374 owns this matrix on native Windows and native Linux.
 Use the real loader, bootstrap, Go filesystem read and mutation boundary,

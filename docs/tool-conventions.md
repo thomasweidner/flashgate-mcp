@@ -21,9 +21,9 @@ The registry determines deterministic exposure order. `tools/list` uses each imp
 
 ## Arguments
 
-Every tool accepts exactly one JSON object. Runtime decoding uses `json.Decoder`, rejects unknown fields and explicit `null` field values, and requires EOF after the first object. Schemas declare `additionalProperties:false`.
+Every tool accepts exactly one JSON object. Runtime decoding uses `json.Decoder`, matches field names exactly, rejects duplicates and explicit `null` values, and requires EOF after the first object. Schemas declare `additionalProperties:false`.
 
-Required path fields must be strings and must not be empty or whitespace-only. Validation does not trim or otherwise alter valid path strings. `list_directory.path` is the only optional path; omission defaults to `.`, but an explicit blank value is invalid.
+Every filesystem operand requires its root ID and a nonblank relative path. Use `root_id` and `path` for one operand. Use `source_root_id` and `source` plus `target_root_id` and `target` for copy and move. Match configured IDs exactly and pass `.` explicitly to list the root.
 
 Security and PathGuard policy are enforced server-side and are not delegated to JSON Schema.
 
@@ -73,7 +73,7 @@ The current MCP `2025-11-25` tool definitions expose this exact annotation matri
 
 ## Path and result conventions
 
-All client paths are relative to the configured root. Results may echo the public relative path supplied by the client; they must never expose the PathGuard-resolved absolute host path.
+Each client path is relative to the root specified for that operand. Results may echo the public relative path supplied by the client. Keep PathGuard-resolved host paths internal.
 
 `get_path_info` reports genuine absence as a successful `{path, exists:false}` domain result inside both `CallToolResult` representations, with no `isError=true`. Existing paths include `name`, `isDir`, and `size`. Policy denials are never converted to absence.
 
@@ -125,7 +125,7 @@ For a new Version 1.0 configuration:
 - every profile has an explicit tool-count, catalog-byte, approximate-token, and instruction budget;
 - a catalog fingerprint changes when protocol revision, extension set, profile, capability set, schema, annotations, or relevant configuration changes.
 
-The current `files.read_only` setting controls exposure until BL-103 implements profile configuration. The tools target the configured default root until BL-102 adds root addressing.
+The current `files.read_only` setting controls exposure until BL-103 implements profile configuration. Explicit root selection uses the shared [BL-102 resource contract](planning/implementation-contract.md#bl-102-filesystem-resource-contract).
 
 ### Result payload classes
 

@@ -28,6 +28,18 @@ func TestResolveExistingRejectsWindowsHiddenAttributeByDefault(t *testing.T) {
 	}
 }
 
+func TestResolveRejectsWindowsRootedAndVolumeRelativeOperands(t *testing.T) {
+	guard, err := NewPathGuardWithPolicy(t.TempDir(), Policy{AllowUNCPaths: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{`C:relative.txt`, `c:\absolute.txt`, `\rooted.txt`, `\\server\share\file.txt`, `\\?\C:\absolute.txt`} {
+		if _, err := guard.ResolveForCreate(path); !errors.Is(err, ErrAbsolutePath) {
+			t.Errorf("expected absolute-path denial for %q, got %v", path, err)
+		}
+	}
+}
+
 func TestResolveExistingAllowsWindowsHiddenAttributeWhenConfigured(t *testing.T) {
 	t.Parallel()
 

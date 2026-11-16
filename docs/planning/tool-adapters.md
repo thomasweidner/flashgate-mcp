@@ -859,6 +859,13 @@ of new authorization for all affected backend choices. The
 [implementation binding](implementation-contract.md#bl-220-adapter-acceptance-binding)
 specifies when to update these contracts and the source gate.
 
+Every new or materially changed local filesystem consumer uses the
+[BL-102 filesystem resource contract](implementation-contract.md#bl-102-filesystem-resource-contract)
+through the registry, `internal/fs` and PathGuard. Apply it to local input,
+output, staging, cleanup and delegated filesystem effects in each family.
+Registry, sysctl, service and clipboard resources retain their own typed
+addressing. A service's local file operands still use the filesystem boundary.
+
 Screen each new or materially changed tool or adapter for actual direct and
 indirect effects on the [protected configuration resource](../security.md#configuration-trust-and-protection).
 The owning BL must prove that every applicable route denies protected
@@ -878,7 +885,7 @@ initial enforcement for current mutations. The successor owns its delta.
 
 **Applicable owners** BL-036–BL-061, BL-063–BL-067, BL-346
 
-Use the Go filesystem abstraction and PathGuard for every path. Keep platform
+Use the named-root filesystem abstraction and PathGuard for every operand. Keep platform
 identity, reparse and storage details behind that boundary. Test changed
 operations against applicable path escapes, denied roots, races, partial
 failure and local-only data. Exercise Windows/Linux native filesystem behavior
@@ -896,7 +903,8 @@ oracles for the source.
 
 **Applicable owners** BL-068–BL-080, BL-082–BL-083
 
-Use BL-082 as the portable reference and PathGuard for traversed paths. Prove
+Use BL-082 as the portable reference and preserve the BL-102 root binding for
+traversed and indexed paths. Prove
 equivalent filters, encoding and regex semantics, ordering and pagination,
 permission failures, scan limits and cancellation before enabling an
 accelerator. Use Go where equivalence is unproved, subject to the shared
@@ -924,7 +932,8 @@ Use the [BL-100 functional contract](../adr/capability-profiles.md#functional-ca
 for definitions, explicit grants and operation requirements. BL-100 tests
 the primitives independently of runtime activation. Integrating owners
 reuse BL-159 authorization, BL-236 caller/backend separation, BL-166 audit,
-BL-239 state binding and the applicable root/profile contracts. Keep discovery,
+BL-239 state binding and the applicable root/profile contracts. Retain each
+filesystem operand's BL-102 binding through authorization and dispatch. Keep discovery,
 backend availability and cached results independent of authorization. Test the
 affected direct calls, backend parity and context mismatch, including denial
 before dispatch and secret-safe errors and audit.
@@ -944,7 +953,8 @@ platform and dependency boundary and adds bypass fixtures. BL-152 proves runtime
 limits, cancellation and cleanup on both OSs. No allowlist flag, package-wide
 exemption or second execution engine can substitute for those controls.
 
-Constrain implicit program, helper and child effects through the actual
+Bind local executable, working-directory, input and output operands through
+BL-102. Constrain implicit program, helper and child effects through the actual
 execution identity and native enforcement. Test a permitted executable and
 typed input that would read or mutate it, including reads relayed to
 stdout, stderr, temporary output, helpers or children. Refuse launch if the
@@ -996,7 +1006,8 @@ behavior, credential/network effects, unsupported behavior and fallback
 before activation. The option matrix, differential tests and performance
 evidence belong to each implementing owner.
 
-Bind implicit native file operations, staging, commit and cleanup. Check
+Bind implicit native file operations, staging, commit and cleanup to BL-102.
+Check
 even read-only invocations for helpers, optional writes and hostile
 configuration. Prove content cannot be relayed through output, intermediate
 files or archive members. Reject an unconfined backend before dispatch.
@@ -1012,6 +1023,7 @@ scope before loading or dispatch. Prove failures, denials and cleanup at the
 boundary. No arbitrary scripts, dynamic plugins or new interpreter dependency
 enter the trusted core through the provider mechanism.
 
+Bind filesystem operands in provider operations and host callbacks to BL-102.
 Prove the protection boundary across provider-owned writes, host callbacks,
 helper processes, returned resources, and shutdown or failure cleanup before
 any dispatch. A provider must not observe or return protected source values.

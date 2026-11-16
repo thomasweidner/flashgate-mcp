@@ -332,7 +332,7 @@ check `read_only = true` in the TOML selected by this entry and reload it.
 
 Ask your client:
 
-> Use FlashGate to list the files in the configured directory and show
+> Use FlashGate to list the files in the configured `work` root and show
 > information about one file. Do not modify anything.
 
 For a harmless text file named `hello.txt` already inside the root, follow with:
@@ -344,15 +344,13 @@ The corresponding current tool calls are:
 
 | Tool | Arguments | Check |
 |---|---|---|
-| `list_directory` | `{"path":"."}` | `entries` lists policy-visible names relative to the root. |
-| `get_path_info` | `{"path":"hello.txt"}` | `exists:true`, filename, type, and size match your file. |
-| `read_file` | `{"path":"hello.txt","maxBytes":4096}` | `content` matches the text; `size` reports returned bytes. |
+| `list_directory` | `{"root_id":"work","path":"."}` | `entries` lists policy-visible names relative to the root. |
+| `get_path_info` | `{"root_id":"work","path":"hello.txt"}` | `exists:true`, filename, type, and size match your file. |
+| `read_file` | `{"root_id":"work","path":"hello.txt","maxBytes":4096}` | `content[0].text` matches the file and `structuredContent.size` reports bytes. |
 
-Choose a small file no larger than 4096 bytes for this example. All arguments are
-relative to the root selected by `files.default_id`. In a protocol trace, successful
-`tools/call` results have one JSON text block in MCP `content[]` and the same
-domain object in `structuredContent`. A missing metadata path returns
-`exists:false`; that alone does not verify a real-file read.
+Choose a file no larger than 4096 bytes. Use your configured root ID if it
+differs from `work`. Each path is relative to the ID in that call. A missing
+metadata path returns `exists:false`. See the [result envelope](docs/tools.md#successful-mcp-result-envelope).
 
 Confirm the client actually used FlashGate and that the data directory is
 unchanged. A direct CLI/version check alone is not an end-to-end client test.

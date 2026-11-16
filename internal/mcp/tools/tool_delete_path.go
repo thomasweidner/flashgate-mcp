@@ -34,7 +34,7 @@ func (t *DeletePathTool) Title() string {
 
 // Description returns the tool description.
 func (t *DeletePathTool) Description() string {
-	return "Deletes a file or directory below the configured filesystem root."
+	return "Deletes a file or directory below the selected root."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -42,17 +42,18 @@ func (t *DeletePathTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"root_id": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative file or directory path below the configured filesystem root.",
+				"description": "Relative file or directory path.",
 			},
 			"recursive": map[string]any{
 				"type":        "boolean",
 				"description": "Whether a non-empty directory may be deleted recursively. Defaults to false.",
 			},
 		},
-		"required":             []string{"path"},
+		"required":             []string{"root_id", "path"},
 		"additionalProperties": false,
 	}
 }
@@ -75,32 +76,30 @@ func (t *DeletePathTool) ResultContract() ResultContract {
 
 // Execute deletes the requested path.
 func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments deletePathArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return ToolResult{}, rpcErr
+	var path fs.Operand
+	var recursive bool
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"root_id":   &path.RootID,
+		"path":      &path.Path,
+		"recursive": &recursive,
+	}); err != nil {
+		return ToolResult{}, err
 	}
-
-	if !isNonBlank(arguments.Path) {
+	if !validOperand(path) {
 		return ToolResult{}, invalidArgumentsError()
 	}
-
-	if err := validateReceiptPaths(arguments.Path); err != nil {
+	if err := validateReceiptPaths(path.Path); err != nil {
 		return ToolResult{}, err
 	}
 
-	if err := t.filesystem.Delete(arguments.Path, arguments.Recursive); err != nil {
+	if err := t.filesystem.Delete(path, recursive); err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
 	return NewToolResult(defaultVariant, deletePathResult{
-		Path:    arguments.Path,
+		Path:    path.Path,
 		Deleted: true,
 	}), nil
-}
-
-type deletePathArguments struct {
-	Path      string `json:"path"`
-	Recursive bool   `json:"recursive,omitempty"`
 }
 
 type deletePathResult struct {

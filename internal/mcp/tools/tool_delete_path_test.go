@@ -49,7 +49,7 @@ func TestDeletePathToolExecuteFile(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"tmp-delete-test.txt"}`),
+		json.RawMessage(`{"root_id":"work","path":"tmp-delete-test.txt"}`),
 	)
 
 	if rpcErr != nil {
@@ -95,7 +95,7 @@ func TestDeletePathToolForwardsRecursive(t *testing.T) {
 
 	_, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"tmp-delete-dir","recursive":true}`),
+		json.RawMessage(`{"root_id":"work","path":"tmp-delete-dir","recursive":true}`),
 	)
 
 	if rpcErr != nil {
@@ -119,7 +119,7 @@ func TestDeletePathToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":`),
+		json.RawMessage(`{"root_id":"work","path":`),
 	)
 
 	if result.variant != "" {
@@ -169,7 +169,7 @@ func TestDeletePathToolReturnsInvalidParamsForDirectoryNotEmpty(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"non-empty-dir","recursive":false}`),
+		json.RawMessage(`{"root_id":"work","path":"non-empty-dir","recursive":false}`),
 	)
 
 	if result.variant != "" {
@@ -195,7 +195,7 @@ func TestDeletePathToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"invalid"}`),
+		json.RawMessage(`{"root_id":"work","path":"invalid"}`),
 	)
 
 	if result.variant != "" {

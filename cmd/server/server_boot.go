@@ -69,16 +69,11 @@ func runWithIO(
 	if err != nil {
 		return categorizeRootError(err)
 	}
-	if rootRegistry == nil {
+	if rootRegistry == nil || len(rootRegistry.IDs()) == 0 {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
-	filesystem, err := rootRegistry.Lookup(rootRegistry.DefaultID())
-	if err != nil {
-		return config.NewError(config.CategoryStartupFailed, err)
-	}
-
 	toolRegistry, err := dependencies.newToolRegistry(
-		filesystem,
+		rootRegistry,
 		cfg.Files().MaxFileSize(),
 		capabilitiesFromReadOnly(cfg.Files().ReadOnly()),
 	)
