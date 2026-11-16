@@ -33,7 +33,7 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
-	registry := requireToolRegistry(t, filesystem, 1024*1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, filesystem, 1024*1024, false)
 
 	tests := []struct {
 		name       string
@@ -126,8 +126,8 @@ func TestFilesystemCallToolWireSuccesses(t *testing.T) {
 func TestFilesystemCallToolWireErrorsRemainSafe(t *testing.T) {
 	root := t.TempDir()
 	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
-	defaultRegistry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
-	readOnlyRegistry := requireToolRegistry(t, filesystem, 1024, capabilitiesFromReadOnly(true))
+	defaultRegistry := requireToolRegistry(t, filesystem, 1024, false)
+	readOnlyRegistry := requireToolRegistry(t, filesystem, 1024, true)
 
 	tests := []struct {
 		name     string
@@ -178,7 +178,7 @@ func runCallToolWireRequest(t *testing.T, registry *tools.Registry, params strin
 func TestFilesystemExpectedToolErrorWireContract(t *testing.T) {
 	root := t.TempDir()
 	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
-	registry := requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true})
+	registry := requireToolRegistry(t, filesystem, 1024, false)
 	for _, tc := range []struct{ params, category string }{
 		{`{"name":"get_path_info","arguments":{}}`, "invalid_arguments"},
 		{`{"name":"read_file","arguments":{"root_id":"work","path":"../outside.txt"}}`, "invalid_path"},

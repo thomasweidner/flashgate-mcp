@@ -83,7 +83,7 @@ Each client path is relative to the root specified for that operand. Results may
 
 ## Capability gating
 
-The default profile exposes all eight baseline tools. The read-only profile exposes exactly:
+The explicit `write` profile exposes all eight baseline tools. The default `read` profile exposes these three.
 
 ```text
 list_directory
@@ -93,7 +93,9 @@ get_path_info
 
 `write_file`, `create_directory`, `delete_path`, `copy_path`, and `move_path` are write-gated and absent from the read-only registry.
 
-For read-only client activation set `files.read_only = true` in TOML. Omitting that setting preserves the eight-tool profile. The read-only and negative STDIO smokes require identical generic Invalid params responses for every write-gated and removed legacy name.
+Omit `profiles.active` in TOML for `read`. The read and negative STDIO smokes
+require the same generic Invalid params response for write-gated and retired
+tool names.
 
 ## Errors
 
@@ -125,7 +127,8 @@ For a new Version 1.0 configuration:
 - every profile has an explicit tool-count, catalog-byte, approximate-token, and instruction budget;
 - a catalog fingerprint changes when protocol revision, extension set, profile, capability set, schema, annotations, or relevant configuration changes.
 
-The current `files.read_only` setting controls exposure until BL-103 implements profile configuration. Explicit root selection uses the shared [BL-102 resource contract](planning/implementation-contract.md#bl-102-filesystem-resource-contract).
+The [effective profile](configuration.md#profiles) controls current exposure.
+Explicit root selection uses the shared [BL-102 resource contract](planning/implementation-contract.md#bl-102-filesystem-resource-contract).
 
 ### Result payload classes
 

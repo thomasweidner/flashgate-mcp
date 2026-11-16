@@ -369,9 +369,13 @@ The read-only variant verifies the exact three-tool profile and tests generic
 Invalid params for all five write-capable names. The negative smoke covers
 removed names, request errors, notification silence, and safe traversal denial.
 
-The startup-negative smoke covers missing/empty/whitespace/relative roots, `.` with and without the development opt-in, invalid development/read-only values, missing and file roots, a valid absolute root, exit codes, empty stdout, safe stderr categories and cleanup.
+The startup-negative smoke covers invalid root shapes, the removed development
+and read-only keys, an unknown profile, missing and file roots, a valid absolute
+root, exit codes, empty stdout, safe stderr categories and cleanup.
 
-GitHub Actions runs default, read-only, negative JSON-RPC, and startup-negative smoke variants on both `windows-latest` and `ubuntu-latest`. The smoke scripts create per-run artifacts under `build/` and clean them before exit. Script output is CI diagnostic output; server stdout remains reserved for redirected JSON-RPC protocol messages.
+GitHub Actions runs explicit `write`, default `read`, negative JSON-RPC, and
+startup-negative smokes on `windows-latest` and `ubuntu-latest`. Smoke scripts
+clean up per-run artifacts and capture server stdout as JSON-RPC.
 
 Limit and redaction behavior is primarily covered by Go unit tests. Additional limit-negative smoke coverage can be added later if it can be done without broad smoke-script refactoring.
 
@@ -385,7 +389,7 @@ rejected mixed object/part results, multipart byte counts, pre-serialization
 limits, and lossless UTF-8 or explicit encoding failure in both profiles.
 
 The `tools/list` wire test verifies schema and annotation exposure in both
-profiles. It pins 2517/2482 bytes for read-only and 6808/6773 bytes for default
+profiles. It pins 2517/2482 bytes for `read` and 6808/6773 bytes for `write`
 (response/result). The existing benchmark ceilings and historical comparison
 fixtures remain the historical baseline.
 
@@ -463,6 +467,12 @@ Functional gates such as tests, builds, vet, lint, protocol smokes, and parser c
 Every performance measurement report records the `Europe/Vienna` time window, start and end times, and whether known or unusual additional host load was present. A baseline is rejected if such load is known or observed even inside the nominally allowed interval. Contaminated runs are retained as diagnosis evidence without being approved, compared for regression, or used to tune budgets. Ordinary wrapper runs may continue but are marked contaminated; they cannot record a baseline.
 
 ## Current Tested Packages
+
+Profile tests verify exact grants and derived risk, snapshot isolation, and
+read and write discovery and calls on one or more named roots. Startup tests
+reject unsupported compositions and missing or over-budget wire bindings.
+The wire gate tests reference read payloads at 64 KiB. The instance retains
+its separate file and protocol limits.
 
 Currently tested:
 

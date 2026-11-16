@@ -419,7 +419,7 @@ separate authorization. The published v0.3.0 identity is retained.
 | Family and BL binding | Required reuse, target boundary, and retrofit |
 |---|---|
 | MCP, protocol, and results — BL-090, BL-201, BL-204, BL-207–BL-219, BL-257–BL-258, BL-371 | Keep domain results protocol-neutral. BL-090 owns one bounded result lifecycle; BL-218 adapts it to negotiated MCP resource handoff. Preserve exact revision negotiation and conformance, JSON Schema 2020-12, fingerprint/cache isolation, and payload single-transmission rules. Retrofit existing `read_file` and other heavy responses; do not advertise a revision before its gates pass. |
-| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Reuse named roots, `files.read_only` and current path controls in the typed TOML model. Migrate direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context. Enforce authorization at dispatch. |
+| Policy, execution context, named roots, configuration, and audit — BL-101–BL-111, BL-159–BL-166, BL-233, BL-236, BL-239, BL-352, BL-373 | Build one immutable request/execution context, one server-side authorization decision before dispatch, one configuration model, and one correlation lifecycle. Reuse named roots, effective profiles and current path controls in the typed TOML model. Migrate direct MCP-to-filesystem dispatch. BL-101–BL-110 and future domains extend and consume the central model for their own fields and acceptance. Bind handles, cursors, caches, and resources to the effective context. Enforce authorization at dispatch. |
 | Capability and authorization verification — BL-100, BL-171 | Use the [BL-100 functional model](#bl-100-functional-capability-model) for explicit functional requirements. BL-171 verifies that MCP annotations confer no grants through the central BL-159 decision. |
 | Filesystem — BL-036–BL-067, BL-346 | Extend `internal/fs` and the existing `internal/security` path guard. Use named root IDs and relative paths, bounded reads/writes/trees, existing hash and tree primitives, and the shared result lifecycle. Migrate the current eight-tool contracts where their owners require it. |
 | Search — BL-068–BL-082 | Extend the accepted `search_paths` and `search_text` public families over confined roots, bounded scanning, pages, and context-bound cursors. Pure Go is the portable baseline. Do not add a public tool per backlog row. |
@@ -453,9 +453,9 @@ requirements of each successor and the
 [traceability matrix](architecture-traceability.md#core-policy-context-catalog-and-state-foundation)
 for integration boundaries.
 
-The current controls are the `files.read_only` setting, server
-bootstrap registration and the current MCP call path. BL-103 owns migrating
-that setting, BL-108 owns per-root grant composition, BL-110 owns effective
+BL-100 originally preserved the `files.read_only` setting and server
+bootstrap. BL-103 replaces that setting and binds the current registry to
+explicit grants. BL-108 owns per-root grant composition, BL-110 owns effective
 registration, and BL-159 owns functional enforcement alongside all other
 checks before dispatch. BL-236 carries the inputs across execution backends,
 and BL-239 applies the effective context to state and handles. BL-100 adds
@@ -470,6 +470,31 @@ coverage, STDIO, source and documentation gates. BL-111, BL-160 and BL-161
 own runtime visibility, direct-call and root negatives. BL-256 owns
 effective-composition CI. Independent terminal review is required before
 closing BL-100.
+
+## BL-103 capability profiles and risk policy
+
+**Role and prerequisites.** Apply [ADR-009](../adr/capability-profiles.md)
+using the BL-100 catalog and all-rights evaluator, BL-101/102 root binding
+and operands, BL-233 typed TOML, BL-374 configuration protection, and the
+BL-205/214/215 executable wire and catalog gates.
+
+**Retrofit.** Replace `files.read_only` and the boolean tool selection in
+`internal/config` and `cmd/server`. Use one immutable policy snapshot for the
+existing STDIO registry and dispatch. Replace the retired capability IDs at
+all active consumers. Preserve tool names, schemas, root and protection
+checks, generic unavailable-tool errors, and protocol revision eligibility.
+
+**Acceptance.** Validate all definitions and the explicit composition before
+startup. Require both the operation's complete grants and a risk class within
+the ceiling. Resolve an explicit high-risk ceiling in the generic model. Admit
+only measured effective combinations for the current runtime and require all
+separate operation security controls. Exercise real catalog and direct-call
+parity, missing bindings, protected resources and ordinary siblings on Windows
+and Linux. Later owners
+declare their own operation variants, risk floors, context and negative
+fallback tests, and extend the executable fixtures and budgets before
+activation. BL-110/159/236/239 own the later catalog, authorization, context,
+and state boundaries respectively.
 
 ## BL-101 named-root registry
 

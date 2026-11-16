@@ -153,7 +153,7 @@ func TestRunMainActualConfigurationFailuresAreSafe(t *testing.T) {
 	}{
 		{"missing config", filepath.Join(root, "absent.toml"), config.CategoryMissingConfig},
 		{"relative override", "private.toml", config.CategoryUntrustedConfig},
-		{"missing root", writeConfig(t, "[files]\nread_only = true\n"), config.CategoryMissingRoot},
+		{"missing root", writeConfig(t, "[files]\n"), config.CategoryMissingRoot},
 		{"empty root", writeConfig(t, configDocument(t, "", "")), config.CategoryInvalidRoot},
 		{"missing filesystem root", writeConfig(t, configDocument(t, filepath.Join(root, "missing"), "")), config.CategoryRootNotFound},
 		{"file root", writeConfig(t, configDocument(t, rootFile, "")), config.CategoryRootNotDirectory},
@@ -193,7 +193,7 @@ func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 	path := writeConfig(t, configDocument(t, active, "roots.zzz.path = "+quotedConfigPath(t, missing)+"\n"))
 	dependencies := defaultBootstrapDependencies(path)
 	registryCalls := 0
-	dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) {
+	dependencies.newToolRegistry = func(fs.FileSystem, int64, config.EffectiveProfile) (*tools.Registry, error) {
 		registryCalls++
 		return tools.NewRegistry(), nil
 	}
@@ -223,7 +223,7 @@ func TestRunWithIOPropagatesToolRegistrationFailure(t *testing.T) {
 	path := writeConfig(t, configDocument(t, t.TempDir(), ""))
 	dependencies := defaultBootstrapDependencies(path)
 	var registrationErr error
-	dependencies.newToolRegistry = func(filesystem fs.FileSystem, _ int64, capabilities toolCapabilities) (*tools.Registry, error) {
+	dependencies.newToolRegistry = func(filesystem fs.FileSystem, _ int64, capabilities config.EffectiveProfile) (*tools.Registry, error) {
 		registry, err := createToolRegistry(filesystem, 0, capabilities)
 		if registry != nil || err == nil || !strings.Contains(err.Error(), "register read_file") {
 			t.Fatalf("expected read_file contract registration to fail, registry=%v error=%v", registry, err)
@@ -282,7 +282,7 @@ func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) 
 			return dependencies
 		},
 		"nil registry": func(dependencies bootstrapDependencies) bootstrapDependencies {
-			dependencies.newToolRegistry = func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error) { return nil, nil }
+			dependencies.newToolRegistry = func(fs.FileSystem, int64, config.EffectiveProfile) (*tools.Registry, error) { return nil, nil }
 			return dependencies
 		},
 		"nil router": func(dependencies bootstrapDependencies) bootstrapDependencies {
@@ -349,7 +349,7 @@ func assertNoHostPathLeak(t *testing.T, output string) {
 }
 
 func TestStartupBindsOverlappingRootsAndHardlinks(t *testing.T) {
-	for _, profile := range []string{"read_only = false\n", "read_only = true\n"} {
+	for _, profile := range []string{"[profiles]\nactive = 'write'\n", ""} {
 		for _, aliasRoot := range []bool{false, true} {
 			root := t.TempDir()
 			path := filepath.Join(root, "private-config.toml")
@@ -399,7 +399,7 @@ func TestDocumentedTemplateStartsServer(t *testing.T) {
 	input := strings.NewReader("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"template\",\"version\":\"1\"}}}\n")
 	deps := defaultBootstrapDependencies(path)
 	cfg, err := deps.loadConfig()
-	if err != nil || cfg.Files().Roots()[0].Path != filepath.Clean(root) || !cfg.Files().ReadOnly() {
+	if err != nil || cfg.Files().Roots()[0].Path != filepath.Clean(root) || cfg.Profile().ID() != config.ProfileRead {
 		t.Fatalf("template did not validate with a bound root: %v", err)
 	}
 	if err := runWithIO(context.Background(), input, &stdout, &stderr, deps); err != nil {
@@ -419,7 +419,7 @@ func TestRunWithIOUsesExplicitNamedRoots(t *testing.T) {
 	for dir, content := range map[string]string{work: "work payload", archive: "archive payload"} {
 		testconfig.Write(t, filepath.Join(dir, "input.txt"), []byte(content))
 	}
-	path := writeConfig(t, configDocument(t, work, "roots.archive.path = "+quotedConfigPath(t, archive)+"\n"))
+	path := writeConfig(t, configDocument(t, work, "roots.archive.path = "+quotedConfigPath(t, archive)+"\n"+profileSettings(false)))
 	input := strings.NewReader(
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}` + "\n" +
 			`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +

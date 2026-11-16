@@ -52,7 +52,7 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 - eight filesystem tools;
 - an immutable registry of [named data roots](configuration.md#named-roots)
   with an explicit default for the current tools;
-- optional read-only tool registration through `files.read_only`;
+- explicit capability profiles and risk policy with a default `read` catalog;
 - central path validation and filesystem abstraction;
 - hard protocol, argument, filesystem, and response limits;
 - redacted diagnostics on stderr;
@@ -93,8 +93,6 @@ configuration protection and filesystem effect coordination.
 Not yet implemented:
 
 - public root selection and discovery;
-- general profiles/capabilities;
-- safe read-only as the profile-system default;
 - search;
 - Operations/Job Manager;
 - process observation/management;
@@ -326,8 +324,9 @@ validates definitions, explicit grants, and per-operation requirements in
 immutable catalog snapshots. A functional decision checks all required IDs
 independently of transport, backend, and technical support. BL-159 composes
 that decision with the other authorization controls, and BL-110 owns the
-effective catalog. The current STDIO registry continues to use
-`files.read_only` until the designated retrofit owners migrate it.
+effective catalog. The current STDIO registry uses the immutable effective
+profile. The [current STDIO rules](configuration.md#profiles)
+admit only measured grant combinations and keep root checks independent.
 
 Version 1.0 safe default:
 

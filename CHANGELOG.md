@@ -12,6 +12,10 @@ the intended release date. Publication evidence is separate.
 
 ### Breaking Changes
 
+- STDIO starts with the `read` profile. Select `profiles.active = "write"`
+  explicitly for the writable catalog. `files.read_only` and the seven
+  retired capability spellings are rejected. See the [profile cutover](docs/migration.md#capability-profile-cutover).
+
 - Configure named roots in `[files.roots.<id>]` and set `files.default_id`.
   Startup validates every root before enabling the filesystem tools.
   Replace the former `[filesystem]` table and CWD opt-in using the
@@ -25,6 +29,10 @@ the intended release date. Publication evidence is separate.
 
 ### Changed
 
+- Resolve built-in and custom profiles to immutable grants and apply a
+  separate restrictive risk ceiling. Admit effective catalogs through their
+  measured wire bindings and preserve the selected configuration's protection.
+
 - Protect the selected TOML configuration and its aliases from ordinary
   filesystem tool reads, copies and mutations. Bootstrap can accept a safely
   enforceable overlapping data root. The OS governs source permissions and
@@ -32,7 +40,6 @@ the intended release date. Publication evidence is separate.
 
 - Define the internal functional capability model and successor acceptance
   for profiles, root policy, effective catalogs, domains, and providers.
-  Current STDIO tool exposure follows `files.read_only`.
 
 - Runtime startup now requires one trusted TOML configuration file. This
   pre-1.0 breaking change replaces the old `MCP_*` runtime environment

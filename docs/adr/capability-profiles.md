@@ -13,11 +13,24 @@ As host functionality expands, exposing every tool in every deployment would inc
 The effective catalog uses functional rights, profile policy, and independently
 verified technical support. BL-159 owns the authoritative execution decision.
 
-Possible future profiles include `safe-read`, `filesystem-write`, and `admin`.
-BL-103 owns profile names, risk classifications such as `high-risk`,
-`destructive`, and `interactive`, and the conditions for activation. BL-108
-owns per-root capability mapping. The existing `files.read_only` TOML
-setting remains the current restricted-profile control.
+BL-103 defines the default `read` profile with `files.read` and the explicit
+`write` profile with `files.read` and `files.write`. Custom profile names
+carry only declared grants. Profile definitions are fully validated even
+when inactive. An explicit base may select additional named grant sets
+without recursive inheritance. BL-108 owns per-root capability mapping.
+
+Each reviewed capability definition carries a risk floor. An operation takes
+the highest floor of its requirements and may declare a higher floor. The
+configuration ceiling can restrict eligible operations. Both the complete
+functional grant and the independent risk check must succeed. External
+process control has a high-risk floor and retains its separate policy gates.
+The default ceiling is `mutation`. The generic profile resolver accepts an
+explicit `high` ceiling while host admission still requires a measured
+executable view and the applicable operation policies.
+
+STDIO startup admits only effective grant and risk combinations covered by
+the executable wire and catalog gates. Newly defined rights and technically
+available implementations require their own activation bindings.
 
 Server-side checks remain authoritative. MCP tool annotations are not authorization.
 
@@ -25,19 +38,20 @@ The target supports multiple named roots addressed by explicit root ID and relat
 
 ### Functional capability contract
 
-BL-100 defines the following stable basis in `internal/capability`.
+BL-100 supplies the evaluator in `internal/capability`. BL-103 sets the
+following public IDs for the pre-1.0 cutover.
 These definitions are available to Go consumers. Activation requires an
 approved operation mapping, effective grants, and all applicable policy gates.
 
 | ID | Functional scope |
 |---|---|
-| `filesystem.read` | Inspect filesystem metadata and read filesystem content. |
-| `filesystem.write` | Create, modify, move or remove filesystem data. |
-| `search.execute` | Execute a bounded search. |
-| `process.observe` | Inspect permitted host process information. |
-| `process.manage` | Operate on server-managed processes. |
-| `process.control.external` | Control processes outside the server-managed lifecycle, subject to separate high-risk policy. |
-| `command.execute` | Execute a server-approved typed command. |
+| `files.read` | Inspect filesystem metadata and read filesystem content. |
+| `files.write` | Create, modify, move or remove filesystem data. |
+| `search.run` | Run a bounded search. |
+| `processes.read` | Inspect permitted host process information. |
+| `processes.manage` | Operate on server-managed processes. |
+| `processes.control` | Control processes outside the server-managed lifecycle, subject to separate high-risk policy. |
+| `commands.run` | Run a server-approved typed command. |
 | `system.read` | Read explicitly permitted system information. |
 
 An ID has at least two dot-separated segments. Each segment starts with an
@@ -96,7 +110,7 @@ Least-privilege tool exposure reduces risk and schema/token overhead while givin
 - `tools/list` varies by effective profile and capabilities.
 - Negative capability tests are required.
 - Direct tool calls must still be authorized server-side.
-- Profile migration must cover configurations with one or more named roots.
+- Profile admission covers configurations with one or more named roots.
 
 ## Security Impact
 
@@ -111,13 +125,11 @@ out of caller-facing responses.
 
 ## Deferred Decisions
 
-- final profile names and profile field definitions in the [central configuration model](runtime-modes.md#configuration-contract)
 - whether a supported legacy client justifies optional deprecated MCP Roots compatibility
 
-## Current restricted profile
+## Current STDIO profiles
 
-Set `files.read_only = true` explicitly to expose only `list_directory`,
-`read_file`, and `get_path_info`. The five mutation names and five removed
-names return the same generic Invalid params contract in STDIO smoke tests.
-This is a restricted baseline, not a general profile framework or an implicit
-read-only default. See [client setup](../client-setup.md).
+The default `read` profile exposes `list_directory`, `read_file`, and
+`get_path_info`. The five mutation names return generic Invalid params in
+that profile. See the [configuration reference](../configuration.md#profiles)
+and [client setup](../client-setup.md).

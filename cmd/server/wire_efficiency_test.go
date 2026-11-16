@@ -20,16 +20,6 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
-const wireFileLimit = 64 * 1024
-
-type wireSnapshot struct {
-	Revision  string                                `json:"revision"`
-	Profile   string                                `json:"profile"`
-	Entry     json.RawMessage                       `json:"entry"`
-	ToolsList json.RawMessage                       `json:"toolsList"`
-	Calls     map[string]map[string]json.RawMessage `json:"calls"`
-}
-
 type serverWireCase struct {
 	id           benchmark.WireIdentity
 	args         string
@@ -63,7 +53,7 @@ func TestMCPConformanceWireEfficiency(t *testing.T) {
 
 func loadServerWireBudgets(t *testing.T) benchmark.WireBudgets {
 	t.Helper()
-	budgets, err := benchmark.LoadWireBudgets(filepath.Join("..", "..", "benchmarks", "wire-budgets.json"))
+	budgets, err := benchmark.LoadWireBudgets(filepath.Join("testdata", "wire-budgets.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +81,7 @@ func runServerWireGate(t *testing.T, budgets benchmark.WireBudgets, mutation wir
 				return fmt.Errorf("missing or duplicate wire path %s", path)
 			}
 			usedPaths[path] = true
-			registry, _ := mcpRegistryWithLimit(t, profile == "read-only", wireFileLimit)
+			registry, _ := mcpRegistryWithLimit(t, profile == "read", wireFileLimit)
 			if mutation.registry != nil {
 				if err := mutation.registry(registry); err != nil {
 					return err
@@ -195,7 +185,7 @@ func serverWireCases(base benchmark.WireIdentity, registry *tools.Registry) ([]s
 		return nil, fmt.Errorf("snapshot revision or profile mismatch")
 	}
 	testCases := mcpToolCases()
-	if err := mcpInventory(mcpDefinitions(registry), testCases, base.Profile == "read-only"); err != nil {
+	if err := mcpInventory(mcpDefinitions(registry), testCases, base.Profile == "read"); err != nil {
 		return nil, err
 	}
 	entry, args := "initialize", `{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"contract","version":"1"}}`
@@ -282,15 +272,6 @@ func serverWireCases(base benchmark.WireIdentity, registry *tools.Registry) ([]s
 func wireControlCase(id benchmark.WireIdentity, route, name, args string, want json.RawMessage) serverWireCase {
 	id.Route, id.Fixture = route, name
 	return serverWireCase{id: id, args: args, want: want, fields: revisionWireFields(want), encode: 1}
-}
-
-func wireVariantBinding(variant tools.ResultVariant) string {
-	kinds := []string{string(variant.ObjectKind)}
-	for _, part := range variant.Parts {
-		kinds = append(kinds, string(part))
-	}
-	return fmt.Sprintf("%s/%s/%s/%d/%d", strings.Join(kinds, "+"), variant.Mode, variant.State,
-		variant.MaxObjectBytes, variant.MaxPayloadBytes)
 }
 
 func wireField(role benchmark.WireRole, path ...string) benchmark.WireField {
@@ -472,7 +453,7 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 			return wireFailingFilesystem{fmt.Errorf("%s: %w", wirePrivateMarker, fixture.backendError)}
 		}
 	}
-	registry, root := mcpWireRegistry(t, id.Profile == "read-only", wireFileLimit, limits, wrap)
+	registry, root := mcpWireRegistry(t, id.Profile == "read", wireFileLimit, limits, wrap)
 	if fixture.setup != nil {
 		if err := fixture.setup(root); err != nil {
 			return benchmark.WireFixture{}, err
@@ -634,14 +615,14 @@ func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 			b.Cases["tools/call/read_file/error/stale"] = b.Cases["tools/call/read_file/error/not_found"]
 		}, wireGateMutation{}},
 		{"missing candidate profile", "missing or duplicate wire path", func(b *benchmark.WireBudgets) {
-			delete(b.Paths, "candidate/2026-07-28/read-only/stdio-lf")
+			delete(b.Paths, "candidate/2026-07-28/read/stdio-lf")
 		}, wireGateMutation{}},
 		{"unapproved optional composition", "mismatched revision or effective profile", nil, wireGateMutation{cases: func(rows []serverWireCase) []serverWireCase {
-			rows[0].id.Profile = "default+process+command"
+			rows[0].id.Profile = "write+process+command"
 			return rows
 		}}},
 		{"candidate metadata on zero-revision budget", "revision bytes", func(b *benchmark.WireBudgets) {
-			b.Paths["candidate/2026-07-28/default/stdio-lf"] = benchmark.WirePathBudget{}
+			b.Paths["candidate/2026-07-28/write/stdio-lf"] = benchmark.WirePathBudget{}
 		}, wireGateMutation{}},
 		{"extra heavy copy", "payload copy trace changed", nil, wireGateMutation{registry: func(r *tools.Registry) error {
 			tool, _ := r.Get("read_file")

@@ -53,17 +53,17 @@ func TestMCPConformancePingSTDIO(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, profile := range []struct {
-		name, readOnly, debug string
-	}{{"default", "false", "false"}, {"read-only", "true", "true"}} {
+		name, debug string
+	}{{"write", "false"}, {"read", "true"}} {
 		t.Run(profile.name, func(t *testing.T) {
-			_, root := mcpRegistry(t, profile.readOnly == "true")
+			_, root := mcpRegistry(t, profile.name == "read")
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			level := "off"
 			if profile.debug == "true" {
 				level = "debug"
 			}
-			settings := "read_only = " + profile.readOnly + "\n[protocol]\nmax_message_bytes = 1024\n[logging]\nlevel = \"" + level + "\"\n"
+			settings := "[profiles]\nactive = '" + profile.name + "'\n[protocol]\nmax_message_bytes = 1024\n[logging]\nlevel = \"" + level + "\"\n"
 			configPath := writeConfig(t, configDocument(t, root, settings))
 			command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$", "--", configPath)
 			command.WaitDelay = time.Second

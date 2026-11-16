@@ -1,8 +1,8 @@
 # MCP conformance validation
 
 Native Go tests cover production revision `2025-11-25` and the compiled
-`2026-07-28` candidate under an injected test policy, each with default and
-read-only profiles. The candidate remains disabled in production. The
+`2026-07-28` candidate under an injected test policy, each with `read` and
+`write` profiles. The candidate remains disabled in production. The
 [protocol matrix](protocol.md) and [ADR-013](adr/mcp-compatibility.md) retain
 their existing activation gates.
 
@@ -88,7 +88,7 @@ New capabilities require explicit tests or justified non-applicability.
 
 The snapshot run compiles every registered tool's input and output schema in
 each matrix entry, validates the functional success and security inputs and wire
-`structuredContent`, and checks complete runtime/catalog parity in the default
+`structuredContent`, and checks complete runtime/catalog parity in the `write`
 profile. Input roots must be closed objects. Output roots describe success
 objects. Error responses follow the separate tool and JSON-RPC error tests.
 Future effective profiles extend the shared matrix under BL-110.

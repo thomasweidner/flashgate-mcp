@@ -17,10 +17,14 @@
       "required": true,
       "rootPathMustBeAbsolute": true,
       "rootIdPattern": "^[a-z][a-z0-9_]{0,63}$",
-      "maximumRoots": 256,
-      "codexReadOnlyExampleRequires": {
-        "tomlKey": "files.read_only",
-        "value": true
+      "maximumRoots": 256
+    },
+    "profileConfiguration": {
+      "activeTomlKey": "profiles.active",
+      "default": "read",
+      "builtinGrants": {
+        "read": ["files.read"],
+        "write": ["files.read", "files.write"]
       }
     }
   },

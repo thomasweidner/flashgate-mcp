@@ -226,7 +226,7 @@ Resource support is an adapter feature. Core domains return local result referen
 [Historical benchmark budgets](../../benchmarks/budgets.json) cap the
 original benchmark request, response and result fixtures. Those reference
 limits and versioned baselines retain their original meanings. The current
-[wire budgets](../../benchmarks/wire-budgets.json) cap complete captured
+[wire budgets](../../cmd/server/testdata/wire-budgets.json) cap complete captured
 frames, including framing. They also cap result values, revision-specific
 overhead, unique tool count, and catalog field totals. Each executable path
 selects its entry and catalog class by exact source policy, revision,
@@ -238,9 +238,9 @@ measure and bind the actual output:
 
 | Effective class | Catalog ceiling | Composition |
 |---|---|---|
-| R, safe read | `catalog-read-only` field and wire limits, with an additional planning ceiling of 750 approximate framed catalog tokens | Authorized read base only |
-| F, standard filesystem | `catalog-default` field and wire limits within the original planning envelope of about 2,000 approximate tokens | Explicit filesystem base with only the approved operations |
-| O, opt-in | At most the `catalog-default` field and wire limits for the whole effective view | Explicitly approved profile or composition for bounded search, process, command, diagnostics or other optional capabilities |
+| R, safe read | `catalog-read` field and wire limits, with an additional planning ceiling of 750 approximate framed catalog tokens | Authorized read base only |
+| F, standard filesystem | `catalog-write` field and wire limits within the original planning envelope of about 2,000 approximate tokens | Explicit filesystem base with only the approved operations |
+| O, opt-in | At most the `catalog-write` field and wire limits for the whole effective view | Explicitly approved profile or composition for bounded search, process, command, diagnostics or other optional capabilities |
 
 The wire JSON is the source for the named limits. Approximate tokens are
 `ceil(UTF8Bytes / 4)`. Apply this independently to the aggregate frame or
@@ -254,8 +254,9 @@ owner supports paginated discovery.
 
 The server first resolves the allowed base and optional capability components
 using the authorized principal, root, risk, backend, platform and protocol
-context. BL-103/110 define the accepted configurations. The safe default admits
-no optional component. Every opt-in combination needs an explicit finite
+context. BL-103 admits only the measured `read` and `write` STDIO catalogs
+until later owners bind additional executable combinations. The implicit base
+admits no optional component. Every opt-in combination needs an explicit finite
 binding for its effective set, including any authorized subsets with different
 wire contracts. A budget class cannot add visibility or execution rights.
 

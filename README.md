@@ -226,8 +226,8 @@ executable and data paths with your actual absolute paths.
 
 Copy the [TOML template](docs/flashgate-config.toml) to the executing user's
 `~/.flashgate/flashgate_config.toml`. Set `files.roots.work.path` to your existing
-data directory. The template selects `work` as the default and enables
-`files.read_only` for initial use.
+data directory. The template selects `work` as the default root. FlashGate
+starts with the `read` profile.
 See [runtime configuration](docs/configuration.md) for path and ownership rules.
 The client can launch with an empty argument array for that default or pass
 `--config` and an absolute path to a trusted alternate file.
@@ -328,7 +328,7 @@ client discover exactly these three tools in read-only mode, in order:
 3. `get_path_info`
 
 A client may display a server prefix on tool names. If write tools appear,
-check `read_only = true` in the TOML selected by this entry and reload it.
+check that the selected TOML uses the `read` profile and reload the client.
 
 Ask your client:
 
@@ -369,9 +369,9 @@ in the [tool reference](docs/tools.md).
 - **Server-side confinement:** relative tool paths pass lexical and effective
   containment checks. Traversal, absolute tool paths, and out-of-root resolution
   are rejected. Tools use the central filesystem abstraction and path guard.
-- **Explicit read-only operation.** `files.read_only = true` registers only the
-  three read tools. Write-capable names are unavailable even when called
-  directly. Tool annotations and visibility are not authorization.
+- **Read access by default.** The `read` profile admits three tools. Select
+  `profiles.active = "write"` explicitly to enable the writable catalog.
+  The same policy applies to discovery and direct calls.
 - **Restrictive path policy:** the examples deny hidden files, UNC paths,
   symlinks, junctions, and other reparse access. Listing filters denied entries.
   Enabling symlink following still cannot authorize an out-of-root target.

@@ -1,7 +1,7 @@
 # Client setup
 
 This guide connects an MCP client to the implemented FlashGate STDIO server.
-It uses an explicitly read-only root for initial acceptance. Client-specific
+It uses the default `read` profile for initial acceptance. Client-specific
 configuration syntax is not part of the FlashGate protocol contract; use the
 client's documented launch configuration rather than copying another client's
 configuration file wholesale.
@@ -45,7 +45,6 @@ Copy the [template](flashgate-config.toml) to the
 ```toml
 [files]
 default_id = "work"
-read_only = true
 
 [files.roots.work]
 path = 'C:\FlashGateData\ReadOnlyRoot'
@@ -59,9 +58,8 @@ See [runtime configuration](configuration.md) for all supported settings.
 ## Current read-only behavior
 
 The current tools require a configured root ID and relative path for every operand.
-Set `files.read_only = true` explicitly. The current default without that setting
-exposes eight tools; the planned safe-by-default profile system is not yet the
-implemented behavior.
+Omit `profiles.active` to use `read`. Operators can explicitly select `write`
+in the [profile configuration](configuration.md#profiles) when mutations are needed.
 
 Read-only discovery returns exactly these three tools, in this order:
 

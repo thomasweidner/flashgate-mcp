@@ -35,7 +35,7 @@ func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
 	s := cfg.Security()
 	p := cfg.Server()
 	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root)}}) || f.DefaultID() != "work" ||
-		f.ReadOnly() || s.AllowHiddenFiles() ||
+		cfg.Profile().ID() != ProfileRead || s.AllowHiddenFiles() ||
 		s.AllowUNCPaths() || s.FollowSymlinks() || cfg.Role() != Direct {
 		t.Fatal("default filesystem or runtime policy drift")
 	}
@@ -87,15 +87,16 @@ func TestDecodeRejectsInvalidDocuments(t *testing.T) {
 		{"legacy group", strings.Replace(root, "[files]", "[filesystem]", 1), CategoryInvalidConfig},
 		{"legacy group with named roots", root + "[filesystem]\n", CategoryInvalidConfig},
 		{"legacy CWD opt-in", root + "allow_cwd_root = true\n", CategoryInvalidConfig},
-		{"case alias", root + "read_only = true\nRead_Only = false\n", CategoryInvalidConfig},
+		{"case alias", root + "[profiles]\nactive = 'read'\nActive = 'write'\n", CategoryInvalidConfig},
 		{"case alias in inline table", "files = { Default_ID = \"work\" }\n", CategoryInvalidConfig},
 		{"case alias in table header", "[Files]\ndefault_id = \"work\"\n", CategoryInvalidConfig},
 		{"case collision", root + "roots.Work.path = 'x'\n", CategoryInvalidConfig},
 		{"empty unknown domain", root + "[capabilities]\n", CategoryInvalidConfig},
 		{"unknown policy", root + "[security]\nadmin = true\n", CategoryInvalidConfig},
 		{"unknown domain", root + "[capabilities]\nwrite = true\n", CategoryInvalidConfig},
-		{"duplicate table", root + "[files]\nread_only = true\n", CategoryInvalidConfig},
-		{"invalid boolean", root + "read_only = \"true\"\n", CategoryInvalidConfig},
+		{"duplicate table", root + "[files]\nmax_write_bytes = 1\n", CategoryInvalidConfig},
+		{"invalid boolean", root + "[security]\nfollow_symlinks = \"true\"\n", CategoryInvalidConfig},
+		{"retired read-only key", root + "read_only = true\n", CategoryInvalidConfig},
 		{"zero limit", root + "max_write_bytes = 0\n", CategoryInvalidConfig},
 		{"fractional limit", root + "max_write_bytes = 1.0\n", CategoryInvalidConfig},
 		{"negative limit", root + "[protocol]\nmax_message_bytes = -1\n", CategoryInvalidConfig},
@@ -219,14 +220,14 @@ func TestDecodeManagedEndpointPolicy(t *testing.T) {
 func TestLoadUsesExactlyTheTrustedOverride(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(t.TempDir(), "server.toml")
-	document := documentWithRoot(t, root) + "read_only = true\n"
+	document := documentWithRoot(t, root) + "[profiles]\nactive = 'write'\n"
 	testconfig.Write(t, path, []byte(document))
 	t.Setenv("MCP_ROOT", "/legacy")
 	t.Setenv("MCP_READ_ONLY", "false")
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("USERPROFILE", t.TempDir())
 	cfg, err := Load(Source{Role: Direct, Path: path})
-	if err != nil || cfg.Files().Roots()[0].Path != filepath.Clean(root) || !cfg.Files().ReadOnly() {
+	if err != nil || cfg.Files().Roots()[0].Path != filepath.Clean(root) || cfg.Profile().ID() != ProfileWrite {
 		t.Fatalf("explicit TOML source was not honored: %v", err)
 	}
 	_, err = Load(Source{Role: Direct, Path: filepath.Join(filepath.Dir(path), "absent.toml")})

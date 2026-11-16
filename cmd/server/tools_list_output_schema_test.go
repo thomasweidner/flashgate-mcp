@@ -25,18 +25,18 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 	}
 	tests := []struct {
 		name                  string
-		capabilities          toolCapabilities
+		readOnly              bool
 		toolCount             int
 		expectedResponseBytes int
 		expectedResultBytes   int
 	}{
-		{"read-only", capabilitiesFromReadOnly(true), 3, 2517, 2482},
-		{"default", toolCapabilities{filesystemWrite: true}, 8, 6808, 6773},
+		{"read", true, 3, 2517, 2482},
+		{"write", false, 8, 6808, 6773},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			registry := requireToolRegistry(t, noopFileSystem{}, 1024, tc.capabilities)
+			registry := requireToolRegistry(t, noopFileSystem{}, 1024, tc.readOnly)
 			request := bytes.NewBufferString("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n")
 			output := &bytes.Buffer{}
 			server := mcpserver.New(request, output, createRouter("test-server", "test-version", registry))
@@ -124,17 +124,17 @@ func TestToolsListWireOutputSchemasAndPayloadSizes(t *testing.T) {
 
 func BenchmarkToolsListWireSerialization(b *testing.B) {
 	tests := []struct {
-		name         string
-		capabilities toolCapabilities
+		name     string
+		readOnly bool
 	}{
-		{"read-only", capabilitiesFromReadOnly(true)},
-		{"default", toolCapabilities{filesystemWrite: true}},
+		{"read", true},
+		{"write", false},
 	}
 
 	for _, tc := range tests {
 		tc := tc
 		b.Run(tc.name, func(b *testing.B) {
-			registry := requireToolRegistry(b, noopFileSystem{}, 1024, tc.capabilities)
+			registry := requireToolRegistry(b, noopFileSystem{}, 1024, tc.readOnly)
 			sampleOutput := &bytes.Buffer{}
 			sampleServer := mcpserver.New(
 				bytes.NewBufferString("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n"),

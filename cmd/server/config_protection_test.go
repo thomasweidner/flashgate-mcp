@@ -24,7 +24,7 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 	const marker = "synthetic-config-content-374"
 	source := filepath.Join(dir, "config.toml")
 	document := "# " + marker + "\n" + configDocument(t, root,
-		"max_file_size = 512\nroots.settings.path = "+quotedConfigPath(t, dir)+"\n[security]\nfollow_symlinks = true\n")
+		"max_file_size = 512\nroots.settings.path = "+quotedConfigPath(t, dir)+"\n[security]\nfollow_symlinks = true\n"+profileSettings(false))
 	testconfig.Write(t, source, []byte(document))
 	info, err := os.Stat(source)
 	if err != nil {
@@ -39,7 +39,13 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := requireToolRegistry(t, rootRegistry, cfg.Files().MaxFileSize(), toolCapabilities{filesystemWrite: true})
+	registry, err := createToolRegistry(rootRegistry, cfg.Files().MaxFileSize(), cfg.Profile())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := admitProfile(registry, cfg.Profile().Policy()); err != nil {
+		t.Fatal(err)
+	}
 	output := filepath.Join(dir, "output.txt")
 	ordinary := filepath.Join(dir, "ordinary.txt")
 	testconfig.Write(t, ordinary, []byte("ordinary"))

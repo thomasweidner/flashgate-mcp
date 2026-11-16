@@ -11,7 +11,7 @@ import (
 )
 
 func TestID(t *testing.T) {
-	for _, id := range []capability.ID{"a.b", "a1.b2", "process.control.external", capability.ID("a." + strings.Repeat("b", 126))} {
+	for _, id := range []capability.ID{"a.b", "a1.b2", "processes.control", "example.a.b", capability.ID("a." + strings.Repeat("b", 126))} {
 		if !id.Valid() {
 			t.Errorf("valid ID %q rejected", id)
 		}
@@ -30,8 +30,8 @@ func TestID(t *testing.T) {
 func TestCatalog(t *testing.T) {
 	definitions := capability.BaseDefinitions()
 	want := []capability.ID{
-		"filesystem.read", "filesystem.write", "search.execute", "process.observe",
-		"process.manage", "process.control.external", "command.execute", "system.read",
+		"files.read", "files.write", "search.run", "processes.read",
+		"processes.manage", "processes.control", "commands.run", "system.read",
 	}
 	if len(definitions) != len(want) {
 		t.Fatalf("got %d definitions, want %d", len(definitions), len(want))
@@ -52,7 +52,7 @@ func TestCatalog(t *testing.T) {
 	if got != original {
 		t.Fatal("catalog did not preserve the validated definition")
 	}
-	if _, ok := catalog.Lookup("filesystem"); ok {
+	if _, ok := catalog.Lookup("files"); ok {
 		t.Fatal("namespace resolved as a right")
 	}
 	if _, ok := (capability.Catalog{}).Lookup(original.ID); ok {
@@ -61,15 +61,15 @@ func TestCatalog(t *testing.T) {
 }
 
 func TestCatalogRejectsInvalidDefinitions(t *testing.T) {
-	read := capability.Definition{ID: capability.FilesystemRead, Description: "Read files."}
-	conflict := capability.Definition{ID: read.ID, Description: "Something else."}
+	read := capability.Definition{ID: capability.FilesRead, Description: "Read files.", MinimumRisk: capability.RiskRead}
+	conflict := capability.Definition{ID: read.ID, Description: "Something else.", MinimumRisk: capability.RiskRead}
 	cases := []struct {
 		name        string
 		definitions []capability.Definition
 		want        error
 	}{
 		{"empty", nil, capability.ErrInvalidCatalog},
-		{"invalid ID", []capability.Definition{read, {ID: "filesystem.*", Description: "Wildcard."}}, capability.ErrInvalidID},
+		{"invalid ID", []capability.Definition{read, {ID: "filesystem.*", Description: "Wildcard.", MinimumRisk: capability.RiskRead}}, capability.ErrInvalidID},
 		{"duplicate", []capability.Definition{read, read}, capability.ErrDuplicateDefinition},
 		{"conflict takes precedence", []capability.Definition{read, read, conflict}, capability.ErrConflictingDefinition},
 	}
@@ -78,7 +78,7 @@ func TestCatalogRejectsInvalidDefinitions(t *testing.T) {
 			name        string
 			definitions []capability.Definition
 			want        error
-		}{"description " + description, []capability.Definition{read, {ID: read.ID, Description: description}}, capability.ErrInvalidDefinition})
+		}{"description " + description, []capability.Definition{read, {ID: read.ID, Description: description, MinimumRisk: capability.RiskRead}}, capability.ErrInvalidDefinition})
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestCatalogRejectsInvalidDefinitions(t *testing.T) {
 
 func TestSetOperations(t *testing.T) {
 	c := mustCatalog(t, capability.BaseDefinitions()...)
-	read, write, search := capability.FilesystemRead, capability.FilesystemWrite, capability.SearchExecute
+	read, write, search := capability.FilesRead, capability.FilesWrite, capability.SearchRun
 	input := []capability.ID{write, read}
 	granted := mustSet(t, c, input...)
 	input[1] = search
@@ -138,7 +138,7 @@ func TestSetOperations(t *testing.T) {
 
 func TestConstructorsRejectUnusableRights(t *testing.T) {
 	c := mustCatalog(t, capability.BaseDefinitions()...)
-	read := capability.FilesystemRead
+	read := capability.FilesRead
 	for _, tc := range []struct {
 		ids  []capability.ID
 		want error
@@ -171,8 +171,8 @@ func TestDeclarativeExtension(t *testing.T) {
 	const future capability.ID = "example.inspect"
 	const privilegedLooking capability.ID = "example.inspect.admin"
 	definitions := append(capability.BaseDefinitions(),
-		capability.Definition{ID: future, Description: "Inspect a synthetic fixture."},
-		capability.Definition{ID: privilegedLooking, Description: "Inspect synthetic administrative data."},
+		capability.Definition{ID: future, Description: "Inspect a synthetic fixture.", MinimumRisk: capability.RiskRead},
+		capability.Definition{ID: privilegedLooking, Description: "Inspect synthetic administrative data.", MinimumRisk: capability.RiskRead},
 	)
 	extended := mustCatalog(t, definitions...)
 	if _, ok := extended.Lookup(future); !ok {
@@ -181,7 +181,7 @@ func TestDeclarativeExtension(t *testing.T) {
 	if _, err := base.NewRequirement(future); !errors.Is(err, capability.ErrUnknownID) {
 		t.Fatalf("base accepted an unknown right: %v", err)
 	}
-	read := capability.FilesystemRead
+	read := capability.FilesRead
 	input := []capability.ID{future, read}
 	requirement, err := extended.NewRequirement(input...)
 	if err != nil {
@@ -229,7 +229,7 @@ func TestDeclarativeExtension(t *testing.T) {
 
 func TestConcurrentEvaluation(t *testing.T) {
 	c := mustCatalog(t, capability.BaseDefinitions()...)
-	read, write := capability.FilesystemRead, capability.FilesystemWrite
+	read, write := capability.FilesRead, capability.FilesWrite
 	req, err := c.NewRequirement(read, write)
 	if err != nil {
 		t.Fatal(err)
@@ -240,7 +240,7 @@ func TestConcurrentEvaluation(t *testing.T) {
 		group.Go(func() {
 			for range 100 {
 				ids := grants.IDs()
-				ids[0] = capability.CommandExecute
+				ids[0] = capability.CommandsRun
 				if _, known := c.Lookup(read); !known || !req.SatisfiedBy(grants) {
 					t.Error("shared immutable input changed")
 				}

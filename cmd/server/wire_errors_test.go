@@ -197,7 +197,7 @@ func wireRPCErrors(base benchmark.WireIdentity, cases map[string]mcpToolCase) []
 		plan = append(plan, wireRPCError(base, "tools/call", "removed-"+name,
 			fmt.Sprintf(`{"name":%q,"arguments":{}}`, name), wireInvalidParams))
 	}
-	if base.Profile == "read-only" {
+	if base.Profile == "read" {
 		for _, name := range slices.Sorted(maps.Keys(cases)) {
 			if cases[name].readOnly {
 				continue

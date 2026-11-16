@@ -28,7 +28,7 @@ func TestFilesystemNamedRootWire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := requireToolRegistry(t, filesystem, cfg.Files().MaxFileSize(), capabilitiesFromReadOnly(false))
+	registry := requireToolRegistry(t, filesystem, cfg.Files().MaxFileSize(), false)
 	router := mcpRouter(registry, false)
 	call := func(name, args string) string {
 		t.Helper()
@@ -94,7 +94,7 @@ func TestFilesystemNamedRootWire(t *testing.T) {
 			t.Errorf("denied operation affected the source: %v", err)
 		}
 	}
-	readOnly := requireToolRegistry(t, filesystem, cfg.Files().MaxFileSize(), capabilitiesFromReadOnly(true))
+	readOnly := requireToolRegistry(t, filesystem, cfg.Files().MaxFileSize(), true)
 	for _, name := range []string{"write_file", "create_directory", "delete_path", "copy_path", "move_path"} {
 		if _, ok := readOnly.Get(name); ok {
 			t.Errorf("root selection enabled %s in read-only mode", name)

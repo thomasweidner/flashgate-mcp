@@ -1,6 +1,6 @@
 # Filesystem MCP tools
 
-FlashGate MCP exposes eight filesystem tools in the default profile, in this exact order:
+The explicit `write` profile exposes eight filesystem tools in this order:
 
 ```text
 list_directory
@@ -15,8 +15,8 @@ move_path
 
 The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
 
-For initial read-only client setup, set `files.read_only = true` and configure
-an existing absolute data directory under a root ID such as `work`.
+The default `read` profile requires an existing absolute data directory
+under a root ID such as `work`.
 See [client setup](client-setup.md).
 
 Every operand supplies an exact configured root ID and a nonblank path
@@ -51,7 +51,11 @@ in `structuredContent.size`. The other six tools return metadata in
 Larger metadata objects within the result limit receive the same fixed text
 summary as structured collections.
 
-`tools/list` exposes an `outputSchema` for every registered tool: three schemas in the read-only profile and eight in the default profile. Each schema describes only the successful domain object in `structuredContent`; it does not describe the outer `CallToolResult.content[]`. Runtime schemas are deeply matched to catalog `resultSchema` by a contract test. Expected tool failures use the separate machine-readable error contract below.
+`tools/list` exposes an `outputSchema` for each registered tool. The `read`
+profile has three schemas and `write` has eight. Each schema describes the
+successful domain object in `structuredContent`. A contract test matches
+the runtime schemas to catalog `resultSchema`. Expected tool failures follow
+the machine-readable error contract below.
 
 The same current MCP `2025-11-25` definitions expose all four annotation members explicitly:
 
@@ -69,8 +73,8 @@ The same current MCP `2025-11-25` definitions expose all four annotation members
 `write_file` and `copy_path` are not tool-wide idempotent because `overwrite:true` can replace an existing target. Annotations are client-facing discovery hints only. Registration, read-only/profile gating, capabilities, root/path/security checks, and execution identity remain authoritative server-side decisions.
 
 The deterministic UTF-8 JSONL `tools/list` response, including the trailing
-newline, is 2517 response bytes and 2482 result bytes for read-only, and 6808
-response bytes and 6773 result bytes for default.
+newline, is 2517 response bytes and 2482 result bytes for `read`, and 6808
+response bytes and 6773 result bytes for `write`.
 
 ## `list_directory`
 
