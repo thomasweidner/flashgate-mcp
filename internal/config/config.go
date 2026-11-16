@@ -51,6 +51,7 @@ type Source struct {
 type Config struct {
 	data       settings
 	role       Role
+	profile    EffectiveProfile
 	sourcePath string
 	sourceInfo os.FileInfo
 }
@@ -63,6 +64,7 @@ type trustedDocument struct {
 type settings struct {
 	Runtime   runtimeFields  `toml:"runtime"`
 	Files     filesFields    `toml:"files"`
+	Profiles  profileFields  `toml:"profiles"`
 	Security  securityFields `toml:"security"`
 	Protocol  protocolFields `toml:"protocol"`
 	Endpoints endpointFields `toml:"endpoints"`
@@ -89,7 +91,6 @@ type rootFields struct {
 type filesFields struct {
 	DefaultID        RootID                `toml:"default_id"`
 	Roots            map[RootID]rootFields `toml:"roots"`
-	ReadOnly         bool                  `toml:"read_only"`
 	MaxFileSize      int64                 `toml:"max_file_size"`
 	MaxWriteBytes    int64                 `toml:"max_write_bytes"`
 	MaxListEntries   int                   `toml:"max_list_entries"`
@@ -155,6 +156,7 @@ func defaultSettings(role Role) settings {
 			MaxFileSize: defaultFileBytes, MaxWriteBytes: defaultFileBytes,
 			MaxCopyBytes: defaultFileBytes, MaxListEntries: 1000, MaxDeleteEntries: 1000,
 		},
+		Profiles: profileFields{MaxRisk: "mutation"},
 		Protocol: protocolFields{
 			MaxMessageBytes: defaultWireBytes, MaxArgumentBytes: 12 * 1024 * 1024,
 			MaxResponseBytes: defaultWireBytes,
@@ -260,6 +262,12 @@ func Decode(document []byte, role Role) (Config, error) {
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
+	profile, err := wire.Profiles.resolve()
+	if err != nil {
+		return Config{}, NewError(CategoryInvalidProfile, err)
+	}
+	cfg.profile = profile
+	cfg.data.Profiles = profileFields{}
 	for id, root := range wire.Files.Roots {
 		root.Path = filepath.Clean(root.Path)
 		wire.Files.Roots[id] = root
@@ -317,7 +325,7 @@ func (c Config) Validate() error {
 		return NewError(CategoryInvalidRoot, nil)
 	}
 	for id, root := range f.Roots {
-		if !validRootID(id) || !filepath.IsAbs(root.Path) || strings.IndexByte(root.Path, 0) >= 0 {
+		if !validConfigID(string(id)) || !filepath.IsAbs(root.Path) || strings.IndexByte(root.Path, 0) >= 0 {
 			return NewError(CategoryInvalidRoot, nil)
 		}
 	}
@@ -341,7 +349,7 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func validRootID(id RootID) bool {
+func validConfigID(id string) bool {
 	if len(id) == 0 || len(id) > 64 || id[0] < 'a' || id[0] > 'z' {
 		return false
 	}
@@ -411,10 +419,11 @@ type LoggingConfig struct {
 	MaxRecordBytes, MaxRecords int
 }
 
-func (c Config) Role() Role               { return c.role }
-func (c Config) Files() FilesConfig       { return FilesConfig{c.data.Files} }
-func (c Config) Security() SecurityConfig { return SecurityConfig{c.data.Security} }
-func (c Config) Server() ServerConfig     { return ServerConfig{c.data.Protocol} }
+func (c Config) Role() Role                { return c.role }
+func (c Config) Profile() EffectiveProfile { return c.profile }
+func (c Config) Files() FilesConfig        { return FilesConfig{c.data.Files} }
+func (c Config) Security() SecurityConfig  { return SecurityConfig{c.data.Security} }
+func (c Config) Server() ServerConfig      { return ServerConfig{c.data.Protocol} }
 func (c Config) Endpoints() EndpointConfig {
 	e := c.data.Endpoints
 	return EndpointConfig{
@@ -439,7 +448,6 @@ func (f FilesConfig) Roots() []RootDefinition {
 	return definitions
 }
 func (f FilesConfig) DefaultID() RootID         { return f.data.DefaultID }
-func (f FilesConfig) ReadOnly() bool            { return f.data.ReadOnly }
 func (f FilesConfig) MaxFileSize() int64        { return f.data.MaxFileSize }
 func (f FilesConfig) MaxWriteBytes() int64      { return f.data.MaxWriteBytes }
 func (f FilesConfig) MaxListEntries() int       { return f.data.MaxListEntries }

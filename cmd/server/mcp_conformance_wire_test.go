@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -163,7 +162,7 @@ func TestMCPConformanceSTDIOProcess(t *testing.T) {
 	for _, readOnly := range []bool{false, true} {
 		_, root := mcpRegistry(t, readOnly)
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		configPath := writeConfig(t, configDocument(t, root, fmt.Sprintf("read_only = %t\n", readOnly)))
+		configPath := writeConfig(t, configDocument(t, root, profileSettings(readOnly)))
 		command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$", "--", configPath)
 		command.WaitDelay = time.Second
 		for _, entry := range os.Environ() {

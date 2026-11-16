@@ -696,7 +696,7 @@
   "productionRevisions": [
     "2025-11-25"
   ],
-  "profile": "default",
+  "profile": "write",
   "revision": "2025-11-25",
   "toolsList": {
     "tools": [

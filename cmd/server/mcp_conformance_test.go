@@ -29,7 +29,7 @@ var updateMCPSnapshots = flag.Bool("update-mcp-snapshots", false, "explicitly re
 
 // Effective profiles added by BL-110 must extend this shared snapshot matrix.
 var mcpConformanceVersions = []string{protocol.ProtocolVersion, revision.Stateless}
-var mcpConformanceProfiles = []string{"default", "read-only"}
+var mcpConformanceProfiles = []string{"read", "write"}
 
 func mcpCandidatePolicy() revision.Policy {
 	return revision.NewPolicy(append(revision.ProductionPolicy().Supported(), revision.Stateless)...)
@@ -40,9 +40,8 @@ func mcpMatrixCoverage(versions, profiles []string) error {
 	if !slices.Equal(slices.Sorted(slices.Values(versions)), policyVersions) {
 		return fmt.Errorf("snapshot revisions %v must cover production and candidate policy revisions %v exactly once", versions, policyVersions)
 	}
-	// These are the two tool catalogs selected by files.read_only. The owner
-	// of effective profiles must bind that replacement selector here.
-	if !slices.Equal(slices.Sorted(slices.Values(profiles)), []string{"default", "read-only"}) {
+	// The reference catalogs cover both measured startup views.
+	if !slices.Equal(slices.Sorted(slices.Values(profiles)), []string{"read", "write"}) {
 		return fmt.Errorf("snapshot profiles %v must cover both startup modes exactly once", profiles)
 	}
 	return nil
@@ -183,7 +182,7 @@ func mcpWireRegistry(t *testing.T, readOnly bool, maxFileBytes int64, limits fs.
 	if wrap != nil {
 		filesystem = wrap(local)
 	}
-	return requireToolRegistry(t, filesystem, maxFileBytes, capabilitiesFromReadOnly(readOnly)), root
+	return requireToolRegistry(t, filesystem, maxFileBytes, readOnly), root
 }
 
 func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
@@ -369,7 +368,7 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 	for _, version := range mcpConformanceVersions {
 		for _, profile := range mcpConformanceProfiles {
 			t.Run(version+"/"+profile, func(t *testing.T) {
-				readOnly := profile == "read-only"
+				readOnly := profile == "read"
 				registry, root := mcpRegistry(t, readOnly)
 				r := mcpRouter(registry, version == revision.Stateless)
 				definitions := mcpDefinitions(registry)
@@ -377,7 +376,7 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if profile == "default" {
+				if profile == "write" {
 					mcpCheckCatalog(t, definitions)
 				}
 				sort.Slice(definitions, func(i, j int) bool { return definitions[i].Name < definitions[j].Name })
@@ -626,10 +625,10 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 			{[]string{protocol.ProtocolVersion}, mcpConformanceProfiles},
 			{[]string{revision.Stateless}, mcpConformanceProfiles},
 			{[]string{protocol.ProtocolVersion, "future"}, mcpConformanceProfiles},
-			{mcpConformanceVersions, []string{"default"}},
-			{mcpConformanceVersions, []string{"read-only"}},
-			{mcpConformanceVersions, []string{"default", "default"}},
-			{mcpConformanceVersions, []string{"default", "unknown"}},
+			{mcpConformanceVersions, []string{"write"}},
+			{mcpConformanceVersions, []string{"read"}},
+			{mcpConformanceVersions, []string{"write", "write"}},
+			{mcpConformanceVersions, []string{"write", "unknown"}},
 		} {
 			if mcpMatrixCoverage(test.versions, test.profiles) == nil {
 				t.Fatalf("incomplete revision/profile matrix accepted: %v / %v", test.versions, test.profiles)

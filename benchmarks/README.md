@@ -4,13 +4,14 @@ FlashGate provides one reproducible benchmark system with three layers. It exten
 
 ## Layers
 
-1. In-process Go benchmarks measure direct `tools/call` handler work, result construction, JSON serialization, allocations, result bytes, response bytes, and `tools/list` wire output for read-only and default profiles.
+1. In-process Go benchmarks measure direct `tools/call` handler work, result construction, JSON serialization, allocations, result bytes, response bytes, and `tools/list` wire output for `read` and `write`.
 2. `cmd/benchmark` starts the real previously built FlashGate binary and exchanges JSON-RPC over STDIO.
 3. Ten reference workflows use a deterministic temporary corpus and report calls, wire sizes, result sizes, duration, filesystem counters, entry counts, resources, and the optional byte-based token approximation.
 
-Use a TOML-enabled server binary with this benchmark runner. It creates
-separate trusted TOML fixtures for the read-only and default scenarios in the
-process temporary directory. Set the temporary directory to a trusted local
+Use a server binary with capability profiles. The runner creates trusted
+TOML fixtures for `read` and `write` in the process temporary directory.
+The artifact keys `read_only` and `default` preserve the benchmark baseline
+identities. Set the temporary directory to a trusted local
 path if its default does not pass the [configuration checks](../docs/configuration.md#source-and-trust).
 
 `cmd/benchmark` is a development tool. Release workflows continue to build and publish only `cmd/server`.
@@ -219,7 +220,7 @@ and OS copies are unobserved. The existing allocation benchmarks and budgets
 remain separate from explicit copy counts. Synthetic frames have no observed
 trace.
 
-[Wire budgets](wire-budgets.json) use the benchmark package's strict JSON
+[Wire budgets](../cmd/server/testdata/wire-budgets.json) use the benchmark package's strict JSON
 loader and have a separate versioned definition. Paths group only executable
 combinations and named synthetic examples. A class sets absolute response,
 result and overhead limits, with integer-scaled amplification and token

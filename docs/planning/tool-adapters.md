@@ -149,6 +149,12 @@ The provider model must not become arbitrary DLL/SO/Go-plugin loading into the t
 
 ### 4.1 Profile-specific exposure and platform disclosure
 
+Bind each operation or variant to the exact current [capability IDs](../adr/capability-profiles.md#functional-capability-contract),
+including all rights required by compound effects. Derive risk from those
+definitions and the operation floor. Extend the executable revision, transport,
+result and catalog bindings before enabling a new effective combination.
+Availability, fallback, annotations and profile names supply no grants.
+
 The normal/default portable profile exposes only tools permitted by the effective profile and capability set. Platform-sensitive tools such as Registry, sysctl, ADS, or xattr appear only when the corresponding platform-sensitive capability/profile is explicitly enabled.
 
 OS/provider/adapter detail is minimized rather than treated as an authorization boundary:
@@ -932,7 +938,9 @@ Use the [BL-100 functional contract](../adr/capability-profiles.md#functional-ca
 for definitions, explicit grants and operation requirements. BL-100 tests
 the primitives independently of runtime activation. Integrating owners
 reuse BL-159 authorization, BL-236 caller/backend separation, BL-166 audit,
-BL-239 state binding and the applicable root/profile contracts. Retain each
+BL-239 state binding and the applicable root/profile contracts. Carry the
+BL-103 derived operation risk and effective ceiling alongside functional
+grants. Retain each
 filesystem operand's BL-102 binding through authorization and dispatch. Keep discovery,
 backend availability and cached results independent of authorization. Test the
 affected direct calls, backend parity and context mismatch, including denial

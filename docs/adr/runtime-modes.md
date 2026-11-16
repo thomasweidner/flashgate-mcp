@@ -61,6 +61,9 @@ core. See the [runtime configuration reference](../configuration.md) for
 the supported TOML schema, current bootstrap checks, and template.
 BL-101 uses `[files]` and `[files.roots.<id>]` within that same model,
 with an explicit default and validation of every root before exposure.
+BL-103 resolves `[profiles]` in the same snapshot. A host must admit the
+effective grants under its own measured catalog and wire bindings. See
+[ADR-009](capability-profiles.md) for the profile and risk contract.
 
 Each server instance has one authoritative configuration file. The default
 location follows the runtime role:

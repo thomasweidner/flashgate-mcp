@@ -8,6 +8,8 @@ import (
 	"math/bits"
 	"os"
 	"slices"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/mcp/catalogbudget"
 )
 
 const wireBudgetVersion = "flashgate-benchmark-wire-budgets/v1"
@@ -23,14 +25,7 @@ type WireBudget struct {
 	Instructions     *uint64            `json:"max_instructions_bytes,omitempty"`
 }
 
-type WireCatalogBudget struct {
-	MaxTools             uint64 `json:"max_tools"`
-	MaxNameBytes         uint64 `json:"max_name_bytes"`
-	MaxTitleBytes        uint64 `json:"max_title_bytes"`
-	MaxDescriptionBytes  uint64 `json:"max_description_bytes"`
-	MaxInputSchemaBytes  uint64 `json:"max_input_schema_bytes"`
-	MaxOutputSchemaBytes uint64 `json:"max_output_schema_bytes"`
-}
+type WireCatalogBudget = catalogbudget.Limits
 
 type wireCatalogCost struct {
 	Bytes        uint64
@@ -198,23 +193,19 @@ func CheckWireCatalogBudget(fixture WireFixture, budget WireBudget) (*WireCatalo
 		return nil, fmt.Errorf("invalid catalog or entry framing")
 	}
 	var envelope struct {
-		Result struct {
-			Tools []struct {
-				Name         string          `json:"name"`
-				Title        string          `json:"title"`
-				Description  string          `json:"description"`
-				InputSchema  json.RawMessage `json:"inputSchema"`
-				OutputSchema json.RawMessage `json:"outputSchema"`
-			} `json:"tools"`
-			Instructions json.RawMessage `json:"instructions"`
-		} `json:"result"`
+		Result json.RawMessage `json:"result"`
 	}
 	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, fmt.Errorf("decode catalog or entry fields: %w", err)
 	}
-	result := envelope.Result
 	measurement := &WireCatalogMeasurement{}
 	if entry {
+		var result struct {
+			Instructions json.RawMessage `json:"instructions"`
+		}
+		if err := json.Unmarshal(envelope.Result, &result); err != nil {
+			return nil, fmt.Errorf("decode entry fields: %w", err)
+		}
 		if result.Instructions != nil {
 			var instructions *string
 			if err := json.Unmarshal(result.Instructions, &instructions); err != nil || instructions == nil {
@@ -229,45 +220,14 @@ func CheckWireCatalogBudget(fixture WireFixture, budget WireBudget) (*WireCatalo
 		}
 		return measurement, nil
 	}
-	if result.Tools == nil {
-		return nil, fmt.Errorf("missing catalog tool array")
+	usage, err := catalogbudget.Check(envelope.Result, *budget.Catalog)
+	if err != nil {
+		return nil, err
 	}
-	limit := *budget.Catalog
-	seen := make(map[string]bool, len(result.Tools))
-	var names, titles, descriptions, inputSchemas, outputSchemas uint64
-	for _, tool := range result.Tools {
-		if tool.Name == "" || seen[tool.Name] {
-			return nil, fmt.Errorf("empty or duplicate catalog tool name %q", tool.Name)
-		}
-		seen[tool.Name] = true
-		names += uint64(len(tool.Name))
-		titles += uint64(len(tool.Title))
-		descriptions += uint64(len(tool.Description))
-		inputSchemas += uint64(len(tool.InputSchema))
-		outputSchemas += uint64(len(tool.OutputSchema))
-	}
-	measurement.ToolCount = uint64(len(result.Tools))
-	measurement.Names, measurement.Titles = catalogCost(names), catalogCost(titles)
-	measurement.Descriptions = catalogCost(descriptions)
-	measurement.InputSchemas, measurement.OutputSchemas = catalogCost(inputSchemas), catalogCost(outputSchemas)
-	for _, field := range []struct {
-		name        string
-		actual, max uint64
-	}{
-		{"tool count", measurement.ToolCount, limit.MaxTools},
-		{"name bytes", names, limit.MaxNameBytes},
-		{"title bytes", titles, limit.MaxTitleBytes},
-		{"description bytes", descriptions, limit.MaxDescriptionBytes},
-		{"input schema bytes", inputSchemas, limit.MaxInputSchemaBytes},
-		{"output schema bytes", outputSchemas, limit.MaxOutputSchemaBytes},
-	} {
-		if field.max == 0 {
-			return nil, fmt.Errorf("invalid zero catalog limit for %s", field.name)
-		}
-		if field.actual > field.max {
-			return nil, fmt.Errorf("catalog %s %d exceeds %d", field.name, field.actual, field.max)
-		}
-	}
+	measurement.ToolCount = usage.MaxTools
+	measurement.Names, measurement.Titles = catalogCost(usage.MaxNameBytes), catalogCost(usage.MaxTitleBytes)
+	measurement.Descriptions = catalogCost(usage.MaxDescriptionBytes)
+	measurement.InputSchemas, measurement.OutputSchemas = catalogCost(usage.MaxInputSchemaBytes), catalogCost(usage.MaxOutputSchemaBytes)
 	return measurement, nil
 }
 

@@ -26,7 +26,7 @@ type runnableServer interface {
 type bootstrapDependencies struct {
 	loadConfig      func() (config.Config, error)
 	newRoots        func(config.Config) (*roots.Registry, error)
-	newToolRegistry func(fs.FileSystem, int64, toolCapabilities) (*tools.Registry, error)
+	newToolRegistry func(fs.FileSystem, int64, config.EffectiveProfile) (*tools.Registry, error)
 	newRouter       func(string, string, *tools.Registry) *router.Router
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
 }
@@ -75,13 +75,16 @@ func runWithIO(
 	toolRegistry, err := dependencies.newToolRegistry(
 		rootRegistry,
 		cfg.Files().MaxFileSize(),
-		capabilitiesFromReadOnly(cfg.Files().ReadOnly()),
+		cfg.Profile(),
 	)
 	if err != nil {
 		return config.NewError(config.CategoryStartupFailed, err)
 	}
 	if toolRegistry == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
+	}
+	if err := admitProfile(toolRegistry, cfg.Profile().Policy()); err != nil {
+		return config.NewError(config.CategoryInvalidProfile, err)
 	}
 	mcpRouter := dependencies.newRouter(cfg.Server().Name(), cfg.Server().Version(), toolRegistry)
 	if mcpRouter == nil {

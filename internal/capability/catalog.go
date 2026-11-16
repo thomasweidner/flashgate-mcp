@@ -15,14 +15,14 @@ import (
 type ID string
 
 const (
-	FilesystemRead         ID = "filesystem.read"
-	FilesystemWrite        ID = "filesystem.write"
-	SearchExecute          ID = "search.execute"
-	ProcessObserve         ID = "process.observe"
-	ProcessManage          ID = "process.manage"
-	ProcessControlExternal ID = "process.control.external"
-	CommandExecute         ID = "command.execute"
-	SystemRead             ID = "system.read"
+	FilesRead        ID = "files.read"
+	FilesWrite       ID = "files.write"
+	SearchRun        ID = "search.run"
+	ProcessesRead    ID = "processes.read"
+	ProcessesManage  ID = "processes.manage"
+	ProcessesControl ID = "processes.control"
+	CommandsRun      ID = "commands.run"
+	SystemRead       ID = "system.read"
 )
 
 // Valid reports whether id has two or more dot-separated segments, each
@@ -54,19 +54,20 @@ func (id ID) Valid() bool {
 type Definition struct {
 	ID          ID
 	Description string
+	MinimumRisk Risk
 }
 
 // BaseDefinitions returns an independent copy of the FlashGate basis.
 func BaseDefinitions() []Definition {
 	return []Definition{
-		{FilesystemRead, "Inspect filesystem metadata and read filesystem content."},
-		{FilesystemWrite, "Create, modify, move or remove filesystem data."},
-		{SearchExecute, "Execute a bounded search."},
-		{ProcessObserve, "Inspect permitted host process information."},
-		{ProcessManage, "Operate on server-managed processes."},
-		{ProcessControlExternal, "Control processes outside the server-managed lifecycle."},
-		{CommandExecute, "Execute a server-approved typed command."},
-		{SystemRead, "Read explicitly permitted system information."},
+		{FilesRead, "Inspect filesystem metadata and read filesystem content.", RiskRead},
+		{FilesWrite, "Create, modify, move or remove filesystem data.", RiskMutation},
+		{SearchRun, "Run a bounded search.", RiskRead},
+		{ProcessesRead, "Inspect permitted host process information.", RiskRead},
+		{ProcessesManage, "Operate on server-managed processes.", RiskMutation},
+		{ProcessesControl, "Control processes outside the server-managed lifecycle.", RiskHigh},
+		{CommandsRun, "Run a server-approved typed command.", RiskMutation},
+		{SystemRead, "Read explicitly permitted system information.", RiskRead},
 	}
 }
 
@@ -110,11 +111,11 @@ func NewCatalog(definitions ...Definition) (Catalog, error) {
 		}
 		next, conflict := i, false
 		for next < len(ordered) && ordered[next].ID == first.ID {
-			description := ordered[next].Description
-			if !validDescription(description) {
+			candidate := ordered[next]
+			if !validDescription(candidate.Description) || !candidate.MinimumRisk.valid() {
 				return Catalog{}, ErrInvalidDefinition
 			}
-			conflict = conflict || description != first.Description
+			conflict = conflict || candidate != first
 			next++
 		}
 		if conflict {

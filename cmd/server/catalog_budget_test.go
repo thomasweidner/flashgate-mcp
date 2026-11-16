@@ -13,7 +13,7 @@ import (
 func testCatalogBudgetMutations(t *testing.T) {
 	budgets := loadServerWireBudgets(t)
 	base := benchmark.WireIdentity{
-		Source: benchmark.WireProduction, Revision: "2025-11-25", Profile: "read-only",
+		Source: benchmark.WireProduction, Revision: "2025-11-25", Profile: "read",
 		Transport: "stdio-lf", Transfer: "inline", State: "complete", Outcome: "success",
 	}
 	registry, _ := mcpRegistryWithLimit(t, true, wireFileLimit)

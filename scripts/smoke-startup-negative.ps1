@@ -107,7 +107,8 @@ try {
         @{ Name = 'missing filesystem root'; Document = $missing; Exit = 3; Category = 'root_not_found' }
         @{ Name = 'file root'; Document = $file; Exit = 3; Category = 'root_not_directory' }
         @{ Name = 'missing secondary root'; Document = "$($absolute)roots.archive.path = $quotedMissing"; Exit = 3; Category = 'root_not_found' }
-        @{ Name = 'invalid read-only option'; Document = "$($absolute)read_only = 'invalid'"; Exit = 3; Category = 'invalid_config' }
+        @{ Name = 'retired read-only option'; Document = "$($absolute)read_only = true"; Exit = 3; Category = 'invalid_config' }
+        @{ Name = 'unknown profile'; Document = "$($absolute)[profiles]`nactive = 'unknown'"; Exit = 3; Category = 'invalid_profile' }
         @{ Name = 'valid absolute root'; Document = $absolute; Exit = 0; Stderr = '' }
         @{ Name = 'valid overlapping roots'; Document = "$($absolute)roots.archive.path = $quotedRoot"; Exit = 0; Stderr = '' }
     )

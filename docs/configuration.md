@@ -2,8 +2,8 @@
 
 FlashGate reads one UTF-8 TOML file at startup. Use the [complete template](flashgate-config.toml)
 and set `files.roots.work.path` to an existing absolute data directory that you
-intend to expose. For a first connection, retain the template's
-`read_only = true`. In a Windows basic TOML string, use forward slashes or
+intend to expose. The template uses the default `read` profile.
+In a Windows basic TOML string, use forward slashes or
 escape each backslash. A TOML literal string such as
 `'C:\FlashGateData\ReadOnlyRoot'` also preserves backslashes.
 
@@ -13,7 +13,6 @@ Configure one table per root and select the default explicitly.
 
 ```toml
 [files]
-read_only = true
 default_id = "work"
 
 [files.roots.work]
@@ -35,6 +34,48 @@ The configured default ID is a TOML requirement and clients still send the ID
 explicitly. Named-root discovery belongs to BL-352.
 The [migration guide](migration.md#root-configuration) covers conversion
 from the former table.
+
+## Profiles
+
+`read` grants `files.read` and exposes the three current read tools. Select
+`write` explicitly to grant `files.read` and `files.write` and expose all
+eight filesystem tools. Both profiles remain subject to path and root checks.
+
+```toml
+[profiles]
+active = "dev"
+include = ["changes"]
+max_risk = "mutation"
+
+[profiles.definitions.dev]
+grants = ["files.read"]
+
+[profiles.definitions.changes]
+grants = ["files.write"]
+```
+
+Profile IDs match `^[a-z][a-z0-9_]{0,63}$`. `read` and `write` are reserved.
+Each definition requires an explicit array of exact, unique [capability IDs](adr/capability-profiles.md#functional-capability-contract).
+An empty array contributes zero rights. Every definition is validated,
+including inactive definitions. `include` selects distinct additional
+profiles only when `active` is explicit. The union is independent of order.
+Definitions contain grants only and cannot include other profiles.
+
+`max_risk = "read"` restricts an otherwise writable configuration to read
+operations. The default ceiling is `mutation`. An operation derives its risk
+from reviewed capability definitions and its own minimum risk. The TOML
+ceiling adds no grants and cannot change an operation's risk classification.
+An explicit `max_risk = "high"` is valid. High-risk operations still require
+their exact grants, a measured executable view, and any separate security
+policy. The current STDIO host exposes only the same measured filesystem
+catalogs with this ceiling.
+
+The current STDIO host admits the measured `files.read` and
+`files.read` plus `files.write` combinations, including equivalent custom
+profiles and explicit compositions. Selecting an unmeasured combination
+fails startup with `invalid_profile`. Known capabilities for future tools may
+appear in valid inactive definitions. The host supports one or more named
+roots under either measured catalog.
 
 ## Source and trust
 
@@ -93,7 +134,10 @@ unless the field names or table indicate another unit.
 | `runtime.mode` | String, host-selected (`"stdio"` in the current executable) | Must match the bound runtime role. |
 | `files.default_id` | Required string | Must name an existing root ID. Tool calls provide their own explicit IDs. |
 | `files.roots.<id>.path` | Required string per root | Existing absolute data directory, subject to PathGuard. |
-| `files.read_only` | Boolean, `false` | When true, register only the three current read tools. The template explicitly sets true. |
+| `profiles.active` | String, `"read"` | Select a built-in or validated custom base profile. |
+| `profiles.include` | Array of strings, empty | Explicit composition with additional distinct grant sets. Requires explicit `active`. |
+| `profiles.max_risk` | String, `"mutation"` | Operation risk ceiling. Accepts `"read"`, `"mutation"`, or explicit `"high"`. |
+| `profiles.definitions.<id>.grants` | Required array of capability IDs per definition | Declare the custom profile's exact grants. |
 | `files.max_file_size` | Integer, 10485760 | Maximum file read. |
 | `files.max_write_bytes` | Integer, 10485760 | Maximum write content. |
 | `files.max_copy_bytes` | Integer, 10485760 | Maximum copied file size. |

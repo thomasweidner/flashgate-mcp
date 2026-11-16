@@ -294,7 +294,7 @@
   "productionRevisions": [
     "2025-11-25"
   ],
-  "profile": "read-only",
+  "profile": "read",
   "revision": "2025-11-25",
   "toolsList": {
     "tools": [

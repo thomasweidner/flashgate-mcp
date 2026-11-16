@@ -432,6 +432,13 @@ root, resource, risk, and execution controls before dispatch.
 
 ### Safe default profiles and capability enforcement
 
+Current STDIO startup resolves and validates the entire profile configuration.
+`read` grants `files.read`. Selecting `write` adds an explicit `files.write`
+grant. `copy_path` requires both grants. An independent ceiling may restrict
+mutations. The admitted registry governs discovery and dispatch, while the
+filesystem and PathGuard enforce root, identity, alias and protection checks
+on each request. Complete grants still deny protected configuration effects.
+
 Version 1.0 target behavior:
 
 ```text

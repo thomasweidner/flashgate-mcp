@@ -39,14 +39,33 @@ client session is stopped:
 1. Choose a logical ID such as `work`. Set `default_id = "work"` in `[files]`.
 2. Move the old root value to `path` under `[files.roots.work]`. Replace `.` with
    the absolute directory intended for the client.
-3. Move `read_only` and the five existing filesystem limits to `[files]`.
-   Remove the old table and `allow_cwd_root`.
+3. Move the five existing filesystem limits to `[files]`. Remove the old
+   table, `allow_cwd_root`, and `read_only`. See the profile cutover below.
 4. Restart with the same selected file and run the
    [acceptance checks](client-setup.md#acceptance-checks).
 
 The loader rejects the former table and has no automatic conversion.
 Rollback restores the previous binary and its backed-up TOML together.
-The current MCP tool inputs continue to use paths relative to the default.
+The current MCP tool inputs require explicit root IDs and relative paths.
+
+## Capability profile cutover
+
+Remove `files.read_only` before starting a build with capability profiles.
+Omit `profiles.active` for default read access. Set `active = "write"` in
+`[profiles]` to restore access to the writable catalog. Use the current
+[configuration reference](configuration.md#profiles) for custom grants.
+
+| Retired ID | Current ID |
+|---|---|
+| `filesystem.read` | `files.read` |
+| `filesystem.write` | `files.write` |
+| `search.execute` | `search.run` |
+| `process.observe` | `processes.read` |
+| `process.manage` | `processes.manage` |
+| `process.control.external` | `processes.control` |
+| `command.execute` | `commands.run` |
+
+`system.read` keeps its spelling. The loader rejects retired keys and IDs.
 
 ### From runtime environment variables
 
@@ -59,7 +78,7 @@ integers as unquoted decimal values, and paths as strings.
 | Previous environment setting | TOML key |
 |---|---|
 | `MCP_ROOT` | Set `files.default_id = "work"` and `files.roots.work.path` to an absolute directory. |
-| `MCP_READ_ONLY` | `files.read_only` |
+| `MCP_READ_ONLY` | Remove the environment setting and use the current profile configuration. |
 | `MCP_ALLOW_CWD_ROOT` | Removed. Use the intended absolute directory. |
 | `MCP_ALLOW_HIDDEN_FILES` | `security.allow_hidden_files` |
 | `MCP_ALLOW_UNC_PATHS` | `security.allow_unc_paths` |
@@ -73,9 +92,6 @@ integers as unquoted decimal values, and paths as strings.
 | `MCP_MAX_TOOL_ARGUMENT_BYTES` | `protocol.max_argument_bytes` |
 | `MCP_MAX_RESPONSE_BYTES` | `protocol.max_response_bytes` |
 | `MCP_DEBUG` | `logging.level`: use `"debug"` for true and `"off"` for false |
-
-The runtime default for `read_only` remains false. The template explicitly
-enables read-only for initial setup. BL-103 owns safe-default profiles.
 
 Before switching binaries, back up the client entry and retain the verified
 previous release binary, its checksum, and its launch settings. Update the
@@ -116,7 +132,7 @@ Role defaults and the TOML schema remain compatible.
 
 The removed names have no aliases and return generic Invalid params. Refresh
 `tools/list`, replace old calls, and update expected results. Default discovery
-contains eight tools; explicit read-only mode contains three.
+contains three tools. The explicit `write` profile contains eight.
 
 ## Input and operation semantics
 

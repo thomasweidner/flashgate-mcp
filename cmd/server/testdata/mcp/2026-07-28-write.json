@@ -822,7 +822,7 @@
   "productionRevisions": [
     "2025-11-25"
   ],
-  "profile": "default",
+  "profile": "write",
   "revision": "2026-07-28",
   "toolsList": {
     "_meta": {
