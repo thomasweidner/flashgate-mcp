@@ -215,7 +215,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Copies a file below the configured filesystem root. Directory copy is not supported.",
+      "description": "Copies a file within one selected root. Directory copy is not supported.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -224,18 +224,28 @@
             "type": "boolean"
           },
           "source": {
-            "description": "Relative source file path below the configured filesystem root.",
+            "description": "Relative source file path.",
             "minLength": 1,
             "type": "string"
           },
+          "source_root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "type": "string"
+          },
           "target": {
-            "description": "Relative target file path below the configured filesystem root.",
+            "description": "Relative target file path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "target_root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "source_root_id",
           "source",
+          "target_root_id",
           "target"
         ],
         "type": "object"
@@ -270,17 +280,22 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Creates a directory and any missing parents below the configured filesystem root.",
+      "description": "Creates a directory and any missing parents below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "path": {
-            "description": "Relative directory path below the configured filesystem root.",
+            "description": "Relative directory path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "root_id",
           "path"
         ],
         "type": "object"
@@ -311,21 +326,26 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Deletes a file or directory below the configured filesystem root.",
+      "description": "Deletes a file or directory below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "path": {
-            "description": "Relative file or directory path below the configured filesystem root.",
+            "description": "Relative file or directory path.",
             "minLength": 1,
             "type": "string"
           },
           "recursive": {
             "description": "Whether a non-empty directory may be deleted recursively. Defaults to false.",
             "type": "boolean"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "type": "string"
           }
         },
         "required": [
+          "root_id",
           "path"
         ],
         "type": "object"
@@ -356,17 +376,22 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+      "description": "Returns existence and metadata for a file or directory below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "path": {
-            "description": "Relative file or directory path below the configured filesystem root.",
+            "description": "Relative file or directory path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "root_id",
           "path"
         ],
         "type": "object"
@@ -430,16 +455,24 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Lists files and directories below the configured filesystem root.",
+      "description": "Lists files and directories below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "path": {
-            "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+            "description": "Relative directory path. Use '.' for the root directory.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
+        "required": [
+          "root_id",
+          "path"
+        ],
         "type": "object"
       },
       "name": "list_directory",
@@ -484,7 +517,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Moves or renames a file or directory on the same volume below the configured filesystem root.",
+      "description": "Moves or renames a file or directory on the same volume within one selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -493,18 +526,28 @@
             "type": "boolean"
           },
           "source": {
-            "description": "Relative source file or directory path below the configured filesystem root.",
+            "description": "Relative source file or directory path.",
             "minLength": 1,
             "type": "string"
           },
+          "source_root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "type": "string"
+          },
           "target": {
-            "description": "Relative target file or directory path below the configured filesystem root.",
+            "description": "Relative target file or directory path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "target_root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "source_root_id",
           "source",
+          "target_root_id",
           "target"
         ],
         "type": "object"
@@ -539,7 +582,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Reads a UTF-8 text file below the configured filesystem root.",
+      "description": "Reads a UTF-8 text file below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -549,12 +592,17 @@
             "type": "integer"
           },
           "path": {
-            "description": "Relative file path below the configured filesystem root.",
+            "description": "Relative file path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "root_id",
           "path"
         ],
         "type": "object"
@@ -582,7 +630,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Writes a text file below the configured filesystem root.",
+      "description": "Writes a text file below the selected root.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -595,12 +643,17 @@
             "type": "boolean"
           },
           "path": {
-            "description": "Relative file path below the configured filesystem root.",
+            "description": "Relative file path.",
             "minLength": 1,
+            "type": "string"
+          },
+          "root_id": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
             "type": "string"
           }
         },
         "required": [
+          "root_id",
           "path"
         ],
         "type": "object"
@@ -654,16 +707,24 @@
           "openWorldHint": false,
           "readOnlyHint": true
         },
-        "description": "Lists files and directories below the configured filesystem root.",
+        "description": "Lists files and directories below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
             "path": {
-              "description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+              "description": "Relative directory path. Use '.' for the root directory.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
+          "required": [
+            "root_id",
+            "path"
+          ],
           "type": "object"
         },
         "name": "list_directory",
@@ -708,7 +769,7 @@
           "openWorldHint": false,
           "readOnlyHint": true
         },
-        "description": "Reads a UTF-8 text file below the configured filesystem root.",
+        "description": "Reads a UTF-8 text file below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
@@ -718,12 +779,17 @@
               "type": "integer"
             },
             "path": {
-              "description": "Relative file path below the configured filesystem root.",
+              "description": "Relative file path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "root_id",
             "path"
           ],
           "type": "object"
@@ -751,17 +817,22 @@
           "openWorldHint": false,
           "readOnlyHint": true
         },
-        "description": "Returns existence and metadata for a file or directory below the configured filesystem root.",
+        "description": "Returns existence and metadata for a file or directory below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
             "path": {
-              "description": "Relative file or directory path below the configured filesystem root.",
+              "description": "Relative file or directory path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "root_id",
             "path"
           ],
           "type": "object"
@@ -825,7 +896,7 @@
           "openWorldHint": false,
           "readOnlyHint": false
         },
-        "description": "Writes a text file below the configured filesystem root.",
+        "description": "Writes a text file below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
@@ -838,12 +909,17 @@
               "type": "boolean"
             },
             "path": {
-              "description": "Relative file path below the configured filesystem root.",
+              "description": "Relative file path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "root_id",
             "path"
           ],
           "type": "object"
@@ -878,17 +954,22 @@
           "openWorldHint": false,
           "readOnlyHint": false
         },
-        "description": "Creates a directory and any missing parents below the configured filesystem root.",
+        "description": "Creates a directory and any missing parents below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
             "path": {
-              "description": "Relative directory path below the configured filesystem root.",
+              "description": "Relative directory path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "root_id",
             "path"
           ],
           "type": "object"
@@ -919,21 +1000,26 @@
           "openWorldHint": false,
           "readOnlyHint": false
         },
-        "description": "Deletes a file or directory below the configured filesystem root.",
+        "description": "Deletes a file or directory below the selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
             "path": {
-              "description": "Relative file or directory path below the configured filesystem root.",
+              "description": "Relative file or directory path.",
               "minLength": 1,
               "type": "string"
             },
             "recursive": {
               "description": "Whether a non-empty directory may be deleted recursively. Defaults to false.",
               "type": "boolean"
+            },
+            "root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "type": "string"
             }
           },
           "required": [
+            "root_id",
             "path"
           ],
           "type": "object"
@@ -964,7 +1050,7 @@
           "openWorldHint": false,
           "readOnlyHint": false
         },
-        "description": "Copies a file below the configured filesystem root. Directory copy is not supported.",
+        "description": "Copies a file within one selected root. Directory copy is not supported.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
@@ -973,18 +1059,28 @@
               "type": "boolean"
             },
             "source": {
-              "description": "Relative source file path below the configured filesystem root.",
+              "description": "Relative source file path.",
               "minLength": 1,
               "type": "string"
             },
+            "source_root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "type": "string"
+            },
             "target": {
-              "description": "Relative target file path below the configured filesystem root.",
+              "description": "Relative target file path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "target_root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "source_root_id",
             "source",
+            "target_root_id",
             "target"
           ],
           "type": "object"
@@ -1019,7 +1115,7 @@
           "openWorldHint": false,
           "readOnlyHint": false
         },
-        "description": "Moves or renames a file or directory on the same volume below the configured filesystem root.",
+        "description": "Moves or renames a file or directory on the same volume within one selected root.",
         "inputSchema": {
           "additionalProperties": false,
           "properties": {
@@ -1028,18 +1124,28 @@
               "type": "boolean"
             },
             "source": {
-              "description": "Relative source file or directory path below the configured filesystem root.",
+              "description": "Relative source file or directory path.",
               "minLength": 1,
               "type": "string"
             },
+            "source_root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "type": "string"
+            },
             "target": {
-              "description": "Relative target file or directory path below the configured filesystem root.",
+              "description": "Relative target file or directory path.",
               "minLength": 1,
+              "type": "string"
+            },
+            "target_root_id": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
               "type": "string"
             }
           },
           "required": [
+            "source_root_id",
             "source",
+            "target_root_id",
             "target"
           ],
           "type": "object"

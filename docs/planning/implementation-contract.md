@@ -60,6 +60,41 @@ delta is absent and measures its own affected cost under its existing contract.
 
 `SPR-048` defines release/protocol/payload/native policy contracts that can be built before profiles and Jobs. `SPR-053` establishes configuration and named-root/profile contracts, then BL-236 context, BL-159 authorization, BL-110 effective catalog, BL-166 audit/correlation, and BL-239 state binding; it completes BL-216/219/256 against those contracts. `SPR-049` builds BL-084–BL-089 lifecycle, then BL-090 storage, then dependent Operations, BL-210 Tasks mapping, BL-218 MCP resource handoff, and BL-258 payload/resource CI. Later domains consume these foundations. BL-213 single-transmission work does not require BL-090; BL-218 does. BL-220 defines early native/no-interpreter policy; BL-163 and typed-execution owners implement it later. Exact hard edges and validation/retrofit owners are maintained in [architecture traceability](architecture-traceability.md).
 
+## BL-102 filesystem resource contract
+
+BL-102 owns transport-neutral local filesystem addressing in SPR-053. Reuse
+the completed BL-101 registry and its BL-233 configuration, BL-374 source
+protection, shared effect coordination, and existing `internal/fs` and
+PathGuard. Retrofit the eight current filesystem tool schemas, adapters and
+bootstrap together. The [filesystem ADR](../adr/filesystem-abstraction.md)
+and [security model](../security.md) govern confinement and native effects.
+
+The filesystem interface receives an exact configured `RootID` and a relative
+path together for each operand. The registry binds each ID to its validated
+root backend, and that backend uses PathGuard for path resolution. Copy and
+move receive separate source and target operands and reject distinct root IDs
+before invoking native operations. The public fields are defined in the
+[tool reference](../tools.md). The configured default ID remains part of the
+TOML contract. Tool callers supply every ID and path explicitly.
+
+Every new or materially changed local filesystem consumer must use this
+boundary for direct and indirect filesystem operands, including working
+directories, executables, inputs, outputs, archives, staging and cleanup.
+Domain, Native Tool, execution and provider owners must prove that the native
+route and its results preserve confinement, configuration protection and
+limits. Each operand retains its own root binding. Root selection, capability
+grants, per-root policy, principal authorization and backend selection are
+separate controls. Registry keys, sysctls, services, the clipboard and other
+non-filesystem resources use their own resource contracts.
+
+Acceptance covers closed schemas, explicit selection in single and multiple
+roots, aliases, redaction, native open and mutation checks, sibling effects,
+and the existing catalog and platform gates. The [migration guide](../migration.md)
+owns the client input change. Record it under Unreleased with the product
+version assigned through release preparation. BL-103–BL-110, BL-159, BL-236,
+BL-239 and BL-352 retain their respective policy, execution, state and
+discovery scope. Independent terminal review is required before closure.
+
 ## BL-220 adapter acceptance binding
 
 For every new tool, platform or Native Tool adapter, execution backend,
@@ -454,8 +489,9 @@ existing 64 KiB document limit. IDs match `^[a-z][a-z0-9_]{0,63}$`, each path is
 an existing absolute directory, and every root must pass validation before the
 registry can be used. Reject the former table and development CWD setting.
 Keep global limits and read-only exposure. Registry access grants no
-functional rights. The current MCP contracts target the default root. BL-102
-owns public root addressing, BL-103 profiles, BL-104–BL-109 per-root policy,
+functional rights. The original BL-101 tools targeted the default root.
+[BL-102](#bl-102-filesystem-resource-contract) owns explicit addressing.
+BL-103 owns profiles, BL-104–BL-109 per-root policy,
 BL-159 authorization, BL-236 execution context, and BL-352 discovery.
 
 **Acceptance and closure.** Exercise strict TOML decoding, isolated snapshots,

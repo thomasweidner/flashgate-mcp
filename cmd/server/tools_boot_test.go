@@ -137,34 +137,34 @@ func requireToolRegistry(t testing.TB, filesystem fs.FileSystem, maxFileSize int
 	return registry
 }
 
-func (noopFileSystem) List(string) ([]fs.Entry, error) {
+func (noopFileSystem) List(fs.Operand) ([]fs.Entry, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (noopFileSystem) Read(string, int64) ([]byte, error) {
+func (noopFileSystem) Read(fs.Operand, int64) ([]byte, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (noopFileSystem) Stat(string) (fs.Metadata, error) {
+func (noopFileSystem) Stat(fs.Operand) (fs.Metadata, error) {
 	return fs.Metadata{}, errors.New("not implemented")
 }
 
-func (noopFileSystem) Write(string, []byte, bool) error {
+func (noopFileSystem) Write(fs.Operand, []byte, bool) error {
 	return errors.New("not implemented")
 }
 
-func (noopFileSystem) Mkdir(string) (bool, error) {
+func (noopFileSystem) Mkdir(fs.Operand) (bool, error) {
 	return false, errors.New("not implemented")
 }
 
-func (noopFileSystem) Delete(string, bool) error {
+func (noopFileSystem) Delete(fs.Operand, bool) error {
 	return errors.New("not implemented")
 }
 
-func (noopFileSystem) Move(string, string, bool) error {
+func (noopFileSystem) Move(fs.Operand, fs.Operand, bool) error {
 	return errors.New("not implemented")
 }
 
-func (noopFileSystem) Copy(string, string, bool) error {
+func (noopFileSystem) Copy(fs.Operand, fs.Operand, bool) error {
 	return errors.New("not implemented")
 }

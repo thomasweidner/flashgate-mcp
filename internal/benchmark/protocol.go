@@ -181,20 +181,20 @@ func referenceWorkflows() []workflowDefinition {
 	reads := []requestSpec{initializeSpec()}
 	for index := 0; index < 10; index++ {
 		path := fmt.Sprintf("path-checks/entry-%02d.txt", index)
-		pathChecks = append(pathChecks, toolCallSpec("get_path_info", map[string]any{"path": path}))
+		pathChecks = append(pathChecks, toolCallSpec("get_path_info", map[string]any{"root_id": "work", "path": path}))
 		readPath := fmt.Sprintf("read-files/entry-%02d.txt", index)
-		reads = append(reads, toolCallSpec("read_file", map[string]any{"path": readPath}))
+		reads = append(reads, toolCallSpec("read_file", map[string]any{"root_id": "work", "path": readPath}))
 	}
 
 	return []workflowDefinition{
 		{name: "initialize", requests: []requestSpec{initializeSpec()}},
 		{name: "initialize_tools_list", requests: []requestSpec{initializeSpec(), toolsListSpec()}},
-		{name: "get_path_info_existing", requests: []requestSpec{initializeSpec(), toolCallSpec("get_path_info", map[string]any{"path": "existing.txt"})}},
-		{name: "get_path_info_missing", requests: []requestSpec{initializeSpec(), toolCallSpec("get_path_info", map[string]any{"path": "missing.txt"})}},
-		{name: "read_file_small", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"path": "small.txt"})}},
-		{name: "read_file_64kib", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"path": "text-64kib.txt"})}},
-		{name: "list_directory_small", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"path": "small-dir"})}},
-		{name: "list_directory_500_entries", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"path": "large-dir"})}},
+		{name: "get_path_info_existing", requests: []requestSpec{initializeSpec(), toolCallSpec("get_path_info", map[string]any{"root_id": "work", "path": "existing.txt"})}},
+		{name: "get_path_info_missing", requests: []requestSpec{initializeSpec(), toolCallSpec("get_path_info", map[string]any{"root_id": "work", "path": "missing.txt"})}},
+		{name: "read_file_small", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"root_id": "work", "path": "small.txt"})}},
+		{name: "read_file_64kib", requests: []requestSpec{initializeSpec(), toolCallSpec("read_file", map[string]any{"root_id": "work", "path": "text-64kib.txt"})}},
+		{name: "list_directory_small", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"root_id": "work", "path": "small-dir"})}},
+		{name: "list_directory_500_entries", requests: []requestSpec{initializeSpec(), toolCallSpec("list_directory", map[string]any{"root_id": "work", "path": "large-dir"})}},
 		{name: "multiple_path_checks", requests: pathChecks},
 		{name: "multiple_file_reads", requests: reads},
 	}

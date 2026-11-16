@@ -14,11 +14,11 @@ search and audit integration.
 
 ## Decision
 
-Production tool filesystem operations go through `internal/fs.FileSystem`.
-`internal/fs.LocalFileSystem` implements that interface and delegates path
-validation to `internal/security.PathGuard`. Tools depend on the interface,
-not direct `os.*` calls. Security-specific path resolution remains owned by
-PathGuard; this decision does not move security logic into MCP handlers.
+Production filesystem consumers use `internal/fs.FileSystem`. Each operation
+accepts an `fs.Operand` with an exact configured root ID and a relative path.
+The immutable `internal/roots.Registry` implements the interface and selects
+the bound native filesystem. The selected `internal/fs.LocalFileSystem`
+delegates path resolution to `internal/security.PathGuard`.
 
 The current interface is defined in
 [`internal/fs/filesystem.go`](../../internal/fs/filesystem.go). It exposes
@@ -50,7 +50,8 @@ Bootstrap validates every root with PathGuard and binds one selected-source
 protection to the entire registry before enabling the router and STDIO server.
 Overlapping roots share effect coordination. Resolving a root ID supplies
 confinement and a filesystem backend, while capability checks still govern
-what a caller may do. The existing tools use the explicit default ID.
+what a caller may do. Public calls carry the ID and path for each operand.
+Copy and move require the source and target IDs to match.
 
 ## Current implementation
 
@@ -67,6 +68,8 @@ race of the path-based rename API is documented in [security](../security.md)
 and [migration](../migration.md#input-and-operation-semantics), not presented
 as a stronger atomic identity guarantee.
 
-Future filesystem, search, audit, and profile changes must retain this domain
-boundary. Their acceptance and implementation status are owned by the
-[backlog](../../BACKLOG.md), not inferred from this accepted decision.
+The [BL-102 consumer contract](../planning/implementation-contract.md#bl-102-filesystem-resource-contract)
+applies to every new or materially changed local filesystem consumer,
+including filesystem effects of search, managed execution, Native Tools and
+providers. Owners prove the same safeguards at their actual open, effect and
+result boundaries. The [backlog](../../BACKLOG.md) owns acceptance and status.

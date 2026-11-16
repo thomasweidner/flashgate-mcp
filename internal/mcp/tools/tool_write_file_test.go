@@ -49,7 +49,7 @@ func TestWriteFileToolExecute(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"tmp-write-test.txt","content":"hello world","overwrite":false}`),
+		json.RawMessage(`{"root_id":"work","path":"tmp-write-test.txt","content":"hello world","overwrite":false}`),
 	)
 
 	if rpcErr != nil {
@@ -104,7 +104,7 @@ func TestWriteFileToolAllowsEmptyContent(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"empty.txt"}`),
+		json.RawMessage(`{"root_id":"work","path":"empty.txt"}`),
 	)
 
 	if rpcErr != nil {
@@ -145,7 +145,7 @@ func TestWriteFileToolForwardsOverwrite(t *testing.T) {
 
 	_, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"existing.txt","content":"new","overwrite":true}`),
+		json.RawMessage(`{"root_id":"work","path":"existing.txt","content":"new","overwrite":true}`),
 	)
 
 	if rpcErr != nil {
@@ -165,7 +165,7 @@ func TestWriteFileToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":`),
+		json.RawMessage(`{"root_id":"work","path":`),
 	)
 
 	if result.variant != "" {
@@ -215,7 +215,7 @@ func TestWriteFileToolReturnsInvalidParamsForFileExists(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"existing.txt","content":"hello","overwrite":false}`),
+		json.RawMessage(`{"root_id":"work","path":"existing.txt","content":"hello","overwrite":false}`),
 	)
 
 	if result.variant != "" {
@@ -241,7 +241,7 @@ func TestWriteFileToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"path":"docs","content":"hello","overwrite":false}`),
+		json.RawMessage(`{"root_id":"work","path":"docs","content":"hello","overwrite":false}`),
 	)
 
 	if result.variant != "" {

@@ -13,9 +13,15 @@ the intended release date. Publication evidence is separate.
 ### Breaking Changes
 
 - Configure named roots in `[files.roots.<id>]` and set `files.default_id`.
-  Startup validates every root before enabling the existing tools on the
-  default. Replace the former `[filesystem]` table and CWD opt-in using the
+  Startup validates every root before enabling the filesystem tools.
+  Replace the former `[filesystem]` table and CWD opt-in using the
   [migration guide](docs/migration.md#root-configuration).
+
+- All eight filesystem tools require an explicit configured root ID for each
+  relative path. Pass `root_id` and `path` for one operand, and
+  `source_root_id`/`source` and `target_root_id`/`target` for copy or move.
+  Copy and move require matching root IDs. Pass `.` explicitly to list the
+  root. See [client input migration](docs/migration.md#input-and-operation-semantics).
 
 ### Changed
 

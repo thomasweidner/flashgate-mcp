@@ -43,6 +43,10 @@ wire results, initialization/discovery capabilities, revision metadata, and
 successful calls for every registered result variant and a denied call for
 each exposed tool in each profile.
 
+Every successful filesystem call supplies the exact root field or fields
+declared by its input schema. Negative cases cover strict argument decoding,
+missing and unknown IDs, traversal, and combinations of source and target IDs.
+
 The wire negatives also exercise `read_file` encoding in every
 revision/profile combination. Valid and empty UTF-8 round-trip byte for byte
 and malformed UTF-8 returns the safe `invalid_text_encoding` result.

@@ -124,24 +124,16 @@ func TestNewPathGuardRejectsSymlinkRootToFileWhenFollowing(t *testing.T) {
 	}
 }
 
-func TestResolveAcceptsEmptyUserPathAsRoot(t *testing.T) {
+func TestResolveRejectsEmptyAndBlankUserPaths(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
 	guard := mustNewPathGuard(t, root)
 
-	safePath, err := guard.Resolve("")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	expected, err := filepath.Abs(root)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if safePath.String() != expected {
-		t.Fatalf("expected %q, got %q", expected, safePath.String())
+	for _, path := range []string{"", " \t "} {
+		if _, err := guard.Resolve(path); !errors.Is(err, ErrEmptyPath) {
+			t.Errorf("expected empty-path denial for %q, got %v", path, err)
+		}
 	}
 }
 

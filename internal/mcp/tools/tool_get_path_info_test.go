@@ -14,13 +14,13 @@ func TestGetPathInfoExistingAndMissing(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.statMetadata = fs.Metadata{Name: "file.txt", Size: 7}
 	tool := NewGetPathInfoTool(fake)
-	result, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"path":"file.txt"}`))
+	result, rpcErr := tool.Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"file.txt"}`))
 	want := getPathInfoExistingResult{Path: "file.txt", Exists: true, Name: "file.txt", Size: 7}
 	if rpcErr != nil || !reflect.DeepEqual(result.object, want) {
 		t.Fatalf("unexpected existing result=%#v error=%v", result, rpcErr)
 	}
 	fake.statErr = fs.ErrNotFound
-	result, rpcErr = tool.Execute(context.Background(), json.RawMessage(`{"path":"missing.txt"}`))
+	result, rpcErr = tool.Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"missing.txt"}`))
 	if rpcErr != nil || !reflect.DeepEqual(result.object, getPathInfoMissingResult{Path: "missing.txt", Exists: false}) {
 		t.Fatalf("unexpected missing result=%#v error=%v", result, rpcErr)
 	}
@@ -36,7 +36,7 @@ func TestGetPathInfoDefinition(t *testing.T) {
 func TestGetPathInfoExistingDirectory(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.statMetadata = fs.Metadata{Name: "docs", IsDir: true}
-	result, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"docs"}`))
+	result, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"docs"}`))
 	want := getPathInfoExistingResult{Path: "docs", Exists: true, Name: "docs", IsDir: true, Size: 0}
 	if rpcErr != nil || !reflect.DeepEqual(result.object, want) {
 		t.Fatalf("unexpected directory result=%#v error=%v", result, rpcErr)
@@ -46,7 +46,7 @@ func TestGetPathInfoExistingDirectory(t *testing.T) {
 func TestGetPathInfoDoesNotMaskPolicyDenial(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.statErr = security.ErrHiddenPathDenied
-	_, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"path":".hidden/missing"}`))
+	_, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":".hidden/missing"}`))
 	if rpcErr == nil || errorCategory(rpcErr) != "invalid_path" {
 		t.Fatalf("expected policy error, got %#v", rpcErr)
 	}
@@ -55,14 +55,14 @@ func TestGetPathInfoDoesNotMaskPolicyDenial(t *testing.T) {
 func TestGetPathInfoMapsFilesystemError(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.statErr = fs.ErrPathIsDirectory
-	result, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"file"}`))
+	result, rpcErr := NewGetPathInfoTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"file"}`))
 	if result.variant != "" || rpcErr == nil || errorCategory(rpcErr) != "unsupported_path_type" {
 		t.Fatalf("expected Invalid params, result=%#v error=%#v", result, rpcErr)
 	}
 }
 
 func TestGetPathInfoRejectsInvalidArguments(t *testing.T) {
-	for _, raw := range []string{`{}`, `{"path":""}`, `{"path":"  "}`, `{"path":1}`, `{"path":"a","extra":true}`, `{"path":"a"} null`} {
+	for _, raw := range []string{`{}`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":"  "}`, `{"root_id":"work","path":1}`, `{"root_id":"work","path":"a","extra":true}`, `{"root_id":"work","path":"a"} null`} {
 		_, rpcErr := NewGetPathInfoTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)

@@ -34,7 +34,7 @@ func (t *MovePathTool) Title() string {
 
 // Description returns the tool description.
 func (t *MovePathTool) Description() string {
-	return "Moves or renames a file or directory on the same volume below the configured filesystem root."
+	return "Moves or renames a file or directory on the same volume within one selected root."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -42,22 +42,24 @@ func (t *MovePathTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"source_root_id": rootIDSchema(),
+			"target_root_id": rootIDSchema(),
 			"source": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative source file or directory path below the configured filesystem root.",
+				"description": "Relative source file or directory path.",
 			},
 			"target": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative target file or directory path below the configured filesystem root.",
+				"description": "Relative target file or directory path.",
 			},
 			"overwrite": map[string]any{
 				"type":        "boolean",
 				"description": "Whether an existing target may be overwritten. Defaults to false.",
 			},
 		},
-		"required":             []string{"source", "target"},
+		"required":             []string{"source_root_id", "source", "target_root_id", "target"},
 		"additionalProperties": false,
 	}
 }
@@ -80,34 +82,33 @@ func (t *MovePathTool) ResultContract() ResultContract {
 
 // Execute moves the requested source path to the target path.
 func (t *MovePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments movePathArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return ToolResult{}, rpcErr
+	var source, target fs.Operand
+	var overwrite bool
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"source_root_id": &source.RootID,
+		"source":         &source.Path,
+		"target_root_id": &target.RootID,
+		"target":         &target.Path,
+		"overwrite":      &overwrite,
+	}); err != nil {
+		return ToolResult{}, err
 	}
-
-	if !isNonBlank(arguments.Source) || !isNonBlank(arguments.Target) {
+	if !validOperand(source) || !validOperand(target) {
 		return ToolResult{}, invalidArgumentsError()
 	}
-
-	if err := validateReceiptPaths(arguments.Source, arguments.Target); err != nil {
+	if err := validateReceiptPaths(source.Path, target.Path); err != nil {
 		return ToolResult{}, err
 	}
 
-	if err := t.filesystem.Move(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
+	if err := t.filesystem.Move(source, target, overwrite); err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
 	return NewToolResult(defaultVariant, movePathResult{
-		Source: arguments.Source,
-		Target: arguments.Target,
+		Source: source.Path,
+		Target: target.Path,
 		Moved:  true,
 	}), nil
-}
-
-type movePathArguments struct {
-	Source    string `json:"source"`
-	Target    string `json:"target"`
-	Overwrite bool   `json:"overwrite,omitempty"`
 }
 
 type movePathResult struct {

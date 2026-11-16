@@ -19,15 +19,16 @@ func NewCreateDirectoryTool(filesystem fs.FileSystem) *CreateDirectoryTool {
 func (t *CreateDirectoryTool) Name() string  { return createDirectoryToolName }
 func (t *CreateDirectoryTool) Title() string { return "Create Directory" }
 func (t *CreateDirectoryTool) Description() string {
-	return "Creates a directory and any missing parents below the configured filesystem root."
+	return "Creates a directory and any missing parents below the selected root."
 }
 func (t *CreateDirectoryTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"path": map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path below the configured filesystem root."},
+			"root_id": rootIDSchema(),
+			"path":    map[string]any{"type": "string", "minLength": 1, "description": "Relative directory path."},
 		},
-		"required": []string{"path"}, "additionalProperties": false,
+		"required": []string{"root_id", "path"}, "additionalProperties": false,
 	}
 }
 func (t *CreateDirectoryTool) Definition() protocol.Tool {
@@ -38,26 +39,28 @@ func (t *CreateDirectoryTool) ResultContract() ResultContract {
 }
 
 func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments createDirectoryArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil || !isNonBlank(arguments.Path) {
+	var path fs.Operand
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"root_id": &path.RootID,
+		"path":    &path.Path,
+	}); err != nil {
+		return ToolResult{}, err
+	}
+	if !validOperand(path) {
 		return ToolResult{}, invalidArgumentsError()
 	}
-
-	if err := validateReceiptPaths(arguments.Path); err != nil {
+	if err := validateReceiptPaths(path.Path); err != nil {
 		return ToolResult{}, err
 	}
 
-	created, err := t.filesystem.Mkdir(arguments.Path)
+	created, err := t.filesystem.Mkdir(path)
 	if err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return NewToolResult(defaultVariant, createDirectoryResult{Path: arguments.Path, Created: created}), nil
+	return NewToolResult(defaultVariant, createDirectoryResult{Path: path.Path, Created: created}), nil
 }
 
-type createDirectoryArguments struct {
-	Path string `json:"path"`
-}
 type createDirectoryResult struct {
 	Path    string `json:"path"`
 	Created bool   `json:"created"`

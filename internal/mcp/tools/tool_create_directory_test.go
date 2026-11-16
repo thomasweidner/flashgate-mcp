@@ -18,19 +18,19 @@ func TestCreateDirectoryDefinition(t *testing.T) {
 func TestCreateDirectoryReportsCreatedState(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.mkdirCreated = true
-	result, rpcErr := NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"a/b"}`))
+	result, rpcErr := NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"a/b"}`))
 	if rpcErr != nil || result.object != (createDirectoryResult{Path: "a/b", Created: true}) {
 		t.Fatalf("unexpected created result=%#v error=%v", result, rpcErr)
 	}
 	fake.mkdirCreated = false
-	result, rpcErr = NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"a/b"}`))
+	result, rpcErr = NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"a/b"}`))
 	if rpcErr != nil || result.object != (createDirectoryResult{Path: "a/b", Created: false}) {
 		t.Fatalf("unexpected existing result=%#v error=%v", result, rpcErr)
 	}
 }
 
 func TestCreateDirectoryRejectsInvalidArguments(t *testing.T) {
-	for _, raw := range []string{`{}`, `{"path":""}`, `{"path":" "}`, `{"path":"a","extra":1}`} {
+	for _, raw := range []string{`{}`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":" "}`, `{"root_id":"work","path":"a","extra":1}`} {
 		_, rpcErr := NewCreateDirectoryTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
@@ -41,7 +41,7 @@ func TestCreateDirectoryRejectsInvalidArguments(t *testing.T) {
 func TestCreateDirectoryMapsFilesystemError(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.mkdirErr = fs.ErrPathIsNotDirectory
-	result, rpcErr := NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"file"}`))
+	result, rpcErr := NewCreateDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"file"}`))
 	if result.variant != "" || rpcErr == nil || errorCategory(rpcErr) != "unsupported_path_type" {
 		t.Fatalf("expected Invalid params, result=%#v error=%#v", result, rpcErr)
 	}

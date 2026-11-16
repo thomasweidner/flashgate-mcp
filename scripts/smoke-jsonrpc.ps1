@@ -116,22 +116,22 @@ try {
     $requests = @(
         '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke-test","version":"dev"}}}'
         '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
-        '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_directory","arguments":{}}}'
-        '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"README.md"}}}'
-        '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_path_info","arguments":{"path":"README.md"}}}'
-        '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_path_info","arguments":{"path":"smoke-missing-path"}}}'
+        '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_directory","arguments":{"root_id":"work","path":"."}}}'
+        '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_file","arguments":{"root_id":"work","path":"README.md"}}}'
+        '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_path_info","arguments":{"root_id":"work","path":"README.md"}}}'
+        '{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_path_info","arguments":{"root_id":"work","path":"smoke-missing-path"}}}'
     )
 
     if (-not $ReadOnly) {
         [System.IO.File]::WriteAllText($moveSourcePath, "move-smoke", [System.Text.UTF8Encoding]::new($false))
-        $requests += '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"' + $moveSourceRelative + '","target":"' + $moveTargetRelative + '"}}}'
+        $requests += '{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"move_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"' + $moveSourceRelative + '","target":"' + $moveTargetRelative + '"}}}'
     } else {
         $requests += @(
-            ('{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write_file","arguments":{"path":"' + $readOnlyWriteRelative + '","content":"blocked"}}}')
-            ('{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_directory","arguments":{"path":"' + $readOnlyCreateRelative + '"}}}')
-            ('{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"delete_path","arguments":{"path":"' + $readOnlyDeleteRelative + '"}}}')
-            ('{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"copy_path","arguments":{"source":"' + $readOnlyCopySourceRelative + '","target":"' + $readOnlyCopyTargetRelative + '"}}}')
-            ('{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"' + $readOnlyMoveSourceRelative + '","target":"' + $readOnlyMoveTargetRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write_file","arguments":{"root_id":"work","path":"' + $readOnlyWriteRelative + '","content":"blocked"}}}')
+            ('{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_directory","arguments":{"root_id":"work","path":"' + $readOnlyCreateRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"delete_path","arguments":{"root_id":"work","path":"' + $readOnlyDeleteRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"copy_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"' + $readOnlyCopySourceRelative + '","target":"' + $readOnlyCopyTargetRelative + '"}}}')
+            ('{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"' + $readOnlyMoveSourceRelative + '","target":"' + $readOnlyMoveTargetRelative + '"}}}')
         )
     }
 

@@ -17,6 +17,9 @@ var (
 	// ErrAbsolutePath is returned when a user path is absolute.
 	ErrAbsolutePath = errors.New("absolute paths are not allowed")
 
+	// ErrEmptyPath is returned when a resource does not name a relative path.
+	ErrEmptyPath = errors.New("relative path must not be empty")
+
 	// ErrPathTraversal is returned when a user path attempts to escape the root.
 	ErrPathTraversal = errors.New("path traversal detected")
 
@@ -213,13 +216,17 @@ func (g *PathGuard) ResolveForCreate(userPath string) (SafePath, error) {
 }
 
 func (g *PathGuard) resolveLexical(userPath string) (string, error) {
-	normalizedUserPath := normalizeUserPath(userPath)
+	if strings.TrimSpace(userPath) == "" {
+		return "", ErrEmptyPath
+	}
+	normalizedUserPath := filepath.Clean(userPath)
 
 	if !g.policy.AllowUNCPaths && isUNCPath(normalizedUserPath) {
 		return "", ErrUNCPathDenied
 	}
 
-	if filepath.IsAbs(normalizedUserPath) {
+	if filepath.IsAbs(normalizedUserPath) || filepath.VolumeName(normalizedUserPath) != "" ||
+		strings.HasPrefix(normalizedUserPath, string(filepath.Separator)) {
 		return "", ErrAbsolutePath
 	}
 
@@ -338,14 +345,6 @@ func (g *PathGuard) validateExistingPathPolicy(path string) error {
 	}
 
 	return nil
-}
-
-func normalizeUserPath(userPath string) string {
-	if strings.TrimSpace(userPath) == "" {
-		return "."
-	}
-
-	return filepath.Clean(userPath)
 }
 
 func isTraversalPath(path string) bool {

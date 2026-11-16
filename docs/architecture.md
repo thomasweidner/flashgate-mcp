@@ -337,8 +337,9 @@ valid root, no explicit profile  -> safe read-only profile
 higher-risk profile              -> explicit validated activation
 ```
 
-The server configures named roots today. BL-102 adds model-visible root IDs
-with relative paths. The target also allows per-root rules for:
+The server binds an explicit root ID and a relative path for each filesystem
+operand through the [BL-102 resource contract](planning/implementation-contract.md#bl-102-filesystem-resource-contract).
+The target also allows per-root rules for:
 
 - read/write access;
 - size/result/scan/temp limits;

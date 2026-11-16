@@ -29,8 +29,10 @@ contract, subject to the 64 KiB document limit. Every path must be an
 existing absolute directory that passes PathGuard and native protection
 checks. An invalid secondary root prevents startup.
 
-The current MCP tools use the default root, with unchanged relative path
-inputs. Explicit root selection belongs to BL-102 and discovery to BL-352.
+The current MCP tools require an exact configured ID and a relative path for
+each operand, even with one configured root. See the [tool reference](tools.md).
+The configured default ID is a TOML requirement and clients still send the ID
+explicitly. Named-root discovery belongs to BL-352.
 The [migration guide](migration.md#root-configuration) covers conversion
 from the former table.
 
@@ -89,7 +91,7 @@ unless the field names or table indicate another unit.
 | Key | Type and runtime default | Effect |
 |---|---|---|
 | `runtime.mode` | String, host-selected (`"stdio"` in the current executable) | Must match the bound runtime role. |
-| `files.default_id` | Required string | Exact configured ID used by the current tools. |
+| `files.default_id` | Required string | Must name an existing root ID. Tool calls provide their own explicit IDs. |
 | `files.roots.<id>.path` | Required string per root | Existing absolute data directory, subject to PathGuard. |
 | `files.read_only` | Boolean, `false` | When true, register only the three current read tools. The template explicitly sets true. |
 | `files.max_file_size` | Integer, 10485760 | Maximum file read. |

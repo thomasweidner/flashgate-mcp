@@ -24,12 +24,12 @@ func TestListDirectoryDefinition(t *testing.T) {
 	}
 }
 
-func TestListDirectoryDefaultsOnlyMissingPath(t *testing.T) {
+func TestListDirectorySelectsExplicitRootDirectory(t *testing.T) {
 	fake := newFakeFileSystem()
 	fake.entries = []fs.Entry{{Name: "file.txt", Size: 1}}
-	result, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{}`))
+	result, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"."}`))
 	if rpcErr != nil || fake.listPath != "." {
-		t.Fatalf("expected default path, got path=%q error=%v", fake.listPath, rpcErr)
+		t.Fatalf("expected root directory, got path=%q error=%v", fake.listPath, rpcErr)
 	}
 	want := listDirectoryResult{Entries: fake.entries}
 	if !reflect.DeepEqual(result.object, want) {
@@ -38,7 +38,7 @@ func TestListDirectoryDefaultsOnlyMissingPath(t *testing.T) {
 }
 
 func TestListDirectoryRejectsInvalidArguments(t *testing.T) {
-	for _, raw := range []string{``, `null`, `[]`, `{`, `{"path":""}`, `{"path":"  "}`, `{"unknown":true}`, `{} {}`} {
+	for _, raw := range []string{``, `null`, `[]`, `{`, `{"root_id":"work","path":""}`, `{"root_id":"work","path":"  "}`, `{"unknown":true}`, `{} {}`} {
 		_, rpcErr := NewListDirectoryTool(newFakeFileSystem()).Execute(context.Background(), json.RawMessage(raw))
 		if rpcErr == nil || errorCategory(rpcErr) != "invalid_arguments" {
 			t.Fatalf("expected invalid params for %q, got %#v", raw, rpcErr)
@@ -50,7 +50,7 @@ func TestListDirectoryMapsFileAndSecurityErrors(t *testing.T) {
 	for _, testErr := range []error{fs.ErrPathIsNotDirectory, security.ErrPathTraversal} {
 		fake := newFakeFileSystem()
 		fake.err = testErr
-		_, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"path":"docs"}`))
+		_, rpcErr := NewListDirectoryTool(fake).Execute(context.Background(), json.RawMessage(`{"root_id":"work","path":"docs"}`))
 		if rpcErr == nil || errorCategory(rpcErr) != classifyFilesystemError(testErr) {
 			t.Fatalf("expected Invalid params for %v, got %#v", testErr, rpcErr)
 		}

@@ -40,15 +40,6 @@ func loadRegistry(t *testing.T, source, document string) *Registry {
 	return registry
 }
 
-func lookup(t *testing.T, r *Registry, id config.RootID) fs.FileSystem {
-	t.Helper()
-	f, err := r.Lookup(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return f
-}
-
 func TestRegistryResolvesDistinctRootsAndIsolatesSnapshots(t *testing.T) {
 	t.Parallel()
 	work, archive := t.TempDir(), t.TempDir()
@@ -56,20 +47,20 @@ func TestRegistryResolvesDistinctRootsAndIsolatesSnapshots(t *testing.T) {
 		"[files]\ndefault_id = 'work'\nmax_write_bytes = 4\n[security]\nallow_hidden_files = true\n"+
 			rootTable(t, "work", work)+rootTable(t, "archive", archive))
 	want := []config.RootID{"archive", "work"}
-	if ids := r.IDs(); !slices.Equal(ids, want) || r.DefaultID() != "work" {
-		t.Fatalf("unexpected root selection: %v, %v", ids, r.DefaultID())
+	if ids := r.IDs(); !slices.Equal(ids, want) {
+		t.Fatalf("unexpected root selection: %v", ids)
 	}
 	for i, id := range want {
-		f := lookup(t, r, id)
-		if err := f.Write(".data", []byte("large"), false); !errors.Is(err, fs.ErrLimitExceeded) {
+		operand := fs.Operand{RootID: id, Path: ".data"}
+		if err := r.Write(operand, []byte("large"), false); !errors.Is(err, fs.ErrLimitExceeded) {
 			t.Fatalf("root %s did not enforce the configured write limit: %v", id, err)
 		}
-		if err := f.Write(".data", []byte{byte(i)}, false); err != nil {
+		if err := r.Write(operand, []byte{byte(i)}, false); err != nil {
 			t.Fatal(err)
 		}
 	}
 	for _, id := range []config.RootID{"", "Work", "unknown", "work "} {
-		if f, err := r.Lookup(id); f != nil || !errors.Is(err, ErrUnknownRoot) {
+		if _, err := r.Read(fs.Operand{RootID: id, Path: ".data"}, 1); !errors.Is(err, fs.ErrUnknownRoot) {
 			t.Errorf("invalid ID %q resolved: %v", id, err)
 		}
 	}
@@ -83,12 +74,7 @@ func TestRegistryResolvesDistinctRootsAndIsolatesSnapshots(t *testing.T) {
 			}
 			ids[0] = "overwritten"
 			for i, id := range want {
-				f, err := r.Lookup(id)
-				if err != nil {
-					t.Error(err)
-					return
-				}
-				got, err := f.Read(".data", 1)
+				got, err := r.Read(fs.Operand{RootID: id, Path: ".data"}, 1)
 				if err != nil || len(got) != 1 || got[0] != byte(i) {
 					t.Errorf("root %s returned the wrong payload: %v", id, err)
 				}
@@ -109,12 +95,13 @@ func TestRegistryProtectsConfigThroughOverlappingRoots(t *testing.T) {
 	document := "[files]\ndefault_id = 'outer'\n[security]\nfollow_symlinks = true\n" +
 		rootTable(t, "outer", outer) + rootTable(t, "inner", inner)
 	r := loadRegistry(t, source, document)
-	outerFS, innerFS := lookup(t, r, "outer"), lookup(t, r, "inner")
+	outerPath := func(path string) fs.Operand { return fs.Operand{RootID: "outer", Path: path} }
+	innerPath := func(path string) fs.Operand { return fs.Operand{RootID: "inner", Path: path} }
 	loadedAlias := filepath.Join(inner, "loaded.toml")
 	if err := os.Link(source, loadedAlias); err != nil {
 		t.Fatal(err)
 	}
-	if err := innerFS.Write("sibling.txt", []byte("sibling"), false); err != nil {
+	if err := r.Write(innerPath("sibling.txt"), []byte("sibling"), false); err != nil {
 		t.Fatal(err)
 	}
 	expectDenied := func(err error) {
@@ -123,23 +110,23 @@ func TestRegistryProtectsConfigThroughOverlappingRoots(t *testing.T) {
 			t.Errorf("expected configuration protection, got %v", err)
 		}
 	}
-	exercise := func(f fs.FileSystem, protected, sibling string) {
+	exercise := func(protected, sibling fs.Operand) {
 		t.Helper()
-		data, err := f.Read(protected, config.MaxDocumentBytes)
+		data, err := r.Read(protected, config.MaxDocumentBytes)
 		expectDenied(err)
 		if len(data) != 0 {
 			t.Error("protected read returned bytes")
 		}
-		expectDenied(f.Copy(protected, sibling, true))
-		expectDenied(f.Copy(sibling, protected, true))
-		expectDenied(f.Write(protected, []byte("replacement"), true))
-		expectDenied(f.Move(protected, sibling, true))
-		expectDenied(f.Move(sibling, protected, true))
-		expectDenied(f.Delete(protected, false))
-		if info, err := f.Stat(protected); err != nil || info.IsDir {
+		expectDenied(r.Copy(protected, sibling, true))
+		expectDenied(r.Copy(sibling, protected, true))
+		expectDenied(r.Write(protected, []byte("replacement"), true))
+		expectDenied(r.Move(protected, sibling, true))
+		expectDenied(r.Move(sibling, protected, true))
+		expectDenied(r.Delete(protected, false))
+		if info, err := r.Stat(protected); err != nil || info.IsDir {
 			t.Errorf("protected stat lost allowed metadata: %v", err)
 		}
-		if data, err := f.Read(sibling, 20); err != nil || string(data) != "sibling" {
+		if data, err := r.Read(sibling, 20); err != nil || string(data) != "sibling" {
 			t.Errorf("denied operation changed the sibling target: %v", err)
 		}
 	}
@@ -153,12 +140,12 @@ func TestRegistryProtectsConfigThroughOverlappingRoots(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, alias := range aliases {
-		exercise(outerFS, filepath.Join("settings", alias), filepath.Join("settings", "sibling.txt"))
-		exercise(innerFS, alias, "sibling.txt")
+		exercise(outerPath(filepath.Join("settings", alias)), outerPath("settings/sibling.txt"))
+		exercise(innerPath(alias), innerPath("sibling.txt"))
 	}
-	expectDenied(outerFS.Move("settings", "relocated", false))
-	expectDenied(outerFS.Delete("settings", true))
-	if entries, err := innerFS.List("."); err != nil || len(entries) < 3 {
+	expectDenied(r.Move(outerPath("settings"), outerPath("relocated"), false))
+	expectDenied(r.Delete(outerPath("settings"), true))
+	if entries, err := r.List(innerPath(".")); err != nil || len(entries) < 3 {
 		t.Fatalf("protected directory lost allowed listing metadata: %v", err)
 	}
 
@@ -170,8 +157,8 @@ func TestRegistryProtectsConfigThroughOverlappingRoots(t *testing.T) {
 	if err := os.Link(source, currentAlias); err != nil {
 		t.Fatal(err)
 	}
-	exercise(outerFS, filepath.Join("settings", "current.toml"), filepath.Join("settings", "sibling.txt"))
-	exercise(innerFS, "loaded.toml", "sibling.txt")
+	exercise(outerPath(filepath.Join("settings", "current.toml")), outerPath("settings/sibling.txt"))
+	exercise(innerPath("loaded.toml"), innerPath("sibling.txt"))
 	for path, want := range map[string]string{source: "replacement", loadedAlias: document} {
 		if got, err := os.ReadFile(path); err != nil || string(got) != want {
 			t.Errorf("protected object changed: %v", err)
@@ -195,11 +182,11 @@ func TestRegistryDeniesDriftOnOneRootAndKeepsSiblingRootUsable(t *testing.T) {
 		t.Fatal(err)
 	}
 	testconfig.Write(t, filepath.Join(work, "file"), []byte("replacement root"))
-	f := lookup(t, r, "work")
-	_, readErr := f.Read("file", 64)
-	_, statErr := f.Stat("file")
-	_, listErr := f.List(".")
-	for _, err := range []error{readErr, statErr, listErr, f.Write("new", []byte("rejected"), false)} {
+	workPath := func(path string) fs.Operand { return fs.Operand{RootID: "work", Path: path} }
+	_, readErr := r.Read(workPath("file"), 64)
+	_, statErr := r.Stat(workPath("file"))
+	_, listErr := r.List(workPath("."))
+	for _, err := range []error{readErr, statErr, listErr, r.Write(workPath("new"), []byte("rejected"), false)} {
 		if !errors.Is(err, security.ErrConfigurationAccess) {
 			t.Errorf("root drift reached an operation: %v", err)
 		}
@@ -207,7 +194,7 @@ func TestRegistryDeniesDriftOnOneRootAndKeepsSiblingRootUsable(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(work, "new")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("root drift reached a write")
 	}
-	if err := lookup(t, r, "archive").Write("other.txt", []byte("allowed"), false); err != nil {
+	if err := r.Write(fs.Operand{RootID: "archive", Path: "other.txt"}, []byte("allowed"), false); err != nil {
 		t.Fatal(err)
 	}
 }

@@ -15,11 +15,16 @@ move_path
 
 The read-only profile exposes only `list_directory`, `read_file`, and `get_path_info`. Write-capable tools are not registered in read-only mode, and calls to unavailable or unknown names return generic JSON-RPC Invalid params.
 
-For initial read-only client setup, set `files.read_only = true` and select an
-existing absolute data directory with `files.default_id`. Paths in the current
-tools are relative to that root. See [client setup](client-setup.md).
+For initial read-only client setup, set `files.read_only = true` and configure
+an existing absolute data directory under a root ID such as `work`.
+See [client setup](client-setup.md).
 
-All paths are relative to the configured root. Absolute paths, traversal, denied hidden/UNC paths, and denied symlink, junction, or reparse access remain server-side errors. Inputs are strict JSON objects: unknown properties, malformed JSON, trailing JSON values, wrong field types, explicit `null` field values, missing required fields, and blank required paths are rejected.
+Every operand supplies an exact configured root ID and a nonblank path
+relative to that root. Clients provide the ID even for a single-root
+configuration. Absolute paths, traversal and disallowed filesystem aliases
+are rejected by the server. Inputs are closed JSON objects with exact
+property names. Unknown or duplicate properties, malformed or trailing JSON,
+wrong types, explicit `null` and missing required fields are rejected.
 
 ## Successful MCP result envelope
 
@@ -64,15 +69,16 @@ The same current MCP `2025-11-25` definitions expose all four annotation members
 `write_file` and `copy_path` are not tool-wide idempotent because `overwrite:true` can replace an existing target. Annotations are client-facing discovery hints only. Registration, read-only/profile gating, capabilities, root/path/security checks, and execution identity remain authoritative server-side decisions.
 
 The deterministic UTF-8 JSONL `tools/list` response, including the trailing
-newline, is 2426 response bytes and 2391 result bytes for read-only, and 6472
-response bytes and 6437 result bytes for default.
+newline, is 2517 response bytes and 2482 result bytes for read-only, and 6808
+response bytes and 6773 result bytes for default.
 
 ## `list_directory`
 
-Lists one directory. `path` is optional; omission means `.`, while an explicitly empty or whitespace-only value is invalid.
+Requires `root_id` and `path`. Use `.` to list the selected root directory.
 
 ```json
 {
+  "root_id": "work",
   "path": "docs"
 }
 ```
@@ -91,7 +97,7 @@ Exceeding either limit returns `limit_exceeded` without a partial listing.
 
 ## `read_file`
 
-Required: `path`. Optional: `maxBytes` with a minimum of 1. When omitted, the configured server limit is used; a larger client value is capped at that limit.
+Requires `root_id` and `path`. Optional `maxBytes` has a minimum of 1 and defaults to the server limit. A larger client value is capped at that limit.
 
 The file must contain valid UTF-8. After JSON decoding, the text encodes to
 the original bytes, including any BOM, line endings, or control characters.
@@ -100,6 +106,7 @@ An empty file returns an empty string and size zero. Invalid UTF-8 returns
 
 ```json
 {
+  "root_id": "work",
   "path": "README.md",
   "maxBytes": 4096
 }
@@ -116,7 +123,7 @@ Range reads are not implemented.
 
 ## `get_path_info`
 
-Required: `path`. A single metadata lookup provides both existence and metadata without an existence pre-check.
+Requires `root_id` and `path`. A single metadata lookup provides both existence and metadata without an existence pre-check.
 
 Existing path:
 
@@ -143,10 +150,11 @@ Only genuine missing-path errors become `exists:false`. Security and policy deni
 
 ## `write_file`
 
-Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (default `false`). Existing limits and root/security enforcement apply.
+Requires `root_id` and `path`. Optional `content` defaults to empty text and optional `overwrite` defaults to `false`. Limits and root security apply.
 
 ```json
 {
+  "root_id": "work",
   "path": "output.txt",
   "content": "text",
   "overwrite": false
@@ -163,10 +171,10 @@ Required: `path`. Optional: `content` (empty is allowed) and `overwrite` (defaul
 
 ## `create_directory`
 
-Required: `path`. Missing parents are created. `created` describes the actual leaf state.
+Requires `root_id` and `path`. Missing parents are created. `created` describes the actual leaf state.
 
 ```json
-{ "path": "output/archive" }
+{ "root_id": "work", "path": "output/archive" }
 ```
 
 New leaf:
@@ -185,10 +193,10 @@ An existing file at the target is a path-type error.
 
 ## `delete_path`
 
-Required: `path`. Optional: `recursive`, default `false`. Non-empty directories require explicit recursive deletion and remain bounded by the configured deletion limit.
+Requires `root_id` and `path`. Optional `recursive` defaults to `false`. Non-empty directories require explicit recursive deletion and remain bounded by the configured deletion limit.
 
 ```json
-{ "path": "output/archive", "recursive": true }
+{ "root_id": "work", "path": "output/archive", "recursive": true }
 ```
 
 ```json
@@ -197,10 +205,11 @@ Required: `path`. Optional: `recursive`, default `false`. Non-empty directories 
 
 ## `copy_path`
 
-Required: `source` and `target`. Optional: `overwrite`, default `false`.
+Requires `source_root_id` and `source` plus `target_root_id` and `target`.
+The root IDs must match. Optional `overwrite` defaults to `false`.
 
 ```json
-{ "source": "a.txt", "target": "b.txt", "overwrite": false }
+{ "source_root_id": "work", "source": "a.txt", "target_root_id": "work", "target": "b.txt", "overwrite": false }
 ```
 
 ```json
@@ -211,10 +220,12 @@ This contract copies files only. Directory copy and recursive copy are not suppo
 
 ## `move_path`
 
-Required: `source` and `target`. Optional: `overwrite`, default `false`. This is the single contract for both move and rename.
+Requires `source_root_id` and `source` plus `target_root_id` and `target`.
+The root IDs must match. Optional `overwrite` defaults to `false`.
+The same tool handles moves and renames.
 
 ```json
-{ "source": "old.txt", "target": "new.txt", "overwrite": false }
+{ "source_root_id": "work", "source": "old.txt", "target_root_id": "work", "target": "new.txt", "overwrite": false }
 ```
 
 ```json
@@ -241,6 +252,9 @@ Active categories are `invalid_arguments`, `invalid_path`, `not_found`,
 `unsupported_operation`, `invalid_text_encoding`, and `limit_exceeded`. The future vocabulary reserves
 `unsupported_capability`, `content_not_local`, `indeterminate`, `canceled`,
 and `deadline_exceeded`; their domain functions are not implemented.
+
+Missing, invalid or unknown root IDs produce `invalid_arguments`. Copy and
+move across distinct configured root IDs produce `unsupported_operation`.
 
 Malformed requests and outer `tools/call` params remain JSON-RPC errors.
 Unknown, removed, and profile-hidden tool names share generic Invalid params

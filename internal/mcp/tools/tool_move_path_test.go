@@ -49,7 +49,7 @@ func TestMovePathToolExecute(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"source":"tmp-move-source.txt","target":"tmp-move-target.txt"}`),
+		json.RawMessage(`{"source_root_id":"work","target_root_id":"work","source":"tmp-move-source.txt","target":"tmp-move-target.txt"}`),
 	)
 
 	if rpcErr != nil {
@@ -104,7 +104,7 @@ func TestMovePathToolForwardsOverwrite(t *testing.T) {
 
 	_, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"source":"source.txt","target":"target.txt","overwrite":true}`),
+		json.RawMessage(`{"source_root_id":"work","target_root_id":"work","source":"source.txt","target":"target.txt","overwrite":true}`),
 	)
 
 	if rpcErr != nil {
@@ -124,7 +124,7 @@ func TestMovePathToolReturnsInvalidParamsForMalformedJSON(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"source":`),
+		json.RawMessage(`{"source_root_id":"work","target_root_id":"work","source":`),
 	)
 
 	if result.variant != "" {
@@ -148,7 +148,7 @@ func TestMovePathToolReturnsInvalidParamsForMissingSource(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"target":"target.txt"}`),
+		json.RawMessage(`{"source_root_id":"work","target_root_id":"work","target":"target.txt"}`),
 	)
 
 	if result.variant != "" {
@@ -172,7 +172,7 @@ func TestMovePathToolReturnsInvalidParamsForMissingTarget(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"source":"source.txt"}`),
+		json.RawMessage(`{"source_root_id":"work","target_root_id":"work","source":"source.txt"}`),
 	)
 
 	if result.variant != "" {
@@ -198,7 +198,7 @@ func TestMovePathToolReturnsInvalidParamsForTargetExists(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"source":"source.txt","target":"target.txt","overwrite":false}`),
+		json.RawMessage(`{"source_root_id":"work","target_root_id":"work","source":"source.txt","target":"target.txt","overwrite":false}`),
 	)
 
 	if result.variant != "" {
@@ -224,7 +224,7 @@ func TestMovePathToolReturnsInvalidParamsForFilesystemError(t *testing.T) {
 
 	result, rpcErr := tool.Execute(
 		context.Background(),
-		json.RawMessage(`{"source":"invalid","target":"target.txt"}`),
+		json.RawMessage(`{"source_root_id":"work","target_root_id":"work","source":"invalid","target":"target.txt"}`),
 	)
 
 	if result.variant != "" {

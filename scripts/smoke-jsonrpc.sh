@@ -56,25 +56,25 @@ mkdir -p "${REPO_ROOT}/build"
 cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke-test","version":"dev"}}}
 {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
-{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_directory","arguments":{}}}
-{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"README.md"}}}
-{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_path_info","arguments":{"path":"README.md"}}}
-{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_path_info","arguments":{"path":"smoke-missing-path"}}}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_directory","arguments":{"root_id":"work","path":"."}}}
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read_file","arguments":{"root_id":"work","path":"README.md"}}}
+{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"get_path_info","arguments":{"root_id":"work","path":"README.md"}}}
+{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"get_path_info","arguments":{"root_id":"work","path":"smoke-missing-path"}}}
 JSONRPC
 
 if [[ "$read_only" != "true" ]]; then
   printf '%s' 'move-smoke' > "${MOVE_SOURCE_PATH}"
-  printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"move_path\",\"arguments\":{\"source\":\"${MOVE_SOURCE_RELATIVE}\",\"target\":\"${MOVE_TARGET_RELATIVE}\"}}}" >> "${REQUEST_PATH}"
+  printf '%s\n' "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\",\"params\":{\"name\":\"move_path\",\"arguments\":{\"source_root_id\":\"work\",\"target_root_id\":\"work\",\"source\":\"${MOVE_SOURCE_RELATIVE}\",\"target\":\"${MOVE_TARGET_RELATIVE}\"}}}" >> "${REQUEST_PATH}"
 else
   printf '%s' 'read-only-smoke-fixture' > "${READ_ONLY_DELETE_PATH}"
   printf '%s' 'read-only-smoke-fixture' > "${READ_ONLY_COPY_SOURCE_PATH}"
   printf '%s' 'read-only-smoke-fixture' > "${READ_ONLY_MOVE_SOURCE_PATH}"
   cat >> "${REQUEST_PATH}" <<JSONRPC
-{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write_file","arguments":{"path":"${READ_ONLY_WRITE_RELATIVE}","content":"blocked"}}}
-{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_directory","arguments":{"path":"${READ_ONLY_CREATE_RELATIVE}"}}}
-{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"delete_path","arguments":{"path":"${READ_ONLY_DELETE_RELATIVE}"}}}
-{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"copy_path","arguments":{"source":"${READ_ONLY_COPY_SOURCE_RELATIVE}","target":"${READ_ONLY_COPY_TARGET_RELATIVE}"}}}
-{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_path","arguments":{"source":"${READ_ONLY_MOVE_SOURCE_RELATIVE}","target":"${READ_ONLY_MOVE_TARGET_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"write_file","arguments":{"root_id":"work","path":"${READ_ONLY_WRITE_RELATIVE}","content":"blocked"}}}
+{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"create_directory","arguments":{"root_id":"work","path":"${READ_ONLY_CREATE_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"delete_path","arguments":{"root_id":"work","path":"${READ_ONLY_DELETE_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"copy_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"${READ_ONLY_COPY_SOURCE_RELATIVE}","target":"${READ_ONLY_COPY_TARGET_RELATIVE}"}}}
+{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"${READ_ONLY_MOVE_SOURCE_RELATIVE}","target":"${READ_ONLY_MOVE_TARGET_RELATIVE}"}}}
 JSONRPC
 fi
 

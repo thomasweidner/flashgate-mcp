@@ -154,7 +154,7 @@ func TestResultAdapterRejectsInvalidAndOverLimitResults(t *testing.T) {
 func TestOversizeReceiptRejectedBeforeWrite(t *testing.T) {
 	filesystem := newFakeFileSystem()
 	tool := NewWriteFileTool(filesystem)
-	raw, err := json.Marshal(map[string]string{"path": strings.Repeat("./", maxMetadataBytes) + "target"})
+	raw, err := json.Marshal(map[string]string{"root_id": "work", "path": strings.Repeat("./", maxMetadataBytes) + "target"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -268,7 +268,7 @@ func TestOversizeDirectoryResultReturnsOnlyLimitError(t *testing.T) {
 	filesystem.entries = []fs.Entry{{Name: strings.Repeat("<", maxStructuredBytes/6+1)}}
 	registry := NewRegistry()
 	requireRegistration(t, registry, NewListDirectoryTool(filesystem))
-	result, rpcErr := NewCallHandler(registry).Handle(handlers.Context{}, json.RawMessage(`{"name":"list_directory"}`))
+	result, rpcErr := NewCallHandler(registry).Handle(handlers.Context{}, json.RawMessage(`{"name":"list_directory","arguments":{"root_id":"work","path":"."}}`))
 	if rpcErr != nil {
 		t.Fatal(rpcErr)
 	}

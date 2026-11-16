@@ -34,7 +34,7 @@ func (t *CopyPathTool) Title() string {
 
 // Description returns the tool description.
 func (t *CopyPathTool) Description() string {
-	return "Copies a file below the configured filesystem root. Directory copy is not supported."
+	return "Copies a file within one selected root. Directory copy is not supported."
 }
 
 // InputSchema returns the JSON schema for this tool.
@@ -42,22 +42,24 @@ func (t *CopyPathTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"source_root_id": rootIDSchema(),
+			"target_root_id": rootIDSchema(),
 			"source": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative source file path below the configured filesystem root.",
+				"description": "Relative source file path.",
 			},
 			"target": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative target file path below the configured filesystem root.",
+				"description": "Relative target file path.",
 			},
 			"overwrite": map[string]any{
 				"type":        "boolean",
 				"description": "Whether an existing target may be overwritten. Defaults to false.",
 			},
 		},
-		"required":             []string{"source", "target"},
+		"required":             []string{"source_root_id", "source", "target_root_id", "target"},
 		"additionalProperties": false,
 	}
 }
@@ -80,34 +82,33 @@ func (t *CopyPathTool) ResultContract() ResultContract {
 
 // Execute copies the requested source path to the target path.
 func (t *CopyPathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments copyPathArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return ToolResult{}, rpcErr
+	var source, target fs.Operand
+	var overwrite bool
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"source_root_id": &source.RootID,
+		"source":         &source.Path,
+		"target_root_id": &target.RootID,
+		"target":         &target.Path,
+		"overwrite":      &overwrite,
+	}); err != nil {
+		return ToolResult{}, err
 	}
-
-	if !isNonBlank(arguments.Source) || !isNonBlank(arguments.Target) {
+	if !validOperand(source) || !validOperand(target) {
 		return ToolResult{}, invalidArgumentsError()
 	}
-
-	if err := validateReceiptPaths(arguments.Source, arguments.Target); err != nil {
+	if err := validateReceiptPaths(source.Path, target.Path); err != nil {
 		return ToolResult{}, err
 	}
 
-	if err := t.filesystem.Copy(arguments.Source, arguments.Target, arguments.Overwrite); err != nil {
+	if err := t.filesystem.Copy(source, target, overwrite); err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
 	return NewToolResult(defaultVariant, copyPathResult{
-		Source: arguments.Source,
-		Target: arguments.Target,
+		Source: source.Path,
+		Target: target.Path,
 		Copied: true,
 	}), nil
-}
-
-type copyPathArguments struct {
-	Source    string `json:"source"`
-	Target    string `json:"target"`
-	Overwrite bool   `json:"overwrite,omitempty"`
 }
 
 type copyPathResult struct {

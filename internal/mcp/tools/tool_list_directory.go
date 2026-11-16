@@ -23,18 +23,20 @@ func NewListDirectoryTool(filesystem fs.FileSystem) *ListDirectoryTool {
 func (t *ListDirectoryTool) Name() string  { return listDirectoryToolName }
 func (t *ListDirectoryTool) Title() string { return "List Directory" }
 func (t *ListDirectoryTool) Description() string {
-	return "Lists files and directories below the configured filesystem root."
+	return "Lists files and directories below the selected root."
 }
 func (t *ListDirectoryTool) InputSchema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
+			"root_id": rootIDSchema(),
 			"path": map[string]any{
 				"type":        "string",
 				"minLength":   1,
-				"description": "Relative directory path below the configured filesystem root. Defaults to '.' when omitted.",
+				"description": "Relative directory path. Use '.' for the root directory.",
 			},
 		},
+		"required":             []string{"root_id", "path"},
 		"additionalProperties": false,
 	}
 }
@@ -47,17 +49,15 @@ func (t *ListDirectoryTool) ResultContract() ResultContract {
 }
 
 func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
-	var arguments listDirectoryArguments
-	if rpcErr := decodeStrictArguments(rawArguments, &arguments); rpcErr != nil {
-		return ToolResult{}, rpcErr
+	var path fs.Operand
+	if err := decodeStrictArguments(rawArguments, map[string]any{
+		"root_id": &path.RootID,
+		"path":    &path.Path,
+	}); err != nil {
+		return ToolResult{}, err
 	}
-
-	path := "."
-	if arguments.Path != nil {
-		if !isNonBlank(*arguments.Path) {
-			return ToolResult{}, invalidArgumentsError()
-		}
-		path = *arguments.Path
+	if !validOperand(path) {
+		return ToolResult{}, invalidArgumentsError()
 	}
 
 	entries, err := t.filesystem.List(path)
@@ -66,10 +66,6 @@ func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMess
 	}
 
 	return NewToolResult(defaultVariant, listDirectoryResult{Entries: entries}), nil
-}
-
-type listDirectoryArguments struct {
-	Path *string `json:"path,omitempty"`
 }
 
 type listDirectoryResult struct {

@@ -92,7 +92,7 @@ func TestCreateRouterRejectsWriteToolCallWhenReadOnly(t *testing.T) {
 	_, protocolErr := mcpRouter.Dispatch(
 		"tools/call",
 		handlers.Context{Context: context.Background()},
-		json.RawMessage(`{"name":"write_file","arguments":{"path":"out.txt","content":"blocked"}}`),
+		json.RawMessage(`{"name":"write_file","arguments":{"root_id":"work","path":"out.txt","content":"blocked"}}`),
 	)
 
 	if protocolErr == nil {
@@ -124,13 +124,10 @@ func TestCreateRouterRejectsUnknownMethod(t *testing.T) {
 }
 
 func TestCreateRouterCallsGetPathInfoForMissingPath(t *testing.T) {
-	filesystem, err := fs.NewLocalFileSystem(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
+	filesystem := testRootRegistry(t, t.TempDir(), fs.DefaultLimits())
 	router := createRouter("test-server", "test-version", requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true}))
 
-	result, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`))
+	result, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"get_path_info","arguments":{"root_id":"work","path":"missing.txt"}}`))
 	if protocolErr != nil {
 		t.Fatalf("unexpected error: %#v", protocolErr)
 	}
@@ -153,13 +150,10 @@ func TestCreateRouterUsesMovePathForRename(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "old.txt"), []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	filesystem, err := fs.NewLocalFileSystem(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
 	router := createRouter("test-server", "test-version", requireToolRegistry(t, filesystem, 1024, toolCapabilities{filesystemWrite: true}))
 
-	_, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"move_path","arguments":{"source":"old.txt","target":"new.txt"}}`))
+	_, protocolErr := router.Dispatch("tools/call", handlers.Context{Context: context.Background()}, json.RawMessage(`{"name":"move_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"old.txt","target":"new.txt"}}`))
 	if protocolErr != nil {
 		t.Fatalf("unexpected error: %#v", protocolErr)
 	}
@@ -187,10 +181,7 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		}
 	}
 
-	filesystem, err := fs.NewLocalFileSystem(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	filesystem := testRootRegistry(t, root, fs.DefaultLimits())
 	mcpRouter := createRouter(
 		"test-server",
 		"test-version",
@@ -202,14 +193,14 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 		raw  string
 		text *string
 	}{
-		{`{"name":"list_directory","arguments":{}}`, &summary},
-		{`{"name":"list_directory","arguments":{"path":"sub directory"}}`, &summary},
-		{`{"name":"read_file","arguments":{"path":"root.txt"}}`, new(files["root.txt"])},
-		{`{"name":"read_file","arguments":{"path":"sub directory/space.txt"}}`, new(files["sub directory/space.txt"])},
-		{`{"name":"read_file","arguments":{"path":"unicode-ä/ü.txt"}}`, new(files["unicode-ä/ü.txt"])},
-		{`{"name":"get_path_info","arguments":{"path":"root.txt"}}`, nil},
-		{`{"name":"get_path_info","arguments":{"path":"sub directory"}}`, nil},
-		{`{"name":"get_path_info","arguments":{"path":"missing.txt"}}`, nil},
+		{`{"name":"list_directory","arguments":{"root_id":"work","path":"."}}`, &summary},
+		{`{"name":"list_directory","arguments":{"root_id":"work","path":"sub directory"}}`, &summary},
+		{`{"name":"read_file","arguments":{"root_id":"work","path":"root.txt"}}`, new(files["root.txt"])},
+		{`{"name":"read_file","arguments":{"root_id":"work","path":"sub directory/space.txt"}}`, new(files["sub directory/space.txt"])},
+		{`{"name":"read_file","arguments":{"root_id":"work","path":"unicode-ä/ü.txt"}}`, new(files["unicode-ä/ü.txt"])},
+		{`{"name":"get_path_info","arguments":{"root_id":"work","path":"root.txt"}}`, nil},
+		{`{"name":"get_path_info","arguments":{"root_id":"work","path":"sub directory"}}`, nil},
+		{`{"name":"get_path_info","arguments":{"root_id":"work","path":"missing.txt"}}`, nil},
 	}
 	for _, call := range positiveCalls {
 		raw := call.raw
@@ -244,13 +235,13 @@ func TestReadOnlyRouterPositiveAndSecurityContract(t *testing.T) {
 	}
 	outsideArguments, err := json.Marshal(map[string]any{
 		"name":      "read_file",
-		"arguments": map[string]any{"path": outsidePath},
+		"arguments": map[string]any{"root_id": "work", "path": outsidePath},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, raw := range []json.RawMessage{
-		json.RawMessage(`{"name":"read_file","arguments":{"path":"../outside.txt"}}`),
+		json.RawMessage(`{"name":"read_file","arguments":{"root_id":"work","path":"../outside.txt"}}`),
 		outsideArguments,
 	} {
 		result, protocolErr := mcpRouter.Dispatch(

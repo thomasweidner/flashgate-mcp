@@ -101,14 +101,14 @@ func wireInvalidText(root string) error {
 // without changing ACLs, execution identity or host mount layout.
 type wireFailingFilesystem struct{ err error }
 
-func (f wireFailingFilesystem) List(string) ([]fs.Entry, error)    { return nil, f.err }
-func (f wireFailingFilesystem) Read(string, int64) ([]byte, error) { return nil, f.err }
-func (f wireFailingFilesystem) Stat(string) (fs.Metadata, error)   { return fs.Metadata{}, f.err }
-func (f wireFailingFilesystem) Write(string, []byte, bool) error   { return f.err }
-func (f wireFailingFilesystem) Mkdir(string) (bool, error)         { return false, f.err }
-func (f wireFailingFilesystem) Delete(string, bool) error          { return f.err }
-func (f wireFailingFilesystem) Copy(string, string, bool) error    { return f.err }
-func (f wireFailingFilesystem) Move(string, string, bool) error    { return f.err }
+func (f wireFailingFilesystem) List(fs.Operand) ([]fs.Entry, error)     { return nil, f.err }
+func (f wireFailingFilesystem) Read(fs.Operand, int64) ([]byte, error)  { return nil, f.err }
+func (f wireFailingFilesystem) Stat(fs.Operand) (fs.Metadata, error)    { return fs.Metadata{}, f.err }
+func (f wireFailingFilesystem) Write(fs.Operand, []byte, bool) error    { return f.err }
+func (f wireFailingFilesystem) Mkdir(fs.Operand) (bool, error)          { return false, f.err }
+func (f wireFailingFilesystem) Delete(fs.Operand, bool) error           { return f.err }
+func (f wireFailingFilesystem) Copy(fs.Operand, fs.Operand, bool) error { return f.err }
+func (f wireFailingFilesystem) Move(fs.Operand, fs.Operand, bool) error { return f.err }
 
 func wireExpectedToolError(id benchmark.WireIdentity, category string, test mcpErrorCase, template json.RawMessage) (serverWireCase, error) {
 	id.Variant, id.Fixture, id.Outcome = "error", category, "error"
@@ -152,9 +152,9 @@ func wireRPCError(base benchmark.WireIdentity, route, name, args, want string) s
 }
 
 func wireRPCErrors(base benchmark.WireIdentity, cases map[string]mcpToolCase) []serverWireCase {
-	ioFailure := wireRPCError(base, "tools/call", "internal-io", `{"name":"read_file","arguments":{"path":"seed.txt"}}`, wireInternalError)
+	ioFailure := wireRPCError(base, "tools/call", "internal-io", `{"name":"read_file","arguments":{"root_id":"work","path":"seed.txt"}}`, wireInternalError)
 	ioFailure.backendError = io.ErrUnexpectedEOF
-	badResult := wireRPCError(base, "tools/call", "internal-serialization", `{"name":"read_file","arguments":{"path":"seed.txt"}}`, wireInternalError)
+	badResult := wireRPCError(base, "tools/call", "internal-serialization", `{"name":"read_file","arguments":{"root_id":"work","path":"seed.txt"}}`, wireInternalError)
 	badResult.registry = func(registry *tools.Registry) error {
 		tool, ok := registry.Get("read_file")
 		if !ok {

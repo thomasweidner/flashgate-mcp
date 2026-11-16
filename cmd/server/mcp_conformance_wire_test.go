@@ -37,8 +37,8 @@ func TestMCPConformanceWireNegatives(t *testing.T) {
 			{"prompts/list", `{}`, protocol.ErrMethodNotFound},
 			{"subscriptions/listen", `{}`, protocol.ErrMethodNotFound},
 			{"tools/call", `{"name":"unknown","arguments":{}}`, protocol.ErrInvalidParams},
-			{"tools/call", `{"name":"read_file","arguments":{"path":42}}`, 0},
-			{"tools/call", `{"name":"read_file","arguments":{"path":"seed.txt","unexpected":true}}`, 0},
+			{"tools/call", `{"name":"read_file","arguments":{"root_id":"work","path":42}}`, 0},
+			{"tools/call", `{"name":"read_file","arguments":{"root_id":"work","path":"seed.txt","unexpected":true}}`, 0},
 		} {
 			response := mcpWire(t, r, mcpRequest(test.method, test.params, version), 1)[0]
 			if test.code == 0 {
@@ -84,7 +84,7 @@ func verifyReadFileEncoding(t *testing.T) {
 					t.Fatal(err)
 				}
 				result := mcpResult(t, r, "tools/call",
-					`{"name":"read_file","arguments":{"path":"`+fixture.file+`"}}`, version)
+					`{"name":"read_file","arguments":{"root_id":"work","path":"`+fixture.file+`"}}`, version)
 				mcpCheckRevisionResult(t, result, version, false)
 				envelope := mcpResultEnvelope(t, result)
 				if fixture.file == "invalid.txt" {
@@ -138,7 +138,7 @@ func TestMCPConformanceCrossRevisionStateless(t *testing.T) {
 		mcpCheckRevisionResult(t, result, version, version == revision.Stateless)
 	}
 	// Self-reported client extensions and capabilities cannot expose write tools.
-	request := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"write_file","arguments":{"path":"blocked.txt","content":"x"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{"tools":{},"extensions":{"io.modelcontextprotocol/tasks":{}}}}}}` + "\n"
+	request := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"write_file","arguments":{"root_id":"work","path":"blocked.txt","content":"x"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{"tools":{},"extensions":{"io.modelcontextprotocol/tasks":{}}}}}}` + "\n"
 	response := mcpWire(t, r, request, 1)[0]
 	var rpcError protocol.Error
 	if err := json.Unmarshal(response["error"], &rpcError); err != nil || rpcError.Code != protocol.ErrInvalidParams {
@@ -177,7 +177,7 @@ func TestMCPConformanceSTDIOProcess(t *testing.T) {
 			mcpRequest("initialize", `{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"contract","version":"1"}}`, protocol.ProtocolVersion) +
 				`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +
 				mcpRequest("tools/list", `{}`, protocol.ProtocolVersion) +
-				mcpRequest("tools/call", `{"name":"write_file","arguments":{"path":"new.txt","content":"x"}}`, protocol.ProtocolVersion) +
+				mcpRequest("tools/call", `{"name":"write_file","arguments":{"root_id":"work","path":"new.txt","content":"x"}}`, protocol.ProtocolVersion) +
 				mcpRequest("server/discover", `{}`, revision.Stateless) +
 				mcpRequest("tools/list", `{}`, revision.Stateless))
 		var stdout, stderr bytes.Buffer

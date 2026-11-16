@@ -30,13 +30,13 @@ cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":1,"method":
 {"jsonrpc":"2.0","id":2,"method":"unknown/method","params":{}}
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":123,"arguments":{}}}
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_directory","arguments":{"path":"."}}}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"list_directory","arguments":{"root_id":"work","path":"."}}}
 {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_files","arguments":{}}}
 {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"rename_path","arguments":{}}}
 {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"stat_path","arguments":{}}}
 {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"exists_path","arguments":{}}}
 {"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"mkdir","arguments":{}}}
-{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"read_file","arguments":{"path":"../outside.txt"}}}
+{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"read_file","arguments":{"root_id":"work","path":"../outside.txt"}}}
 JSONRPC
 
 "${BINARY_PATH}" --config "$CONFIG_PATH" < "${REQUEST_PATH}" > "${RESPONSE_PATH}"
