@@ -43,11 +43,14 @@ policy. Read-only registration, operation limits, redacted errors, and path
 confinement remain separate enforced controls. No direct tool-level OS call
 may bypass them.
 
-Bootstrap requires an explicit absolute `filesystem.root`, validates root existence,
-policy, effective resolution, and directory type before constructing the
-filesystem, registry, router, and STDIO server, and fails closed for expected
-root/configuration failures. The only relative-root exception is the explicit
-development opt-in `filesystem.root = "."` with `filesystem.allow_cwd_root = true`.
+The [named-root contract](../planning/implementation-contract.md#bl-101-named-root-registry)
+uses one immutable registry built from the authoritative TOML file. Each
+configured root has a stable logical ID and an explicit absolute directory.
+Bootstrap validates every root with PathGuard and binds one selected-source
+protection to the entire registry before enabling the router and STDIO server.
+Overlapping roots share effect coordination. Resolving a root ID supplies
+confinement and a filesystem backend, while capability checks still govern
+what a caller may do. The existing tools use the explicit default ID.
 
 ## Current implementation
 

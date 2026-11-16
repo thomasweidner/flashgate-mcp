@@ -65,6 +65,10 @@ Every request carries an authenticated caller principal separately from its effe
 
 ### Filesystem
 
+The current server validates configured named roots at startup. The
+Version 1.0 tool contract adds explicit root addressing and policy under
+their separate backlog owners. See [runtime configuration](configuration.md#named-roots).
+
 Required bounded capabilities include metadata, pages, ranges, text/media/binary reads, batches, hashes/content identities/fingerprints, trees, deterministic file/tree comparison, batch expected-state verification with compact mismatch/indeterminate deltas and explicit fresh/strong proof, targeted edits, atomic/conditional writes, dry-run, append, bounded plans, cross-volume semantics, directory copy/move/size, and job handoff. Content identities are evidence for equality/change reasoning and never authorization tokens.
 
 ### Search

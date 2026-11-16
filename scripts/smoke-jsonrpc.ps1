@@ -105,7 +105,7 @@ function Get-CallToolStructuredContent {
 try {
     $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
     $readOnlyValue = ([bool]$ReadOnly).ToString().ToLowerInvariant()
-    $document = "[filesystem]`nroot = $quotedRoot`nread_only = $readOnlyValue`n"
+    $document = "[files]`ndefault_id = 'work'`nread_only = $readOnlyValue`n[files.roots.work]`npath = $quotedRoot`n"
     New-WindowsConfigFixture -Path $configPath -Document $document
     if ($ReadOnly) {
         foreach ($fixturePath in @($readOnlyDeletePath, $readOnlyCopySourcePath, $readOnlyMoveSourcePath)) {

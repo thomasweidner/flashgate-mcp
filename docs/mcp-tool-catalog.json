@@ -11,17 +11,15 @@
       "runtimeOutputSchema": true
     },
     "rootConfiguration": {
-      "tomlKey": "filesystem.root",
-      "pathMode": "relative tool paths below an absolute configured root",
+      "tomlKey": "files.default_id",
+      "rootPathTomlKey": "files.roots.<id>.path",
+      "pathMode": "relative tool paths below the explicitly selected default root",
       "required": true,
-      "productionRootMustBeAbsolute": true,
-      "developmentCurrentDirectory": {
-        "rootValue": ".",
-        "optInTomlKey": "filesystem.allow_cwd_root",
-        "requiredOptInValue": true
-      },
+      "rootPathMustBeAbsolute": true,
+      "rootIdPattern": "^[a-z][a-z0-9_]{0,63}$",
+      "maximumRoots": 256,
       "codexReadOnlyExampleRequires": {
-        "tomlKey": "filesystem.read_only",
+        "tomlKey": "files.read_only",
         "value": true
       }
     }

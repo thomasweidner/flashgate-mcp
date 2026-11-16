@@ -96,8 +96,8 @@ type FileSystem interface {
 type LocalFileSystem struct {
 	guard      *security.PathGuard
 	limits     Limits
-	protection *security.ConfigProtection
-	effects    sync.Mutex
+	protection *security.RootProtection
+	effects    *sync.Mutex
 }
 
 // NewLocalFileSystem creates a new local filesystem.
@@ -135,24 +135,30 @@ func NewLocalFileSystemWithGuard(guard *security.PathGuard, limits Limits) (*Loc
 	return newLocalFileSystem(guard, limits), nil
 }
 
-// NewLocalFileSystemWithConfigProtection uses a bound configuration source for
-// ordinary data operations. The server shares this filesystem across tools.
-func NewLocalFileSystemWithConfigProtection(guard *security.PathGuard, limits Limits, protection *security.ConfigProtection) (*LocalFileSystem, error) {
-	if protection == nil {
-		return nil, security.ErrProtectedPath
-	}
-	f, err := NewLocalFileSystemWithGuard(guard, limits)
-	if err != nil {
+// NewProtectedFileSystems constructs all root filesystems in binding order.
+// A single lock coordinates effects even when distinct roots overlap.
+func NewProtectedFileSystems(bindings []*security.RootProtection, limits Limits) ([]*LocalFileSystem, error) {
+	if err := validateLimits(limits); err != nil {
 		return nil, err
 	}
-	f.protection = protection
-	return f, nil
+	effects := new(sync.Mutex)
+	filesystems := make([]*LocalFileSystem, 0, len(bindings))
+	for _, binding := range bindings {
+		if binding == nil || binding.Guard() == nil {
+			return nil, security.ErrProtectedPath
+		}
+		filesystems = append(filesystems, &LocalFileSystem{
+			guard: binding.Guard(), limits: limits, protection: binding, effects: effects,
+		})
+	}
+	return filesystems, nil
 }
 
 func newLocalFileSystem(guard *security.PathGuard, limits Limits) *LocalFileSystem {
 	return &LocalFileSystem{
-		guard:  guard,
-		limits: limits,
+		guard:   guard,
+		limits:  limits,
+		effects: new(sync.Mutex),
 	}
 }
 

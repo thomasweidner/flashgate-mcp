@@ -1,11 +1,38 @@
 # Runtime configuration
 
 FlashGate reads one UTF-8 TOML file at startup. Use the [complete template](flashgate-config.toml)
-and set `filesystem.root` to an existing absolute data directory that you
+and set `files.roots.work.path` to an existing absolute data directory that you
 intend to expose. For a first connection, retain the template's
 `read_only = true`. In a Windows basic TOML string, use forward slashes or
 escape each backslash. A TOML literal string such as
 `'C:\FlashGateData\ReadOnlyRoot'` also preserves backslashes.
+
+## Named roots
+
+Configure one table per root and select the default explicitly.
+
+```toml
+[files]
+read_only = true
+default_id = "work"
+
+[files.roots.work]
+path = 'C:\FlashGate\Work'
+
+[files.roots.archive]
+path = 'D:\Archive'
+```
+
+Root IDs are case-sensitive and match `^[a-z][a-z0-9_]{0,63}$`. The default
+must name a configured ID exactly. Up to 256 roots fit within the configuration
+contract, subject to the 64 KiB document limit. Every path must be an
+existing absolute directory that passes PathGuard and native protection
+checks. An invalid secondary root prevents startup.
+
+The current MCP tools use the default root, with unchanged relative path
+inputs. Explicit root selection belongs to BL-102 and discovery to BL-352.
+The [migration guide](migration.md#root-configuration) covers conversion
+from the former table.
 
 ## Source and trust
 
@@ -30,8 +57,9 @@ Source paths through symbolic links, junctions or other redirects fail
 source validation.
 
 Before enabling tools, FlashGate rechecks the source identity and verifies
-that it can bind protection to the resolved data root. An overlapping root
-is allowed when native identity and mount checks support that binding.
+that it can bind one protection snapshot to all resolved data roots.
+Overlapping roots are allowed when native identity and mount checks support
+the binding.
 A failed binding or changed source identity reports `root_not_allowed`.
 
 The file is limited to 64 KiB. Use the exact lowercase key names in the
@@ -61,14 +89,14 @@ unless the field names or table indicate another unit.
 | Key | Type and runtime default | Effect |
 |---|---|---|
 | `runtime.mode` | String, host-selected (`"stdio"` in the current executable) | Must match the bound runtime role. |
-| `filesystem.root` | Required string | Existing absolute data directory, subject to PathGuard. |
-| `filesystem.read_only` | Boolean, `false` | When true, register only the three current read tools. The template explicitly sets true. |
-| `filesystem.allow_cwd_root` | Boolean, `false` | Development STDIO only. Allows an explicitly configured `root = "."` and emits one stderr warning. |
-| `filesystem.max_file_size` | Integer, 10485760 | Maximum file read. |
-| `filesystem.max_write_bytes` | Integer, 10485760 | Maximum write content. |
-| `filesystem.max_copy_bytes` | Integer, 10485760 | Maximum copied file size. |
-| `filesystem.max_list_entries` | Integer, 1000 | Maximum scanned directory entries, including filtered entries. |
-| `filesystem.max_delete_entries` | Integer, 1000 | Maximum entries for recursive deletion. |
+| `files.default_id` | Required string | Exact configured ID used by the current tools. |
+| `files.roots.<id>.path` | Required string per root | Existing absolute data directory, subject to PathGuard. |
+| `files.read_only` | Boolean, `false` | When true, register only the three current read tools. The template explicitly sets true. |
+| `files.max_file_size` | Integer, 10485760 | Maximum file read. |
+| `files.max_write_bytes` | Integer, 10485760 | Maximum write content. |
+| `files.max_copy_bytes` | Integer, 10485760 | Maximum copied file size. |
+| `files.max_list_entries` | Integer, 1000 | Maximum scanned directory entries, including filtered entries. |
+| `files.max_delete_entries` | Integer, 1000 | Maximum entries for recursive deletion. |
 | `security.allow_hidden_files` | Boolean, `false` | Allows dot-prefixed data paths subject to other checks. |
 | `security.allow_unc_paths` | Boolean, `false` | Allows a UNC data root subject to other checks. |
 | `security.follow_symlinks` | Boolean, `false` | Allows classic symlinks inside the effective data root. |
@@ -82,8 +110,7 @@ unless the field names or table indicate another unit.
 | `logging.max_records` | Integer, 10000 | 1 to 1000000 diagnostic records per process. |
 
 Optional diagnostics are redacted before emission and omit messages that
-exceed the output bounds. Safe startup failures and the development-root
-warning use their own fixed stderr messages.
+exceed the output bounds. Startup failures use fixed stderr messages.
 
 ## Managed runtime contract
 

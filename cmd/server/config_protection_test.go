@@ -34,11 +34,15 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	filesystem, err := deps.newFilesystem(cfg)
+	rootRegistry, err := deps.newRoots(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	registry := requireToolRegistry(t, filesystem, cfg.Filesystem().MaxFileSize(), toolCapabilities{filesystemWrite: true})
+	filesystem, err := rootRegistry.Lookup(rootRegistry.DefaultID())
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry := requireToolRegistry(t, filesystem, cfg.Files().MaxFileSize(), toolCapabilities{filesystemWrite: true})
 	output := filepath.Join(dir, "output.txt")
 	ordinary := filepath.Join(dir, "ordinary.txt")
 	testconfig.Write(t, ordinary, []byte("ordinary"))
@@ -125,8 +129,8 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 	if err := os.WriteFile(source, []byte(inPlace), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if next, err := deps.loadConfig(); err != nil || next.Filesystem().MaxFileSize() != 384 ||
-		cfg.Filesystem().MaxFileSize() != 512 {
+	if next, err := deps.loadConfig(); err != nil || next.Files().MaxFileSize() != 384 ||
+		cfg.Files().MaxFileSize() != 512 {
 		t.Fatalf("in-place external edit changed the active snapshot: %v", err)
 	}
 	if err := os.Rename(source, filepath.Join(dir, "moved.toml")); err != nil {
@@ -148,7 +152,7 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 		t.Fatal("ordinary MCP read did not use the active snapshot limit")
 	}
 	restart, err := deps.loadConfig()
-	if err != nil || restart.Filesystem().MaxFileSize() != 256 || cfg.Filesystem().MaxFileSize() != 512 {
+	if err != nil || restart.Files().MaxFileSize() != 256 || cfg.Files().MaxFileSize() != 512 {
 		t.Fatalf("running and restarted snapshots were not isolated: %v", err)
 	}
 }

@@ -15,9 +15,9 @@ type effectPath struct {
 	effective string
 }
 
-// inspectEffect takes a metadata snapshot after PathGuard authorizes the path.
+// inspectPath takes a metadata snapshot after PathGuard authorizes the path.
 // For a missing leaf, the snapshot still binds the existing parent and name.
-func (f *LocalFileSystem) inspectEffect(path string, mutation bool) (effectPath, error) {
+func (f *LocalFileSystem) inspectPath(path string) (effectPath, error) {
 	operand := effectPath{path: path}
 	info, err := effectInfo(path)
 	if err != nil {
@@ -35,13 +35,25 @@ func (f *LocalFileSystem) inspectEffect(path string, mutation bool) (effectPath,
 	if err != nil {
 		return effectPath{}, security.ErrConfigurationAccess
 	}
-	if err := f.protection.Check(operand.effective, info, operand.parent, mutation); err != nil {
-		return effectPath{}, err
+	return operand, nil
+}
+
+func (f *LocalFileSystem) inspectEffect(path string, mutation bool) (effectPath, error) {
+	operand, err := f.inspectPath(path)
+	if err != nil || f.protection == nil {
+		return operand, err
 	}
-	if pathsEquivalent(operand.effective, path) {
-		return operand, nil
+	return operand, f.checkEffect(operand, mutation)
+}
+
+func (f *LocalFileSystem) checkEffect(operand effectPath, mutation bool) error {
+	if err := f.protection.Check(operand.effective, operand.info, operand.parent, mutation); err != nil {
+		return err
 	}
-	return operand, f.protection.Check(path, info, operand.parent, mutation)
+	if pathsEquivalent(operand.effective, operand.path) {
+		return nil
+	}
+	return f.protection.Check(operand.path, operand.info, operand.parent, mutation)
 }
 
 func effectInfo(path string) (os.FileInfo, error) {
@@ -59,13 +71,13 @@ func sameEffectInfo(left, right os.FileInfo) bool {
 	return os.SameFile(left, right) && left.Mode().Type() == right.Mode().Type()
 }
 
-// recheckEffect uses the same policy again and rejects observable changes to
-// the authorized resolution, parent or object before the native effect.
-func (f *LocalFileSystem) recheckEffect(expected effectPath, mutation bool) error {
+// recheckPath rejects observable changes to the authorized root, resolution,
+// parent or object. Metadata operations may inspect the protected resource.
+func (f *LocalFileSystem) recheckPath(expected effectPath) error {
 	if f.protection == nil {
 		return nil
 	}
-	if err := f.protection.ValidateRoot(f.guard); err != nil {
+	if err := f.protection.ValidateRoot(); err != nil {
 		return err
 	}
 	relative, err := filepath.Rel(f.guard.Root(), expected.path)
@@ -75,12 +87,22 @@ func (f *LocalFileSystem) recheckEffect(expected effectPath, mutation bool) erro
 	if _, err := f.guard.ResolveForCreate(relative); err != nil {
 		return security.ErrConfigurationAccess
 	}
-	current, err := f.inspectEffect(expected.path, mutation)
+	current, err := f.inspectPath(expected.path)
 	if err != nil || !pathsEquivalent(expected.effective, current.effective) ||
 		!sameEffectInfo(expected.info, current.info) || !sameEffectInfo(expected.parent, current.parent) {
 		return security.ErrConfigurationAccess
 	}
 	return nil
+}
+
+func (f *LocalFileSystem) recheckEffect(expected effectPath, mutation bool) error {
+	if f.protection == nil {
+		return nil
+	}
+	if err := f.recheckPath(expected); err != nil {
+		return err
+	}
+	return f.checkEffect(expected, mutation)
 }
 
 func (f *LocalFileSystem) checkOpened(file *os.File, expected effectPath, mutation bool) error {

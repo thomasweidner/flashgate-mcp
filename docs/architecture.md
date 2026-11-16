@@ -47,11 +47,12 @@ See [Version 1.0 Scope and Release Boundary](planning/release-scope.md).
 
 The current implementation is a layered Go application using MCP JSON-RPC over STDIO. It provides:
 
-- environment-based configuration;
+- one authoritative TOML configuration per instance;
 - JSON-RPC validation, routing, initialization, `tools/list`, and `tools/call`;
 - eight filesystem tools;
-- one required data root through `filesystem.root` in the [runtime TOML](configuration.md);
-- optional read-only tool registration through `filesystem.read_only`;
+- an immutable registry of [named data roots](configuration.md#named-roots)
+  with an explicit default for the current tools;
+- optional read-only tool registration through `files.read_only`;
 - central path validation and filesystem abstraction;
 - hard protocol, argument, filesystem, and response limits;
 - redacted diagnostics on stderr;
@@ -85,11 +86,13 @@ PathGuard and current policies
 Operating-system filesystem
 ```
 
-Startup fails closed before runtime exposure. Production roots must be explicit absolute directories and pass existence/type/effective-path policy. An explicit `filesystem.root = "."` requires the STDIO development opt-in `filesystem.allow_cwd_root = true`.
+Startup fails closed before runtime exposure if any configured root fails
+validation. Each root gets its own PathGuard. All roots share the selected
+configuration protection and filesystem effect coordination.
 
 Not yet implemented:
 
-- multiple named roots;
+- public root selection and discovery;
 - general profiles/capabilities;
 - safe read-only as the profile-system default;
 - search;
@@ -136,7 +139,7 @@ Not yet implemented:
 
 The user-worker backend is represented because interfaces are Version 1.0 work. Its runtime implementation is post-Version 1.0.
 
-The [technical backlog implementation contract](planning/implementation-contract.md) makes each planned owner inherit this target architecture; [architecture traceability](planning/architecture-traceability.md) records prerequisites, current implementation retrofit targets, validation owners, and closure state. SPR-053 establishes named roots, profiles/capabilities, central authorization, configuration, audit/correlation, backend-neutral dispatch, and context binding before Operations, filesystem expansion, and search consume those interfaces. BL-101 and BL-103 extend the TOML model's current single-root and read-only settings. BL-236 owns migration of direct MCP-to-filesystem dispatch.
+The [technical backlog implementation contract](planning/implementation-contract.md) makes each planned owner inherit this target architecture; [architecture traceability](planning/architecture-traceability.md) records prerequisites, current implementation retrofit targets, validation owners, and closure state. SPR-053 establishes named roots, profiles/capabilities, central authorization, configuration, audit/correlation, backend-neutral dispatch, and context binding before Operations, filesystem expansion, and search consume those interfaces. BL-103 owns profile-based exposure, and BL-236 owns migration of direct MCP-to-filesystem dispatch.
 
 ### Configuration trust and protection
 
@@ -324,7 +327,7 @@ immutable catalog snapshots. A functional decision checks all required IDs
 independently of transport, backend, and technical support. BL-159 composes
 that decision with the other authorization controls, and BL-110 owns the
 effective catalog. The current STDIO registry continues to use
-`filesystem.read_only` until the designated retrofit owners migrate it.
+`files.read_only` until the designated retrofit owners migrate it.
 
 Version 1.0 safe default:
 
@@ -334,7 +337,8 @@ valid root, no explicit profile  -> safe read-only profile
 higher-risk profile              -> explicit validated activation
 ```
 
-The target uses multiple named roots and model-visible root IDs plus relative paths. Each root can define:
+The server configures named roots today. BL-102 adds model-visible root IDs
+with relative paths. The target also allows per-root rules for:
 
 - read/write access;
 - size/result/scan/temp limits;

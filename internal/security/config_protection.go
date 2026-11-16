@@ -14,11 +14,16 @@ var ErrConfigurationAccess = errors.New("protected configuration access denied")
 // ConfigProtection binds one running snapshot to its loaded file, selected
 // pathname and original ancestors. The selected name can be rebound by the OS.
 type ConfigProtection struct {
-	source       string
-	loaded       os.FileInfo
-	parents      []boundDirectory
-	root         os.FileInfo
-	validateRoot func() error
+	source  string
+	loaded  os.FileInfo
+	parents []boundDirectory
+}
+
+// RootProtection binds a guarded root to a configuration protection snapshot.
+type RootProtection struct {
+	config       *ConfigProtection
+	guard        *PathGuard
+	checkAliases func() error
 }
 
 type boundDirectory struct {
@@ -26,27 +31,36 @@ type boundDirectory struct {
 	info os.FileInfo
 }
 
-// BindConfigProtection records the configuration and root identities before
-// the filesystem can be exposed to callers.
-func (g *PathGuard) BindConfigProtection(source string, loaded os.FileInfo, validateRoot func() error) (*ConfigProtection, error) {
-	if g == nil || !filepath.IsAbs(source) || loaded == nil || validateRoot == nil {
+// BindConfigProtection records the configuration identity and its ancestors.
+func BindConfigProtection(source string, loaded os.FileInfo) (*ConfigProtection, error) {
+	if !filepath.IsAbs(source) || loaded == nil {
 		return nil, ErrProtectedPath
 	}
-	root, err := PathIdentity(g.effectiveRoot)
-	if err != nil || !root.IsDir() {
-		return nil, ErrProtectedPath
-	}
-	p := &ConfigProtection{source: source, loaded: loaded, root: root, validateRoot: validateRoot}
-	p.parents, err = configParents(source)
-	if err != nil || len(p.parents) == 0 || p.parents[0].info == nil {
+	parents, err := configParents(source)
+	if err != nil || parents[0].info == nil {
 		return nil, ErrProtectedPath
 	}
 	current, err := PathIdentity(source)
 	if err != nil || !os.SameFile(loaded, current) {
 		return nil, ErrProtectedPath
 	}
-	return p, nil
+	return &ConfigProtection{source: source, loaded: loaded, parents: parents}, nil
 }
+
+// BindRoot verifies the root identity and the native alias checks at startup.
+func (p *ConfigProtection) BindRoot(guard *PathGuard, checkAliases func() error) (*RootProtection, error) {
+	if p == nil || p.loaded == nil || guard == nil || checkAliases == nil {
+		return nil, ErrProtectedPath
+	}
+	binding := &RootProtection{config: p, guard: guard, checkAliases: checkAliases}
+	if err := binding.ValidateRoot(); err != nil {
+		return nil, ErrProtectedPath
+	}
+	return binding, nil
+}
+
+// Guard returns the immutable PathGuard used with this binding.
+func (r *RootProtection) Guard() *PathGuard { return r.guard }
 
 func configParents(source string) ([]boundDirectory, error) {
 	var parents []boundDirectory
@@ -64,13 +78,14 @@ func configParents(source string) ([]boundDirectory, error) {
 
 // ValidateRoot rechecks the authorized effective data root and the native
 // alias assumptions for this operation.
-func (p *ConfigProtection) ValidateRoot(g *PathGuard) error {
+func (r *RootProtection) ValidateRoot() error {
+	g := r.guard
 	resolved, err := evalEffectivePath(g.root)
 	if err != nil || !configPathEqual(resolved, g.effectiveRoot) {
 		return ErrConfigurationAccess
 	}
 	info, err := PathIdentity(resolved)
-	if err != nil || !os.SameFile(info, p.root) || p.validateRoot() != nil {
+	if err != nil || !sameIdentity(info, g.rootInfo) || r.checkAliases() != nil {
 		return ErrConfigurationAccess
 	}
 	return nil
@@ -79,7 +94,8 @@ func (p *ConfigProtection) ValidateRoot(g *PathGuard) error {
 // Check protects the selected name and both the loaded and current file
 // objects. A mutation additionally protects ancestors of the selected name.
 // info is nil for an absent operand.
-func (p *ConfigProtection) Check(path string, info, parent os.FileInfo, mutation bool) error {
+func (r *RootProtection) Check(path string, info, parent os.FileInfo, mutation bool) error {
+	p := r.config
 	if isInsideRoot(p.source, path) || sameIdentity(info, p.loaded) {
 		return ErrConfigurationAccess
 	}

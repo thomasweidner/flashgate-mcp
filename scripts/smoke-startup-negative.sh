@@ -76,23 +76,30 @@ run_case() {
   assert_no_host_path_leak "${stderr_value}"
 }
 
+quote_path() {
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1], ensure_ascii=False))' "$1"
+}
+
 root_toml() {
-  python3 -c 'import json,sys; print("[filesystem]\nroot = " + json.dumps(sys.argv[1], ensure_ascii=False))' "$1"
+  printf '[files]\ndefault_id = "work"\nroots.work.path = %s\n' "$(quote_path "$1")"
 }
 
 run_case "missing config" 3 "flashgate-mcp: startup failed (missing_config)" ABSENT
-run_case "missing root" 3 "flashgate-mcp: startup failed (missing_root)" '[filesystem]'
+run_case "missing root" 3 "flashgate-mcp: startup failed (missing_root)" $'[files]\ndefault_id = "work"'
+run_case "missing default" 3 "flashgate-mcp: startup failed (missing_root)" $'[files.roots.work]\npath = '"$(quote_path "${REPO_ROOT}")"
+run_case "unknown default" 3 "flashgate-mcp: startup failed (invalid_root)" $'[files]\ndefault_id = "unknown"\nroots.work.path = '"$(quote_path "${REPO_ROOT}")"
 run_case "empty root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml '')"
 run_case "whitespace root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml '   ')"
 run_case "relative root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml subdir)"
 run_case "parent root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml ..)"
-run_case "dot without opt-in" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml .)"
-run_case "opt-in without root" 3 "flashgate-mcp: startup failed (missing_root)" $'[filesystem]\nallow_cwd_root = true'
-run_case "invalid development option" 3 "flashgate-mcp: startup failed (invalid_config)" "$(root_toml "${REPO_ROOT}")"$'\nallow_cwd_root = "TRUE"'
+run_case "dot root" 3 "flashgate-mcp: startup failed (invalid_root)" "$(root_toml .)"
+run_case "legacy group" 3 "flashgate-mcp: startup failed (invalid_config)" $'[filesystem]\nroot = '"$(quote_path "${REPO_ROOT}")"
+run_case "legacy development option" 3 "flashgate-mcp: startup failed (invalid_config)" "$(root_toml "${REPO_ROOT}")"$'\nallow_cwd_root = true'
 run_case "missing filesystem root" 3 "flashgate-mcp: startup failed (root_not_found)" "$(root_toml "${MISSING_ROOT}")"
 run_case "file root" 3 "flashgate-mcp: startup failed (root_not_directory)" "$(root_toml "${ROOT_FILE}")"
+run_case "missing secondary root" 3 "flashgate-mcp: startup failed (root_not_found)" "$(root_toml "${REPO_ROOT}")"$'\nroots.archive.path = '"$(quote_path "${MISSING_ROOT}")"
 run_case "invalid read-only option" 3 "flashgate-mcp: startup failed (invalid_config)" "$(root_toml "${REPO_ROOT}")"$'\nread_only = "invalid"'
 run_case "valid absolute root" 0 "" "$(root_toml "${REPO_ROOT}")"$'\nread_only = true'
-run_case "development CWD" 0 "flashgate-mcp: warning: development CWD root enabled" "$(root_toml .)"$'\nallow_cwd_root = true\nread_only = true'
+run_case "valid overlapping roots" 0 "" "$(root_toml "${REPO_ROOT}")"$'\nroots.archive.path = '"$(quote_path "${REPO_ROOT}")"
 
 echo "Startup negative smoke test passed."

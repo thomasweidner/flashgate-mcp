@@ -16,7 +16,7 @@ verified technical support. BL-159 owns the authoritative execution decision.
 Possible future profiles include `safe-read`, `filesystem-write`, and `admin`.
 BL-103 owns profile names, risk classifications such as `high-risk`,
 `destructive`, and `interactive`, and the conditions for activation. BL-108
-owns per-root capability mapping. The existing `filesystem.read_only` TOML
+owns per-root capability mapping. The existing `files.read_only` TOML
 setting remains the current restricted-profile control.
 
 Server-side checks remain authoritative. MCP tool annotations are not authorization.
@@ -96,7 +96,7 @@ Least-privilege tool exposure reduces risk and schema/token overhead while givin
 - `tools/list` varies by effective profile and capabilities.
 - Negative capability tests are required.
 - Direct tool calls must still be authorized server-side.
-- The current single-root configuration remains compatible during migration.
+- Profile migration must cover configurations with one or more named roots.
 
 ## Security Impact
 
@@ -117,7 +117,7 @@ out of caller-facing responses.
 
 ## Current restricted profile
 
-Set `filesystem.read_only = true` explicitly to expose only `list_directory`,
+Set `files.read_only = true` explicitly to expose only `list_directory`,
 `read_file`, and `get_path_info`. The five mutation names and five removed
 names return the same generic Invalid params contract in STDIO smoke tests.
 This is a restricted baseline, not a general profile framework or an implicit

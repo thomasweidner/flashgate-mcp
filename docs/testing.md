@@ -488,6 +488,13 @@ Use the real loader, bootstrap, Go filesystem read and mutation boundary,
 and MCP STDIO wiring. Fixture-only decisions, source scans and races exercised only
 by timing do not establish protection.
 
+BL-101 applies this matrix across an instance's named roots. Exercise
+strict `[files]` decoding, explicit default selection, separated and
+overlapping roots, failed secondary-root bootstrap, and concurrent registry
+lookup and filesystem effects on both native platforms. Verify that current
+MCP catalogs and STDIO paths target the configured default. Use internal
+consumers to test protected aliases through secondary roots.
+
 | Boundary | Required acceptance |
 |---|---|
 | Source selection and load | Positive role default and explicit absolute override under the normal OS identity. Cover OS-readable files without product ownership or ACL assertions. Deny hidden environment/CWD alternatives, missing or inaccessible files, redirects or non-regular sources that cannot be bound, over-limit input, bad or duplicate keys, schema/type/value/security errors, and detectable concurrent changes or replacement during open/read. Verify one consistent snapshot or safe startup failure, no startup writes, and redacted stderr with empty stdout on failure. |

@@ -178,7 +178,7 @@ func Run(ctx context.Context, options Options) (Result, error) {
 }
 
 func writeBenchmarkConfig(path string, encodedRoot []byte, readOnly bool) error {
-	document := fmt.Sprintf("[filesystem]\nroot = %s\nread_only = %t\n", encodedRoot, readOnly)
+	document := fmt.Sprintf("[files]\ndefault_id = 'work'\nread_only = %t\n\n[files.roots.work]\npath = %s\n", readOnly, encodedRoot)
 	return writeConfigFixture(path, []byte(document))
 }
 

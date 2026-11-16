@@ -40,12 +40,15 @@ FlashGate prerequisite.
 
 Copy the [template](flashgate-config.toml) to the
 [trusted user default](configuration.md#source-and-trust) and set
-`filesystem.root` to the data directory. For example:
+`files.roots.work.path` to the data directory. For example:
 
 ```toml
-[filesystem]
-root = 'C:\FlashGateData\ReadOnlyRoot'
+[files]
+default_id = "work"
 read_only = true
+
+[files.roots.work]
+path = 'C:\FlashGateData\ReadOnlyRoot'
 ```
 
 For Linux, use a Linux absolute data path. To use an alternate configuration
@@ -55,7 +58,8 @@ See [runtime configuration](configuration.md) for all supported settings.
 
 ## Current read-only behavior
 
-Set `filesystem.read_only = true` explicitly. The current default without that setting
+The current tools address the root selected by `files.default_id`.
+Set `files.read_only = true` explicitly. The current default without that setting
 exposes eight tools; the planned safe-by-default profile system is not yet the
 implemented behavior.
 
@@ -103,8 +107,8 @@ actual server results rather than relying only on a direct command-line test.
 | `untrusted_config` | Path, access, file type, or consistency fails source checks | Use a stable absolute path to an OS-readable regular file. |
 | `invalid_config` | Syntax, fields, types, or limits fail validation | Compare the file against the template and supported settings. |
 | `unsupported_runtime` | The configured mode cannot run under this host | Use `runtime.mode = "stdio"` for this client. |
-| `missing_root` | `filesystem.root` is absent | Set an explicit absolute root. |
-| `invalid_root` | Empty, whitespace, relative, or disallowed `.` | Correct the root; do not rely on implicit CWD. |
+| `missing_root` | No root definitions or no nonempty default ID | Define a named root and set `files.default_id`. |
+| `invalid_root` | Invalid ID, unresolved default ID, or missing or non-absolute path | Check the ID and absolute path of every configured root. |
 | `root_not_found` | Root does not exist | Check the path and local availability. |
 | `root_not_directory` | Root is a file | Select an existing directory. |
 | `root_not_allowed` | Root policy denies access or bootstrap cannot bind configuration protection | Check the root policy, then use a local root and a stable configuration source the server can verify. |

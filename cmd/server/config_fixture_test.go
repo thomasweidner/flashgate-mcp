@@ -11,11 +11,16 @@ import (
 
 func configDocument(t *testing.T, root, settings string) string {
 	t.Helper()
+	return "[files]\ndefault_id = 'work'\nroots.work.path = " + quotedConfigPath(t, root) + "\n" + settings
+}
+
+func quotedConfigPath(t *testing.T, root string) string {
+	t.Helper()
 	encoded, err := json.Marshal(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return "[filesystem]\nroot = " + string(encoded) + "\n" + settings
+	return string(encoded)
 }
 
 func writeConfig(t *testing.T, document string) string {

@@ -59,6 +59,8 @@ The fail-closed fallback rule prevents `auto` from becoming a policy-bypass mech
 BL-233 delivered K2, the central typed configuration model in the shared Go
 core. See the [runtime configuration reference](../configuration.md) for
 the supported TOML schema, current bootstrap checks, and template.
+BL-101 uses `[files]` and `[files.roots.<id>]` within that same model,
+with an explicit default and validation of every root before exposure.
 
 Each server instance has one authoritative configuration file. The default
 location follows the runtime role:
@@ -121,8 +123,8 @@ specific residual is accepted. Helpers and adapters started by FlashGate
 remain within its responsibility. Later owners prove their own enforcement
 against the same [security contract](../security.md#configuration-trust-and-protection).
 
-The planned configuration domains are Runtime, Endpoints, Protocol, Roots,
-Profiles, Capabilities, Authorization, Filesystem, Search, Operations,
+The planned configuration domains extend Runtime, Endpoints, Protocol, Files,
+Profiles, Capabilities, Authorization, Search, Operations,
 Results, Resources, Processes, Commands, System, Platform, Services, Scheduling,
 Adapters, Providers, Logging, Audit, and Diagnostics. These groups organize
 future fields. Each domain owner adds and validates its own fields and

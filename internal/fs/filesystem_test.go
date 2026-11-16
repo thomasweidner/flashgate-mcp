@@ -23,6 +23,23 @@ func TestNewLocalFileSystemRejectsEmptyRoot(t *testing.T) {
 	}
 }
 
+func bindTestConfigProtection(guard *security.PathGuard, source string, loaded os.FileInfo) (*security.RootProtection, error) {
+	protection, err := security.BindConfigProtection(source, loaded)
+	if err != nil {
+		return nil, err
+	}
+	return protection.BindRoot(guard, func() error { return nil })
+}
+
+func mustProtectedFileSystem(t *testing.T, binding *security.RootProtection, limits Limits) *LocalFileSystem {
+	t.Helper()
+	filesystems, err := NewProtectedFileSystems([]*security.RootProtection{binding}, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return filesystems[0]
+}
+
 func TestConfigurationEffectRecheckRejectsIdentityAndParentDrift(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "config.toml")
@@ -37,14 +54,11 @@ func TestConfigurationEffectRecheckRejectsIdentityAndParentDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	protection, err := bindTestConfigProtection(guard, source, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := mustProtectedFileSystem(t, protection, DefaultLimits())
 	parent := filepath.Join(root, "ordinary")
 	if err := os.Mkdir(parent, 0o700); err != nil {
 		t.Fatal(err)
@@ -113,18 +127,30 @@ func TestConfigurationEffectsHoldSharedLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var f *LocalFileSystem
-	protection, err := guard.BindConfigProtection(source, loaded, func() error {
-		if f.effects.TryLock() {
-			f.effects.Unlock()
-			t.Error("native effect validation ran without the shared operation lock")
-		}
-		return nil
-	})
+	protection, err := security.BindConfigProtection(source, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err = NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
+	guards := []*security.PathGuard{guard, guard}
+	bindings := make([]*security.RootProtection, 0, len(guards))
+	var filesystems []*LocalFileSystem
+	for i, rootGuard := range guards {
+		binding, err := protection.BindRoot(rootGuard, func() error {
+			if filesystems != nil {
+				other := filesystems[1-i]
+				if other.effects.TryLock() {
+					other.effects.Unlock()
+					t.Error("native effect validation ran without the other root's operation lock")
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		bindings = append(bindings, binding)
+	}
+	filesystems, err = NewProtectedFileSystems(bindings, DefaultLimits())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,13 +158,14 @@ func TestConfigurationEffectsHoldSharedLock(t *testing.T) {
 	for i := range 8 {
 		concurrent.Go(func() {
 			path := fmt.Sprintf("sibling-%d", i)
-			if err := f.Write(path, []byte(path), false); err != nil {
+			if err := filesystems[i%2].Write(path, []byte(path), false); err != nil {
 				t.Error(err)
 			}
-			if err := f.Copy("config.toml", path, true); !errors.Is(err, security.ErrConfigurationAccess) {
+			other := filesystems[1-i%2]
+			if err := other.Copy("config.toml", path, true); !errors.Is(err, security.ErrConfigurationAccess) {
 				t.Errorf("protected configuration copy returned %v", err)
 			}
-			if contents, err := f.Read(path, 128); err != nil || string(contents) != path {
+			if contents, err := other.Read(path, 128); err != nil || string(contents) != path {
 				t.Errorf("sibling operation did not preserve its bytes: %v", err)
 			}
 		})
@@ -173,14 +200,11 @@ func TestLinuxMissingConfigurationNamesDenyUnprovedDestinations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	protection, err := bindTestConfigProtection(guard, source, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := mustProtectedFileSystem(t, protection, DefaultLimits())
 	if err := f.Write(filepath.Join("config-dir", "new"), ordinary, false); err != nil {
 		t.Fatalf("present configuration blocked sibling creation: %v", err)
 	}
@@ -243,14 +267,11 @@ func TestProtectedRecursiveDeleteMaintainsSymlinkEntryIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	protection, err := bindTestConfigProtection(guard, source, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := mustProtectedFileSystem(t, protection, DefaultLimits())
 	swapped := filepath.Join(root, "swapped")
 	mkdir(t, swapped)
 	link := filepath.Join(swapped, "link")
@@ -316,14 +337,11 @@ func TestConfigurationCopyPreEffectDenialPreservesDestination(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	protection, err := bindTestConfigProtection(guard, source, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := NewLocalFileSystemWithConfigProtection(guard, DefaultLimits(), protection)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := mustProtectedFileSystem(t, protection, DefaultLimits())
 	for _, existing := range []bool{false, true} {
 		target := filepath.Join(root, fmt.Sprintf("destination-%t", existing))
 		if existing {
@@ -371,16 +389,13 @@ func TestConfigurationRootExchangeDeniesPreparedEffects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	protection, err := guard.BindConfigProtection(source, loaded, func() error { return nil })
+	protection, err := bindTestConfigProtection(guard, source, loaded)
 	if err != nil {
 		t.Fatal(err)
 	}
 	limits := DefaultLimits()
 	limits.MaxDeleteEntries = 1
-	f, err := NewLocalFileSystemWithConfigProtection(guard, limits, protection)
-	if err != nil {
-		t.Fatal(err)
-	}
+	f := mustProtectedFileSystem(t, protection, limits)
 	if created, err := f.Mkdir("ordinary"); err != nil || !created {
 		t.Fatalf("ordinary directory was not created: %v", err)
 	}
@@ -415,7 +430,7 @@ func TestConfigurationRootExchangeDeniesPreparedEffects(t *testing.T) {
 	if err := f.recheckEffect(prepared, true); !errors.Is(err, security.ErrConfigurationAccess) {
 		t.Fatalf("prepared effect accepted a removed root: %v", err)
 	}
-	if _, err := guard.BindConfigProtection(source, loaded, func() error { return nil }); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := bindTestConfigProtection(guard, source, loaded); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("configuration binding accepted a disappeared root: %v", err)
 	}
 	if err := os.Mkdir(root, 0o700); err != nil {
@@ -436,14 +451,14 @@ func TestConfigurationRootExchangeDeniesPreparedEffects(t *testing.T) {
 	if err := os.Rename(source, filepath.Join(base, "original.toml")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := guard.BindConfigProtection(source, loaded, func() error { return nil }); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := bindTestConfigProtection(guard, source, loaded); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("configuration binding accepted an absent selected pathname: %v", err)
 	}
-	if _, err := NewLocalFileSystemWithConfigProtection(guard, limits, nil); !errors.Is(err, security.ErrProtectedPath) {
+	if _, err := NewProtectedFileSystems([]*security.RootProtection{nil}, limits); !errors.Is(err, security.ErrProtectedPath) {
 		t.Fatalf("protected filesystem accepted an unset protection: %v", err)
 	}
 	limits.MaxDeleteEntries = 0
-	if _, err := NewLocalFileSystemWithConfigProtection(guard, limits, protection); !errors.Is(err, ErrLimitExceeded) {
+	if _, err := NewProtectedFileSystems([]*security.RootProtection{protection}, limits); !errors.Is(err, ErrLimitExceeded) {
 		t.Fatalf("protected filesystem accepted invalid limits: %v", err)
 	}
 }
