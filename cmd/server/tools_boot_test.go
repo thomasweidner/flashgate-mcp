@@ -5,8 +5,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
 func TestCreateToolRegistryRegistersExpectedToolsInOrder(t *testing.T) {
@@ -115,6 +117,10 @@ func TestCreateToolRegistryDoesNotResolveWriteToolsWhenReadOnly(t *testing.T) {
 }
 
 type noopFileSystem struct{}
+
+func (noopFileSystem) LimitsForRoot(config.RootID) (resource.Limits, error) {
+	return fs.DefaultLimits().ResourceLimits(), nil
+}
 
 func requireToolRegistry(t testing.TB, filesystem fs.FileSystem, maxFileSize int64, readOnly bool) *tools.Registry {
 	t.Helper()

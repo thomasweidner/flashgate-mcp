@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
@@ -37,7 +38,7 @@ var (
 	ErrCopyDirectoryUnsupported = errors.New("copying directories is not supported")
 
 	// ErrLimitExceeded is returned when an operation exceeds a configured limit.
-	ErrLimitExceeded = errors.New("filesystem limit exceeded")
+	ErrLimitExceeded = resource.ErrLimitExceeded
 
 	// ErrNotFound is returned when an expected filesystem path does not exist.
 	ErrNotFound = errors.New("filesystem path not found")
@@ -60,18 +61,24 @@ var (
 
 // Limits contains filesystem operation limits.
 type Limits struct {
-	MaxWriteBytes    int64
+	MaxFileSize      int64
+	MaxWriteSize     int64
+	MaxScanSize      int64
+	MaxResultSize    int64
+	MaxTempSize      int64
 	MaxListEntries   int
-	MaxCopyBytes     int64
 	MaxDeleteEntries int
 }
 
 // DefaultLimits returns conservative filesystem limits.
 func DefaultLimits() Limits {
 	return Limits{
-		MaxWriteBytes:    10 * 1024 * 1024,
+		MaxFileSize:      10 * 1024 * 1024,
+		MaxWriteSize:     10 * 1024 * 1024,
+		MaxScanSize:      10 * 1024 * 1024,
+		MaxResultSize:    16 * 1024 * 1024,
+		MaxTempSize:      10 * 1024 * 1024,
 		MaxListEntries:   1000,
-		MaxCopyBytes:     10 * 1024 * 1024,
 		MaxDeleteEntries: 1000,
 	}
 }
@@ -95,10 +102,28 @@ type Metadata struct {
 type Operand struct {
 	RootID config.RootID
 	Path   string
+	// AdmitEffect is an optional caller-owned result admission at the existing
+	// pre-effect boundary. It never replaces domain authorization or limits.
+	AdmitEffect func() error
+}
+
+func admitEffect(admission []func() error) error {
+	if len(admission) > 1 {
+		return ErrLimitExceeded
+	}
+	if len(admission) == 1 && admission[0] != nil {
+		return admission[0]()
+	}
+	return nil
 }
 
 // FileSystem is the named-root boundary for local filesystem consumers.
+// Implementations invoke any AdmitEffect hook after domain validation and
+// before the first mutation. Hooks only admit a caller's result; they grant
+// no access and may not perform I/O or reenter the filesystem. Backend owners
+// must prove this boundary before activation.
 type FileSystem interface {
+	LimitsForRoot(id config.RootID) (resource.Limits, error)
 	List(path Operand) ([]Entry, error)
 	Read(path Operand, maxBytes int64) ([]byte, error)
 	Stat(path Operand) (Metadata, error)
@@ -158,14 +183,32 @@ func NewProtectedFileSystems(bindings []*security.RootProtection, limits Limits)
 	if err := validateLimits(limits); err != nil {
 		return nil, err
 	}
+	values := make([]Limits, len(bindings))
+	for i := range values {
+		values[i] = limits
+	}
+	return NewProtectedRootFileSystems(bindings, values)
+}
+
+// NewProtectedRootFileSystems binds all immutable limits before publication.
+// Aliased and overlapping roots retain their own caps and share effect locking.
+func NewProtectedRootFileSystems(bindings []*security.RootProtection, limits []Limits) ([]*LocalFileSystem, error) {
+	if len(bindings) != len(limits) {
+		return nil, ErrLimitExceeded
+	}
+	for _, l := range limits {
+		if err := validateLimits(l); err != nil {
+			return nil, err
+		}
+	}
 	effects := new(sync.Mutex)
 	filesystems := make([]*LocalFileSystem, 0, len(bindings))
-	for _, binding := range bindings {
+	for i, binding := range bindings {
 		if binding == nil || binding.Guard() == nil {
 			return nil, security.ErrProtectedPath
 		}
 		filesystems = append(filesystems, &LocalFileSystem{
-			guard: binding.Guard(), limits: limits, protection: binding, effects: effects,
+			guard: binding.Guard(), limits: limits[i], protection: binding, effects: effects,
 		})
 	}
 	return filesystems, nil
@@ -180,12 +223,16 @@ func newLocalFileSystem(guard *security.PathGuard, limits Limits) *LocalFileSyst
 }
 
 func validateLimits(limits Limits) error {
-	if limits.MaxWriteBytes <= 0 ||
+	if limits.MaxWriteSize <= 0 ||
 		limits.MaxListEntries <= 0 ||
-		limits.MaxCopyBytes <= 0 ||
+		limits.ResourceLimits().Validate() != nil ||
 		limits.MaxDeleteEntries <= 0 {
 		return ErrLimitExceeded
 	}
 
 	return nil
+}
+
+func (l Limits) ResourceLimits() resource.Limits {
+	return resource.Limits{File: l.MaxFileSize, Write: l.MaxWriteSize, Scan: l.MaxScanSize, Result: l.MaxResultSize, Temp: l.MaxTempSize}
 }

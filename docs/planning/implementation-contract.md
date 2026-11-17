@@ -130,7 +130,67 @@ The [migration guide](../migration.md#root-access) covers explicit write
 opt-in for existing configurations. Record the change under Unreleased and
 include the intended backlog closure in the independent terminal review.
 
+## BL-105 resource limits
+
+BL-105 is a shared domain policy foundation, with configuration and MCP result
+adapters. Its hard prerequisites are completed BL-233/374 and BL-100–104.
+Extend the typed TOML model, named-policy composition, immutable root registry,
+`internal/fs` and the existing single-transmission result and transport paths.
+Retrofit every current filesystem tool, protocol limit, logging record bound,
+IPC frame setting, bootstrap, fixtures and maintained configuration examples.
+
+Global `files` limits are hard ceilings. A named policy supplies optional
+per-field limits; explicit root fields replace those fields. Reject attempts
+to exceed global ceilings, including unused policy definitions. Request and
+operation bounds may only tighten the effective root snapshot. Access,
+capabilities, risk, PathGuard and selected-configuration protection remain
+independent gates. Copy stays within one exact root ID and consumes the same
+write bound as a complete write, plus its source file/scan bounds.
+
+Use positive byte integers or unambiguous English SI/IEC byte/bit strings for
+size fields. Remove public byte-key aliases, including copy's separate bound.
+One bounded exact parser and one canonical lossless formatter serve future
+BL-373 configuration views. Startup normalizes only in memory and never writes
+the configuration. Preserve tool schemas, revisions, error categories, wire
+budgets and product VERSION; document breaking TOML migration in Unreleased.
+
+FILE bounds content handled by read, write and copy. WRITE bounds new content
+for write and copy. SCAN bounds bytes actually read and directory names visited,
+including filtered entries; entry limits independently bound traversal.
+RESULT bounds the serialized complete MCP result, including escaping and
+revision-owned metadata. Adapters reserve their exact envelope additions with
+the shared result allowance before effects; the protocol response bound includes JSON-RPC framing
+and the transport newline. Mutating tools must admit their bounded receipt
+before side effects. TEMP bounds aggregate live reservations per exact root
+through `Registry.ReserveTemp`, plus tighter operation/request allowances; no current
+filesystem operation creates scratch files. Memory and wire buffering retain
+their separate existing bounds. Future scratch consumers reserve before
+allocation and release on success, denial, cancellation and failure.
+
+Small typed meters and root snapshots must be usable below MCP by Go and
+simulated external backends. Missing necessary hard enforcement denies dispatch;
+a backend configuration claim alone is insufficient. No external process is
+activated. BL-151/152 retain actual OS enforcement, BL-090 retains result storage,
+and BL-236/239 retain context and lifecycle extensions. Each future tool owner
+declares applicable dimensions, measurement units, aggregate effects, hard
+enforcement and cancellation/cleanup evidence in the existing BL-220 and
+BL-205/214/215 contracts before activation. No second registry or quota engine.
+
+Acceptance includes exact parser/formatter boundaries and roundtrips, unused
+policy rejection, immutable and overlapping roots, all eight tools, no grants
+from limits, protected operands, scan/filter exhaustion, safe serialized result
+denial before mutations, full wire limits, concurrent reservations, adapter
+parity and missing-enforcement negatives. Run the applicable native Windows and
+Linux, race, coverage, conformance, documentation and source-hygiene gates in
+the testing guide before independent terminal review.
+
 ## BL-220 adapter acceptance binding
+
+Every new or changed consumer inherits the [BL-105 resource contract](#bl-105-resource-limits).
+Declare applicable dimensions and units, root and aggregate budgets, the exact
+hard enforcement boundary, result serialization and temporary-data lifecycle.
+Missing enforceability denies dispatch. Test exhaustion and no-effect denials
+on the actual backend before activation; a configured limit is not proof.
 
 For every new tool, platform or Native Tool adapter, execution backend,
 process-launch path, host, transport or provider, name the first owning BL
@@ -358,6 +418,10 @@ applicable native gates and independent review before integration.
 
 ## BL-205 response-size regressions
 
+Resource-producing owners reuse [BL-105 limits](#bl-105-resource-limits),
+including root success-result bounds and the independently framed global
+response bound. Add exact/one-byte-over and escaping cases before activation.
+
 BL-205 extends the existing MCP adapter validation for STDIO under
 [ADR-003](../adr/stdio-transport.md), [ADR-012](../adr/efficiency-contracts.md)
 and [ADR-013](../adr/mcp-compatibility.md). Reuse the BL-203
@@ -389,6 +453,11 @@ budget parity, followed by the applicable native quality chain and independent
 review. This contract remains in force after BL-205 closes.
 
 ## BL-215 catalog and entry budget binding
+
+New tools and adapters declare their applicable [resource dimensions](#bl-105-resource-limits)
+in the existing contract and prove limits under the same executable revision,
+profile and delivery fixtures. BL-105 remains closed when later consumers add
+their own operation dimensions or lifecycle integrations.
 
 BL-215 is the SPR-048 MCP adapter and validation contract for bounded effective
 catalogs and revision-specific entry. Reuse the BL-189–BL-199 benchmark
@@ -683,6 +752,8 @@ its own activation conditions before it exposes management.
 
 **Reuse and retrofit.** Extend BL-233's model and effective-state access
 with one transport-neutral management function in the shared Go core.
+Reuse BL-105's exact `internal/resource.ParseSize` and canonical `FormatSize`
+for size input and display; do not create a second locale or unit authority.
 Route enabled direct, proxy, and service paths to it through the existing
 dispatch, authorization, effective catalog, and audit contracts. The service
 keeps its own configuration authority. A compatible MCP Apps client may

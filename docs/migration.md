@@ -5,6 +5,25 @@ FlashGate builds. Follow the current [tool reference](tools.md),
 [protocol reference](protocol.md), and [changelog](../CHANGELOG.md) when
 updating an integration. Internal task renumbering is not a product migration.
 
+## Resource size settings
+
+Replace `files.max_write_bytes` with `files.max_write_size` and remove
+`files.max_copy_bytes`: the single write size now governs complete writes and
+file copies. Existing `files.max_file_size` also bounds written/copied content.
+Choose one write ceiling deliberately if the former write/copy values differ.
+Replace `protocol.max_message_bytes`, `max_argument_bytes` and
+`max_response_bytes` with their `_size` spellings. Likewise replace
+`endpoints.max_frame_bytes` and `logging.max_record_bytes` with `_size`.
+Removed keys are rejected; there are no aliases or automatic file rewrites.
+
+All size settings accept positive byte integers and exact English SI/IEC
+strings. Add optional `max_scan_size`, `max_result_size` and `max_temp_size`
+globally, in named policies or at each root. Root/policy values must stay
+within global ceilings. See [resource semantics](configuration.md#resource-limits)
+for exact units, conservative fractional rounding, canonical formatting,
+scan accounting and serialized result bounds. Entry counts, timeouts and
+the existing `read_file.maxBytes` request argument retain their units/names.
+
 ## Product identity
 
 The current repository is `thomasweidner/flashgate-mcp`, the Go module is
@@ -100,13 +119,13 @@ integers as unquoted decimal values, and paths as strings.
 | `MCP_ALLOW_UNC_PATHS` | `security.allow_unc_paths` |
 | `MCP_FOLLOW_SYMLINKS` | `security.follow_symlinks` |
 | `MCP_MAX_FILE_SIZE` | `files.max_file_size` |
-| `MCP_MAX_WRITE_BYTES` | `files.max_write_bytes` |
+| `MCP_MAX_WRITE_BYTES` | `files.max_write_size` |
 | `MCP_MAX_LIST_ENTRIES` | `files.max_list_entries` |
-| `MCP_MAX_COPY_BYTES` | `files.max_copy_bytes` |
+| `MCP_MAX_COPY_BYTES` | `files.max_write_size` (shared with writes) |
 | `MCP_MAX_DELETE_ENTRIES` | `files.max_delete_entries` |
-| `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `protocol.max_message_bytes` |
-| `MCP_MAX_TOOL_ARGUMENT_BYTES` | `protocol.max_argument_bytes` |
-| `MCP_MAX_RESPONSE_BYTES` | `protocol.max_response_bytes` |
+| `MCP_MAX_JSONRPC_MESSAGE_BYTES` | `protocol.max_message_size` |
+| `MCP_MAX_TOOL_ARGUMENT_BYTES` | `protocol.max_argument_size` |
+| `MCP_MAX_RESPONSE_BYTES` | `protocol.max_response_size` |
 | `MCP_DEBUG` | `logging.level`: use `"debug"` for true and `"off"` for false |
 
 Before switching binaries, back up the client entry and retain the verified

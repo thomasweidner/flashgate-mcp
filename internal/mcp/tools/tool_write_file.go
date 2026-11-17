@@ -79,7 +79,7 @@ func (t *WriteFileTool) ResultContract() ResultContract {
 }
 
 // Execute writes the requested file.
-func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
+func (t *WriteFileTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var path fs.Operand
 	var text string
 	var overwrite bool
@@ -99,16 +99,16 @@ func (t *WriteFileTool) Execute(_ context.Context, rawArguments json.RawMessage)
 	}
 
 	content := []byte(text)
+	result, admit := mutationResult(ctx, t.filesystem, path.RootID, NewToolResult(defaultVariant, writeFileResult{
+		Path: path.Path, Size: int64(len(content)), Written: true,
+	}), t.ResultContract())
+	path.AdmitEffect = admit
 
 	if err := t.filesystem.Write(path, content, overwrite); err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return NewToolResult(defaultVariant, writeFileResult{
-		Path:    path.Path,
-		Size:    int64(len(content)),
-		Written: true,
-	}), nil
+	return finishMutationResult(result)
 }
 
 type writeFileResult struct {

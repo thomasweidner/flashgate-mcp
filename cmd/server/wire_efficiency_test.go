@@ -444,7 +444,7 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 	id := fixture.id
 	limits := fs.DefaultLimits()
 	if fixture.tightLimits {
-		limits.MaxWriteBytes, limits.MaxCopyBytes = 3, 3
+		limits.MaxWriteSize = 3
 		limits.MaxListEntries, limits.MaxDeleteEntries = 1, 1
 	}
 	var wrap func(fs.FileSystem) fs.FileSystem

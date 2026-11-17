@@ -44,7 +44,7 @@ func TestRegistryResolvesDistinctRootsAndIsolatesSnapshots(t *testing.T) {
 	t.Parallel()
 	work, archive := t.TempDir(), t.TempDir()
 	r := loadRegistry(t, filepath.Join(t.TempDir(), "config.toml"),
-		"[files]\ndefault_id = 'work'\nmax_write_bytes = 4\n[security]\nallow_hidden_files = true\n"+
+		"[files]\ndefault_id = 'work'\nmax_write_size = 4\n[security]\nallow_hidden_files = true\n"+
 			rootTable(t, "work", work)+"access = ['read', 'write']\n"+
 			rootTable(t, "archive", archive)+"access = ['read', 'write']\n")
 	want := []config.RootID{"archive", "work"}

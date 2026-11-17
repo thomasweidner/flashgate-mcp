@@ -12,6 +12,7 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/transport"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
 // Server is the MCP server runtime.
@@ -19,6 +20,7 @@ type Server struct {
 	transport        *transport.Transport
 	router           *router.Router
 	maxArgumentBytes int64
+	maxResponseBytes int64
 	diagnostics      *diagnostics.Logger
 }
 
@@ -41,6 +43,7 @@ func NewWithOptions(in io.Reader, out io.Writer, router *router.Router, options 
 		transport:        transport.NewWithLimits(in, out, options.MaxMessageBytes, options.MaxResponseBytes),
 		router:           router,
 		maxArgumentBytes: options.MaxArgumentBytes,
+		maxResponseBytes: options.MaxResponseBytes,
 		diagnostics:      options.Diagnostics,
 	}
 }
@@ -110,6 +113,14 @@ func (s *Server) handleRequest(ctx context.Context, request validatedRequest) (r
 	revisionRequest, metadataErr := revision.Inspect(request.params)
 	if metadataErr != nil {
 		return protocol.Response{JSONRPC: protocol.JSONRPCVersion, ID: request.id, Error: metadataErr}
+	}
+	if s.maxResponseBytes > 0 {
+		id, err := json.Marshal(request.id)
+		if err != nil {
+			return protocol.Response{JSONRPC: protocol.JSONRPCVersion, ID: request.id, Error: &protocol.Error{Code: protocol.ErrInternalError, Message: "internal error"}}
+		}
+		allowance := s.maxResponseBytes - int64(len(`{"jsonrpc":"2.0","id":,"result":}`)+len(id)+1)
+		ctx = resource.WithResultLimit(ctx, allowance)
 	}
 	result, rpcErr := s.router.DispatchRevision(
 		revisionRequest,

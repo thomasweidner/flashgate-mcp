@@ -16,6 +16,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pelletier/go-toml/v2/unstable"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
@@ -85,9 +86,11 @@ type RootDefinition struct {
 	ID     RootID
 	Path   string
 	Access RootAccess
+	Limits resource.Limits
 }
 
 type rootFields struct {
+	resourceFields
 	Path   string       `toml:"path"`
 	Policy *policyID    `toml:"policy"`
 	Access accessFields `toml:"access"`
@@ -96,10 +99,12 @@ type rootFields struct {
 type filesFields struct {
 	DefaultID        RootID                `toml:"default_id"`
 	Roots            map[RootID]rootFields `toml:"roots"`
-	MaxFileSize      int64                 `toml:"max_file_size"`
-	MaxWriteBytes    int64                 `toml:"max_write_bytes"`
+	MaxFileSize      sizeValue             `toml:"max_file_size"`
+	MaxWriteSize     sizeValue             `toml:"max_write_size"`
+	MaxScanSize      sizeValue             `toml:"max_scan_size"`
+	MaxResultSize    sizeValue             `toml:"max_result_size"`
+	MaxTempSize      sizeValue             `toml:"max_temp_size"`
 	MaxListEntries   int                   `toml:"max_list_entries"`
-	MaxCopyBytes     int64                 `toml:"max_copy_bytes"`
 	MaxDeleteEntries int                   `toml:"max_delete_entries"`
 }
 
@@ -110,9 +115,9 @@ type securityFields struct {
 }
 
 type protocolFields struct {
-	MaxMessageBytes  int64 `toml:"max_message_bytes"`
-	MaxArgumentBytes int64 `toml:"max_argument_bytes"`
-	MaxResponseBytes int64 `toml:"max_response_bytes"`
+	MaxMessageBytes  sizeValue `toml:"max_message_size"`
+	MaxArgumentBytes sizeValue `toml:"max_argument_size"`
+	MaxResponseBytes sizeValue `toml:"max_response_size"`
 }
 
 // Fallback is a policy value for a future auto host. It does not perform discovery.
@@ -124,14 +129,14 @@ const (
 )
 
 type endpointFields struct {
-	WindowsPipe   string   `toml:"windows_pipe_name"`
-	LinuxSocket   string   `toml:"linux_socket_path"`
-	ConnectMS     int64    `toml:"connect_timeout_ms"`
-	RequestMS     int64    `toml:"request_timeout_ms"`
-	ShutdownMS    int64    `toml:"shutdown_timeout_ms"`
-	MaxFrameBytes int64    `toml:"max_frame_bytes"`
-	IPCVersion    int      `toml:"ipc_version"`
-	Fallback      Fallback `toml:"fallback"`
+	WindowsPipe  string    `toml:"windows_pipe_name"`
+	LinuxSocket  string    `toml:"linux_socket_path"`
+	ConnectMS    int64     `toml:"connect_timeout_ms"`
+	RequestMS    int64     `toml:"request_timeout_ms"`
+	ShutdownMS   int64     `toml:"shutdown_timeout_ms"`
+	MaxFrameSize sizeValue `toml:"max_frame_size"`
+	IPCVersion   int       `toml:"ipc_version"`
+	Fallback     Fallback  `toml:"fallback"`
 }
 
 type LogLevel string
@@ -147,31 +152,32 @@ const (
 )
 
 type loggingFields struct {
-	Level          LogLevel  `toml:"level"`
-	Sink           LogSink   `toml:"sink"`
-	Format         LogFormat `toml:"format"`
-	MaxRecordBytes int       `toml:"max_record_bytes"`
-	MaxRecords     int       `toml:"max_records"`
+	Level         LogLevel  `toml:"level"`
+	Sink          LogSink   `toml:"sink"`
+	Format        LogFormat `toml:"format"`
+	MaxRecordSize sizeValue `toml:"max_record_size"`
+	MaxRecords    int       `toml:"max_records"`
 }
 
 func defaultSettings(role Role) settings {
 	return settings{
 		Runtime: runtimeFields{Mode: role},
 		Files: filesFields{
-			MaxFileSize: defaultFileBytes, MaxWriteBytes: defaultFileBytes,
-			MaxCopyBytes: defaultFileBytes, MaxListEntries: 1000, MaxDeleteEntries: 1000,
+			MaxFileSize: sizeValue(defaultFileBytes), MaxWriteSize: sizeValue(defaultFileBytes),
+			MaxScanSize: sizeValue(defaultFileBytes), MaxResultSize: sizeValue(defaultWireBytes),
+			MaxTempSize: sizeValue(defaultFileBytes), MaxListEntries: 1000, MaxDeleteEntries: 1000,
 		},
 		Profiles: profileFields{MaxRisk: "mutation"},
 		Protocol: protocolFields{
-			MaxMessageBytes: defaultWireBytes, MaxArgumentBytes: 12 * 1024 * 1024,
-			MaxResponseBytes: defaultWireBytes,
+			MaxMessageBytes: sizeValue(defaultWireBytes), MaxArgumentBytes: 12 * 1024 * 1024,
+			MaxResponseBytes: sizeValue(defaultWireBytes),
 		},
 		Endpoints: endpointFields{
 			ConnectMS: 5000, RequestMS: 30000, ShutdownMS: 5000,
-			MaxFrameBytes: defaultWireBytes, IPCVersion: 1, Fallback: NoFallback,
+			MaxFrameSize: sizeValue(defaultWireBytes), IPCVersion: 1, Fallback: NoFallback,
 		},
 		Logging: loggingFields{
-			Level: LogOff, Sink: LogStderr, Format: LogText, MaxRecordBytes: 4096, MaxRecords: 10000,
+			Level: LogOff, Sink: LogStderr, Format: LogText, MaxRecordSize: 4096, MaxRecords: 10000,
 		},
 	}
 }
@@ -259,7 +265,7 @@ func Decode(document []byte, role Role) (Config, error) {
 	}
 
 	wire := defaultSettings(role)
-	decoder := toml.NewDecoder(bytes.NewReader(document)).DisallowUnknownFields()
+	decoder := toml.NewDecoder(bytes.NewReader(document)).DisallowUnknownFields().EnableUnmarshalerInterface()
 	if err := decoder.Decode(&wire); err != nil {
 		return Config{}, NewError(CategoryInvalidConfig, err)
 	}
@@ -345,8 +351,9 @@ func (c Config) validateSettings() error {
 		}
 	}
 	p := c.data.Protocol
-	for _, limit := range []int64{f.MaxFileSize, f.MaxWriteBytes, f.MaxCopyBytes, int64(f.MaxListEntries),
-		int64(f.MaxDeleteEntries), p.MaxMessageBytes, p.MaxArgumentBytes, p.MaxResponseBytes} {
+	for _, limit := range []int64{int64(f.MaxFileSize), int64(f.MaxWriteSize), int64(f.MaxScanSize),
+		int64(f.MaxResultSize), int64(f.MaxTempSize), int64(f.MaxListEntries),
+		int64(f.MaxDeleteEntries), int64(p.MaxMessageBytes), int64(p.MaxArgumentBytes), int64(p.MaxResponseBytes)} {
 		if limit <= 0 || limit == math.MaxInt64 {
 			return NewError(CategoryInvalidConfig, errors.New("invalid resource limit"))
 		}
@@ -357,7 +364,7 @@ func (c Config) validateSettings() error {
 	l := c.data.Logging
 	if l.Level != LogOff && l.Level != LogDebug ||
 		l.Sink != LogStderr || l.Format != LogText && l.Format != LogJSON ||
-		l.MaxRecordBytes < 128 || l.MaxRecordBytes > MaxDocumentBytes ||
+		l.MaxRecordSize < 128 || l.MaxRecordSize > MaxDocumentBytes ||
 		l.MaxRecords < 1 || l.MaxRecords > 1000000 {
 		return NewError(CategoryInvalidConfig, errors.New("unsupported logging settings"))
 	}
@@ -389,7 +396,7 @@ func (e endpointFields) validate(role Role) error {
 		return errors.New("endpoint settings require a managed runtime")
 	}
 	if e.Fallback != NoFallback && !(role == Auto && e.Fallback == DirectIfAbsent) ||
-		e.IPCVersion != 1 || e.MaxFrameBytes < 1 || e.MaxFrameBytes > 64*1024*1024 {
+		e.IPCVersion != 1 || e.MaxFrameSize < 1 || e.MaxFrameSize > 64*1024*1024 {
 		return errors.New("unsupported endpoint policy")
 	}
 	for _, timeout := range []int64{e.ConnectMS, e.RequestMS, e.ShutdownMS} {
@@ -425,16 +432,16 @@ type ServerConfig struct{ data protocolFields }
 type EndpointConfig struct {
 	WindowsPipeName, LinuxSocketPath                string
 	ConnectTimeout, RequestTimeout, ShutdownTimeout time.Duration
-	MaxFrameBytes                                   int64
+	MaxFrameSize                                    int64
 	IPCVersion                                      int
 	Fallback                                        Fallback
 }
 
 type LoggingConfig struct {
-	Level                      LogLevel
-	Sink                       LogSink
-	Format                     LogFormat
-	MaxRecordBytes, MaxRecords int
+	Level                     LogLevel
+	Sink                      LogSink
+	Format                    LogFormat
+	MaxRecordSize, MaxRecords int
 }
 
 func (c Config) Role() Role                { return c.role }
@@ -449,29 +456,32 @@ func (c Config) Endpoints() EndpointConfig {
 		ConnectTimeout:  time.Duration(e.ConnectMS) * time.Millisecond,
 		RequestTimeout:  time.Duration(e.RequestMS) * time.Millisecond,
 		ShutdownTimeout: time.Duration(e.ShutdownMS) * time.Millisecond,
-		MaxFrameBytes:   e.MaxFrameBytes, IPCVersion: e.IPCVersion, Fallback: e.Fallback,
+		MaxFrameSize:    int64(e.MaxFrameSize), IPCVersion: e.IPCVersion, Fallback: e.Fallback,
 	}
 }
-func (c Config) Logging() LoggingConfig { return LoggingConfig(c.data.Logging) }
+func (c Config) Logging() LoggingConfig {
+	l := c.data.Logging
+	return LoggingConfig{Level: l.Level, Sink: l.Sink, Format: l.Format, MaxRecordSize: int(l.MaxRecordSize), MaxRecords: l.MaxRecords}
+}
 
 // Roots returns an independent snapshot ordered by canonical ID.
 func (f FilesConfig) Roots() []RootDefinition {
 	return slices.Clone(f.roots)
 }
 func (f FilesConfig) DefaultID() RootID         { return f.data.DefaultID }
-func (f FilesConfig) MaxFileSize() int64        { return f.data.MaxFileSize }
-func (f FilesConfig) MaxWriteBytes() int64      { return f.data.MaxWriteBytes }
+func (f FilesConfig) MaxFileSize() int64        { return int64(f.data.MaxFileSize) }
+func (f FilesConfig) MaxWriteSize() int64       { return int64(f.data.MaxWriteSize) }
 func (f FilesConfig) MaxListEntries() int       { return f.data.MaxListEntries }
-func (f FilesConfig) MaxCopyBytes() int64       { return f.data.MaxCopyBytes }
+func (f FilesConfig) Limits() resource.Limits   { return f.data.limits() }
 func (f FilesConfig) MaxDeleteEntries() int     { return f.data.MaxDeleteEntries }
 func (s SecurityConfig) AllowHiddenFiles() bool { return s.data.AllowHiddenFiles }
 func (s SecurityConfig) AllowUNCPaths() bool    { return s.data.AllowUNCPaths }
 func (s SecurityConfig) FollowSymlinks() bool   { return s.data.FollowSymlinks }
 func (s ServerConfig) Name() string             { return "flashgate" }
 func (s ServerConfig) Version() string          { return "0.1.0-dev" }
-func (s ServerConfig) MaxMessageBytes() int64   { return s.data.MaxMessageBytes }
-func (s ServerConfig) MaxArgumentBytes() int64  { return s.data.MaxArgumentBytes }
-func (s ServerConfig) MaxResponseBytes() int64  { return s.data.MaxResponseBytes }
+func (s ServerConfig) MaxMessageSize() int64    { return int64(s.data.MaxMessageBytes) }
+func (s ServerConfig) MaxArgumentSize() int64   { return int64(s.data.MaxArgumentBytes) }
+func (s ServerConfig) MaxResponseSize() int64   { return int64(s.data.MaxResponseBytes) }
 
 func invalidSourcePath() error { return NewError(CategoryUntrustedConfig, nil) }
 

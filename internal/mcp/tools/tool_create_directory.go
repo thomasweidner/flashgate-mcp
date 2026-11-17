@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
 const createDirectoryToolName = "create_directory"
@@ -38,7 +39,7 @@ func (t *CreateDirectoryTool) ResultContract() ResultContract {
 	return metadataContract(defaultVariant)
 }
 
-func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
+func (t *CreateDirectoryTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var path fs.Operand
 	if err := decodeStrictArguments(rawArguments, map[string]any{
 		"root_id": &path.RootID,
@@ -53,12 +54,33 @@ func (t *CreateDirectoryTool) Execute(_ context.Context, rawArguments json.RawMe
 		return ToolResult{}, err
 	}
 
+	// Admit both outcomes without serializing a speculative receipt. Around
+	// the metadata-parity threshold, the shorter object can have a larger wrapper.
+	admitted := false
+	path.AdmitEffect = func() error {
+		if admitted {
+			return nil
+		}
+		limits, err := t.filesystem.LimitsForRoot(path.RootID)
+		if err != nil {
+			return err
+		}
+		needed := max(mkdirReceiptSize(path.Path, true), mkdirReceiptSize(path.Path, false))
+		if needed > resource.ResultLimit(ctx, limits.Result) {
+			return fs.ErrLimitExceeded
+		}
+		admitted = true
+		return nil
+	}
 	created, err := t.filesystem.Mkdir(path)
 	if err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return NewToolResult(defaultVariant, createDirectoryResult{Path: path.Path, Created: created}), nil
+	if !admitted {
+		return ToolResult{}, errInvalidToolResult
+	}
+	return prepareResult(ctx, t.filesystem, path.RootID, NewToolResult(defaultVariant, createDirectoryResult{Path: path.Path, Created: created}), t.ResultContract())
 }
 
 type createDirectoryResult struct {

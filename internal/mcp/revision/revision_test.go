@@ -2,10 +2,34 @@ package revision
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
 )
+
+func TestCompletionOverheadUsesActualWireFields(t *testing.T) {
+	for _, method := range []string{"tools/call", "tools/list"} {
+		for _, name := range []string{"flashgate", "<>\"\\\u2028", strings.Repeat("v", 128)} {
+			value := protocol.CallToolResult{Content: []protocol.ContentBlock{protocol.NewTextContent("<payload>\n")}, StructuredContent: json.RawMessage(`{"size":10}`)}
+			before, err := json.Marshal(value)
+			if err != nil {
+				t.Fatal(err)
+			}
+			after, rpcErr := Complete(value, method, name, "version")
+			if rpcErr != nil {
+				t.Fatal(rpcErr)
+			}
+			encoded, err := json.Marshal(after)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := CompletionOverhead(method, name, "version"); got != int64(len(encoded)-len(before)) {
+				t.Fatal(method, name, got, len(encoded)-len(before))
+			}
+		}
+	}
+}
 
 func TestInspectRequiresValidPerRequestMetadata(t *testing.T) {
 	bad := []string{

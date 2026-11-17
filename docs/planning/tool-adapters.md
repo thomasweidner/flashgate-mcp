@@ -932,6 +932,14 @@ cleanup for affected work and prove bounded queues and temporary resources.
 
 ### BL-220 context and policy
 
+All consumers use the [shared resource contract](implementation-contract.md#bl-105-resource-limits).
+Bind the effective root snapshot below MCP; declare FILE/WRITE/SCAN/RESULT/TEMP
+applicability, units, aggregate budgets and reservations. Prove hard enforcement,
+exact-boundary denial, cancellation and cleanup for the actual backend before
+activation. Unsupported hard enforcement denies dispatch; configuration claims
+and executable presence supply no authority. BL-151/152 implement productive
+OS enforcement, and future owners implement their own additional consumers.
+
 **Applicable owners** BL-100–BL-111, BL-159–BL-161, BL-165–BL-168, BL-170, BL-217, BL-236, BL-239, BL-256, BL-352, BL-373
 
 Use the [BL-100 functional contract](../adr/capability-profiles.md#functional-capability-contract)

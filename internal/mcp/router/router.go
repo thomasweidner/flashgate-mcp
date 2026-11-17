@@ -1,21 +1,24 @@
 package router
 
 import (
+	"context"
 	"sync"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/discovery"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
 // Router dispatches method calls to registered handlers.
 type Router struct {
-	handlers map[string]handlers.Handler
-	mu       sync.RWMutex
-	policy   revision.Policy
-	name     string
-	version  string
+	handlers           map[string]handlers.Handler
+	mu                 sync.RWMutex
+	policy             revision.Policy
+	name               string
+	version            string
+	toolResultOverhead int64
 }
 
 // New creates a new router.
@@ -25,11 +28,16 @@ func New() *Router {
 
 // NewWithPolicy injects an exact revision set into the same production router.
 func NewWithPolicy(name, version string, policy revision.Policy) *Router {
+	var overhead int64
+	if policy.Enabled(revision.Stateless) {
+		overhead = revision.CompletionOverhead("tools/call", name, version)
+	}
 	return &Router{
-		handlers: make(map[string]handlers.Handler),
-		policy:   policy,
-		name:     name,
-		version:  version,
+		handlers:           make(map[string]handlers.Handler),
+		policy:             policy,
+		name:               name,
+		version:            version,
+		toolResultOverhead: overhead,
 	}
 }
 
@@ -85,6 +93,12 @@ func (r *Router) DispatchRevision(request revision.Request, method string, ctx h
 		}
 	}
 
+	if version == revision.Stateless && method == "tools/call" {
+		if ctx.Context == nil {
+			ctx.Context = context.Background()
+		}
+		ctx.Context = resource.WithResultOverhead(ctx.Context, r.toolResultOverhead)
+	}
 	result, rpcErr := handler.Handle(ctx, request.Params)
 	if rpcErr != nil || version == protocol.ProtocolVersion {
 		return result, rpcErr

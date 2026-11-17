@@ -338,6 +338,16 @@ higher-risk profile              -> explicit validated activation
 
 The server binds an explicit root ID and a relative path for each filesystem
 operand through the [BL-102 resource contract](planning/implementation-contract.md#bl-102-filesystem-resource-contract).
+The [resource contract](planning/implementation-contract.md#bl-105-resource-limits)
+extends named policies with immutable file, write, scan, result and temporary-data
+ceilings. `internal/resource` owns exact size conversion, canonical formatting
+and small operation meters. The root registry publishes value snapshots and
+binds the native filesystem before exposure. Content and scan checks remain
+below MCP; the existing result and transport layers admit actual serialized
+bytes and preflight mutation receipts. Backend owners prove each applicable
+hard limit before dispatch, including aggregate effects and scratch cleanup.
+No store, registry or productive launcher is added. Startup only normalizes
+size strings in memory and never rewrites configuration.
 The target also allows per-root rules for:
 
 - read/write access;

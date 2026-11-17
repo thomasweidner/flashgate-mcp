@@ -146,12 +146,12 @@ func categorizeRootError(err error) error {
 func serverOptionsFromConfig(cfg config.Config, stderr io.Writer) server.Options {
 	logging := cfg.Logging()
 	return server.Options{
-		MaxMessageBytes:  cfg.Server().MaxMessageBytes(),
-		MaxArgumentBytes: cfg.Server().MaxArgumentBytes(),
-		MaxResponseBytes: cfg.Server().MaxResponseBytes(),
+		MaxMessageBytes:  cfg.Server().MaxMessageSize(),
+		MaxArgumentBytes: cfg.Server().MaxArgumentSize(),
+		MaxResponseBytes: cfg.Server().MaxResponseSize(),
 		Diagnostics: diagnostics.NewBoundedLogger(
 			logging.Level == config.LogDebug, logging.Format == config.LogJSON,
-			logging.MaxRecordBytes, logging.MaxRecords, stderr,
+			logging.MaxRecordSize, logging.MaxRecords, stderr,
 		),
 	}
 }

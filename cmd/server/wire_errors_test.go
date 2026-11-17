@@ -12,9 +12,11 @@ import (
 	"strings"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/benchmark"
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
 const wirePrivateMarker = "private-wire-fixture-cause"
@@ -100,6 +102,10 @@ func wireInvalidText(root string) error {
 // adapter classifies it. This keeps permission and cross-volume cases stable
 // without changing ACLs, execution identity or host mount layout.
 type wireFailingFilesystem struct{ err error }
+
+func (wireFailingFilesystem) LimitsForRoot(config.RootID) (resource.Limits, error) {
+	return fs.DefaultLimits().ResourceLimits(), nil
+}
 
 func (f wireFailingFilesystem) List(fs.Operand) ([]fs.Entry, error)     { return nil, f.err }
 func (f wireFailingFilesystem) Read(fs.Operand, int64) ([]byte, error)  { return nil, f.err }

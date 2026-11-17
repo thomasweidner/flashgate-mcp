@@ -63,7 +63,7 @@ func TestMCPConformancePingSTDIO(t *testing.T) {
 			if profile.debug == "true" {
 				level = "debug"
 			}
-			settings := "[profiles]\nactive = '" + profile.name + "'\n[protocol]\nmax_message_bytes = 1024\n[logging]\nlevel = \"" + level + "\"\n"
+			settings := "[profiles]\nactive = '" + profile.name + "'\n[protocol]\nmax_message_size = 1024\n[logging]\nlevel = \"" + level + "\"\n"
 			configPath := writeConfig(t, configDocument(t, root, settings))
 			command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$", "--", configPath)
 			command.WaitDelay = time.Second

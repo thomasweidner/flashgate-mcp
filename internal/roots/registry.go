@@ -6,6 +6,7 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
@@ -17,6 +18,8 @@ type Registry struct {
 }
 
 type entry struct {
+	budget  *resource.Meter
+	limits  resource.Limits
 	access  config.RootAccess
 	backend *fs.LocalFileSystem
 }
@@ -42,12 +45,13 @@ func New(cfg config.Config) (*Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	backends, err := fs.NewProtectedFileSystems(bindings, fs.Limits{
-		MaxWriteBytes:    files.MaxWriteBytes(),
-		MaxListEntries:   files.MaxListEntries(),
-		MaxCopyBytes:     files.MaxCopyBytes(),
-		MaxDeleteEntries: files.MaxDeleteEntries(),
-	})
+	limits := make([]fs.Limits, len(definitions))
+	for i, def := range definitions {
+		l := def.Limits
+		limits[i] = fs.Limits{MaxFileSize: l.File, MaxWriteSize: l.Write, MaxScanSize: l.Scan,
+			MaxResultSize: l.Result, MaxTempSize: l.Temp, MaxListEntries: files.MaxListEntries(), MaxDeleteEntries: files.MaxDeleteEntries()}
+	}
+	backends, err := fs.NewProtectedRootFileSystems(bindings, limits)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +60,36 @@ func New(cfg config.Config) (*Registry, error) {
 		entries: make(map[config.RootID]entry, len(definitions)),
 	}
 	for i, def := range definitions {
+		budget, err := resource.NewMeter(def.Limits)
+		if err != nil {
+			return nil, err
+		}
 		registry.ids = append(registry.ids, def.ID)
-		registry.entries[def.ID] = entry{access: def.Access, backend: backends[i]}
+		registry.entries[def.ID] = entry{access: def.Access, limits: def.Limits, budget: budget, backend: backends[i]}
 	}
 	return registry, nil
+}
+
+// LimitsForRoot returns the immutable effective value for an exact root ID.
+// This grants no access and never exposes a backend or path.
+func (r *Registry) LimitsForRoot(id config.RootID) (resource.Limits, error) {
+	root, ok := r.entries[id]
+	if !ok {
+		return resource.Limits{}, fs.ErrUnknownRoot
+	}
+	return root.limits, nil
+}
+
+// ReserveTemp enforces the aggregate live scratch ceiling for this exact root
+// across concurrent operations. It grants no filesystem or backend access.
+// Consumers also enforce any tighter operation/request allowance and defer
+// release before allocating scratch. Aliased IDs retain separate budgets.
+func (r *Registry) ReserveTemp(id config.RootID, n int64) (func(), error) {
+	root, ok := r.entries[id]
+	if !ok {
+		return nil, fs.ErrUnknownRoot
+	}
+	return root.budget.ReserveTemp(n)
 }
 
 // IDs returns an independent snapshot in canonical ID order.

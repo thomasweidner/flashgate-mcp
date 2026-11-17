@@ -48,7 +48,7 @@ func (t *ListDirectoryTool) ResultContract() ResultContract {
 	return ResultContract{{Name: defaultVariant, ObjectKind: StructuredPayload, Mode: InlineTransfer, State: CompleteResult, MaxObjectBytes: maxStructuredBytes}}
 }
 
-func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
+func (t *ListDirectoryTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var path fs.Operand
 	if err := decodeStrictArguments(rawArguments, map[string]any{
 		"root_id": &path.RootID,
@@ -65,7 +65,7 @@ func (t *ListDirectoryTool) Execute(_ context.Context, rawArguments json.RawMess
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return NewToolResult(defaultVariant, listDirectoryResult{Entries: entries}), nil
+	return prepareResult(ctx, t.filesystem, path.RootID, NewToolResult(defaultVariant, listDirectoryResult{Entries: entries}), t.ResultContract())
 }
 
 type listDirectoryResult struct {

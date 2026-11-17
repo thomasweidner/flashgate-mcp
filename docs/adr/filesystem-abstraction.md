@@ -27,6 +27,9 @@ The current interface is defined in
 `Stat` is the single metadata and missing-path operation; there is no separate
 `Exists` method. `Move` covers rename, without a redundant `Rename` alias.
 `Mkdir` returns whether the leaf was newly created.
+`LimitsForRoot` returns an independent effective resource value. A caller's
+optional result-admission hook runs after domain validation and before the
+first effect; it grants no rights and cannot replace native safeguards.
 
 ## Consequences
 
@@ -56,6 +59,14 @@ required rights for that ID before dispatch. Capability checks, path
 confinement and selected-source protection remain independent.
 
 ## Current implementation
+
+BL-105 extends the same root snapshots with typed resource limits, using
+`internal/resource` for exact size conversion and operation budgets. Native
+content and scan limits live below MCP; serialized result admission belongs
+to the existing result adapter and transport. Mutation receipts are bounded
+before effects. Copy and write share one content ceiling. Future backends
+prove the same effective limits and hard enforcement before activation; no
+productive external process or second filesystem registry is introduced.
 
 The current tools are listed in the [tool reference](../tools.md).
 Directory copy is not implemented; `copy_path` copies files only. Directory

@@ -36,7 +36,7 @@ func (r *Registry) Write(path fs.Operand, content []byte, overwrite bool) error 
 	if err != nil {
 		return err
 	}
-	return backend.Write(path.Path, content, overwrite)
+	return backend.Write(path.Path, content, overwrite, path.AdmitEffect)
 }
 
 func (r *Registry) Mkdir(path fs.Operand) (bool, error) {
@@ -44,7 +44,7 @@ func (r *Registry) Mkdir(path fs.Operand) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return backend.Mkdir(path.Path)
+	return backend.Mkdir(path.Path, path.AdmitEffect)
 }
 
 func (r *Registry) Delete(path fs.Operand, recursive bool) error {
@@ -52,7 +52,7 @@ func (r *Registry) Delete(path fs.Operand, recursive bool) error {
 	if err != nil {
 		return err
 	}
-	return backend.Delete(path.Path, recursive)
+	return backend.Delete(path.Path, recursive, path.AdmitEffect)
 }
 
 func (r *Registry) Move(source, target fs.Operand, overwrite bool) error {
@@ -60,7 +60,7 @@ func (r *Registry) Move(source, target fs.Operand, overwrite bool) error {
 	if err != nil {
 		return err
 	}
-	return backend.Move(source.Path, target.Path, overwrite)
+	return backend.Move(source.Path, target.Path, overwrite, target.AdmitEffect)
 }
 
 func (r *Registry) Copy(source, target fs.Operand, overwrite bool) error {
@@ -68,7 +68,7 @@ func (r *Registry) Copy(source, target fs.Operand, overwrite bool) error {
 	if err != nil {
 		return err
 	}
-	return backend.Copy(source.Path, target.Path, overwrite)
+	return backend.Copy(source.Path, target.Path, overwrite, target.AdmitEffect)
 }
 
 func (r *Registry) pairBackend(source, target fs.Operand, required config.RootAccess) (*fs.LocalFileSystem, error) {

@@ -8,7 +8,7 @@ import (
 )
 
 // Move moves or renames a file or directory on the same filesystem volume.
-func (f *LocalFileSystem) Move(source string, target string, overwrite bool) error {
+func (f *LocalFileSystem) Move(source string, target string, overwrite bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 
@@ -84,7 +84,7 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool) err
 	if err := revalidateMoveState(sourcePath.String(), targetPath.String(), sourceInfo, targetInfo, targetExists); err != nil {
 		return err
 	}
-	if f.protection != nil && sourceInfo.IsDir() {
+	if sourceInfo.IsDir() {
 		if _, err := f.inspectTree(sourceOperand, false); err != nil {
 			return err
 		}
@@ -96,6 +96,9 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool) err
 		return err
 	}
 
+	if err := admitEffect(admission); err != nil {
+		return err
+	}
 	return renameOnSameVolume(sourcePath.String(), targetPath.String(), sameVolume, os.Rename)
 }
 

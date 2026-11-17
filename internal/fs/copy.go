@@ -6,7 +6,7 @@ import (
 )
 
 // Copy copies a file. Directory copy is intentionally unsupported.
-func (f *LocalFileSystem) Copy(source string, target string, overwrite bool) error {
+func (f *LocalFileSystem) Copy(source string, target string, overwrite bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 
@@ -33,7 +33,7 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool) err
 		return ErrCopyDirectoryUnsupported
 	}
 
-	if sourceInfo.Size() > f.limits.MaxCopyBytes {
+	if sourceInfo.Size() > min(f.limits.MaxFileSize, f.limits.MaxWriteSize, f.limits.MaxScanSize) {
 		return ErrLimitExceeded
 	}
 
@@ -61,7 +61,12 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool) err
 		return err
 	}
 	defer sourceFile.Close()
-	checkSource := func() error { return f.checkOpened(sourceFile, sourceOperand, false) }
+	checkSource := func() error {
+		if err := f.checkOpened(sourceFile, sourceOperand, false); err != nil {
+			return err
+		}
+		return admitEffect(admission)
+	}
 	targetFile, err := f.openDestination(targetOperand, sourceInfo.Mode().Perm(), checkSource)
 	if err != nil {
 		return err

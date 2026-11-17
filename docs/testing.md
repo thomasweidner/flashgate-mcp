@@ -491,6 +491,24 @@ Currently tested:
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
 
+### Resource limit acceptance
+
+BL-105 exercises the shared exact parser and canonical formatter with English
+grouping, SI/IEC bits and bytes, fractional flooring, invalid types, overflow
+and exact roundtrips. Config tests cover every size field, global ceilings,
+unused policies, per-field root replacement, immutable snapshots and strict
+legacy-key rejection. Filesystem and MCP tests cover two roots, filtered and
+tree scan exhaustion, shared write/copy caps, protected operands, exact serialized
+result sizes, escaping, pre-effect receipt denial and complete wire framing,
+including the existing disabled candidate revision's completion metadata.
+Native Linux tests read a zero-size procfs file to reject both truncated and
+unproven exact-ceiling reads while allowing a complete read below the scan
+ceiling. Existing regular-file fixtures retain exact-ceiling acceptance.
+Meter tests cover cumulative exhaustion, concurrent root-bound reservations,
+idempotent release, cancellation and simulated external hard-enforcement denial.
+Use the existing Windows/Linux coverage, race, conformance and wire budgets;
+these fixtures do not activate productive external processes or new tools.
+
 ### Named policy and root access acceptance
 
 Run `go test ./internal/config ./internal/roots ./cmd/server` for strict

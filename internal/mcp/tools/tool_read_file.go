@@ -122,5 +122,5 @@ func (t *ReadFileTool) Execute(ctx context.Context, rawArguments json.RawMessage
 			message:  "file text is not valid UTF-8",
 		}
 	}
-	return NewPayloadResult(defaultVariant, text), nil
+	return prepareResult(ctx, t.filesystem, path.RootID, NewPayloadResult(defaultVariant, text), t.ResultContract())
 }

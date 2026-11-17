@@ -12,6 +12,7 @@ type policyID string
 // policyFields is the shared schema for named policies. Each resource type
 // resolves the fields it supports before publishing its effective settings.
 type policyFields struct {
+	resourceFields
 	Access accessFields `toml:"access"`
 }
 
@@ -66,6 +67,9 @@ func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
 		policies[id] = access
+		if _, err := policy.resourceFields.resolve(s.Files.limits(), s.Files.limits()); err != nil {
+			return nil, NewError(CategoryInvalidConfig, err)
+		}
 	}
 
 	roots := make([]RootDefinition, 0, len(s.Files.Roots))
@@ -74,7 +78,18 @@ func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
 		if err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
-		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access})
+		limits := s.Files.limits()
+		if root.Policy != nil {
+			limits, err = s.Policy[*root.Policy].resourceFields.resolve(limits, s.Files.limits())
+			if err != nil {
+				return nil, NewError(CategoryInvalidConfig, err)
+			}
+		}
+		limits, err = root.resourceFields.resolve(limits, s.Files.limits())
+		if err != nil {
+			return nil, NewError(CategoryInvalidConfig, err)
+		}
+		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access, Limits: limits})
 	}
 	slices.SortFunc(roots, func(a, b RootDefinition) int {
 		return strings.Compare(string(a.ID), string(b.ID))
