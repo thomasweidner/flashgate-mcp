@@ -38,7 +38,7 @@ func TestEffectiveProfilesOnSTDIO(t *testing.T) {
 			}
 			t.Run(tc.name+"/"+variant, func(t *testing.T) {
 				root := t.TempDir()
-				settings := tc.settings
+				settings := "roots.work.access = ['read', 'write']\n" + tc.settings
 				if multiple {
 					settings = "roots.second.path = " + quotedConfigPath(t, t.TempDir()) + "\n" + settings
 				}

@@ -48,11 +48,27 @@ The loader rejects the former table and has no automatic conversion.
 Rollback restores the previous binary and its backed-up TOML together.
 The current MCP tool inputs require explicit root IDs and relative paths.
 
+## Root access
+
+After upgrading to a build with per-root access, roots without explicit
+access still allow reads. A writable profile by itself leaves mutations
+denied. Stop the client, back up the selected TOML, and give only the roots
+that need writes an explicit grant. For example, add
+`access = ["read", "write"]` to `[files.roots.work]` or reference a
+[named policy](configuration.md#named-policies) that supplies those rights.
+Keep the profile grants required by those operations. Restart and check a
+read and an authorized mutation on test data under the intended root ID.
+Check that other IDs still deny writes. The MCP arguments remain the same.
+
+For rollback, stop the client and restore the paired prior binary and
+backed-up TOML. The prior strict loader rejects the new policy keys.
+
 ## Capability profile cutover
 
 Remove `files.read_only` before starting a build with capability profiles.
 Omit `profiles.active` for default read access. Set `active = "write"` in
-`[profiles]` to restore access to the writable catalog. Use the current
+`[profiles]` to restore access to the writable catalog. Configure [root access](#root-access)
+as well to permit mutations. Use the current
 [configuration reference](configuration.md#profiles) for custom grants.
 
 | Retired ID | Current ID |

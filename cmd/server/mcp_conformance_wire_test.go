@@ -162,7 +162,11 @@ func TestMCPConformanceSTDIOProcess(t *testing.T) {
 	for _, readOnly := range []bool{false, true} {
 		_, root := mcpRegistry(t, readOnly)
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		configPath := writeConfig(t, configDocument(t, root, profileSettings(readOnly)))
+		settings := profileSettings(readOnly)
+		if !readOnly {
+			settings = "roots.work.access = ['read', 'write']\n" + settings
+		}
+		configPath := writeConfig(t, configDocument(t, root, settings))
 		command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$", "--", configPath)
 		command.WaitDelay = time.Second
 		for _, entry := range os.Environ() {

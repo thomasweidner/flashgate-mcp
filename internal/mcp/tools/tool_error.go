@@ -51,7 +51,7 @@ func classifyFilesystemError(err error) filesystemErrorCategory {
 		return categoryNotFound
 	case errors.Is(err, fs.ErrFileExists), errors.Is(err, os.ErrExist):
 		return categoryAlreadyExists
-	case errors.Is(err, os.ErrPermission), errors.Is(err, security.ErrConfigurationAccess):
+	case errors.Is(err, os.ErrPermission), errors.Is(err, security.ErrConfigurationAccess), errors.Is(err, fs.ErrRootAccessDenied):
 		return categoryAccessDenied
 	case errors.Is(err, fs.ErrPathIsDirectory),
 		errors.Is(err, fs.ErrPathIsNotDirectory),

@@ -9,11 +9,16 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
-// Registry is an immutable map of configured root IDs to backends. A lookup
-// selects confinement. The caller remains responsible for capability checks.
+// Registry binds each configured root ID to its access policy and confined
+// backend. The caller remains responsible for capability checks.
 type Registry struct {
 	ids     []config.RootID
-	entries map[config.RootID]*fs.LocalFileSystem
+	entries map[config.RootID]entry
+}
+
+type entry struct {
+	access  config.RootAccess
+	backend *fs.LocalFileSystem
 }
 
 // New validates and binds every root before returning the registry.
@@ -48,11 +53,11 @@ func New(cfg config.Config) (*Registry, error) {
 	}
 	registry := &Registry{
 		ids:     make([]config.RootID, 0, len(definitions)),
-		entries: make(map[config.RootID]*fs.LocalFileSystem, len(definitions)),
+		entries: make(map[config.RootID]entry, len(definitions)),
 	}
 	for i, def := range definitions {
 		registry.ids = append(registry.ids, def.ID)
-		registry.entries[def.ID] = backends[i]
+		registry.entries[def.ID] = entry{access: def.Access, backend: backends[i]}
 	}
 	return registry, nil
 }
@@ -60,10 +65,13 @@ func New(cfg config.Config) (*Registry, error) {
 // IDs returns an independent snapshot in canonical ID order.
 func (r *Registry) IDs() []config.RootID { return slices.Clone(r.ids) }
 
-func (r *Registry) lookup(id config.RootID) (*fs.LocalFileSystem, error) {
-	backend, ok := r.entries[id]
+func (r *Registry) backendFor(id config.RootID, required config.RootAccess) (*fs.LocalFileSystem, error) {
+	root, ok := r.entries[id]
 	if !ok {
 		return nil, fs.ErrUnknownRoot
 	}
-	return backend, nil
+	if !root.access.Allows(required) {
+		return nil, fs.ErrRootAccessDenied
+	}
+	return root.backend, nil
 }

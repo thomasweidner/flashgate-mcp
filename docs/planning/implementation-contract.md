@@ -95,6 +95,41 @@ version assigned through release preparation. BL-103–BL-110, BL-159, BL-236,
 BL-239 and BL-352 retain their respective policy, execution, state and
 discovery scope. Independent terminal review is required before closure.
 
+## BL-104 named policies and root access
+
+BL-104 owns the global named policy definitions in BL-233's typed TOML model
+and the first consumer in SPR-053. Reuse BL-100 functional grants, BL-101's
+immutable root registry, BL-102's exact operands, BL-103 profiles and risk,
+and BL-374 configuration protection. Retrofit the config loader and root
+registry used by server bootstrap and all eight filesystem operations. The
+[configuration guide](../configuration.md#named-policies) defines the public
+TOML delta. Tool names, schemas, and profile inventory stay stable.
+
+A policy definition is inert until a resource references it. A consumer
+projects the typed fields supported for its resource. Explicit resource fields
+override matching fields individually, including an empty replacement list.
+The filesystem consumer defaults missing access to read and checks each exact
+root ID before backend dispatch. List, read, and stat require read. Write,
+mkdir, and delete require write. Copy requires source read and target write.
+Move requires write on both operands. The existing cross-root prohibition,
+PathGuard, limits, selected-configuration protection, and profile checks
+remain mandatory. Use the shared registry for current dispatch and preserve
+the binding for future domain, Native Tool, and provider routes.
+
+BL-105–BL-109 and later domain owners extend the same typed policy model with
+their own supported fields and tests. BL-236 carries the effective policy in
+context, BL-159 composes it with authorization, and BL-352 owns discovery.
+BL-373 owns the dedicated authorized configuration route. Each later backend
+owner proves the selected source and all delegated effects preserve BL-374.
+
+Acceptance covers schema rejection, replacement and safe default semantics,
+exact and overlapping roots, all eight operations, pre-dispatch denial and
+redaction, independent profile gates, and native Windows/Linux configuration
+protection and wire checks. Use the existing CI matrix and coverage gate.
+The [migration guide](../migration.md#root-access) covers explicit write
+opt-in for existing configurations. Record the change under Unreleased and
+include the intended backlog closure in the independent terminal review.
+
 ## BL-220 adapter acceptance binding
 
 For every new tool, platform or Native Tool adapter, execution backend,

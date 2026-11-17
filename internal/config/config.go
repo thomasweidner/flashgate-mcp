@@ -52,6 +52,7 @@ type Config struct {
 	data       settings
 	role       Role
 	profile    EffectiveProfile
+	roots      []RootDefinition
 	sourcePath string
 	sourceInfo os.FileInfo
 }
@@ -62,13 +63,14 @@ type trustedDocument struct {
 }
 
 type settings struct {
-	Runtime   runtimeFields  `toml:"runtime"`
-	Files     filesFields    `toml:"files"`
-	Profiles  profileFields  `toml:"profiles"`
-	Security  securityFields `toml:"security"`
-	Protocol  protocolFields `toml:"protocol"`
-	Endpoints endpointFields `toml:"endpoints"`
-	Logging   loggingFields  `toml:"logging"`
+	Runtime   runtimeFields             `toml:"runtime"`
+	Files     filesFields               `toml:"files"`
+	Policy    map[policyID]policyFields `toml:"policy"`
+	Profiles  profileFields             `toml:"profiles"`
+	Security  securityFields            `toml:"security"`
+	Protocol  protocolFields            `toml:"protocol"`
+	Endpoints endpointFields            `toml:"endpoints"`
+	Logging   loggingFields             `toml:"logging"`
 }
 
 type runtimeFields struct {
@@ -80,12 +82,15 @@ type RootID string
 
 // RootDefinition is a value snapshot of a configured root.
 type RootDefinition struct {
-	ID   RootID
-	Path string
+	ID     RootID
+	Path   string
+	Access RootAccess
 }
 
 type rootFields struct {
-	Path string `toml:"path"`
+	Path   string       `toml:"path"`
+	Policy *policyID    `toml:"policy"`
+	Access accessFields `toml:"access"`
 }
 
 type filesFields struct {
@@ -259,7 +264,8 @@ func Decode(document []byte, role Role) (Config, error) {
 		return Config{}, NewError(CategoryInvalidConfig, err)
 	}
 	cfg := Config{data: wire, role: role}
-	if err := cfg.Validate(); err != nil {
+	roots, err := cfg.validateAndResolveRoots()
+	if err != nil {
 		return Config{}, err
 	}
 	profile, err := wire.Profiles.resolve()
@@ -268,10 +274,7 @@ func Decode(document []byte, role Role) (Config, error) {
 	}
 	cfg.profile = profile
 	cfg.data.Profiles = profileFields{}
-	for id, root := range wire.Files.Roots {
-		root.Path = filepath.Clean(root.Path)
-		wire.Files.Roots[id] = root
-	}
+	cfg.roots = roots
 	return cfg, nil
 }
 
@@ -311,6 +314,18 @@ func canonicalTOMLKeys(node *unstable.Node) bool {
 
 // Validate checks the typed settings independently of TOML decoding.
 func (c Config) Validate() error {
+	_, err := c.validateAndResolveRoots()
+	return err
+}
+
+func (c Config) validateAndResolveRoots() ([]RootDefinition, error) {
+	if err := c.validateSettings(); err != nil {
+		return nil, err
+	}
+	return c.data.resolveRootDefinitions()
+}
+
+func (c Config) validateSettings() error {
 	if !validRole(c.role) || c.data.Runtime.Mode != c.role {
 		return NewError(CategoryUnsupportedRuntime, nil)
 	}
@@ -399,7 +414,10 @@ func (e endpointFields) validate(role Role) error {
 }
 
 // FilesConfig, SecurityConfig and ServerConfig expose immutable policy values.
-type FilesConfig struct{ data filesFields }
+type FilesConfig struct {
+	data  filesFields
+	roots []RootDefinition
+}
 type SecurityConfig struct{ data securityFields }
 type ServerConfig struct{ data protocolFields }
 
@@ -421,7 +439,7 @@ type LoggingConfig struct {
 
 func (c Config) Role() Role                { return c.role }
 func (c Config) Profile() EffectiveProfile { return c.profile }
-func (c Config) Files() FilesConfig        { return FilesConfig{c.data.Files} }
+func (c Config) Files() FilesConfig        { return FilesConfig{data: c.data.Files, roots: c.roots} }
 func (c Config) Security() SecurityConfig  { return SecurityConfig{c.data.Security} }
 func (c Config) Server() ServerConfig      { return ServerConfig{c.data.Protocol} }
 func (c Config) Endpoints() EndpointConfig {
@@ -438,14 +456,7 @@ func (c Config) Logging() LoggingConfig { return LoggingConfig(c.data.Logging) }
 
 // Roots returns an independent snapshot ordered by canonical ID.
 func (f FilesConfig) Roots() []RootDefinition {
-	definitions := make([]RootDefinition, 0, len(f.data.Roots))
-	for id, root := range f.data.Roots {
-		definitions = append(definitions, RootDefinition{ID: id, Path: root.Path})
-	}
-	slices.SortFunc(definitions, func(a, b RootDefinition) int {
-		return strings.Compare(string(a.ID), string(b.ID))
-	})
-	return definitions
+	return slices.Clone(f.roots)
 }
 func (f FilesConfig) DefaultID() RootID         { return f.data.DefaultID }
 func (f FilesConfig) MaxFileSize() int64        { return f.data.MaxFileSize }

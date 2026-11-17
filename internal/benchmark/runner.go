@@ -180,7 +180,7 @@ func Run(ctx context.Context, options Options) (Result, error) {
 func writeBenchmarkConfig(path string, encodedRoot []byte, readOnly bool) error {
 	document := fmt.Sprintf("[files]\ndefault_id = 'work'\n\n[files.roots.work]\npath = %s\n", encodedRoot)
 	if !readOnly {
-		document += "\n[profiles]\nactive = 'write'\n"
+		document += "access = ['read', 'write']\n\n[profiles]\nactive = 'write'\n"
 	}
 	return writeConfigFixture(path, []byte(document))
 }

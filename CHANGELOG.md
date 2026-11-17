@@ -12,6 +12,10 @@ the intended release date. Publication evidence is separate.
 
 ### Breaking Changes
 
+- Filesystem roots default to read access. A write-capable profile still
+  exposes mutation tools, and calls require explicit write access on the
+  selected root. See [root access migration](docs/migration.md#root-access).
+
 - STDIO starts with the `read` profile. Select `profiles.active = "write"`
   explicitly for the writable catalog. `files.read_only` and the seven
   retired capability spellings are rejected. See the [profile cutover](docs/migration.md#capability-profile-cutover).
@@ -28,6 +32,9 @@ the intended release date. Publication evidence is separate.
   root. See [client input migration](docs/migration.md#input-and-operation-semantics).
 
 ### Changed
+
+- Define reusable named policies in TOML and override access per root.
+  An empty access list denies reads and writes for the selected root ID.
 
 - Resolve built-in and custom profiles to immutable grants and apply a
   separate restrictive risk ceiling. Admit effective catalogs through their

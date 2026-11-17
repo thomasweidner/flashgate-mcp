@@ -19,6 +19,7 @@ func TestFilesystemNamedRootWire(t *testing.T) {
 	}
 	source := writeConfig(t, configDocument(t, work,
 		"roots.archive.path = "+quotedConfigPath(t, archive)+"\n"+
+			"roots.archive.access = ['read', 'write']\n"+
 			"roots.alias.path = "+quotedConfigPath(t, archive)+"\n"))
 	cfg, err := config.Load(config.Source{Role: config.Direct, Path: source})
 	if err != nil {
@@ -62,6 +63,9 @@ func TestFilesystemNamedRootWire(t *testing.T) {
 		t.Fatalf("unexpected effect in work root: %v", err)
 	}
 	for _, test := range []struct{ name, args, category string }{
+		{"write_file", `{"root_id":"work","path":"seed.txt","content":"replace","overwrite":true}`, "access_denied"},
+		{"write_file", `{"root_id":"alias","path":"seed.txt","content":"replace","overwrite":true}`, "access_denied"},
+		{"copy_path", `{"source_root_id":"alias","source":"seed.txt","target_root_id":"alias","target":"seed.txt","overwrite":true}`, "access_denied"},
 		{"list_directory", `{"root_id":"archive"}`, "invalid_arguments"},
 		{"list_directory", `{"root_id":"missing","path":"."}`, "invalid_arguments"},
 		{"read_file", `{"path":"seed.txt"}`, "invalid_arguments"},
@@ -82,7 +86,8 @@ func TestFilesystemNamedRootWire(t *testing.T) {
 		{"copy_path", `{"source_root_id":"work","source":"seed.txt","target_root_id":"archive","target":"denied.txt"}`, "unsupported_operation"},
 		{"move_path", `{"source_root_id":"archive","source":"seed.txt","target_root_id":"alias","target":"denied.txt"}`, "unsupported_operation"},
 	} {
-		if wire := call(test.name, test.args); !strings.Contains(wire, test.category) || !strings.Contains(wire, `"isError":true`) {
+		if wire := call(test.name, test.args); !strings.Contains(wire, test.category) || !strings.Contains(wire, `"isError":true`) ||
+			strings.Contains(wire, `"structuredContent"`) || strings.Contains(wire, "seed.txt") {
 			t.Errorf("%s %s: unexpected denial %s", test.name, test.args, wire)
 		}
 	}

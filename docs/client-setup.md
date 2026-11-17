@@ -58,8 +58,9 @@ See [runtime configuration](configuration.md) for all supported settings.
 ## Current read-only behavior
 
 The current tools require a configured root ID and relative path for every operand.
-Omit `profiles.active` to use `read`. Operators can explicitly select `write`
-in the [profile configuration](configuration.md#profiles) when mutations are needed.
+Omit `profiles.active` to use `read`. Mutations require a writable
+[profile](configuration.md#profiles) and explicit
+[write access](configuration.md#named-policies) on the selected root.
 
 Read-only discovery returns exactly these three tools, in this order:
 

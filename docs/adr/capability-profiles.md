@@ -34,7 +34,13 @@ available implementations require their own activation bindings.
 
 Server-side checks remain authoritative. MCP tool annotations are not authorization.
 
-The target supports multiple named roots addressed by explicit root ID and relative path, based on authoritative FlashGate server configuration. Each root may have read/write, size, result, file-type, capability, symlink/reparse, and process-working-directory rules. Deprecated MCP Roots is not an architectural dependency and may be evaluated only as optional legacy-client compatibility.
+The server supports multiple named roots addressed by explicit root ID and
+relative path. BL-104 resolves [named policies](../configuration.md#named-policies)
+and per-root read/write overrides from the typed configuration. The registry
+enforces these rights independently of functional grants, risk and catalog
+exposure. Later owners extend the same model for limits, file types,
+capabilities, symlink/reparse and working-directory policy. Deprecated MCP
+Roots may be evaluated as optional legacy-client compatibility.
 
 ### Functional capability contract
 

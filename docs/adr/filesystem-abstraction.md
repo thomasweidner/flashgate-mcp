@@ -16,8 +16,9 @@ search and audit integration.
 
 Production filesystem consumers use `internal/fs.FileSystem`. Each operation
 accepts an `fs.Operand` with an exact configured root ID and a relative path.
-The immutable `internal/roots.Registry` implements the interface and selects
-the bound native filesystem. The selected `internal/fs.LocalFileSystem`
+The immutable `internal/roots.Registry` implements the interface and checks
+the effective access of each exact ID before dispatch to the bound filesystem.
+The selected `internal/fs.LocalFileSystem`
 delegates path resolution to `internal/security.PathGuard`.
 
 The current interface is defined in
@@ -48,10 +49,11 @@ uses one immutable registry built from the authoritative TOML file. Each
 configured root has a stable logical ID and an explicit absolute directory.
 Bootstrap validates every root with PathGuard and binds one selected-source
 protection to the entire registry before enabling the router and STDIO server.
-Overlapping roots share effect coordination. Resolving a root ID supplies
-confinement and a filesystem backend, while capability checks still govern
-what a caller may do. Public calls carry the ID and path for each operand.
-Copy and move require the source and target IDs to match.
+Overlapping roots share effect coordination. They retain separate effective
+access. Public calls carry the ID and path for each operand. Copy and move
+require the source and target IDs to match. The registry checks their combined
+required rights for that ID before dispatch. Capability checks, path
+confinement and selected-source protection remain independent.
 
 ## Current implementation
 

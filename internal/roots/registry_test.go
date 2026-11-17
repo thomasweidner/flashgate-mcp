@@ -45,7 +45,8 @@ func TestRegistryResolvesDistinctRootsAndIsolatesSnapshots(t *testing.T) {
 	work, archive := t.TempDir(), t.TempDir()
 	r := loadRegistry(t, filepath.Join(t.TempDir(), "config.toml"),
 		"[files]\ndefault_id = 'work'\nmax_write_bytes = 4\n[security]\nallow_hidden_files = true\n"+
-			rootTable(t, "work", work)+rootTable(t, "archive", archive))
+			rootTable(t, "work", work)+"access = ['read', 'write']\n"+
+			rootTable(t, "archive", archive)+"access = ['read', 'write']\n")
 	want := []config.RootID{"archive", "work"}
 	if ids := r.IDs(); !slices.Equal(ids, want) {
 		t.Fatalf("unexpected root selection: %v", ids)
@@ -93,7 +94,9 @@ func TestRegistryProtectsConfigThroughOverlappingRoots(t *testing.T) {
 	}
 	source := filepath.Join(inner, "config.toml")
 	document := "[files]\ndefault_id = 'outer'\n[security]\nfollow_symlinks = true\n" +
-		rootTable(t, "outer", outer) + rootTable(t, "inner", inner)
+		rootTable(t, "outer", outer) + "policy = 'workspace'\n" +
+		rootTable(t, "inner", inner) + "policy = 'workspace'\n" +
+		"[policy.workspace]\naccess = ['read', 'write']\n"
 	r := loadRegistry(t, source, document)
 	outerPath := func(path string) fs.Operand { return fs.Operand{RootID: "outer", Path: path} }
 	innerPath := func(path string) fs.Operand { return fs.Operand{RootID: "inner", Path: path} }
@@ -174,7 +177,8 @@ func TestRegistryDeniesDriftOnOneRootAndKeepsSiblingRootUsable(t *testing.T) {
 		t.Fatal(err)
 	}
 	r := loadRegistry(t, filepath.Join(base, "config.toml"),
-		"[files]\ndefault_id = 'work'\n"+rootTable(t, "work", work)+rootTable(t, "archive", archive))
+		"[files]\ndefault_id = 'work'\n"+rootTable(t, "work", work)+"access = ['read', 'write']\n"+
+			rootTable(t, "archive", archive)+"access = ['write']\n")
 	if err := os.Rename(work, filepath.Join(base, "previous")); err != nil {
 		t.Fatal(err)
 	}
