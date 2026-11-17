@@ -6,7 +6,7 @@ import (
 )
 
 func TestServerOptionsFromConfigUsesTOML(t *testing.T) {
-	cfg := decodeTestConfig(t, "[protocol]\nmax_message_bytes = 111\nmax_argument_bytes = 222\nmax_response_bytes = 333\n[logging]\nlevel = \"debug\"\n")
+	cfg := decodeTestConfig(t, "[protocol]\nmax_message_size = 111\nmax_argument_size = 222\nmax_response_size = 333\n[logging]\nlevel = \"debug\"\n")
 
 	options := serverOptionsFromConfig(cfg, io.Discard)
 

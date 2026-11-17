@@ -32,6 +32,7 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	if maxBytes <= 0 {
 		return nil, ErrFileTooLarge
 	}
+	maxBytes = min(maxBytes, f.limits.MaxFileSize, f.limits.MaxScanSize)
 
 	if info.Size() > maxBytes {
 		return nil, ErrFileTooLarge
@@ -49,21 +50,34 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 		return nil, err
 	}
 
-	content, err := readAtMost(file, maxBytes)
+	// The scan ceiling is an I/O bound too: never read a max+1 probe beyond
+	// it. A fresh handle stat detects growth without consuming content bytes.
+	content, err := readAtMost(file, maxBytes, f.limits.MaxScanSize)
 	if err != nil {
 		return nil, err
 	}
 	if err := f.checkOpened(file, operand, false); err != nil {
 		return nil, err
 	}
+	current, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if current.Size() > maxBytes {
+		return nil, ErrFileTooLarge
+	}
 	return content, nil
 }
 
-func readAtMost(reader io.Reader, maxBytes int64) ([]byte, error) {
+func readAtMost(reader io.Reader, maxBytes, maxScanBytes int64) ([]byte, error) {
+	if maxBytes <= 0 || maxScanBytes <= 0 {
+		return nil, ErrFileTooLarge
+	}
 	probeLimit := maxBytes
 	if probeLimit < math.MaxInt64 {
 		probeLimit++
 	}
+	probeLimit = min(probeLimit, maxScanBytes)
 	content, err := io.ReadAll(io.LimitReader(reader, probeLimit))
 	if err != nil {
 		return nil, err

@@ -705,7 +705,7 @@ func TestReadAtMostRejectsDataBeyondTheLimit(t *testing.T) {
 		{"exact", 5, false},
 		{"larger", 5, true},
 	} {
-		content, err := readAtMost(strings.NewReader(tc.data), tc.max)
+		content, err := readAtMost(strings.NewReader(tc.data), tc.max, tc.max+1)
 		if tc.tooLarge {
 			if !errors.Is(err, ErrFileTooLarge) || content != nil {
 				t.Fatalf("over-limit read: content=%q, error=%v", content, err)
@@ -1895,9 +1895,9 @@ func TestLocalFileSystemListRejectsTooManyEntries(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "b.txt"), "b")
 
 	filesystem := mustNewLocalFileSystemWithLimits(t, root, Limits{
-		MaxWriteBytes:    1024,
-		MaxListEntries:   1,
-		MaxCopyBytes:     1024,
+		MaxWriteSize:   1024,
+		MaxListEntries: 1,
+		MaxFileSize:    1024, MaxScanSize: 1024, MaxResultSize: 16 * 1024 * 1024, MaxTempSize: 1024,
 		MaxDeleteEntries: 10,
 	})
 
@@ -1950,9 +1950,9 @@ func TestLocalFileSystemWriteRejectsContentOverLimit(t *testing.T) {
 
 	root := t.TempDir()
 	filesystem := mustNewLocalFileSystemWithLimits(t, root, Limits{
-		MaxWriteBytes:    4,
-		MaxListEntries:   10,
-		MaxCopyBytes:     1024,
+		MaxWriteSize:   4,
+		MaxListEntries: 10,
+		MaxFileSize:    1024, MaxScanSize: 1024, MaxResultSize: 16 * 1024 * 1024, MaxTempSize: 1024,
 		MaxDeleteEntries: 10,
 	})
 
@@ -1973,9 +1973,9 @@ func TestLocalFileSystemCopyRejectsSourceOverLimit(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "source.txt"), "12345")
 	filesystem := mustNewLocalFileSystemWithLimits(t, root, Limits{
-		MaxWriteBytes:    1024,
-		MaxListEntries:   10,
-		MaxCopyBytes:     4,
+		MaxWriteSize:   4,
+		MaxListEntries: 10,
+		MaxFileSize:    1024, MaxScanSize: 1024, MaxResultSize: 16 * 1024 * 1024, MaxTempSize: 1024,
 		MaxDeleteEntries: 10,
 	})
 
@@ -1998,9 +1998,9 @@ func TestLocalFileSystemDeleteRecursiveRejectsTooManyEntries(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "dir", "a.txt"), "a")
 	writeTestFile(t, filepath.Join(root, "dir", "b.txt"), "b")
 	filesystem := mustNewLocalFileSystemWithLimits(t, root, Limits{
-		MaxWriteBytes:    1024,
-		MaxListEntries:   10,
-		MaxCopyBytes:     1024,
+		MaxWriteSize:   1024,
+		MaxListEntries: 10,
+		MaxFileSize:    1024, MaxScanSize: 1024, MaxResultSize: 16 * 1024 * 1024, MaxTempSize: 1024,
 		MaxDeleteEntries: 1,
 	})
 

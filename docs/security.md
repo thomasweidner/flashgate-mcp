@@ -235,18 +235,32 @@ FlashGate applies configurable hard limits for protocol input, tool arguments, f
 
 | TOML setting | Default | Scope |
 |---|---:|---|
-| `files.max_file_size` | `10485760` | Hard cap for `read_file`; client `maxBytes` can only lower it. |
-| `protocol.max_message_bytes` | `16777216` | Maximum single JSON-RPC message read from stdin. |
-| `protocol.max_argument_bytes` | `12582912` | Maximum `tools/call` params or arguments payload. |
-| `files.max_write_bytes` | `10485760` | Maximum `write_file` content size. |
+| `files.max_file_size` | `10485760` | File content bound for read/write/copy; client `maxBytes` can only lower it. |
+| `protocol.max_message_size` | `16777216` | Maximum single JSON-RPC message read from stdin. |
+| `protocol.max_argument_size` | `12582912` | Maximum `tools/call` params or arguments payload. |
+| `files.max_write_size` | `10485760` | Maximum complete write or copied file content. |
 | `files.max_list_entries` | `1000` | Maximum entries scanned by `list_directory`, including hidden or symlink entries filtered by policy. |
-| `files.max_copy_bytes` | `10485760` | Maximum `copy_path` source file size. |
+| `files.max_scan_size` | `10485760` | Inspected content/name bytes, including filtered and tree entries. |
+| `files.max_result_size` | `16777216` | Serialized MCP success result, including escaping and metadata. |
+| `files.max_temp_size` | `10485760` | Live temporary-data reservations, released on all exit paths. |
 | `files.max_delete_entries` | `1000` | Maximum entries for recursive `delete_path`. |
-| `protocol.max_response_bytes` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
+| `protocol.max_response_size` | `16777216` | Maximum serialized JSON-RPC response size safety net. |
 
 Limit violations use generic client-visible messages. Filesystem limit denials from registered tools use category `limit_exceeded` in MCP error results with `filesystem error: limit exceeded`. JSON-RPC messages above the configured message cap are rejected as Invalid Request with `id:null`.
 
 `logging.level = "debug"` enables bounded stderr diagnostics. Diagnostics are redacted for common authorization headers, token/password/API-key/secret assignments, private-key markers, connection strings with credentials, and absolute host paths. Redaction is a diagnostic safeguard; client-visible security and protocol errors are still built generically instead of exposing raw OS errors.
+
+Root and named-policy size values are validated immutable snapshots within
+global ceilings. They add no rights, backend availability or configuration
+access. Root ID, profile/risk, PathGuard and BL-374 remain independent gates.
+Exact rational size parsing preserves bit/byte distinctions and never expands
+a fractional hard ceiling. Result checks count actual escaping and frame costs;
+mutations admit bounded receipts before effects. Tiny success budgets still
+permit the existing safe error envelope. Current operations create no scratch
+files; future consumers reserve live temporary data before allocation and
+release on cancellation and failure. Configured external bounds alone do not
+prove hard enforcement; missing enforcement denies dispatch without fallback.
+See the [resource contract](planning/implementation-contract.md#bl-105-resource-limits).
 
 ## Security Testing
 

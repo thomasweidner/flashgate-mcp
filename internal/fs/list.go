@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
@@ -59,6 +60,10 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 	}
 
 	result := make([]Entry, 0)
+	meter, err := resource.NewMeter(f.limits.ResourceLimits())
+	if err != nil {
+		return nil, err
+	}
 	scanRemaining := f.limits.MaxListEntries
 	resultRemaining := maxListResultCost
 	for {
@@ -74,6 +79,9 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 		scanRemaining -= len(batch)
 		for _, dirEntry := range batch {
 			name := dirEntry.Name()
+			if err := meter.Charge(resource.Scan, int64(len(name))); err != nil {
+				return nil, err
+			}
 			allowed, err := f.guard.AllowListEntry(safePath, name)
 			if err != nil {
 				return nil, err

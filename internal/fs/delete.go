@@ -1,15 +1,16 @@
 package fs
 
 import (
+	"io"
+	"math"
 	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 // Delete deletes a file or directory.
-func (f *LocalFileSystem) Delete(path string, recursive bool) error {
+func (f *LocalFileSystem) Delete(path string, recursive bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 
@@ -30,26 +31,40 @@ func (f *LocalFileSystem) Delete(path string, recursive bool) error {
 	if info.IsDir() {
 		if recursive {
 			if f.protection != nil {
-				return f.deleteProtectedTree(operand)
+				return f.deleteProtectedTree(operand, admission)
 			}
 			if err := f.ensureRecursiveDeleteWithinLimit(safePath.String()); err != nil {
 				return err
 			}
 
+			if err := admitEffect(admission); err != nil {
+				return err
+			}
 			return os.RemoveAll(safePath.String())
 		}
 
-		entries, err := os.ReadDir(safePath.String())
+		dir, err := os.Open(safePath.String())
 		if err != nil {
 			return err
 		}
+		entries, readErr := dir.ReadDir(1)
+		_ = dir.Close()
+		if readErr != nil && readErr != io.EOF {
+			return readErr
+		}
 
 		if len(entries) > 0 {
+			if int64(len(entries[0].Name())) > f.limits.MaxScanSize {
+				return ErrLimitExceeded
+			}
 			return ErrDirectoryNotEmpty
 		}
 	}
 
 	if err := f.recheckEffect(operand, true); err != nil {
+		return err
+	}
+	if err := admitEffect(admission); err != nil {
 		return err
 	}
 	return os.Remove(safePath.String())
@@ -65,13 +80,14 @@ type treeEffect struct {
 // is rejected even though removing the link would leave its target intact.
 func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool) ([]treeEffect, error) {
 	var entries []treeEffect
-	err := filepath.WalkDir(root.path, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if path == root.path {
-			return nil
-		}
+	// A move's inspection is bounded by scanned name bytes, not by the
+	// deletion-specific entry ceiling. Every visited entry has a nonempty name.
+	maxEntries := int(min(f.limits.MaxScanSize, int64(math.MaxInt)))
+	if deleting {
+		maxEntries = f.limits.MaxDeleteEntries
+	}
+	err := f.scanTree(root.path, maxEntries, func(path string, entry os.DirEntry) error {
+		var err error
 		if deleting && len(entries) >= f.limits.MaxDeleteEntries {
 			return ErrLimitExceeded
 		}
@@ -98,12 +114,15 @@ func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool) ([]treeEff
 	return entries, err
 }
 
-func (f *LocalFileSystem) deleteProtectedTree(root effectPath) error {
+func (f *LocalFileSystem) deleteProtectedTree(root effectPath, admission []func() error) error {
 	entries, err := f.inspectTree(root, true)
 	if err != nil {
 		return err
 	}
 	if err := f.recheckEffect(root, true); err != nil {
+		return err
+	}
+	if err := admitEffect(admission); err != nil {
 		return err
 	}
 	slices.Reverse(entries)
@@ -142,22 +161,5 @@ func (f *LocalFileSystem) recheckTreeEntry(expected treeEffect) error {
 }
 
 func (f *LocalFileSystem) ensureRecursiveDeleteWithinLimit(root string) error {
-	entries := 0
-
-	return filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if path == root {
-			return nil
-		}
-
-		entries++
-		if entries > f.limits.MaxDeleteEntries {
-			return ErrLimitExceeded
-		}
-
-		return nil
-	})
+	return f.scanTree(root, f.limits.MaxDeleteEntries, func(string, os.DirEntry) error { return nil })
 }

@@ -12,13 +12,19 @@ import (
 	"testing"
 
 	benchmarkrunner "github.com/thomasweidner/flashgate-mcp/internal/benchmark"
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
 var benchmarkResultSink []byte
 var benchmarkHandlerResultSink any
+
+func (benchmarkParallelFileSystem) LimitsForRoot(config.RootID) (resource.Limits, error) {
+	return fs.DefaultLimits().ResourceLimits(), nil
+}
 
 type textOnlyCallToolResult struct {
 	Content []protocol.TextContent `json:"content"`

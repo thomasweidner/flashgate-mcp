@@ -75,7 +75,7 @@ func (t *DeletePathTool) ResultContract() ResultContract {
 }
 
 // Execute deletes the requested path.
-func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
+func (t *DeletePathTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var path fs.Operand
 	var recursive bool
 	if err := decodeStrictArguments(rawArguments, map[string]any{
@@ -92,14 +92,13 @@ func (t *DeletePathTool) Execute(_ context.Context, rawArguments json.RawMessage
 		return ToolResult{}, err
 	}
 
+	result, admit := mutationResult(ctx, t.filesystem, path.RootID, NewToolResult(defaultVariant, deletePathResult{Path: path.Path, Deleted: true}), t.ResultContract())
+	path.AdmitEffect = admit
 	if err := t.filesystem.Delete(path, recursive); err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return NewToolResult(defaultVariant, deletePathResult{
-		Path:    path.Path,
-		Deleted: true,
-	}), nil
+	return finishMutationResult(result)
 }
 
 type deletePathResult struct {

@@ -56,7 +56,7 @@ func testProfile(t testing.TB, readOnly bool) config.EffectiveProfile {
 
 func testRootRegistry(t *testing.T, root string, limits fs.Limits) *roots.Registry {
 	t.Helper()
-	settings := fmt.Sprintf("roots.work.access = ['read', 'write']\nmax_write_bytes = %d\nmax_list_entries = %d\nmax_copy_bytes = %d\nmax_delete_entries = %d\n", limits.MaxWriteBytes, limits.MaxListEntries, limits.MaxCopyBytes, limits.MaxDeleteEntries)
+	settings := fmt.Sprintf("roots.work.access = ['read', 'write']\nmax_file_size = %d\nmax_write_size = %d\nmax_scan_size = %d\nmax_result_size = %d\nmax_temp_size = %d\nmax_list_entries = %d\nmax_delete_entries = %d\n", limits.MaxFileSize, limits.MaxWriteSize, limits.MaxScanSize, limits.MaxResultSize, limits.MaxTempSize, limits.MaxListEntries, limits.MaxDeleteEntries)
 	path := writeConfig(t, configDocument(t, root, settings))
 	cfg, err := config.Load(config.Source{Role: config.Direct, Path: path})
 	if err != nil {

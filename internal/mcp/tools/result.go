@@ -142,9 +142,10 @@ func MediaPart(mediaType string, data []byte) ResultPart {
 // ToolResult holds either a standalone object or content parts. Only the
 // adapter constructs the wire envelope and the metadata for content parts.
 type ToolResult struct {
-	variant string
-	object  resultObject
-	parts   []ResultPart
+	prepared *protocol.CallToolResult
+	variant  string
+	object   resultObject
+	parts    []ResultPart
 }
 
 func NewToolResult(variant string, object resultObject) ToolResult {
@@ -161,6 +162,9 @@ var errInvalidToolResult = errors.New("invalid tool result")
 var errToolResultLimit = errors.New("tool result limit exceeded")
 
 func (contract ResultContract) wrap(ctx context.Context, result ToolResult) (protocol.CallToolResult, error) {
+	if result.prepared != nil {
+		return *result.prepared, nil
+	}
 	for _, variant := range contract {
 		if variant.Name == result.variant {
 			return variant.wrap(ctx, result)

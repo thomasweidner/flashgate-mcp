@@ -44,7 +44,8 @@ applies the fields supported by its resource type. Its explicit values override
 the referenced fields individually. Lists replace the whole value. References
 between policies are unsupported.
 
-Filesystem roots currently support `access`, a list of unique `"read"` and
+Filesystem roots support the five [resource limits](#resource-limits) and
+`access`, a list of unique `"read"` and
 `"write"` rights. Omit the field at both levels for read-only access. Specify
 `[]` to deny both rights, including when overriding a named policy. Unknown
 references or fields, duplicate definitions or rights, and invalid types or
@@ -76,6 +77,49 @@ overlapping paths and grant different access to them. The
 Writing requires a root grant and the applicable profile grants and risk
 ceiling. Existing write deployments can follow the
 [root access migration](migration.md#root-access).
+
+## Resource limits
+
+`files.max_file_size`, `max_write_size`, `max_scan_size`, `max_result_size`
+and `max_temp_size` are global hard ceilings. A named policy can supply any of
+these fields. An explicit `files.roots.<id>` field replaces that policy field;
+an absent field inherits the policy or global value. Every effective value
+must stay within its global ceiling. Invalid or expanding unused policy
+definitions also prevent startup. These immutable values grant no access or
+capabilities. Two root IDs may have different caps even for the same directory.
+
+| Dimension | Current measurement |
+|---|---|
+| File | Content bytes read, written or copied, per file. Metadata-only stat and rename do not read file contents. |
+| Write | Complete new content for write and file copy, using the same ceiling. |
+| Scan | Content bytes read by read/copy; raw name bytes visited by list, recursive delete and directory-move inspection, including filtered entries. Listing/deletion entry ceilings remain independent. |
+| Result | Complete serialized MCP success result, including JSON escaping, content blocks, structured metadata and revision-owned fields. The protocol response ceiling additionally counts JSON-RPC framing, request ID and newline. Mutation receipts are admitted before side effects. |
+| Temp | Aggregate live temporary-data reservations per exact root ID. Current filesystem operations create no scratch files; future consumers use `Registry.ReserveTemp` before allocating and release on every exit, also enforcing tighter operation/request budgets. This is distinct from heap and transport-buffer bounds. |
+
+Size settings accept positive TOML integers as bytes or English strings such as
+`"1 234"`, `"1,234"`, `"8.3 GB"`, `"8.3 GiB"` and `"10MiB"`. Strings use
+a decimal point and either correctly grouped commas or single spaces for
+thousands. There is no locale inference. Units are case sensitive: `B` is bytes,
+`b` is bits; SI prefixes are `k`, `M`, `G`, `T`, `P`, `E`, and IEC prefixes are
+`Ki`, `Mi`, `Gi`, `Ti`, `Pi`, `Ei`. Units are optional for byte strings. One
+optional space separates the number from its unit. `"8,3 GB"`, `"8.388.608"`,
+mixed grouping, unknown units, zero, negatives, floats, overflow and fractional
+values below one byte are invalid. Exact rational arithmetic floors fractional
+bytes for hard ceilings. Strings are limited to 128 bytes; the normalized
+configuration ceiling must be smaller than the signed 64-bit maximum.
+
+`internal/resource.ParseSize` and `FormatSize` are the shared pure helpers.
+The formatter chooses the largest IEC byte unit that divides the value exactly,
+otherwise bytes. Thus all spellings of 10485760 bytes become `10 MiB`, and
+1536 bytes becomes `1536 B`. Its output roundtrips exactly. BL-373 must reuse
+this formatter. Startup normalizes in memory and never rewrites the file.
+
+Client `read_file.maxBytes` can only tighten the global, root, file and scan
+bounds. A result that cannot fit returns the existing safe `limit_exceeded`
+error; mandatory error envelopes are outside the success-result budget and
+remain subject to the existing protocol error contract. No partial success
+payload is emitted. Future batch, archive and job owners must additionally
+declare aggregate effects and hard backend enforcement before activation.
 
 ## Profiles
 
@@ -169,8 +213,9 @@ authorized configuration mechanism. See the [security contract](security.md#conf
 
 ## Supported settings
 
-TOML booleans use `true` or `false`. Limits are positive integers, in bytes
-unless the field names or table indicate another unit.
+TOML booleans use `true` or `false`. Size fields accept positive byte integers
+or the exact strings above. Entry/record counts remain integers and timeouts
+remain milliseconds.
 
 | Key | Type and runtime default | Effect |
 |---|---|---|
@@ -184,21 +229,24 @@ unless the field names or table indicate another unit.
 | `profiles.include` | Array of strings, empty | Explicit composition with additional distinct grant sets. Requires explicit `active`. |
 | `profiles.max_risk` | String, `"mutation"` | Operation risk ceiling. Accepts `"read"`, `"mutation"`, or explicit `"high"`. |
 | `profiles.definitions.<id>.grants` | Required array of capability IDs per definition | Declare the custom profile's exact grants. |
-| `files.max_file_size` | Integer, 10485760 | Maximum file read. |
-| `files.max_write_bytes` | Integer, 10485760 | Maximum write content. |
-| `files.max_copy_bytes` | Integer, 10485760 | Maximum copied file size. |
+| `files.max_file_size` | Size, 10485760 | Maximum file content for read, write and copy. |
+| `files.max_write_size` | Size, 10485760 | Maximum complete write or copied content. |
+| `files.max_scan_size` | Size, 10485760 | Maximum inspected content/name bytes per operation. |
+| `files.max_result_size` | Size, 16777216 | Maximum serialized MCP success result. |
+| `files.max_temp_size` | Size, 10485760 | Maximum aggregate live temporary-data reservations per exact root ID across concurrent operations. |
+| `policy.<name>.max_*_size`, `files.roots.<id>.max_*_size` | Optional size for the five resource fields above | Inherit and replace per field, within global hard ceilings. |
 | `files.max_list_entries` | Integer, 1000 | Maximum scanned directory entries, including filtered entries. |
 | `files.max_delete_entries` | Integer, 1000 | Maximum entries for recursive deletion. |
 | `security.allow_hidden_files` | Boolean, `false` | Allows dot-prefixed data paths subject to other checks. |
 | `security.allow_unc_paths` | Boolean, `false` | Allows a UNC data root subject to other checks. |
 | `security.follow_symlinks` | Boolean, `false` | Allows classic symlinks inside the effective data root. |
-| `protocol.max_message_bytes` | Integer, 16777216 | Maximum inbound JSON-RPC message. |
-| `protocol.max_argument_bytes` | Integer, 12582912 | Maximum tool call params or arguments. |
-| `protocol.max_response_bytes` | Integer, 16777216 | Maximum serialized JSON-RPC response. |
+| `protocol.max_message_size` | Size, 16777216 | Maximum inbound JSON-RPC message, including newline. |
+| `protocol.max_argument_size` | Size, 12582912 | Maximum tool call params or arguments. |
+| `protocol.max_response_size` | Size, 16777216 | Maximum serialized JSON-RPC response, including newline. |
 | `logging.level` | String, `"off"` | Select `"debug"` for optional diagnostics. |
 | `logging.sink` | String, `"stderr"` | The current supported sink. Stdout carries MCP only. |
 | `logging.format` | String, `"text"` | Select `"json"` for one JSON object per diagnostic line. |
-| `logging.max_record_bytes` | Integer, 4096 | 128 to 65536 bytes per emitted record, including its newline. |
+| `logging.max_record_size` | Size, 4096 | 128 to 65536 bytes per emitted record, including its newline. |
 | `logging.max_records` | Integer, 10000 | 1 to 1000000 diagnostic records per process. |
 
 Optional diagnostics are redacted before emission and omit messages that
@@ -218,7 +266,7 @@ bind their role and consume these typed values from the same configuration:
 | `connect_timeout_ms` | Integer, 5000 | Connection timeout, 1 to 3600000 milliseconds. |
 | `request_timeout_ms` | Integer, 30000 | Request timeout, 1 to 3600000 milliseconds. |
 | `shutdown_timeout_ms` | Integer, 5000 | Shutdown timeout, 1 to 3600000 milliseconds. |
-| `max_frame_bytes` | Integer, 16777216 | Frame limit, 1 to 67108864 bytes. |
+| `max_frame_size` | Size, 16777216 | Frame limit, 1 to 67108864 bytes. |
 | `ipc_version` | Integer, 1 | The only supported contract version. |
 | `fallback` | String, `"disabled"` | `"direct-if-absent"` is accepted for a future auto host only. Configuration failures are terminal. |
 

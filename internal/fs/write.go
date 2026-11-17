@@ -11,7 +11,7 @@ import (
 )
 
 // Write writes a file. Existing files are only overwritten when overwrite is true.
-func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) error {
+func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 
@@ -20,7 +20,7 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 		return err
 	}
 
-	if int64(len(content)) > f.limits.MaxWriteBytes {
+	if int64(len(content)) > min(f.limits.MaxFileSize, f.limits.MaxWriteSize) {
 		return ErrLimitExceeded
 	}
 
@@ -38,7 +38,7 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 		}
 	}
 
-	file, err := f.openDestination(target, 0o600, nil)
+	file, err := f.openDestination(target, 0o600, func() error { return admitEffect(admission) })
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool) err
 	return nil
 }
 
-func (f *LocalFileSystem) mkdirProtected(path string) (bool, error) {
+func (f *LocalFileSystem) mkdirProtected(path string, admission []func() error) (bool, error) {
 	var missing []string
 	var parentInfo os.FileInfo
 	for current := path; ; current = filepath.Dir(current) {
@@ -88,7 +88,7 @@ func (f *LocalFileSystem) mkdirProtected(path string) (bool, error) {
 		}
 	}
 	if len(missing) == 0 {
-		return false, nil
+		return false, admitEffect(admission)
 	}
 	slices.Reverse(missing)
 	for index, current := range missing {
@@ -97,6 +97,9 @@ func (f *LocalFileSystem) mkdirProtected(path string) (bool, error) {
 			return false, security.ErrConfigurationAccess
 		}
 		if err := f.recheckEffect(operand, true); err != nil {
+			return false, err
+		}
+		if err := admitEffect(admission); err != nil {
 			return false, err
 		}
 		if err := os.Mkdir(current, 0o700); err != nil {
@@ -113,7 +116,7 @@ func (f *LocalFileSystem) mkdirProtected(path string) (bool, error) {
 }
 
 // Mkdir creates a directory and any missing parent directories and reports whether the leaf was created.
-func (f *LocalFileSystem) Mkdir(path string) (bool, error) {
+func (f *LocalFileSystem) Mkdir(path string, admission ...func() error) (bool, error) {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 
@@ -122,10 +125,13 @@ func (f *LocalFileSystem) Mkdir(path string) (bool, error) {
 		return false, err
 	}
 	if pathsEquivalent(safePath.String(), f.guard.Root()) {
-		return false, nil
+		return false, admitEffect(admission)
 	}
 	if f.protection != nil {
-		return f.mkdirProtected(safePath.String())
+		return f.mkdirProtected(safePath.String(), admission)
+	}
+	if err := admitEffect(admission); err != nil {
+		return false, err
 	}
 
 	parent := safePath.Dir()

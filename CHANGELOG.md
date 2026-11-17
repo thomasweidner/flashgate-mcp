@@ -12,6 +12,11 @@ the intended release date. Publication evidence is separate.
 
 ### Breaking Changes
 
+- Use `_size` configuration keys for file writes, protocol messages/arguments/
+  responses, IPC frames and logging records. Remove `max_copy_bytes`; one
+  `max_write_size` bounds writes and copies. Old byte keys are rejected.
+  See [resource migration](docs/migration.md#resource-size-settings).
+
 - Filesystem roots default to read access. A write-capable profile still
   exposes mutation tools, and calls require explicit write access on the
   selected root. See [root access migration](docs/migration.md#root-access).
@@ -32,6 +37,11 @@ the intended release date. Publication evidence is separate.
   root. See [client input migration](docs/migration.md#input-and-operation-semantics).
 
 ### Changed
+
+- Configure immutable file, write, scan, serialized-result and temporary-data
+  limits globally, in named policies and per root. Size fields accept exact
+  English SI/IEC byte/bit strings. Shared conversion and budget helpers are
+  available to future consumers; startup never rewrites the configuration.
 
 - Define reusable named policies in TOML and override access per root.
   An empty access list denies reads and writes for the selected root ID.

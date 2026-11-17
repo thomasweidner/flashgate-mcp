@@ -81,7 +81,7 @@ func (t *CopyPathTool) ResultContract() ResultContract {
 }
 
 // Execute copies the requested source path to the target path.
-func (t *CopyPathTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
+func (t *CopyPathTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var source, target fs.Operand
 	var overwrite bool
 	if err := decodeStrictArguments(rawArguments, map[string]any{
@@ -100,15 +100,16 @@ func (t *CopyPathTool) Execute(_ context.Context, rawArguments json.RawMessage) 
 		return ToolResult{}, err
 	}
 
+	if err := validatePairLimits(t.filesystem, source, target); err != nil {
+		return ToolResult{}, err
+	}
+	result, admit := mutationResult(ctx, t.filesystem, target.RootID, NewToolResult(defaultVariant, copyPathResult{Source: source.Path, Target: target.Path, Copied: true}), t.ResultContract())
+	target.AdmitEffect = admit
 	if err := t.filesystem.Copy(source, target, overwrite); err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return NewToolResult(defaultVariant, copyPathResult{
-		Source: source.Path,
-		Target: target.Path,
-		Copied: true,
-	}), nil
+	return finishMutationResult(result)
 }
 
 type copyPathResult struct {

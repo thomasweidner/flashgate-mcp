@@ -254,6 +254,21 @@ Files and directories may be renamed or moved on the same volume. Cross-volume m
 
 The source and target identities are revalidated immediately before the operating-system rename, and existing files are replaced through `os.Rename` without a separate target deletion. The remaining race is limited to a concurrent change at the already authorized target path after final revalidation; the path-based cross-platform API cannot condition replacement on the previously observed file identity. Such a race cannot trigger a directory-removal fallback, and this behavior is narrower than the previous explicit remove-then-rename sequence.
 
+## Resource limits
+
+All eight tools consume the selected root's immutable
+[resource policy](configuration.md#resource-limits). Read uses the minimum
+of request, file and scan ceilings. Write and file copy share one write ceiling
+and also enforce file size; copy additionally consumes source scan bytes.
+Directory listing charges all visited name bytes and entries, including filtered
+entries. Recursive delete and directory-move inspection bound traversal before
+effects. Metadata-only stat, mkdir, delete and rename do not read file contents.
+Every success result is checked after serialization, including escaping and
+metadata. Mutating tools admit the receipt before changing files. The global
+response ceiling independently includes JSON-RPC framing and the newline.
+Limit errors contain no partial success. No current tool creates temporary
+scratch data; future owners must consume the same reservation contract.
+
 ## Machine-readable tool errors
 
 Registered tools return expected argument and domain failures as MCP

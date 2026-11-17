@@ -34,17 +34,17 @@ func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
 	f := cfg.Files()
 	s := cfg.Security()
 	p := cfg.Server()
-	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root), Access: RootRead}}) || f.DefaultID() != "work" ||
+	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root), Access: RootRead, Limits: DefaultConfig().Files().Limits()}}) || f.DefaultID() != "work" ||
 		cfg.Profile().ID() != ProfileRead || s.AllowHiddenFiles() ||
 		s.AllowUNCPaths() || s.FollowSymlinks() || cfg.Role() != Direct {
 		t.Fatal("default filesystem or runtime policy drift")
 	}
-	if f.MaxFileSize() != defaultFileBytes || f.MaxWriteBytes() != defaultFileBytes ||
-		f.MaxCopyBytes() != defaultFileBytes || f.MaxListEntries() != 1000 || f.MaxDeleteEntries() != 1000 {
+	if f.MaxFileSize() != defaultFileBytes || f.MaxWriteSize() != defaultFileBytes ||
+		f.MaxListEntries() != 1000 || f.MaxDeleteEntries() != 1000 {
 		t.Fatal("default filesystem limits drift")
 	}
-	if p.Name() != "flashgate" || p.Version() != "0.1.0-dev" || p.MaxMessageBytes() != defaultWireBytes ||
-		p.MaxArgumentBytes() != 12*1024*1024 || p.MaxResponseBytes() != defaultWireBytes {
+	if p.Name() != "flashgate" || p.Version() != "0.1.0-dev" || p.MaxMessageSize() != defaultWireBytes ||
+		p.MaxArgumentSize() != 12*1024*1024 || p.MaxResponseSize() != defaultWireBytes {
 		t.Fatal("default protocol settings drift")
 	}
 	logging := cfg.Logging()
@@ -94,19 +94,19 @@ func TestDecodeRejectsInvalidDocuments(t *testing.T) {
 		{"empty unknown domain", root + "[capabilities]\n", CategoryInvalidConfig},
 		{"unknown policy", root + "[security]\nadmin = true\n", CategoryInvalidConfig},
 		{"unknown domain", root + "[capabilities]\nwrite = true\n", CategoryInvalidConfig},
-		{"duplicate table", root + "[files]\nmax_write_bytes = 1\n", CategoryInvalidConfig},
+		{"duplicate table", root + "[files]\nmax_write_size = 1\n", CategoryInvalidConfig},
 		{"invalid boolean", root + "[security]\nfollow_symlinks = \"true\"\n", CategoryInvalidConfig},
 		{"retired read-only key", root + "read_only = true\n", CategoryInvalidConfig},
-		{"zero limit", root + "max_write_bytes = 0\n", CategoryInvalidConfig},
-		{"fractional limit", root + "max_write_bytes = 1.0\n", CategoryInvalidConfig},
-		{"negative limit", root + "[protocol]\nmax_message_bytes = -1\n", CategoryInvalidConfig},
-		{"integer overflow", root + "[protocol]\nmax_argument_bytes = 9223372036854775808\n", CategoryInvalidConfig},
+		{"zero limit", root + "max_write_size = 0\n", CategoryInvalidConfig},
+		{"fractional limit", root + "max_write_size = 1.0\n", CategoryInvalidConfig},
+		{"negative limit", root + "[protocol]\nmax_message_size = -1\n", CategoryInvalidConfig},
+		{"integer overflow", root + "[protocol]\nmax_argument_size = 9223372036854775808\n", CategoryInvalidConfig},
 		{"probe limit overflow", root + "max_file_size = 9223372036854775807\n", CategoryInvalidConfig},
 		{"future mode", root + "[runtime]\nmode = \"service\"\n", CategoryUnsupportedRuntime},
 		{"unsupported sink", root + "[logging]\nsink = \"journald\"\n", CategoryInvalidConfig},
 		{"unsupported level", root + "[logging]\nlevel = \"trace\"\n", CategoryInvalidConfig},
 		{"unsupported format", root + "[logging]\nformat = \"yaml\"\n", CategoryInvalidConfig},
-		{"record cap", root + "[logging]\nmax_record_bytes = 2\n", CategoryInvalidConfig},
+		{"record cap", root + "[logging]\nmax_record_size = 2\n", CategoryInvalidConfig},
 		{"record count", root + "[logging]\nmax_records = 1000001\n", CategoryInvalidConfig},
 		{"stdio endpoint", root + "[endpoints]\nwindows_pipe_name = \"pipe\"\n", CategoryInvalidConfig},
 		{"invalid UTF8", root + "#\xff\n", CategoryInvalidConfig},
@@ -129,7 +129,7 @@ func TestDecodeNamedRootDefinitions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []RootDefinition{{ID: "a_7", Path: filepath.Clean(archive), Access: RootRead}, {ID: "work", Path: filepath.Clean(root), Access: RootRead}}
+	want := []RootDefinition{{ID: "a_7", Path: filepath.Clean(archive), Access: RootRead, Limits: DefaultConfig().Files().Limits()}, {ID: "work", Path: filepath.Clean(root), Access: RootRead, Limits: DefaultConfig().Files().Limits()}}
 	snapshot := cfg.Files().Roots()
 	if !slices.Equal(snapshot, want) {
 		t.Fatalf("unexpected definitions: %v", snapshot)
@@ -210,7 +210,7 @@ func TestDecodeManagedEndpointPolicy(t *testing.T) {
 		"request_timeout_ms = 0",
 		"shutdown_timeout_ms = -1",
 		"ipc_version = 2",
-		"max_frame_bytes = 67108865",
+		"max_frame_size = 67108865",
 	} {
 		_, err = Decode([]byte(documentWithRoot(t, t.TempDir())+"[endpoints]\n"+entry+"\n"), Proxy)
 		assertCategory(t, err, CategoryInvalidConfig)

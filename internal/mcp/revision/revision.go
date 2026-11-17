@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"math"
 	"sort"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -166,6 +167,23 @@ func Unsupported(requested string, policy Policy) *protocol.Error {
 // values remain unchanged; only the wire result receives revision fields.
 func Complete(value any, method, serverName, serverVersion string) (any, *protocol.Error) {
 	return CompleteContext(context.Background(), value, method, serverName, serverVersion)
+}
+
+// CompletionOverhead is the exact size added to a nonempty MCP result object.
+// Routers compute it once for their immutable identity, using the actual
+// completion encoder with an empty object instead of a second metadata schema.
+func CompletionOverhead(method, serverName, serverVersion string) int64 {
+	completed, rpcErr := CompleteContext(context.Background(), struct{}{}, method, serverName, serverVersion)
+	if rpcErr != nil {
+		return math.MaxInt64
+	}
+	encoded, err := json.Marshal(completed)
+	if err != nil || len(encoded) < 2 {
+		return math.MaxInt64
+	}
+	// Empty-object braces disappear; one comma joins these fields to the
+	// existing content fields. Current tools never own these reserved keys.
+	return int64(len(encoded) - 1)
 }
 
 // CompleteContext allows tests to observe result-wide serialization passes.

@@ -39,7 +39,7 @@ func (t *GetPathInfoTool) ResultContract() ResultContract {
 	return metadataContract("existing", "missing")
 }
 
-func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessage) (ToolResult, error) {
+func (t *GetPathInfoTool) Execute(ctx context.Context, rawArguments json.RawMessage) (ToolResult, error) {
 	var path fs.Operand
 	if err := decodeStrictArguments(rawArguments, map[string]any{
 		"root_id": &path.RootID,
@@ -52,15 +52,15 @@ func (t *GetPathInfoTool) Execute(_ context.Context, rawArguments json.RawMessag
 	}
 	metadata, err := t.filesystem.Stat(path)
 	if errors.Is(err, fs.ErrNotFound) {
-		return NewToolResult("missing", getPathInfoMissingResult{Path: path.Path, Exists: false}), nil
+		return prepareResult(ctx, t.filesystem, path.RootID, NewToolResult("missing", getPathInfoMissingResult{Path: path.Path, Exists: false}), t.ResultContract())
 	}
 	if err != nil {
 		return ToolResult{}, mapFilesystemError(err)
 	}
 
-	return NewToolResult("existing", getPathInfoExistingResult{
+	return prepareResult(ctx, t.filesystem, path.RootID, NewToolResult("existing", getPathInfoExistingResult{
 		Path: path.Path, Exists: true, Name: metadata.Name, IsDir: metadata.IsDir, Size: metadata.Size,
-	}), nil
+	}), t.ResultContract())
 }
 
 type getPathInfoMissingResult struct {
