@@ -42,6 +42,8 @@ the intended release date. Publication evidence is separate.
   limits globally, in named policies and per root. Size fields accept exact
   English SI/IEC byte/bit strings. Shared conversion and budget helpers are
   available to future consumers; startup never rewrites the configuration.
+  Scan-bounded reads reject unproven completion, including virtual files whose
+  reported size cannot establish EOF, rather than returning a truncated prefix.
 
 - Define reusable named policies in TOML and override access per root.
   An empty access list denies reads and writes for the selected root ID.

@@ -51,7 +51,8 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	}
 
 	// The scan ceiling is an I/O bound too: never read a max+1 probe beyond
-	// it. A fresh handle stat detects growth without consuming content bytes.
+	// it. A fresh handle stat detects growth without consuming content bytes;
+	// at that ceiling its extent must also establish that no prefix was returned.
 	content, err := readAtMost(file, maxBytes, f.limits.MaxScanSize)
 	if err != nil {
 		return nil, err
@@ -63,7 +64,8 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if current.Size() > maxBytes {
+	if current.Size() > maxBytes ||
+		(int64(len(content)) == f.limits.MaxScanSize && current.Size() != int64(len(content))) {
 		return nil, ErrFileTooLarge
 	}
 	return content, nil

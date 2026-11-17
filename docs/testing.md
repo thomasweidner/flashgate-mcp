@@ -501,6 +501,9 @@ legacy-key rejection. Filesystem and MCP tests cover two roots, filtered and
 tree scan exhaustion, shared write/copy caps, protected operands, exact serialized
 result sizes, escaping, pre-effect receipt denial and complete wire framing,
 including the existing disabled candidate revision's completion metadata.
+Native Linux tests read a zero-size procfs file to reject both truncated and
+unproven exact-ceiling reads while allowing a complete read below the scan
+ceiling. Existing regular-file fixtures retain exact-ceiling acceptance.
 Meter tests cover cumulative exhaustion, concurrent root-bound reservations,
 idempotent release, cancellation and simulated external hard-enforcement denial.
 Use the existing Windows/Linux coverage, race, conformance and wire budgets;
