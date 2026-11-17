@@ -34,7 +34,7 @@ func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
 	f := cfg.Files()
 	s := cfg.Security()
 	p := cfg.Server()
-	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root)}}) || f.DefaultID() != "work" ||
+	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root), Access: RootRead}}) || f.DefaultID() != "work" ||
 		cfg.Profile().ID() != ProfileRead || s.AllowHiddenFiles() ||
 		s.AllowUNCPaths() || s.FollowSymlinks() || cfg.Role() != Direct {
 		t.Fatal("default filesystem or runtime policy drift")
@@ -129,12 +129,12 @@ func TestDecodeNamedRootDefinitions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []RootDefinition{{ID: "a_7", Path: filepath.Clean(archive)}, {ID: "work", Path: filepath.Clean(root)}}
+	want := []RootDefinition{{ID: "a_7", Path: filepath.Clean(archive), Access: RootRead}, {ID: "work", Path: filepath.Clean(root), Access: RootRead}}
 	snapshot := cfg.Files().Roots()
 	if !slices.Equal(snapshot, want) {
 		t.Fatalf("unexpected definitions: %v", snapshot)
 	}
-	snapshot[0].ID, snapshot[1].Path = "changed", ""
+	snapshot[0].ID, snapshot[1].Path, snapshot[1].Access = "changed", "", RootWrite
 	if !slices.Equal(cfg.Files().Roots(), want) {
 		t.Fatal("definition changes escaped the snapshot")
 	}

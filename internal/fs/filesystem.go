@@ -12,6 +12,9 @@ var (
 	// ErrUnknownRoot is returned when an exact root ID is not registered.
 	ErrUnknownRoot = errors.New("unknown root id")
 
+	// ErrRootAccessDenied indicates a missing right on the selected root.
+	ErrRootAccessDenied = errors.New("root access denied")
+
 	// ErrCrossRootOperation is returned when an operation requires one root.
 	ErrCrossRootOperation = errors.New("cross-root filesystem operation is not supported")
 

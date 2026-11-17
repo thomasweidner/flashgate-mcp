@@ -106,7 +106,7 @@ try {
     $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
     $document = "[files]`ndefault_id = 'work'`n[files.roots.work]`npath = $quotedRoot`n"
     if (-not $ReadOnly) {
-        $document += "[profiles]`nactive = 'write'`n"
+        $document += "access = ['read', 'write']`n[profiles]`nactive = 'write'`n"
     }
     New-WindowsConfigFixture -Path $configPath -Document $document
     if ($ReadOnly) {

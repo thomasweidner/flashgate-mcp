@@ -419,7 +419,8 @@ func TestRunWithIOUsesExplicitNamedRoots(t *testing.T) {
 	for dir, content := range map[string]string{work: "work payload", archive: "archive payload"} {
 		testconfig.Write(t, filepath.Join(dir, "input.txt"), []byte(content))
 	}
-	path := writeConfig(t, configDocument(t, work, "roots.archive.path = "+quotedConfigPath(t, archive)+"\n"+profileSettings(false)))
+	path := writeConfig(t, configDocument(t, work,
+		"roots.archive.path = "+quotedConfigPath(t, archive)+"\nroots.archive.access = ['read', 'write']\n"+profileSettings(false)))
 	input := strings.NewReader(
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}` + "\n" +
 			`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +

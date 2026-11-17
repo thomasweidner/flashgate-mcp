@@ -370,8 +370,8 @@ in the [tool reference](docs/tools.md).
   containment checks. Traversal, absolute tool paths, and out-of-root resolution
   are rejected. Tools use the central filesystem abstraction and path guard.
 - **Read access by default.** The `read` profile admits three tools. Select
-  `profiles.active = "write"` explicitly to enable the writable catalog.
-  The same policy applies to discovery and direct calls.
+  `profiles.active = "write"` explicitly to enable the writable catalog, and
+  grant [write access](docs/configuration.md#named-policies) on each intended root.
 - **Restrictive path policy:** the examples deny hidden files, UNC paths,
   symlinks, junctions, and other reparse access. Listing filters denied entries.
   Enabling symlink following still cannot authorize an out-of-root target.

@@ -51,7 +51,7 @@ if [[ ! -x "${BINARY_PATH}" ]]; then
 fi
 
 mkdir -p "${REPO_ROOT}/build"
-(umask 077; python3 -c 'import json,sys; print("[files]\ndefault_id = \"work\"\n[files.roots.work]\npath = " + json.dumps(sys.argv[1], ensure_ascii=False) + ("\n[profiles]\nactive = \"write\"" if sys.argv[2] == "false" else ""))' "${REPO_ROOT}" "$read_only" > "$CONFIG_PATH")
+(umask 077; python3 -c 'import json,sys; print("[files]\ndefault_id = \"work\"\n[files.roots.work]\npath = " + json.dumps(sys.argv[1], ensure_ascii=False) + ("\naccess = [\"read\", \"write\"]\n[profiles]\nactive = \"write\"" if sys.argv[2] == "false" else ""))' "${REPO_ROOT}" "$read_only" > "$CONFIG_PATH")
 
 cat > "${REQUEST_PATH}" <<'JSONRPC'
 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke-test","version":"dev"}}}

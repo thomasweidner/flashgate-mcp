@@ -16,8 +16,13 @@ max_delete_entries = 1000
 
 [files.roots.work]
 path = ""
+# Missing access at both levels defaults to ["read"]. Use [] to deny all.
+# Set access = ["read", "write"] here or reference the example policy below.
+# policy = "workspace"
+# [policy.workspace]
+# access = ["read", "write"]
 
-# The default profile is "read". Select "write" explicitly to enable mutations.
+# The default profile is "read". Mutations also require a writable profile.
 # [profiles]
 # active = "write"
 

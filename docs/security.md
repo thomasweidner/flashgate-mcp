@@ -16,8 +16,8 @@ binds the selected name, loaded identity and relevant directories to all
 root filesystems. Overlapping roots can be used where native identity and
 mount checks support that binding. Bootstrap denies an unprovable binding
 or a changed source identity with `root_not_allowed`. During tool execution,
-read-only mode and hidden-file filtering complement the protection shared
-across roots.
+profile and root access, and hidden-file filtering complement the protection
+shared across roots.
 
 ### Sandbox Root
 
@@ -28,8 +28,16 @@ a directory. An invalid root anywhere in the configuration stops startup.
 
 Expected configuration/root failures use safe categories on stderr and exit code `3`; stdout remains empty. Unexpected bootstrap failures use `startup_failed` and exit code `1`. Raw roots and operating-system errors are not emitted.
 
-Root IDs establish logical identity. Capability and exposure controls still
-determine what a caller can do. Overlap confers no additional rights.
+The registry checks each operand's required [root access](configuration.md#named-policies)
+before invoking the native backend. Missing access configuration allows reads.
+Writes require an explicit effective grant. Profile capability and risk
+checks and the selected configuration's protection still apply. An overlap,
+alias, default ID or available backend supplies no extra rights. A denied
+request returns a redacted `access_denied` result without backend dispatch.
+Copy requires read on its source and write on its target. Move requires
+write on both operands. The current tools require an identical root ID for
+each pair. Future delegated effects must preserve the selected root's access
+and the protected configuration boundary at the actual effect.
 
 ### Filesystem access boundaries
 

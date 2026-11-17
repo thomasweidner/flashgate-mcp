@@ -35,11 +35,54 @@ explicitly. Named-root discovery belongs to BL-352.
 The [migration guide](migration.md#root-configuration) covers conversion
 from the former table.
 
+## Named policies
+
+Use `[policy.<name>]` to define a reusable policy in the same TOML file.
+Names match `^[a-z][a-z0-9_]{0,63}$` and are referenced exactly. A definition
+grants nothing by itself. A resource can reference one policy with `policy` and
+applies the fields supported by its resource type. Its explicit values override
+the referenced fields individually. Lists replace the whole value. References
+between policies are unsupported.
+
+Filesystem roots currently support `access`, a list of unique `"read"` and
+`"write"` rights. Omit the field at both levels for read-only access. Specify
+`[]` to deny both rights, including when overriding a named policy. Unknown
+references or fields, duplicate definitions or rights, and invalid types or
+values fail startup, including in unused policies.
+
+```toml
+[policy.workspace]
+access = ["read", "write"]
+
+[files]
+default_id = "documents"
+
+[files.roots.documents]
+path = 'C:\Documents'
+
+[files.roots.projects]
+path = 'C:\Projects'
+policy = "workspace"
+
+[files.roots.archive]
+path = 'D:\Archive'
+policy = "workspace"
+access = ["read"]
+```
+
+Each operand uses the rights of its explicit ID. Two IDs can point to
+overlapping paths and grant different access to them. The
+[tool reference](tools.md) lists each operation's required root rights.
+Writing requires a root grant and the applicable profile grants and risk
+ceiling. Existing write deployments can follow the
+[root access migration](migration.md#root-access).
+
 ## Profiles
 
 `read` grants `files.read` and exposes the three current read tools. Select
 `write` explicitly to grant `files.read` and `files.write` and expose all
-eight filesystem tools. Both profiles remain subject to path and root checks.
+eight filesystem tools. Root rights govern each call independently of the
+profile's tool exposure. Path and configuration-protection checks also apply.
 
 ```toml
 [profiles]
@@ -134,6 +177,9 @@ unless the field names or table indicate another unit.
 | `runtime.mode` | String, host-selected (`"stdio"` in the current executable) | Must match the bound runtime role. |
 | `files.default_id` | Required string | Must name an existing root ID. Tool calls provide their own explicit IDs. |
 | `files.roots.<id>.path` | Required string per root | Existing absolute data directory, subject to PathGuard. |
+| `files.roots.<id>.policy` | Optional policy name | Reference one named policy. |
+| `files.roots.<id>.access` | Optional rights array | Replace the referenced access list. Missing access at both levels defaults to `["read"]`. |
+| `policy.<name>.access` | Optional rights array | Supply shared filesystem rights for roots that reference the policy. |
 | `profiles.active` | String, `"read"` | Select a built-in or validated custom base profile. |
 | `profiles.include` | Array of strings, empty | Explicit composition with additional distinct grant sets. Requires explicit `active`. |
 | `profiles.max_risk` | String, `"mutation"` | Operation risk ceiling. Accepts `"read"`, `"mutation"`, or explicit `"high"`. |

@@ -51,7 +51,7 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
 - JSON-RPC validation, routing, initialization, `tools/list`, and `tools/call`;
 - eight filesystem tools;
 - an immutable registry of [named data roots](configuration.md#named-roots)
-  with an explicit default for the current tools;
+  with explicit operands and [effective root access](configuration.md#named-policies);
 - explicit capability profiles and risk policy with a default `read` catalog;
 - central path validation and filesystem abstraction;
 - hard protocol, argument, filesystem, and response limits;
@@ -92,7 +92,7 @@ configuration protection and filesystem effect coordination.
 
 Not yet implemented:
 
-- public root selection and discovery;
+- named-root discovery;
 - search;
 - Operations/Job Manager;
 - process observation/management;

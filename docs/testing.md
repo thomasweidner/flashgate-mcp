@@ -491,6 +491,18 @@ Currently tested:
 
 The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
 
+### Named policy and root access acceptance
+
+Run `go test ./internal/config ./internal/roots ./cmd/server` for strict
+named policy decoding, overrides, empty lists, safe defaults, exact IDs and
+pre-dispatch denial across the eight operations. Exercise the native registry
+through overlapping and aliased roots and verify that denied operations leave
+the target unchanged. Run the STDIO profile and named-root regressions for
+both grant layers, redacted denials, and unchanged wire schemas. Positive
+mutation fixtures, smokes, and benchmarks explicitly grant root write access.
+Run the existing Windows and native Linux matrix, including product coverage
+and the configuration-protection cases with applicable root access.
+
 ### Configuration protection acceptance
 
 Exercise the BL-102 operand contract in the native filesystem and wire gates.

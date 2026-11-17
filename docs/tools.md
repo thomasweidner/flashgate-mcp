@@ -26,6 +26,20 @@ are rejected by the server. Inputs are closed JSON objects with exact
 property names. Unknown or duplicate properties, malformed or trailing JSON,
 wrong types, explicit `null` and missing required fields are rejected.
 
+The [root's effective access](configuration.md#named-policies) must allow
+each operand in addition to the applicable profile grants and risk ceiling.
+
+| Tools | Required root rights |
+|---|---|
+| `list_directory`, `read_file`, `get_path_info` | Read |
+| `write_file`, `create_directory`, `delete_path` | Write |
+| `copy_path` | Read on source, write on target |
+| `move_path` | Write on source and target |
+
+Copy and move require matching root IDs. An insufficient root grant yields
+`access_denied` before any filesystem operation. Tool exposure still follows
+the active profile.
+
 ## Successful MCP result envelope
 
 Every successful `tools/call` uses an MCP `CallToolResult`. A small metadata

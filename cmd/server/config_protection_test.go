@@ -24,7 +24,9 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 	const marker = "synthetic-config-content-374"
 	source := filepath.Join(dir, "config.toml")
 	document := "# " + marker + "\n" + configDocument(t, root,
-		"max_file_size = 512\nroots.settings.path = "+quotedConfigPath(t, dir)+"\n[security]\nfollow_symlinks = true\n"+profileSettings(false))
+		"max_file_size = 512\nroots.settings.path = "+quotedConfigPath(t, dir)+"\n"+
+			"roots.work.policy = 'workspace'\nroots.settings.policy = 'workspace'\n"+
+			"[policy.workspace]\naccess = ['read', 'write']\n[security]\nfollow_symlinks = true\n"+profileSettings(false))
 	testconfig.Write(t, source, []byte(document))
 	info, err := os.Stat(source)
 	if err != nil {
