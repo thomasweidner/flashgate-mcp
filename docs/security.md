@@ -481,7 +481,23 @@ native open and mutation points. Copy and move reject distinct IDs. Capability,
 per-root policy, principal authorization and backend selection remain separate
 controls.
 
-The target allows each root to define:
+Current [file-type restrictions](configuration.md#file-types) bind immutable
+per-root values through the filesystem boundary. They check supplied and
+resolved names, actual regular-file type, both operands and overwrite objects,
+and bounded recursive effects. Portable basename restrictions apply only when
+the effective policy restricts extensions or extensionless names. Without an
+effective restriction, native Linux names permitted by existing controls retain
+their prior access. Windows device/ADS and ambiguous native mappings remain
+independent denials in all modes. Listings omit denied files; stat denies rather
+than disguising them as absent. Content opens and mutations follow policy
+admission, with existing identity/parent/alias rechecks before native effects.
+No matching, unrestricted mode or MIME claim supplies authorization. The
+selected configuration remains protected even under an allowed suffix or
+another root ID. No classification reads contents or hydrates cloud files.
+Unproved native names, special objects and projected link targets deny safely.
+The existing independent-OS final-window residual remains unchanged.
+
+The root model includes current and planned controls for:
 
 - read/write permission;
 - file/result/scan/temp limits;

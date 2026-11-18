@@ -94,6 +94,12 @@ The implementation must:
 - keep all service endpoints local-only.
 
 Every backend inherits the [configuration protection contract](../security.md#configuration-trust-and-protection).
+It also inherits the [effective root file-type policy](../configuration.md#file-types)
+for its applicable file operands and indirect effects. Installation, available
+OS permissions and execution identity cannot turn a suffix match into a grant.
+Future workers and providers prove enforcement at their actual effect and
+result boundaries; unproved classification or confinement denies the route.
+
 The service binds its own selected source. Caller, root, effective identity
 and available OS permissions cannot bypass its protection. Variant A and
 any later worker must prove protection where reads, disclosures and

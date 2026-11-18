@@ -489,7 +489,43 @@ Currently tested:
 
 ## Version 1.0 Planned Validation Matrix
 
-The current tests above describe the implemented filesystem baseline. Version 1.0 adds the following required gates.
+The sections below define acceptance for current shared filesystem controls
+and additional Version 1.0 gates.
+
+### File-type policy acceptance
+
+Run `go test ./internal/config ./internal/roots ./internal/fs ./cmd/server`
+on native Windows and Linux, plus the normal coverage, race and full quality
+gates. The file-type fixtures exercise absent versus empty configuration,
+unrestricted mode, independent inheritance and root overrides, extensionless
+defaults, invalid and unused policies, duplicate tokens and immutable snapshots.
+Matching covers ASCII case, compound suffixes, hidden/extensionless names,
+deceptive suffixes, Unicode lookalikes and native ambiguous spellings.
+Native Linux compatibility fixtures exercise literal colons, backslashes and
+trailing dots/spaces through all eight operations with absent and unrestricted
+settings, including directory effects and a restrictive-policy root reset.
+Contrast restrictive policies, and retain root escape, selected-configuration
+alias and special-object denials. Native Windows device/ADS/trailing mappings
+must remain denied even without an effective file-type restriction.
+Also prove unrestricted Windows access to native-compatible DEL/C1 characters,
+with restrictive portable policies continuing to deny those names.
+
+All eight operations are covered through direct filesystem and root-registry
+calls and MCP wire integration. Prove omitted list entries still consume scan
+budgets, stat denial is not NotFound, denied source/target/overwrite routes
+preserve bytes, and recursive delete/rename preflight has no partial effect
+on a detectable denial. Exercise allowed structural directories and siblings,
+exact root IDs, cross-root prohibition and protected configuration aliases.
+Use deterministic prepared-path, opened-object and late-link-swap cases at the
+real effect-check helpers, not timing alone. Native Windows covers short-name
+aliases, case, junction denial and trailing/stream/device spellings; Linux
+covers actual special objects and deceptive names. Record an unavailable
+native alias API rather than replacing it with a synthetic success.
+
+Keep default configurations, BL-104 access, BL-105 limits, PathGuard and current
+MCP/catalog/wire budgets in regression. No productive external backend is
+activated; constructor/binding negatives deny unsupported policy composition.
+Later backends and tools own their additional native enforcement evidence.
 
 ### Resource limit acceptance
 

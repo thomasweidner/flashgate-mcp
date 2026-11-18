@@ -348,7 +348,17 @@ bytes and preflight mutation receipts. Backend owners prove each applicable
 hard limit before dispatch, including aggregate effects and scratch cleanup.
 No store, registry or productive launcher is added. Startup only normalizes
 size strings in memory and never rewrites configuration.
-The target also allows per-root rules for:
+
+BL-106 adds an immutable `internal/config.FileTypePolicy` to each root
+snapshot. Named-policy/root field composition happens once at bootstrap.
+The registry binds each value to `internal/fs`; source, destination, native
+alias and recursive-effect checks are below MCP. The shared configuration
+protection/effect coordinator remains authoritative. There is no handler-only
+filter, runtime parser, new registry, dependency or tool catalog. Missing
+settings preserve existing extension behavior; explicit restrictions and
+unsupported classification fail closed under the [file-type contract](configuration.md#file-types).
+
+The root model includes current and planned rules for:
 
 - read/write access;
 - size/result/scan/temp limits;

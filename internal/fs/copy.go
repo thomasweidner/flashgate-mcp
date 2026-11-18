@@ -9,6 +9,11 @@ import (
 func (f *LocalFileSystem) Copy(source string, target string, overwrite bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
+	for _, path := range []string{source, target} {
+		if err := f.validateFileOperandSpelling(path); err != nil {
+			return err
+		}
+	}
 
 	sourcePath, err := f.guard.ResolveExisting(source)
 	if err != nil {
@@ -25,6 +30,9 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool, adm
 		return err
 	}
 	sourceInfo := sourceOperand.info
+	if err := f.checkOperandName(source, sourceOperand, false); err != nil {
+		return err
+	}
 	if sourceInfo == nil {
 		return ErrNotFound
 	}
@@ -39,6 +47,9 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool, adm
 
 	targetOperand, err := f.inspectEffect(targetPath.String(), true)
 	if err != nil {
+		return err
+	}
+	if err := f.checkOperandName(target, targetOperand, true); err != nil {
 		return err
 	}
 	if info := targetOperand.info; info != nil {

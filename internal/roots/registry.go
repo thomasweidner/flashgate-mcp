@@ -46,12 +46,14 @@ func New(cfg config.Config) (*Registry, error) {
 		return nil, err
 	}
 	limits := make([]fs.Limits, len(definitions))
+	fileTypes := make([]config.FileTypePolicy, len(definitions))
 	for i, def := range definitions {
 		l := def.Limits
+		fileTypes[i] = def.FileTypes
 		limits[i] = fs.Limits{MaxFileSize: l.File, MaxWriteSize: l.Write, MaxScanSize: l.Scan,
 			MaxResultSize: l.Result, MaxTempSize: l.Temp, MaxListEntries: files.MaxListEntries(), MaxDeleteEntries: files.MaxDeleteEntries()}
 	}
-	backends, err := fs.NewProtectedRootFileSystems(bindings, limits)
+	backends, err := fs.NewProtectedRootFileSystems(bindings, limits, fileTypes...)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -30,7 +31,7 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 	}
 
 	var operand effectPath
-	if f.protection != nil {
+	if f.checksIdentity() {
 		operand, err = f.inspectPath(safePath.String())
 		if err != nil {
 			return nil, err
@@ -52,7 +53,7 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 		return nil, err
 	}
 	defer func() { _ = dir.Close() }()
-	if f.protection != nil {
+	if f.checksIdentity() {
 		info, err := dir.Stat()
 		if err != nil || !sameEffectInfo(operand.info, info) {
 			return nil, security.ErrConfigurationAccess
@@ -82,12 +83,37 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 			if err := meter.Charge(resource.Scan, int64(len(name))); err != nil {
 				return nil, err
 			}
+			// Only a known regular entry can be filtered before resolution.
+			// A permitted directory link keeps its structural semantics.
+			if dirEntry.Type().IsRegular() && (!f.fileTypes.AllowsName(name) || ambiguousNativeFileName(name)) {
+				continue
+			}
 			allowed, err := f.guard.AllowListEntry(safePath, name)
 			if err != nil {
 				return nil, err
 			}
 			if !allowed {
 				continue
+			}
+			entryPath, err := f.guard.ResolveExisting(filepath.Join(path, name))
+			if err != nil {
+				return nil, err
+			}
+			entryOperand, err := f.inspectPath(entryPath.String())
+			if err != nil {
+				return nil, err
+			}
+			if entryOperand.info == nil {
+				return nil, ErrFileTypeDenied
+			}
+			if err := f.checkFileType(entryOperand, false); err != nil {
+				if errors.Is(err, ErrFileTypeDenied) {
+					continue
+				}
+				return nil, err
+			}
+			if err := f.recheckPath(entryOperand); err != nil {
+				return nil, err
 			}
 			// Bound retained raw names and per-entry storage even when the
 			// configured entry limit is raised. The adapter also checks wire size.

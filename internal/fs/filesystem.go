@@ -2,6 +2,8 @@ package fs
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"sync"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
@@ -10,6 +12,8 @@ import (
 )
 
 var (
+	// ErrFileTypeDenied also uses the existing permission-denial adapter path.
+	ErrFileTypeDenied = fmt.Errorf("file type denied: %w", os.ErrPermission)
 	// ErrUnknownRoot is returned when an exact root ID is not registered.
 	ErrUnknownRoot = errors.New("unknown root id")
 
@@ -136,6 +140,7 @@ type FileSystem interface {
 
 // LocalFileSystem is the native backend bound to one validated root.
 type LocalFileSystem struct {
+	fileTypes  config.FileTypePolicy
 	guard      *security.PathGuard
 	limits     Limits
 	protection *security.RootProtection
@@ -153,7 +158,10 @@ func NewLocalFileSystemWithPolicy(root string, policy security.Policy) (*LocalFi
 }
 
 // NewLocalFileSystemWithPolicyAndLimits creates a new local filesystem with an explicit policy and limits.
-func NewLocalFileSystemWithPolicyAndLimits(root string, policy security.Policy, limits Limits) (*LocalFileSystem, error) {
+func NewLocalFileSystemWithPolicyAndLimits(root string, policy security.Policy, limits Limits, fileTypes ...config.FileTypePolicy) (*LocalFileSystem, error) {
+	if len(fileTypes) > 1 {
+		return nil, ErrFileTypeDenied
+	}
 	if err := validateLimits(limits); err != nil {
 		return nil, err
 	}
@@ -163,18 +171,21 @@ func NewLocalFileSystemWithPolicyAndLimits(root string, policy security.Policy, 
 		return nil, err
 	}
 
-	return newLocalFileSystem(guard, limits), nil
+	return newLocalFileSystem(guard, limits, fileTypes...), nil
 }
 
 // NewLocalFileSystemWithGuard creates a filesystem from a validated PathGuard.
-func NewLocalFileSystemWithGuard(guard *security.PathGuard, limits Limits) (*LocalFileSystem, error) {
+func NewLocalFileSystemWithGuard(guard *security.PathGuard, limits Limits, fileTypes ...config.FileTypePolicy) (*LocalFileSystem, error) {
+	if len(fileTypes) > 1 {
+		return nil, ErrFileTypeDenied
+	}
 	if guard == nil {
 		return nil, security.ErrEmptyRoot
 	}
 	if err := validateLimits(limits); err != nil {
 		return nil, err
 	}
-	return newLocalFileSystem(guard, limits), nil
+	return newLocalFileSystem(guard, limits, fileTypes...), nil
 }
 
 // NewProtectedFileSystems constructs all root filesystems in binding order.
@@ -192,7 +203,10 @@ func NewProtectedFileSystems(bindings []*security.RootProtection, limits Limits)
 
 // NewProtectedRootFileSystems binds all immutable limits before publication.
 // Aliased and overlapping roots retain their own caps and share effect locking.
-func NewProtectedRootFileSystems(bindings []*security.RootProtection, limits []Limits) ([]*LocalFileSystem, error) {
+func NewProtectedRootFileSystems(bindings []*security.RootProtection, limits []Limits, fileTypes ...config.FileTypePolicy) ([]*LocalFileSystem, error) {
+	if len(fileTypes) != 0 && len(fileTypes) != len(bindings) {
+		return nil, ErrFileTypeDenied
+	}
 	if len(bindings) != len(limits) {
 		return nil, ErrLimitExceeded
 	}
@@ -210,16 +224,23 @@ func NewProtectedRootFileSystems(bindings []*security.RootProtection, limits []L
 		filesystems = append(filesystems, &LocalFileSystem{
 			guard: binding.Guard(), limits: limits[i], protection: binding, effects: effects,
 		})
+		if len(fileTypes) != 0 {
+			filesystems[i].fileTypes = fileTypes[i]
+		}
 	}
 	return filesystems, nil
 }
 
-func newLocalFileSystem(guard *security.PathGuard, limits Limits) *LocalFileSystem {
-	return &LocalFileSystem{
+func newLocalFileSystem(guard *security.PathGuard, limits Limits, fileTypes ...config.FileTypePolicy) *LocalFileSystem {
+	f := &LocalFileSystem{
 		guard:   guard,
 		limits:  limits,
 		effects: new(sync.Mutex),
 	}
+	if len(fileTypes) == 1 {
+		f.fileTypes = fileTypes[0]
+	}
+	return f
 }
 
 func validateLimits(limits Limits) error {

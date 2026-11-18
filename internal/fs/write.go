@@ -14,6 +14,9 @@ import (
 func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
+	if err := f.validateFileOperandSpelling(path); err != nil {
+		return err
+	}
 
 	safePath, err := f.guard.ResolveForCreate(path)
 	if err != nil {
@@ -26,6 +29,9 @@ func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool, adm
 
 	target, err := f.inspectEffect(safePath.String(), true)
 	if err != nil {
+		return err
+	}
+	if err := f.checkOperandName(path, target, true); err != nil {
 		return err
 	}
 	if info := target.info; info != nil {
@@ -127,7 +133,7 @@ func (f *LocalFileSystem) Mkdir(path string, admission ...func() error) (bool, e
 	if pathsEquivalent(safePath.String(), f.guard.Root()) {
 		return false, admitEffect(admission)
 	}
-	if f.protection != nil {
+	if f.checksIdentity() {
 		return f.mkdirProtected(safePath.String(), admission)
 	}
 	if err := admitEffect(admission); err != nil {

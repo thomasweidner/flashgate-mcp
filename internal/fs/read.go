@@ -10,6 +10,9 @@ import (
 func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	f.effects.Lock()
 	defer f.effects.Unlock()
+	if err := f.validateFileOperandSpelling(path); err != nil {
+		return nil, err
+	}
 
 	safePath, err := f.guard.ResolveExisting(path)
 	if err != nil {
@@ -21,6 +24,9 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 		return nil, err
 	}
 	info := operand.info
+	if err := f.checkOperandName(path, operand, false); err != nil {
+		return nil, err
+	}
 	if info == nil {
 		return nil, ErrNotFound
 	}

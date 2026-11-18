@@ -186,8 +186,8 @@ the testing guide before independent terminal review.
 
 ## BL-106 per-root file-type policy
 
-BL-106 is the planned shared filesystem policy foundation in SPR-053, not
-an implemented filter or a MIME classifier. BACKLOG.md remains its sole task
+BL-106 supplies the shared filesystem file-type policy foundation in SPR-053.
+It is a name restriction, not a MIME classifier. BACKLOG.md remains its sole task
 and acceptance authority. The [filesystem ADR](../adr/filesystem-abstraction.md),
 [capability ADR](../adr/capability-profiles.md),
 [runtime configuration ADR](../adr/runtime-modes.md#configuration-contract),
@@ -205,10 +205,9 @@ once before exposure; pass an immutable effective policy below MCP. Do not
 add runtime TOML parsers, a second root validator, security registry, policy
 engine or adapter-specific allowlist.
 
-### Target TOML and matching contract
+### TOML and matching contract
 
-The following fields are binding BL-106 target syntax. They are not supported
-configuration today. Add them to the existing typed model under
+The typed bootstrap model supports the following fields under
 `[policy.<name>]` and `[files.roots.<id>]` only:
 
 ```toml
@@ -260,7 +259,7 @@ inherited extensionless setting.
 A validated empty list always denies all suffixed files; it never means
 unrestricted access. Missing configuration adds no file-type restriction
 and does not require existing configurations to opt back into file access.
-These are target semantics, not implemented configuration support. Validate
+Resolve these semantics once into each immutable effective root policy. Validate
 even unused policy definitions. Unknown fields/references, wrong types,
 duplicate keys or entries, malformed tokens and unsupported policy forms
 fail startup without partial activation or fallback. Unrestricted matching
@@ -344,8 +343,8 @@ Before eventual BL-106 closure, satisfy its full backlog acceptance and this
 binding, reconcile configuration/template, migration, ADR/security/tool/test
 documentation and Unreleased notes, and explicitly disposition VERSION,
 tests/CI, candidate artifacts, release/distribution and security impact.
-Require independent terminal review. This planning correction leaves BL-106
-Planned and activates nothing. After full implementation acceptance, BL-106
+Require independent terminal review and verified integration. After full
+implementation acceptance, BL-106
 stays closed: later consumers extend their own acceptance and native/contract
 tests for each applicable source, destination, backend, result, fallback and
 delegated effect. BL-045 owns MIME/representations, BL-068 and its implementing
@@ -355,6 +354,14 @@ BL-181/188 own provider
 decisions and runtime, and BL-373 owns authorized configuration management.
 These consumers reuse the effective policy without creating another owner
 authority or implicitly reopening BL-106.
+
+The native implementation checks the original basename before OS path
+normalization as well as the resolved name and object type. Relative symlink
+relocation to another parent and directory moves containing relative links
+remain denied under a restriction when their projected native target is not
+proved. Same-parent link renames and absolute links still pass normal guards.
+No productive external backend, new tool or deferred BL-106 feature is implied
+by these explicit fail-closed unsupported routes.
 
 ## BL-220 adapter acceptance binding
 
