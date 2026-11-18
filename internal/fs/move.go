@@ -11,10 +11,14 @@ import (
 func (f *LocalFileSystem) Move(source string, target string, overwrite bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
-	for _, path := range []string{source, target} {
-		if err := f.validateFileOperandSpelling(path); err != nil {
-			return err
-		}
+	if err := f.validateFileOperandSpelling(source); err != nil {
+		return err
+	}
+	// The source determines whether a missing target is a structural directory.
+	// Keep native spelling safety before resolution; apply the portable file
+	// policy below after classifying both operands.
+	if err := validateNativeOperandSpelling(target); err != nil {
+		return err
 	}
 
 	sourcePath, err := f.guard.ResolveExisting(source)
@@ -23,15 +27,6 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 			return ErrNotFound
 		}
 		return err
-	}
-
-	targetPath, err := f.guard.ResolveForCreate(target)
-	if err != nil {
-		return err
-	}
-
-	if pathsEquivalent(sourcePath.String(), targetPath.String()) {
-		return ErrSamePath
 	}
 
 	sourceOperand, err := f.inspectEffect(sourcePath.String(), true)
@@ -44,6 +39,18 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 	}
 	if sourceInfo == nil {
 		return ErrNotFound
+	}
+	if !sourceInfo.IsDir() {
+		if err := f.validateFileOperandSpelling(target); err != nil {
+			return err
+		}
+	}
+	targetPath, err := f.guard.ResolveForCreate(target)
+	if err != nil {
+		return err
+	}
+	if pathsEquivalent(sourcePath.String(), targetPath.String()) {
+		return ErrSamePath
 	}
 
 	targetOperand, err := f.inspectEffect(targetPath.String(), true)

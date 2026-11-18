@@ -258,7 +258,11 @@ func TestFileTypeProjectionAndUnsupportedBinding(t *testing.T) {
 }
 
 func TestFileTypeUnsafeSpellingsBeforeNativeLookup(t *testing.T) {
-	f := typedFilesystem(t, t.TempDir(), DefaultLimits())
+	root := t.TempDir()
+	f := typedFilesystem(t, root, DefaultLimits())
+	// Move classifies the source before applying portable rules to its target:
+	// a directory target is structural, while this real file target is not.
+	writeTestFile(t, filepath.Join(root, "ordinary.txt"), "retain")
 	for _, name := range []string{"nul\x00.txt", "control\n.txt", "\xff.txt", "file:stream.txt", "tail.txt.", "tail.txt "} {
 		if err := f.Write(name, nil, false); !errors.Is(err, ErrFileTypeDenied) {
 			t.Fatal(name, err)

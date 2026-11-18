@@ -30,6 +30,46 @@ func TestFileTypesNativeWindowsAmbiguousNames(t *testing.T) {
 	}
 }
 
+func TestFileTypesNativeWindowsRestrictiveDirectories(t *testing.T) {
+	for _, name := range []string{"native\x7f", "native\u0085"} {
+		t.Run(name, func(t *testing.T) {
+			root := t.TempDir()
+			f := typedFilesystem(t, root, DefaultLimits())
+			if _, err := f.Mkdir(name); err != nil {
+				t.Fatal(err)
+			}
+			if info, err := f.Stat(name); err != nil || !info.IsDir {
+				t.Fatal("native-safe structural name", info, err)
+			}
+			writeTestFile(t, filepath.Join(root, name, "allowed.txt"), "retain")
+			writeTestFile(t, filepath.Join(root, name, "denied.exe"), "retain")
+			target := "moved-" + name
+			if err := f.Move(name, target, false); !errors.Is(err, ErrFileTypeDenied) {
+				t.Fatal("descendant policy lost", err)
+			}
+			if err := f.Delete(name, true); !errors.Is(err, ErrFileTypeDenied) {
+				t.Fatal("recursive policy lost", err)
+			}
+			if b, err := os.ReadFile(filepath.Join(root, name, "allowed.txt")); err != nil || string(b) != "retain" {
+				t.Fatal("partial effect", string(b), err)
+			}
+			if err := os.Remove(filepath.Join(root, name, "denied.exe")); err != nil {
+				t.Fatal(err)
+			}
+			if err := f.Move(name, target, false); err != nil {
+				t.Fatal("prospective structural target", err)
+			}
+			if err := f.Delete(target, true); err != nil {
+				t.Fatal(err)
+			}
+			writeTestFile(t, filepath.Join(root, name), "regular")
+			if _, err := f.Stat(name); !errors.Is(err, ErrFileTypeDenied) {
+				t.Fatal("regular file gained directory exemption", err)
+			}
+		})
+	}
+}
+
 func TestFileTypesNativeWindowsUnrestrictedUnsafeMappings(t *testing.T) {
 	unrestricted, err := config.NewFileTypePolicy(nil, true)
 	if err != nil {

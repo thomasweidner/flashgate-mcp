@@ -14,6 +14,40 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
+func TestFileTypesNativeLinuxStructuralConfigurationAncestor(t *testing.T) {
+	root := t.TempDir()
+	dir := "settings:archive"
+	if err := os.Mkdir(filepath.Join(root, dir), 0700); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(root, dir, "config.txt")
+	r := loadRegistry(t, source, "[files]\ndefault_id='work'\n"+
+		rootTable(t, "work", root)+"access=['read','write']\nallowed_extensions=['.txt']\n")
+	op := func(name string) fs.Operand { return fs.Operand{RootID: "work", Path: name} }
+	before, err := os.ReadFile(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info, err := r.Stat(op(dir)); err != nil || !info.IsDir {
+		t.Fatal("content-independent ancestor metadata", info, err)
+	}
+	for _, effect := range []func() error{
+		func() error { return r.Move(op(dir), op("renamed:settings"), false) },
+		func() error { return r.Delete(op(dir), true) },
+		func() error { _, err := r.Read(op(filepath.Join(dir, "config.txt")), 65536); return err },
+	} {
+		if err := effect(); !errors.Is(err, security.ErrConfigurationAccess) {
+			t.Fatal("directory exemption bypassed configuration protection", err)
+		}
+	}
+	if after, err := os.ReadFile(source); err != nil || string(after) != string(before) {
+		t.Fatal("configuration changed", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "renamed:settings")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("denial created projected target", err)
+	}
+}
+
 func TestFileTypesNativeLinuxUnrestrictedCompatibility(t *testing.T) {
 	for _, mode := range []struct{ name, fields string }{
 		{"absent", ""},

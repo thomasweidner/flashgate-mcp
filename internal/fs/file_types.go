@@ -15,12 +15,40 @@ func (f *LocalFileSystem) checksIdentity() bool {
 }
 
 func (f *LocalFileSystem) validateFileOperandSpelling(raw string) error {
+	name := fileOperandBasename(raw)
+	if name == "" {
+		return nil
+	}
+	if err := validateNativeOperandSpelling(raw); err != nil {
+		return err
+	}
+	if !f.fileTypes.Restricted() || config.ValidFileBasename(name) {
+		return nil
+	}
+	// Portable file-name rules do not classify structural directories. Prove
+	// that exemption through PathGuard and metadata, without opening contents.
+	// The operation still performs its normal protection and identity checks.
+	safe, err := f.guard.ResolveExisting(raw)
+	if err == nil {
+		operand, err := f.inspectPath(safe.String())
+		if err == nil && operand.info != nil && operand.info.IsDir() {
+			return nil
+		}
+	}
+	return ErrFileTypeDenied
+}
+
+func fileOperandBasename(raw string) string {
 	name := filepath.Base(raw)
 	// Leave empty/navigation/root handling to the existing PathGuard contract.
 	if strings.TrimSpace(raw) == "" || name == "." || name == ".." || filepath.IsAbs(raw) || filepath.VolumeName(raw) != "" {
-		return nil
+		return ""
 	}
-	if f.fileTypes.Restricted() && !config.ValidFileBasename(name) || ambiguousNativeFileName(name) {
+	return name
+}
+
+func validateNativeOperandSpelling(raw string) error {
+	if name := fileOperandBasename(raw); name != "" && ambiguousNativeFileName(name) {
 		return ErrFileTypeDenied
 	}
 	return nil
