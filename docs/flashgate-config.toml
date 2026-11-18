@@ -21,6 +21,11 @@ path = ""
 # Missing access at both levels defaults to ["read"]. Use [] to deny all.
 # Set access = ["read", "write"] here or reference the example policy below.
 # policy = "workspace"
+# Optional file restrictions; omitted fields add no extension restriction.
+# allowed_extensions = [".txt", ".md", ".tar.gz"]
+# allow_extensionless = false
+# [] denies suffixed files. "unrestricted" removes an inherited suffix limit.
+# Override allow_extensionless separately to replace an inherited boolean.
 # [policy.workspace]
 # access = ["read", "write"]
 # max_file_size = "1 MiB"

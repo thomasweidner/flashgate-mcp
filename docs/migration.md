@@ -5,6 +5,36 @@ FlashGate builds. Follow the current [tool reference](tools.md),
 [protocol reference](protocol.md), and [changelog](../CHANGELOG.md) when
 updating an integration. Internal task renumbering is not a product migration.
 
+## File-type restrictions
+
+Existing configurations without `allowed_extensions` or `allow_extensionless`
+retain unrestricted extension matching. There is no mandatory configuration
+rewrite or automatic migration. Opt into a restriction at a named policy or
+root using the [file-type fields](configuration.md#file-types). Older binaries
+reject these new fields; remove them only as an explicit rollback decision,
+since doing so removes their restriction.
+
+Absent or unrestricted extensions with extensionless names allowed preserve
+previously addressable native Linux basenames, including literal colons,
+backslashes and trailing dots/spaces. Portable basename rules apply when an
+effective file-type restriction is present. Existing PathGuard and configuration
+protection still apply; unrestricted matching never permits ambiguous Windows
+device/ADS mappings or unsupported native objects.
+
+Do not use `[]` to mean unrestricted: it denies all suffixed names. A separate
+true extensionless boolean permits only extensionless names with that empty
+list. To remove an inherited restriction for all names, set the extension
+field to `"unrestricted"` and the extensionless field to true. An inherited
+boolean is not implicitly reset by changing the extension field.
+
+All current tools preserve their names, schemas and result envelopes. A denied
+file operand returns `access_denied`, including metadata queries; it is not
+reported as missing. Listings omit denied file entries but charge their scan
+cost. Directory operations stay structural. Unsafe native mappings, Windows
+streams, special objects and unproved restricted link projections are denied;
+do not rely on suffix normalization or an allowed alias to reach a denied target. File-type permission
+never overrides selected-configuration protection or other security checks.
+
 ## Resource size settings
 
 Replace `files.max_write_bytes` with `files.max_write_size` and remove

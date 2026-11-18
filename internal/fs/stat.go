@@ -9,6 +9,9 @@ import (
 func (f *LocalFileSystem) Stat(path string) (Metadata, error) {
 	f.effects.Lock()
 	defer f.effects.Unlock()
+	if err := f.validateFileOperandSpelling(path); err != nil {
+		return Metadata{}, err
+	}
 
 	safePath, err := f.guard.ResolveExisting(path)
 	if err != nil {
@@ -23,8 +26,14 @@ func (f *LocalFileSystem) Stat(path string) (Metadata, error) {
 		return Metadata{}, err
 	}
 	info := operand.info
+	if err := f.checkOperandName(path, operand, false); err != nil {
+		return Metadata{}, err
+	}
 	if info == nil {
 		return Metadata{}, ErrNotFound
+	}
+	if err := f.checkFileType(operand, false); err != nil {
+		return Metadata{}, err
 	}
 	if err := f.recheckPath(operand); err != nil {
 		return Metadata{}, err

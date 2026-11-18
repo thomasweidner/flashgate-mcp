@@ -83,14 +83,16 @@ type RootID string
 
 // RootDefinition is a value snapshot of a configured root.
 type RootDefinition struct {
-	ID     RootID
-	Path   string
-	Access RootAccess
-	Limits resource.Limits
+	ID        RootID
+	Path      string
+	Access    RootAccess
+	Limits    resource.Limits
+	FileTypes FileTypePolicy
 }
 
 type rootFields struct {
 	resourceFields
+	fileTypeFields
 	Path   string       `toml:"path"`
 	Policy *policyID    `toml:"policy"`
 	Access accessFields `toml:"access"`

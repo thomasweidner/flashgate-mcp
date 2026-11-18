@@ -104,6 +104,14 @@ the intended release date. Publication evidence is separate.
 
 ### Added
 
+- Configure immutable per-root file-type restrictions with `allowed_extensions`
+  and `allow_extensionless`, inherited independently from named policies.
+  Missing settings preserve unrestricted extension matching; empty lists and
+  explicit unrestricted overrides retain distinct semantics. All eight
+  filesystem tools enforce the same policy below MCP, including native aliases,
+  overwrite operands and bounded recursive preflights. Denied metadata is not
+  reported as missing. No tool schemas, VERSION or release assets change.
+
 - Respond to MCP `ping` on the `2025-11-25` STDIO path with an empty result
   and the original request ID under both tool profiles.
 

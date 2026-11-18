@@ -126,6 +126,12 @@ specific residual is accepted. Helpers and adapters started by FlashGate
 remain within its responsibility. Later owners prove their own enforcement
 against the same [security contract](../security.md#configuration-trust-and-protection).
 
+BL-106 extends this same bootstrap model with per-policy/root extension and
+extensionless fields. Effective values are immutable before filesystem
+exposure; there is no global file-type section, second configuration source
+or runtime reparse. Explicit unrestricted matching supplies no authorization
+and does not waive selected-source protection.
+
 The planned configuration domains extend Runtime, Endpoints, Protocol, Files,
 Profiles, Capabilities, Authorization, Search, Operations,
 Results, Resources, Processes, Commands, System, Platform, Services, Scheduling,

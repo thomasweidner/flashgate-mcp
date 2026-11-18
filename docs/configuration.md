@@ -44,7 +44,7 @@ applies the fields supported by its resource type. Its explicit values override
 the referenced fields individually. Lists replace the whole value. References
 between policies are unsupported.
 
-Filesystem roots support the five [resource limits](#resource-limits) and
+Filesystem roots support [file-type restrictions](#file-types), the five [resource limits](#resource-limits) and
 `access`, a list of unique `"read"` and
 `"write"` rights. Omit the field at both levels for read-only access. Specify
 `[]` to deny both rights, including when overriding a named policy. Unknown
@@ -77,6 +77,72 @@ overlapping paths and grant different access to them. The
 Writing requires a root grant and the applicable profile grants and risk
 ceiling. Existing write deployments can follow the
 [root access migration](migration.md#root-access).
+
+## File types
+
+Set `allowed_extensions` and `allow_extensionless` only in a named policy or
+a root table. They are additional restrictions, independent of root access,
+profile grants, PathGuard, configuration protection and resource limits.
+With both fields absent at both levels, existing configurations have no
+additional extension restriction, including for extensionless files.
+
+```toml
+[policy.documents]
+allowed_extensions = [".txt", ".md", ".tar.gz"]
+allow_extensionless = false
+
+[files.roots.work]
+path = "/srv/flashgate/work"
+policy = "documents"
+
+[files.roots.other]
+path = "/srv/flashgate/other"
+policy = "documents"
+allowed_extensions = "unrestricted"
+allow_extensionless = true
+```
+
+Each absent root field independently inherits its policy field. A root list
+replaces the entire inherited list, including `[]`. The exact scalar
+`"unrestricted"` removes the suffix restriction; it does not erase an inherited
+extensionless boolean. Resolve both fields before applying these defaults:
+
+| Effective extension setting | Extensionless boolean absent at both levels | Effect of an explicit/inherited boolean |
+|---|---|---|
+| Absent or `"unrestricted"` | True | False denies extensionless names only |
+| Any list, including `[]` | False | True also permits extensionless names |
+
+An empty list denies every suffixed name. `[]` with true permits only
+extensionless names. No wildcard or other scalar string is supported.
+Unused policies are validated too; malformed/duplicate tokens, wrong types,
+unknown fields or references and duplicate definitions reject startup before
+exposure. The effective policy is immutable and startup does not rewrite TOML.
+
+Tokens start with a dot and contain nonempty dot-separated ASCII segments
+matching `[a-z0-9][a-z0-9_-]*`. Require lowercase tokens; filenames use ASCII-only
+case folding. `.txt` permits `A.TXT`, not `a.txt.exe`. `.tar.gz` permits
+`a.tar.gz`, not `a.gz`; `.gz` also permits `a.tar.gz`. `.env` is extensionless,
+while `.env.txt` is suffixed. No MIME token, wildcard, separator, whitespace,
+control character or Unicode lookalike is repaired into an allowed token.
+With an effective restriction, portable basename checks reject trailing
+dots/spaces, stream syntax and other ambiguous spellings rather than repairing
+them into a match. With absent or `"unrestricted"` extensions and extensionless
+names allowed, BL-106 adds no portable name restriction. Existing controls can
+still address native Linux names such as `colon:token.txt`, `tail.txt.`,
+`tail.txt ` and `back\slash.txt`. A colon in a Linux basename is not a Windows
+alternate data stream. Native Windows device, ADS and trailing-dot/space
+mappings remain denied independently in every mode. File effects always
+require a provable regular-file type; a suffix never classifies contents or
+grants access to a device or special object. Structural directory operations
+do not require a filename suffix.
+
+Both the supplied name and resolved native name are checked, including allowed
+links and Windows short-name aliases. Under a restriction, moving a relative
+link to another parent or moving a directory containing relative links is
+denied when its projected target cannot be established. Same-parent link
+renames and absolute links still require every other check. File effects,
+overwrites and bounded recursive preflights use the same policy below MCP;
+see [tool semantics](tools.md#file-type-enforcement).
 
 ## Resource limits
 
@@ -225,6 +291,8 @@ remain milliseconds.
 | `files.roots.<id>.policy` | Optional policy name | Reference one named policy. |
 | `files.roots.<id>.access` | Optional rights array | Replace the referenced access list. Missing access at both levels defaults to `["read"]`. |
 | `policy.<name>.access` | Optional rights array | Supply shared filesystem rights for roots that reference the policy. |
+| `policy.<name>.allowed_extensions`, `files.roots.<id>.allowed_extensions` | Optional extension array or exact `"unrestricted"` | Independent per-field inheritance; absent is unrestricted, `[]` denies suffixed names. |
+| `policy.<name>.allow_extensionless`, `files.roots.<id>.allow_extensionless` | Optional boolean | Inherit independently; default true with absent/unrestricted extensions, false with a list. |
 | `profiles.active` | String, `"read"` | Select a built-in or validated custom base profile. |
 | `profiles.include` | Array of strings, empty | Explicit composition with additional distinct grant sets. Requires explicit `active`. |
 | `profiles.max_risk` | String, `"mutation"` | Operation risk ceiling. Accepts `"read"`, `"mutation"`, or explicit `"high"`. |

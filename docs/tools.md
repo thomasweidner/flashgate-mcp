@@ -40,6 +40,32 @@ Copy and move require matching root IDs. An insufficient root grant yields
 `access_denied` before any filesystem operation. Tool exposure still follows
 the active profile.
 
+## File-type enforcement
+
+The [effective root file-type policy](configuration.md#file-types) is enforced
+by the filesystem core, including direct domain calls. `list_directory` omits
+denied file entries while still charging scan bytes and entry limits.
+`read_file` denies before opening contents. `get_path_info` returns
+`access_denied` for a denied file rather than `exists:false`. Authorized
+content-independent configuration metadata remains available only when the
+file-type and other applicable policies permit it.
+
+Writes and file copies check prospective names and existing overwrite objects;
+copy also checks the source before producing output. Move/rename checks both
+names and objects and inspects projected descendant names for directory moves.
+Recursive deletion preflights the complete bounded tree before any effect.
+An already detectable denial leaves the tree and destination unchanged.
+`create_directory` retains its structural behavior, including directory names
+that resemble a denied file suffix. Directory copy and cross-root copy/move
+remain unsupported. No public tools or schemas are added.
+
+Native identity and alias checks are reapplied at the existing effect boundary.
+An allowed link name cannot hide a denied resolved name; unavailable
+classification or enforcement denies the route. Relative-link relocation
+with an unproved future target is denied under a file-type restriction.
+These rules do not inspect MIME or contents, hydrate placeholders or override
+PathGuard, configuration protection, grants, root access, risk or limits.
+
 ## Successful MCP result envelope
 
 Every successful `tools/call` uses an MCP `CallToolResult`. A small metadata

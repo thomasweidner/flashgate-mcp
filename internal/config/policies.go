@@ -13,6 +13,7 @@ type policyID string
 // resolves the fields it supports before publishing its effective settings.
 type policyFields struct {
 	resourceFields
+	fileTypeFields
 	Access accessFields `toml:"access"`
 }
 
@@ -67,6 +68,9 @@ func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
 		policies[id] = access
+		if _, err := policy.fileTypeFields.resolveFileTypes(fileTypeFields{}); err != nil {
+			return nil, NewError(CategoryInvalidConfig, err)
+		}
 		if _, err := policy.resourceFields.resolve(s.Files.limits(), s.Files.limits()); err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
@@ -89,7 +93,15 @@ func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
 		if err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
-		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access, Limits: limits})
+		var inherited fileTypeFields
+		if root.Policy != nil {
+			inherited = s.Policy[*root.Policy].fileTypeFields
+		}
+		types, err := root.fileTypeFields.resolveFileTypes(inherited)
+		if err != nil {
+			return nil, NewError(CategoryInvalidConfig, err)
+		}
+		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access, Limits: limits, FileTypes: types})
 	}
 	slices.SortFunc(roots, func(a, b RootDefinition) int {
 		return strings.Compare(string(a.ID), string(b.ID))

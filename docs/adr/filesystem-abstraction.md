@@ -60,6 +60,15 @@ confinement and selected-source protection remain independent.
 
 ## Current implementation
 
+BL-106 binds the immutable root file-type policy below MCP through this same
+interface. Bootstrap resolves its typed fields once; the native filesystem
+checks lexical and resolved file names, source/target and recursive effects.
+Missing fields preserve unrestricted extension matching; explicit lists and
+extensionless overrides retain independent inheritance. Names do not classify
+contents or bypass authorization. Unknown object types and unproved link
+projections deny safely. See [configuration](../configuration.md#file-types)
+and [tool semantics](../tools.md#file-type-enforcement).
+
 BL-105 extends the same root snapshots with typed resource limits, using
 `internal/resource` for exact size conversion and operation budgets. Native
 content and scan limits live below MCP; serialized result admission belongs

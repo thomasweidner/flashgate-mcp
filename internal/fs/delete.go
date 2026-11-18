@@ -4,6 +4,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"slices"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
@@ -13,6 +14,9 @@ import (
 func (f *LocalFileSystem) Delete(path string, recursive bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
+	if err := f.validateFileOperandSpelling(path); err != nil {
+		return err
+	}
 
 	safePath, err := f.guard.ResolveExisting(path)
 	if err != nil {
@@ -24,13 +28,16 @@ func (f *LocalFileSystem) Delete(path string, recursive bool, admission ...func(
 		return err
 	}
 	info := operand.info
+	if err := f.checkOperandName(path, operand, false); err != nil {
+		return err
+	}
 	if info == nil {
 		return ErrNotFound
 	}
 
 	if info.IsDir() {
 		if recursive {
-			if f.protection != nil {
+			if f.checksIdentity() {
 				return f.deleteProtectedTree(operand, admission)
 			}
 			if err := f.ensureRecursiveDeleteWithinLimit(safePath.String()); err != nil {
@@ -78,7 +85,7 @@ type treeEffect struct {
 // inspectTree checks all entries before changing any of them. WalkDir does
 // not descend into symbolic links. A link whose resolved target is protected
 // is rejected even though removing the link would leave its target intact.
-func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool) ([]treeEffect, error) {
+func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool, projected ...string) ([]treeEffect, error) {
 	var entries []treeEffect
 	// A move's inspection is bounded by scanned name bytes, not by the
 	// deletion-specific entry ceiling. Every visited entry has a nonempty name.
@@ -105,6 +112,30 @@ func (f *LocalFileSystem) inspectTree(root effectPath, deleting bool) ([]treeEff
 		}
 		if operand.info == nil && !symlink {
 			return security.ErrConfigurationAccess
+		}
+		if f.fileTypes.Restricted() && symlink {
+			if operand.info == nil {
+				return ErrFileTypeDenied
+			}
+			if len(projected) != 0 {
+				link, err := os.Readlink(path)
+				if err != nil || !filepath.IsAbs(link) {
+					return ErrFileTypeDenied
+				}
+			}
+		}
+		if len(projected) != 0 && operand.info != nil && !operand.info.IsDir() {
+			relative, err := filepath.Rel(root.path, path)
+			if err != nil {
+				return ErrFileTypeDenied
+			}
+			projectedPath := effectPath{path: filepath.Join(projected[0], relative), info: operand.info}
+			if symlink {
+				projectedPath.effective = operand.effective
+			}
+			if err := f.checkFileType(projectedPath, true); err != nil {
+				return err
+			}
 		}
 		if deleting {
 			entries = append(entries, treeEffect{effectPath: operand, link: link})

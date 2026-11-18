@@ -11,6 +11,15 @@ import (
 func (f *LocalFileSystem) Move(source string, target string, overwrite bool, admission ...func() error) error {
 	f.effects.Lock()
 	defer f.effects.Unlock()
+	if err := f.validateFileOperandSpelling(source); err != nil {
+		return err
+	}
+	// The source determines whether a missing target is a structural directory.
+	// Keep native spelling safety before resolution; apply the portable file
+	// policy below after classifying both operands.
+	if err := validateNativeOperandSpelling(target); err != nil {
+		return err
+	}
 
 	sourcePath, err := f.guard.ResolveExisting(source)
 	if err != nil {
@@ -20,22 +29,28 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 		return err
 	}
 
-	targetPath, err := f.guard.ResolveForCreate(target)
-	if err != nil {
-		return err
-	}
-
-	if pathsEquivalent(sourcePath.String(), targetPath.String()) {
-		return ErrSamePath
-	}
-
 	sourceOperand, err := f.inspectEffect(sourcePath.String(), true)
 	if err != nil {
 		return err
 	}
 	sourceInfo := sourceOperand.info
+	if err := f.checkOperandName(source, sourceOperand, false); err != nil {
+		return err
+	}
 	if sourceInfo == nil {
 		return ErrNotFound
+	}
+	if !sourceInfo.IsDir() {
+		if err := f.validateFileOperandSpelling(target); err != nil {
+			return err
+		}
+	}
+	targetPath, err := f.guard.ResolveForCreate(target)
+	if err != nil {
+		return err
+	}
+	if pathsEquivalent(sourcePath.String(), targetPath.String()) {
+		return ErrSamePath
 	}
 
 	targetOperand, err := f.inspectEffect(targetPath.String(), true)
@@ -43,6 +58,17 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 		return err
 	}
 	targetInfo := targetOperand.info
+	if err := f.checkOperandName(target, targetOperand, !sourceInfo.IsDir()); err != nil {
+		return err
+	}
+	if !sourceInfo.IsDir() {
+		if err := f.checkFileType(targetOperand, true); err != nil {
+			return err
+		}
+	}
+	if err := f.checkLinkProjection(sourceOperand, targetOperand); err != nil {
+		return err
+	}
 	targetExists := targetInfo != nil
 	if targetExists && os.SameFile(sourceInfo, targetInfo) {
 		return ErrSamePath
@@ -85,7 +111,7 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 		return err
 	}
 	if sourceInfo.IsDir() {
-		if _, err := f.inspectTree(sourceOperand, false); err != nil {
+		if _, err := f.inspectTree(sourceOperand, false, targetOperand.path); err != nil {
 			return err
 		}
 	}

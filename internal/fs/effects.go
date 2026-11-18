@@ -24,7 +24,7 @@ func (f *LocalFileSystem) inspectPath(path string) (effectPath, error) {
 		return effectPath{}, err
 	}
 	operand.info = info
-	if f.protection == nil {
+	if !f.checksIdentity() {
 		return operand, nil
 	}
 	operand.parent, err = effectInfo(filepath.Dir(path))
@@ -40,20 +40,26 @@ func (f *LocalFileSystem) inspectPath(path string) (effectPath, error) {
 
 func (f *LocalFileSystem) inspectEffect(path string, mutation bool) (effectPath, error) {
 	operand, err := f.inspectPath(path)
-	if err != nil || f.protection == nil {
+	if err != nil {
 		return operand, err
 	}
 	return operand, f.checkEffect(operand, mutation)
 }
 
 func (f *LocalFileSystem) checkEffect(operand effectPath, mutation bool) error {
+	if f.protection == nil {
+		return f.checkFileType(operand, false)
+	}
 	if err := f.protection.Check(operand.effective, operand.info, operand.parent, mutation); err != nil {
 		return err
 	}
 	if pathsEquivalent(operand.effective, operand.path) {
-		return nil
+		return f.checkFileType(operand, false)
 	}
-	return f.protection.Check(operand.path, operand.info, operand.parent, mutation)
+	if err := f.protection.Check(operand.path, operand.info, operand.parent, mutation); err != nil {
+		return err
+	}
+	return f.checkFileType(operand, false)
 }
 
 func effectInfo(path string) (os.FileInfo, error) {
@@ -74,11 +80,13 @@ func sameEffectInfo(left, right os.FileInfo) bool {
 // recheckPath rejects observable changes to the authorized root, resolution,
 // parent or object. Metadata operations may inspect the protected resource.
 func (f *LocalFileSystem) recheckPath(expected effectPath) error {
-	if f.protection == nil {
+	if !f.checksIdentity() {
 		return nil
 	}
-	if err := f.protection.ValidateRoot(); err != nil {
-		return err
+	if f.protection != nil {
+		if err := f.protection.ValidateRoot(); err != nil {
+			return err
+		}
 	}
 	relative, err := filepath.Rel(f.guard.Root(), expected.path)
 	if err != nil {
@@ -96,7 +104,7 @@ func (f *LocalFileSystem) recheckPath(expected effectPath) error {
 }
 
 func (f *LocalFileSystem) recheckEffect(expected effectPath, mutation bool) error {
-	if f.protection == nil {
+	if !f.checksIdentity() {
 		return nil
 	}
 	if err := f.recheckPath(expected); err != nil {
@@ -106,7 +114,7 @@ func (f *LocalFileSystem) recheckEffect(expected effectPath, mutation bool) erro
 }
 
 func (f *LocalFileSystem) checkOpened(file *os.File, expected effectPath, mutation bool) error {
-	if f.protection == nil {
+	if !f.checksIdentity() {
 		return nil
 	}
 	info, err := file.Stat()
@@ -118,7 +126,7 @@ func (f *LocalFileSystem) checkOpened(file *os.File, expected effectPath, mutati
 
 // checkDestination also covers newly created destinations before content is written.
 func (f *LocalFileSystem) checkDestination(file *os.File, target effectPath) error {
-	if f.protection == nil {
+	if !f.checksIdentity() {
 		return nil
 	}
 	if target.info == nil {
@@ -132,6 +140,9 @@ func (f *LocalFileSystem) checkDestination(file *os.File, target effectPath) err
 }
 
 func (f *LocalFileSystem) openDestination(target effectPath, mode os.FileMode, beforeEffect func() error) (*os.File, error) {
+	if err := f.checkFileType(target, true); err != nil {
+		return nil, err
+	}
 	if f.protection != nil && target.parent == nil {
 		return nil, ErrNotFound
 	}
