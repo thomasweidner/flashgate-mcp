@@ -184,6 +184,178 @@ parity and missing-enforcement negatives. Run the applicable native Windows and
 Linux, race, coverage, conformance, documentation and source-hygiene gates in
 the testing guide before independent terminal review.
 
+## BL-106 per-root file-type policy
+
+BL-106 is the planned shared filesystem policy foundation in SPR-053, not
+an implemented filter or a MIME classifier. BACKLOG.md remains its sole task
+and acceptance authority. The [filesystem ADR](../adr/filesystem-abstraction.md),
+[capability ADR](../adr/capability-profiles.md),
+[runtime configuration ADR](../adr/runtime-modes.md#configuration-contract),
+[execution-identity ADR](../adr/execution-identity.md) and
+[configuration protection contract](../security.md#configuration-trust-and-protection)
+govern its boundary. Its hard prerequisites are completed BL-100–BL-104,
+BL-233 and BL-374. BL-105 is not a hard prerequisite; its existing resource
+controls remain applicable. Later domain, transport, Native Tool and provider
+owners are consumers, not prerequisites or unfinished BL-106 deliverables.
+
+Extend `internal/config`, BL-104 named-policy inheritance and per-field root
+overrides, `internal/roots` immutable snapshots, `internal/fs`, PathGuard and
+the shared configuration protection/effect coordination. Resolve and validate
+once before exposure; pass an immutable effective policy below MCP. Do not
+add runtime TOML parsers, a second root validator, security registry, policy
+engine or adapter-specific allowlist.
+
+### Target TOML and matching contract
+
+The following fields are binding BL-106 target syntax. They are not supported
+configuration today. Add them to the existing typed model under
+`[policy.<name>]` and `[files.roots.<id>]` only:
+
+```toml
+[policy.documents]
+allowed_extensions = [".txt", ".md", ".tar.gz"]
+allow_extensionless = false
+
+[files.roots.work]
+path = "/srv/flashgate/work"
+policy = "documents"
+allowed_extensions = [".txt", ".md"]
+
+[files.roots.unrestricted]
+path = "/srv/flashgate/unrestricted"
+policy = "documents"
+allowed_extensions = "unrestricted"
+allow_extensionless = true
+```
+
+An absent root field inherits that field from its referenced policy. An
+explicit root list replaces the entire inherited list, including `[]`.
+The exact scalar `allowed_extensions = "unrestricted"` explicitly removes
+an inherited restriction on suffixed names; no other scalar string is valid.
+An explicit boolean replaces the inherited boolean independently. Resolve
+both fields before applying defaults; omission at the root is inheritance,
+not a reset. If `allowed_extensions` is absent at both levels, there is no
+additional extension restriction. Preserve this distinction in the typed
+model: absence and an explicit empty list must never collapse to one value.
+
+If `allow_extensionless` is absent at both levels, its effective default is
+true for absent or explicit unrestricted extensions, and false for an
+explicit extension list, including `[]`. An explicit or inherited boolean
+always takes precedence over this mode-dependent default. Thus a root that
+removes a restrictive policy for all names sets both fields as in the
+`unrestricted` example above; the scalar alone does not erase an inherited
+`allow_extensionless = false`. A root can likewise replace an unrestricted
+extension mode with a list while independently retaining or overriding the
+inherited extensionless setting.
+
+| Effective extension setting | Effective extensionless setting | Additional name restriction |
+|---|---|---|
+| Absent or `"unrestricted"` | No explicit/inherited boolean: true | None, including extensionless files |
+| Absent or `"unrestricted"` | Explicit/inherited false | Suffixed names only |
+| `[]` | No explicit/inherited boolean, or false | No regular-file names admitted |
+| `[]` | Explicit/inherited true | Extensionless names only |
+| `[".txt"]` | No explicit/inherited boolean, or false | Matching `.txt` names only |
+| `[".txt"]` | Explicit/inherited true | Matching `.txt` and extensionless names |
+
+A validated empty list always denies all suffixed files; it never means
+unrestricted access. Missing configuration adds no file-type restriction
+and does not require existing configurations to opt back into file access.
+These are target semantics, not implemented configuration support. Validate
+even unused policy definitions. Unknown fields/references, wrong types,
+duplicate keys or entries, malformed tokens and unsupported policy forms
+fail startup without partial activation or fallback. Unrestricted matching
+removes only this name restriction; all other security controls still apply.
+
+Each extension token starts with a literal dot followed by one or more
+nonempty dot-separated ASCII segments matching `[a-z0-9][a-z0-9_-]*`.
+Require lowercase canonical tokens and reject whitespace, empty segments,
+wildcards, MIME names, path/stream separators, control characters and
+non-ASCII lookalikes. Extension lists contain no wildcard or allow-all token;
+the distinct scalar `"unrestricted"` is the explicit unrestricted mode.
+For a restricted list, match only complete terminal suffixes of a regular
+file's final basename using ASCII
+case folding, independent of OS locale and filesystem case behavior. An
+allowed `.gz` also matches `a.tar.gz`; `.tar.gz` alone admits `a.tar.gz`,
+not `a.gz`. `.txt` admits `A.TXT`, not `a.txt.exe`. Never trim trailing dots
+or spaces, decode escapes, normalize lookalikes or remove a final suffix
+to obtain a match. Deny ambiguous native name mappings that cannot preserve
+this interpretation. A name with no dot after its first character, including
+`.env`, is extensionless and requires `allow_extensionless = true`;
+`.env.txt` is suffixed. A trailing dot or empty final segment is not an
+extensionless escape. An extension requires a nonempty basename before its
+leading dot.
+
+Keep name matching, content/MIME classification and native object type
+separate. An allowed suffix neither proves contents nor turns a directory,
+link, stream or special object into a regular file. Directory traversal and
+creation use their existing structural contract, not a suffix exemption
+for descendant files. Resolve permitted links through PathGuard; check the
+applicable operand name and resolved regular-file name without allowing a
+renamed link to launder a denied target type. Unsupported or unprovable
+object/name classification denies the affected operation without content
+sniffing, hydration or weaker backend fallback. Denials use the existing
+redacted domain/MCP error mapping consistently across backends.
+
+### Retrofit, invariants and acceptance
+
+Retrofit all eight existing operations: `List`, `Read`, `Stat`, `Write`,
+`Mkdir`, `Delete`, `Move` (including rename) and `Copy`. Bind each exact root
+operand to its effective policy before backend dispatch and recheck at the
+actual open/effect/result boundary as required by identity protection.
+Listing omits denied file entries; stat and reads deny disallowed file
+operands. Preserve permitted content-independent configuration metadata only
+when all applicable policies allow it. Check prospective file names before
+creation and source and destination names before copy, rename, move or
+overwrite, including the existing destination object. For directory effects,
+boundedly inspect every affected descendant file and projected destination;
+deny a recursive mutation before effects if any required check fails. Include
+parent creation, indirect effects, staging and cleanup where applicable.
+Do not add directory copy, cross-root movement or another public operation.
+
+Overlapping roots retain their exact selected ID and own effective policy;
+do not borrow another root's permissions or retry under a more permissive
+ID. Preserve shared alias/object checks and effect coordination, including
+the selected runtime configuration path, loaded/current objects and protected
+parents. An allowed extension, MIME claim or available backend grants no
+authority and never overrides PathGuard, configuration protection,
+capabilities, root access, principal restrictions or resource limits.
+BL-107 retains native link/reparse semantics. No new protection guarantee
+supersedes the documented independent-OS final-window residual; detectable
+drift and FlashGate-started or delegated effects remain hard denials.
+
+Acceptance requires native Windows and Linux positive, negative, boundary,
+alias, deterministic race and unsupported cases through all eight operations.
+Cover inheritance and replacement, absent/empty/invalid/duplicate/unsupported
+policies, unrestricted overrides and independent boolean inheritance. Prove
+absent configuration preserves access subject to existing controls, `[]`
+denies suffixed names, and the table's extensionless cases remain distinct.
+Cover immutable snapshots, case and compound suffixes, extensionless and
+hidden names, deceptive/trailing/stream suffixes, non-regular objects, both
+operands and overwrite, recursive pre-effect denial, overlapping roots and
+protected aliases with otherwise complete grants. Prove no content open or
+effect before denial and successful allowed siblings. Contract tests must
+prove identical decisions and redacted failures across supported backends,
+and denial when required classification or enforcement is unavailable.
+Reuse existing MCP, BL-220 adapter, security, BL-105 resource, BL-205/214/215
+wire/catalog, conformance, coverage, race and CI gates from the
+[testing guide](../testing.md); do not introduce parallel gates.
+
+Before eventual BL-106 closure, satisfy its full backlog acceptance and this
+binding, reconcile configuration/template, migration, ADR/security/tool/test
+documentation and Unreleased notes, and explicitly disposition VERSION,
+tests/CI, candidate artifacts, release/distribution and security impact.
+Require independent terminal review. This planning correction leaves BL-106
+Planned and activates nothing. After full implementation acceptance, BL-106
+stays closed: later consumers extend their own acceptance and native/contract
+tests for each applicable source, destination, backend, result, fallback and
+delegated effect. BL-045 owns MIME/representations, BL-068 and its implementing
+search BLs own search, BL-107 owns symlink/reparse behavior, BL-345, BL-347,
+BL-348, BL-354, BL-359 and BL-360 own their platform and adapter semantics,
+BL-181/188 own provider
+decisions and runtime, and BL-373 owns authorized configuration management.
+These consumers reuse the effective policy without creating another owner
+authority or implicitly reopening BL-106.
+
 ## BL-220 adapter acceptance binding
 
 Every new or changed consumer inherits the [BL-105 resource contract](#bl-105-resource-limits).
