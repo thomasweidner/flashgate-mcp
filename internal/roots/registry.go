@@ -31,10 +31,10 @@ func New(cfg config.Config) (*Registry, error) {
 	policy := security.Policy{
 		AllowHiddenFiles: cfg.Security().AllowHiddenFiles(),
 		AllowUNCPaths:    cfg.Security().AllowUNCPaths(),
-		FollowSymlinks:   cfg.Security().FollowSymlinks(),
 	}
 	guards := make([]*security.PathGuard, 0, len(definitions))
 	for _, def := range definitions {
+		policy.FollowSymlinks = def.FollowSymlinks
 		guard, err := security.NewPathGuardWithPolicy(def.Path, policy)
 		if err != nil {
 			return nil, err

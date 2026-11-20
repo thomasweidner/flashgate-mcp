@@ -9,6 +9,14 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/wiretrace"
 )
 
+// encoding/json coerces invalid UTF-8 to U+FFFD. Its spelling changed from
+// an escape to literal UTF-8 with the Go 1.27 implementation. Bind the exact
+// spelling once to the encoder used below, including supported older builds.
+var invalidUTF8JSON = func() string {
+	encoded, _ := json.Marshal("\xff") // A string always marshals successfully.
+	return string(encoded[1 : len(encoded)-1])
+}()
+
 // resultObject is a standalone filesystem object. The encoder admits only the
 // concrete shapes whose wire sizes it can bound before calling encoding/json.
 type resultObject interface{ resultObject() }
@@ -106,7 +114,7 @@ func consumeResultString(remaining *int, value string) bool {
 		char, width := utf8.DecodeRuneInString(value)
 		switch {
 		case char == utf8.RuneError && width == 1:
-			*remaining -= 5
+			*remaining -= len(invalidUTF8JSON) - 1
 		case char == '\\' || char == '"' || char == '\b' || char == '\f' ||
 			char == '\n' || char == '\r' || char == '\t':
 			*remaining--

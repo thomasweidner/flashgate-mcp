@@ -40,6 +40,38 @@ Copy and move require matching root IDs. An insufficient root grant yields
 `access_denied` before any filesystem operation. Tool exposure still follows
 the active profile.
 
+## Link and native effect semantics
+
+Every operation consumes the selected root's immutable
+[`follow_symlinks`](configuration.md#symlinks-and-reparse-points) value.
+The false default denies linked operands and parents. Listings omit them;
+stat returns the existing `invalid_path` denial rather than following a target or reporting it
+missing. True permits supported relative in-root links while absolute links,
+junctions, unsupported reparse objects, escaping chains and unsafe mount
+transitions remain denied. Metadata permission never implies content access.
+
+Read and copy sources are checked before content I/O. Existing output handles
+are opened without truncation; object/protection checks and result admission
+precede destructive effects. Native parent bindings protect create, mkdir,
+unlink and rename effects. All roots share the existing effect coordinator.
+Observable root, parent, link, source or target drift is denied. These checks
+also apply when an extension is allowed and through overlapping root IDs.
+
+Deleting an allowed leaf link removes the link entry. Copy reads the allowed
+target; overwriting through a link checks the actual output object. Rename
+acts on the source entry rather than moving a link's target. Relative leaf
+links can be renamed within the same parent; relocating them or moving a tree
+with unproved relative-link projections is denied. Recursive scans do not
+descend through directory links. The [security model](security.md#configuration-trust-and-protection)
+states the independent-process final namespace residual; these operations do
+not claim atomic identity-conditional rename or unlink.
+
+Content-target and namespace-entry parents are checked independently, including
+leaf links into another directory. Removing a leaf directory link leaves all
+target children intact, with either recursive flag. Directory-move preflight
+and native-boundary revalidation share the selected root's single SCAN budget;
+both actual scans consume that same remaining allowance.
+
 ## File-type enforcement
 
 The [effective root file-type policy](configuration.md#file-types) is enforced
@@ -62,7 +94,7 @@ remain unsupported. No public tools or schemas are added.
 Native identity and alias checks are reapplied at the existing effect boundary.
 An allowed link name cannot hide a denied resolved name; unavailable
 classification or enforcement denies the route. Relative-link relocation
-with an unproved future target is denied under a file-type restriction.
+with an unproved future target is denied independently of file-type restrictions.
 These rules do not inspect MIME or contents, hydrate placeholders or override
 PathGuard, configuration protection, grants, root access, risk or limits.
 
@@ -237,6 +269,10 @@ An existing file at the target is a path-type error.
 
 ## `delete_path`
 
+Deleting the bound root itself (`path:"."`) is denied before any child
+effect. Delete an authorized child path instead. No root-parent access is
+introduced to emulate an unsupported root-self namespace operation.
+
 Requires `root_id` and `path`. Optional `recursive` defaults to `false`. Non-empty directories require explicit recursive deletion and remain bounded by the configured deletion limit.
 
 ```json
@@ -278,7 +314,7 @@ The same tool handles moves and renames.
 
 Files and directories may be renamed or moved on the same volume. Cross-volume moves are rejected without copy/delete fallback. With `overwrite:true`, only file-to-existing-file replacement is allowed. Existing directory targets and all directory replacement combinations are rejected. Same-path, same-file (including detectable hardlinks and Windows case aliases), and lexical or symlink-resolved directory-into-own-subtree operations are rejected before replacement.
 
-The source and target identities are revalidated immediately before the operating-system rename, and existing files are replaced through `os.Rename` without a separate target deletion. The remaining race is limited to a concurrent change at the already authorized target path after final revalidation; the path-based cross-platform API cannot condition replacement on the previously observed file identity. Such a race cannot trigger a directory-removal fallback, and this behavior is narrower than the previous explicit remove-then-rename sequence.
+The source and target identities are revalidated immediately before the confined native rename, without a separate target deletion. The namespace API cannot condition replacement on the previously observed file identity. Independent OS changes after the final check retain the documented residual race; they cannot trigger a directory-removal or copy/delete fallback. See the [security model](security.md#configuration-trust-and-protection).
 
 ## Resource limits
 

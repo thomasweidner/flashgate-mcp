@@ -26,7 +26,7 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 	document := "# " + marker + "\n" + configDocument(t, root,
 		"max_file_size = 512\nroots.settings.path = "+quotedConfigPath(t, dir)+"\n"+
 			"roots.work.policy = 'workspace'\nroots.settings.policy = 'workspace'\n"+
-			"[policy.workspace]\naccess = ['read', 'write']\n[security]\nfollow_symlinks = true\n"+profileSettings(false))
+			"[policy.workspace]\naccess = ['read', 'write']\nfollow_symlinks = true\n"+profileSettings(false))
 	testconfig.Write(t, source, []byte(document))
 	info, err := os.Stat(source)
 	if err != nil {
@@ -111,7 +111,7 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 		call(`{"name":"write_file","arguments":{"root_id":"work","path":"SETTINGS/CONFIG.TOML","content":"changed","overwrite":true}}`, true)
 	}
 	link := filepath.Join(root, "symbolic.toml")
-	if err := os.Symlink(source, link); err == nil {
+	if err := os.Symlink(filepath.Join("settings", "config.toml"), link); err == nil {
 		call(`{"name":"read_file","arguments":{"root_id":"work","path":"symbolic.toml"}}`, true)
 		call(`{"name":"copy_path","arguments":{"source_root_id":"work","target_root_id":"work","source":"symbolic.toml","target":"settings/output.txt"}}`, true)
 	} else if runtime.GOOS == "linux" {

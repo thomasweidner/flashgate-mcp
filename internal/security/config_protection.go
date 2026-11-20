@@ -85,7 +85,7 @@ func (r *RootProtection) ValidateRoot() error {
 		return ErrConfigurationAccess
 	}
 	info, err := PathIdentity(resolved)
-	if err != nil || !sameIdentity(info, g.rootInfo) || r.checkAliases() != nil {
+	if err != nil || g.ValidateRootIdentity(info) != nil || r.checkAliases() != nil {
 		return ErrConfigurationAccess
 	}
 	return nil

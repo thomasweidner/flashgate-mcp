@@ -145,6 +145,9 @@ type LocalFileSystem struct {
 	limits     Limits
 	protection *security.RootProtection
 	effects    *sync.Mutex
+	// Tests in this package inject deterministic namespace drift at the native
+	// boundary. Production constructors leave this unset; it grants no rights.
+	beforeNative func(string)
 }
 
 // NewLocalFileSystem creates a new local filesystem.
@@ -171,7 +174,7 @@ func NewLocalFileSystemWithPolicyAndLimits(root string, policy security.Policy, 
 		return nil, err
 	}
 
-	return newLocalFileSystem(guard, limits, fileTypes...), nil
+	return newLocalFileSystem(guard, limits, fileTypes...)
 }
 
 // NewLocalFileSystemWithGuard creates a filesystem from a validated PathGuard.
@@ -185,7 +188,7 @@ func NewLocalFileSystemWithGuard(guard *security.PathGuard, limits Limits, fileT
 	if err := validateLimits(limits); err != nil {
 		return nil, err
 	}
-	return newLocalFileSystem(guard, limits, fileTypes...), nil
+	return newLocalFileSystem(guard, limits, fileTypes...)
 }
 
 // NewProtectedFileSystems constructs all root filesystems in binding order.
@@ -227,11 +230,14 @@ func NewProtectedRootFileSystems(bindings []*security.RootProtection, limits []L
 		if len(fileTypes) != 0 {
 			filesystems[i].fileTypes = fileTypes[i]
 		}
+		if err := filesystems[i].validateNativeRoot(); err != nil {
+			return nil, err
+		}
 	}
 	return filesystems, nil
 }
 
-func newLocalFileSystem(guard *security.PathGuard, limits Limits, fileTypes ...config.FileTypePolicy) *LocalFileSystem {
+func newLocalFileSystem(guard *security.PathGuard, limits Limits, fileTypes ...config.FileTypePolicy) (*LocalFileSystem, error) {
 	f := &LocalFileSystem{
 		guard:   guard,
 		limits:  limits,
@@ -240,7 +246,10 @@ func newLocalFileSystem(guard *security.PathGuard, limits Limits, fileTypes ...c
 	if len(fileTypes) == 1 {
 		f.fileTypes = fileTypes[0]
 	}
-	return f
+	if err := f.validateNativeRoot(); err != nil {
+		return nil, err
+	}
+	return f, nil
 }
 
 func validateLimits(limits Limits) error {

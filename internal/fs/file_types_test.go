@@ -169,7 +169,7 @@ func TestFileTypesLinksAndDeterministicDrift(t *testing.T) {
 	alias := filepath.Join(root, "alias.txt")
 	writeTestFile(t, good, "good")
 	writeTestFile(t, bad, "bad")
-	createTestSymlinkOrSkip(t, bad, alias)
+	createTestSymlinkOrSkip(t, "bad.exe", alias)
 	if _, err := f.Read("alias.txt", 100); !errors.Is(err, ErrFileTypeDenied) {
 		t.Fatal("suffix laundered target", err)
 	}
@@ -182,7 +182,7 @@ func TestFileTypesLinksAndDeterministicDrift(t *testing.T) {
 	if err := os.Remove(alias); err != nil {
 		t.Fatal(err)
 	}
-	createTestSymlinkOrSkip(t, good, alias)
+	createTestSymlinkOrSkip(t, "good.txt", alias)
 	if b, err := f.Read("alias.txt", 100); err != nil || string(b) != "good" {
 		t.Fatal(string(b), err)
 	}
@@ -193,7 +193,7 @@ func TestFileTypesLinksAndDeterministicDrift(t *testing.T) {
 	if err := os.Remove(alias); err != nil {
 		t.Fatal(err)
 	}
-	createTestSymlinkOrSkip(t, bad, alias)
+	createTestSymlinkOrSkip(t, "bad.exe", alias)
 	if err := f.recheckEffect(expected, true); err == nil {
 		t.Fatal("late swap admitted")
 	}
@@ -236,8 +236,8 @@ func TestFileTypeProjectionAndUnsupportedBinding(t *testing.T) {
 	}
 	mkdir(t, filepath.Join(root, "absolute-tree"))
 	createTestSymlinkOrSkip(t, filepath.Join(root, "one", "target.txt"), filepath.Join(root, "absolute-tree", "absolute.txt"))
-	if err := f.Move("absolute-tree", "absolute-moved", false); err != nil {
-		t.Fatal("proved absolute link projection", err)
+	if err := f.Move("absolute-tree", "absolute-moved", false); !errors.Is(err, security.ErrSymlinkDenied) {
+		t.Fatal("absolute link projection admitted", err)
 	}
 	if _, err := NewProtectedRootFileSystems(nil, nil, config.FileTypePolicy{}); !errors.Is(err, ErrFileTypeDenied) {
 		t.Fatal("missing backend binding", err)
@@ -291,7 +291,7 @@ func TestFileTypesListDirectoryLinksRemainStructural(t *testing.T) {
 	target := filepath.Join(root, "target")
 	mkdir(t, target)
 	writeTestFile(t, filepath.Join(target, "allowed.txt"), "safe")
-	createTestSymlinkOrSkip(t, target, filepath.Join(root, "directory-alias.exe"))
+	createTestSymlinkOrSkip(t, "target", filepath.Join(root, "directory-alias.exe"))
 	entries, err := f.List(".")
 	if err != nil {
 		t.Fatal(err)

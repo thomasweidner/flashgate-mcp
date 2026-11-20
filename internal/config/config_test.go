@@ -36,7 +36,7 @@ func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
 	p := cfg.Server()
 	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root), Access: RootRead, Limits: DefaultConfig().Files().Limits()}}) || f.DefaultID() != "work" ||
 		cfg.Profile().ID() != ProfileRead || s.AllowHiddenFiles() ||
-		s.AllowUNCPaths() || s.FollowSymlinks() || cfg.Role() != Direct {
+		s.AllowUNCPaths() || f.Roots()[0].FollowSymlinks || cfg.Role() != Direct {
 		t.Fatal("default filesystem or runtime policy drift")
 	}
 	if f.MaxFileSize() != defaultFileBytes || f.MaxWriteSize() != defaultFileBytes ||

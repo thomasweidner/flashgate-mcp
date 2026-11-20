@@ -5,6 +5,31 @@ FlashGate builds. Follow the current [tool reference](tools.md),
 [protocol reference](protocol.md), and [changelog](../CHANGELOG.md) when
 updating an integration. Internal task renumbering is not a product migration.
 
+## Per-root link policy
+
+Remove `security.follow_symlinks` before starting this build. That global
+field is rejected even when false. Configure `follow_symlinks` in each root
+that needs traversal or in its referenced named policy; an explicit root
+boolean replaces the inherited boolean. Missing values default to false.
+There is no alias, automatic conversion or configuration rewrite.
+
+After upgrading, only supported relative targets inside the selected root
+may be followed. Replace absolute symlinks deliberately if traversal is
+required; Windows junctions, unsupported reparse objects, nested Linux mounts
+and unproved relative-link relocation remain denied. Link permission does not
+override access, file types, limits or selected-configuration protection.
+Public tool arguments are unchanged. Validate allowed reads and writes and
+denials under every configured root ID before restoring normal clients.
+
+The bound root itself cannot be removed through `delete_path` with `path:"."`.
+That unsupported namespace operation is denied before changing any children;
+select an authorized child path instead.
+
+Back up the selected configuration and retain its paired old binary before
+the cutover. Rollback restores that pair deliberately; the old loader rejects
+the new per-root/named-policy field. Builds require Go 1.27.4 or newer, and
+native Linux runtime filesystem enforcement requires `openat2` support.
+
 ## File-type restrictions
 
 Existing configurations without `allowed_extensions` or `allow_extensionless`
@@ -147,7 +172,7 @@ integers as unquoted decimal values, and paths as strings.
 | `MCP_ALLOW_CWD_ROOT` | Removed. Use the intended absolute directory. |
 | `MCP_ALLOW_HIDDEN_FILES` | `security.allow_hidden_files` |
 | `MCP_ALLOW_UNC_PATHS` | `security.allow_unc_paths` |
-| `MCP_FOLLOW_SYMLINKS` | `security.follow_symlinks` |
+| `MCP_FOLLOW_SYMLINKS` | Set `follow_symlinks` deliberately per root or named policy; no global replacement. |
 | `MCP_MAX_FILE_SIZE` | `files.max_file_size` |
 | `MCP_MAX_WRITE_BYTES` | `files.max_write_size` |
 | `MCP_MAX_LIST_ENTRIES` | `files.max_list_entries` |
@@ -231,8 +256,8 @@ file-to-existing-file; existing directories and type mismatches are rejected.
 
 Move validation rejects same paths, safely resolved aliases, Windows case
 aliases, `os.SameFile` matches, and lexical or effective self-subtrees. Source
-and target identities are rechecked before `os.Rename`, without deleting the
-target separately. The path-based API cannot condition replacement on the
+and target identities are rechecked before a native confined rename, without deleting the
+target separately. The namespace API cannot condition replacement on the
 previously observed target identity, so a concurrent replacement at that
 already authorized target retains a residual race window. This is not a claim
 of race-free identity-conditional replacement. See [security](security.md).

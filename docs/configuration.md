@@ -44,7 +44,7 @@ applies the fields supported by its resource type. Its explicit values override
 the referenced fields individually. Lists replace the whole value. References
 between policies are unsupported.
 
-Filesystem roots support [file-type restrictions](#file-types), the five [resource limits](#resource-limits) and
+Filesystem roots support [link policy](#symlinks-and-reparse-points), [file-type restrictions](#file-types), the five [resource limits](#resource-limits) and
 `access`, a list of unique `"read"` and
 `"write"` rights. Omit the field at both levels for read-only access. Specify
 `[]` to deny both rights, including when overriding a named policy. Unknown
@@ -77,6 +77,51 @@ overlapping paths and grant different access to them. The
 Writing requires a root grant and the applicable profile grants and risk
 ceiling. Existing write deployments can follow the
 [root access migration](migration.md#root-access).
+
+## Symlinks and reparse points
+
+`follow_symlinks` is a strict boolean supported only by named policies and
+root tables. An explicit root value replaces the inherited value, including
+false replacing true. Omission at both levels means false. Resolve each
+effective value once during startup; even unused policy definitions must be
+valid. There is no global link setting and no implicit grant of access or
+functional capabilities.
+
+```toml
+[policy.workspace]
+access = ["read", "write"]
+follow_symlinks = false
+
+[files.roots.projects]
+path = 'C:\Projects'
+policy = "workspace"
+
+[files.roots.archive]
+path = 'D:\Archive'
+policy = "workspace"
+follow_symlinks = true
+```
+
+False denies link traversal, including linked parents. Listings omit denied
+links; stat reports a denial rather than target metadata or absence. True
+permits supported relative symlinks only when their entire resolution stays
+inside that root. Absolute targets, escaping links, cycles, excessive chains,
+Windows junctions and unknown/unsupported reparse objects remain denied.
+Root-path ancestors must also have supported resolution. Explicit root aliases
+may use supported relative links when enabled; they bind one effective root
+and cannot change that root during operation.
+
+Native Linux effects require `openat2` support and reject nested mount/volume
+transitions, including same-device bind mounts. There is no weaker fallback.
+Windows opens content through a bound parent and rejects a final reparse
+object before content I/O or truncation. All eight operations retain identity,
+configuration protection, access, extension and resource checks. Unproved
+relative-link relocation is denied; a same-parent leaf-link rename remains
+supported. Recursive scans never descend through directory links.
+
+See [tool semantics](tools.md#link-and-native-effect-semantics), the
+[security boundary](security.md#symlinks) and the explicit
+[pre-1.0 cutover](migration.md#per-root-link-policy).
 
 ## File types
 
@@ -307,7 +352,7 @@ remain milliseconds.
 | `files.max_delete_entries` | Integer, 1000 | Maximum entries for recursive deletion. |
 | `security.allow_hidden_files` | Boolean, `false` | Allows dot-prefixed data paths subject to other checks. |
 | `security.allow_unc_paths` | Boolean, `false` | Allows a UNC data root subject to other checks. |
-| `security.follow_symlinks` | Boolean, `false` | Allows classic symlinks inside the effective data root. |
+| `policy.<name>.follow_symlinks`, `files.roots.<id>.follow_symlinks` | Boolean, `false` | Root override replaces the named-policy value; supported relative in-root links only. |
 | `protocol.max_message_size` | Size, 16777216 | Maximum inbound JSON-RPC message, including newline. |
 | `protocol.max_argument_size` | Size, 12582912 | Maximum tool call params or arguments. |
 | `protocol.max_response_size` | Size, 16777216 | Maximum serialized JSON-RPC response, including newline. |

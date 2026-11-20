@@ -21,6 +21,10 @@ func validatePathMetadata(path string, policy Policy) error {
 	if !policy.FollowSymlinks && info.Mode()&os.ModeSymlink != 0 {
 		return ErrSymlinkDenied
 	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		_, err := relativeLinkTarget(path)
+		return err
+	}
 
 	return nil
 }
@@ -28,3 +32,10 @@ func validatePathMetadata(path string, policy Policy) error {
 func evalEffectivePath(path string) (string, error) {
 	return filepath.EvalSymlinks(path)
 }
+
+func nativeLinkTarget(path string) (string, error) { return os.Readlink(path) }
+
+func validateNativeRootMetadata(_ os.FileInfo, _ Policy) error { return nil }
+
+// Hidden-name selection is lexical on these platforms.
+func samePolicyMetadata(_, _ os.FileInfo) bool { return true }

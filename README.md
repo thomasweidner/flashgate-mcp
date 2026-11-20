@@ -374,7 +374,8 @@ in the [tool reference](docs/tools.md).
   grant [write access](docs/configuration.md#named-policies) on each intended root.
 - **Restrictive path policy:** the examples deny hidden files, UNC paths,
   symlinks, junctions, and other reparse access. Listing filters denied entries.
-  Enabling symlink following still cannot authorize an out-of-root target.
+  [Per-root symlink following](docs/configuration.md#symlinks-and-reparse-points)
+  permits only supported relative in-root targets and supplies no access grant.
 - **Bounded work and disclosure:** configurable limits cap JSON-RPC messages,
   arguments, reads/writes, listings, copies, recursive deletes, and responses.
   Errors are generic; optional diagnostics are redacted and use stderr.
@@ -448,7 +449,7 @@ own BL-263 gate; a prerelease does not pass it.
 ## Development, testing, and contributing
 
 To build from source, use the Go version declared in [go.mod](go.mod)
-(currently Go 1.26.4 or newer). Go is a developer requirement, not a requirement
+(currently Go 1.27.4 or newer). Go is a developer requirement, not a requirement
 for running verified binaries.
 
 ```bash

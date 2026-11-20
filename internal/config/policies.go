@@ -14,7 +14,8 @@ type policyID string
 type policyFields struct {
 	resourceFields
 	fileTypeFields
-	Access accessFields `toml:"access"`
+	Access         accessFields `toml:"access"`
+	FollowSymlinks *bool        `toml:"follow_symlinks"`
 }
 
 // A nil list means absent. A present empty list explicitly grants no access.
@@ -101,7 +102,12 @@ func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
 		if err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
-		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access, Limits: limits, FileTypes: types})
+		follow := root.FollowSymlinks
+		if follow == nil && root.Policy != nil {
+			follow = s.Policy[*root.Policy].FollowSymlinks
+		}
+		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access, Limits: limits, FileTypes: types,
+			FollowSymlinks: follow != nil && *follow})
 	}
 	slices.SortFunc(roots, func(a, b RootDefinition) int {
 		return strings.Compare(string(a.ID), string(b.ID))

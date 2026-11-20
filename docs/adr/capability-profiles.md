@@ -39,8 +39,9 @@ relative path. BL-104 resolves [named policies](../configuration.md#named-polici
 and per-root read/write overrides from the typed configuration. The registry
 enforces these rights independently of functional grants, risk and catalog
 exposure. BL-105 limits and BL-106 file-type restrictions use the same immutable
-root snapshots and grant no functional rights. Later owners extend the model
-for capabilities, symlink/reparse and working-directory policy. Deprecated MCP
+root snapshots and grant no functional rights. BL-107 adds per-root link
+policy to those snapshots and grants no capabilities. Later owners extend
+the model for capability mapping and working-directory policy. Deprecated MCP
 Roots may be evaluated as optional legacy-client compatibility.
 
 ### Functional capability contract

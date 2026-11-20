@@ -30,34 +30,29 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 		return nil, err
 	}
 
-	var operand effectPath
-	if f.checksIdentity() {
-		operand, err = f.inspectPath(safePath.String())
-		if err != nil {
-			return nil, err
-		}
-		if operand.info == nil {
-			return nil, ErrNotFound
-		}
-		if !operand.info.IsDir() {
-			// Keep the directory-read failure on the existing redacted error
-			// path while avoiding a content handle on a regular file.
-			return nil, &os.PathError{Op: "readdir", Path: operand.path, Err: errReadDirFile}
-		}
-		if err := f.recheckPath(operand); err != nil {
-			return nil, err
-		}
+	operand, err := f.inspectPath(safePath.String())
+	if err != nil {
+		return nil, err
 	}
-	dir, err := os.Open(safePath.String())
+	if operand.info == nil {
+		return nil, ErrNotFound
+	}
+	if !operand.info.IsDir() {
+		// Keep the directory-read failure on the existing redacted error
+		// path while avoiding a content handle on a regular file.
+		return nil, &os.PathError{Op: "readdir", Path: operand.path, Err: errReadDirFile}
+	}
+	if err := f.recheckPath(operand); err != nil {
+		return nil, err
+	}
+	dir, err := f.openNative(operand, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = dir.Close() }()
-	if f.checksIdentity() {
-		info, err := dir.Stat()
-		if err != nil || !sameEffectInfo(operand.info, info) {
-			return nil, security.ErrConfigurationAccess
-		}
+	info, err := dir.Stat()
+	if err != nil || !sameEffectInfo(operand.info, info) {
+		return nil, security.ErrConfigurationAccess
 	}
 
 	result := make([]Entry, 0)
@@ -121,11 +116,9 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 			if cost > resultRemaining {
 				return nil, ErrLimitExceeded
 			}
-			info, err := dirEntry.Info()
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, Entry{Name: name, IsDir: dirEntry.IsDir(), Size: info.Size()})
+			// Use the identity-bound metadata already checked above. A deferred
+			// DirEntry.Info call could reopen a directory name after an exchange.
+			result = append(result, Entry{Name: name, IsDir: entryOperand.info.IsDir(), Size: entryOperand.info.Size()})
 			resultRemaining -= cost
 		}
 		if readErr == io.EOF {

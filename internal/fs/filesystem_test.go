@@ -277,7 +277,7 @@ func TestProtectedRecursiveDeleteMaintainsSymlinkEntryIdentity(t *testing.T) {
 	link := filepath.Join(swapped, "link")
 	target := filepath.Join(root, "target")
 	writeTestFile(t, target, "ordinary")
-	createTestSymlinkOrSkip(t, target, link)
+	createTestSymlinkOrSkip(t, "../target", link)
 	rootEffect, err := f.inspectEffect(swapped, true)
 	if err != nil {
 		t.Fatal(err)
@@ -289,7 +289,7 @@ func TestProtectedRecursiveDeleteMaintainsSymlinkEntryIdentity(t *testing.T) {
 	if err := os.Rename(link, filepath.Join(root, "old-link")); err != nil {
 		t.Fatal(err)
 	}
-	createTestSymlinkOrSkip(t, target, link)
+	createTestSymlinkOrSkip(t, "../target", link)
 	if err := f.recheckTreeEntry(entries[0]); !errors.Is(err, security.ErrConfigurationAccess) {
 		t.Fatalf("replacement link with the same target was accepted: %v", err)
 	}
@@ -312,7 +312,7 @@ func TestProtectedRecursiveDeleteMaintainsSymlinkEntryIdentity(t *testing.T) {
 	mkdir(t, blocked)
 	sibling := filepath.Join(blocked, "z-sibling")
 	writeTestFile(t, sibling, "retain")
-	createTestSymlinkOrSkip(t, source, filepath.Join(blocked, "a-link"))
+	createTestSymlinkOrSkip(t, "../config.toml", filepath.Join(blocked, "a-link"))
 	if err := f.Delete("blocked", true); !errors.Is(err, security.ErrConfigurationAccess) {
 		t.Fatalf("tree with protected target returned %v", err)
 	}
@@ -1532,7 +1532,7 @@ func TestLocalFileSystemMoveRejectsEffectiveDirectoryIntoOwnSubtree(t *testing.T
 
 	root := t.TempDir()
 	mkdir(t, filepath.Join(root, "source", "child"))
-	createTestSymlinkOrSkip(t, filepath.Join(root, "source", "child"), filepath.Join(root, "alias"))
+	createTestSymlinkOrSkip(t, filepath.Join("source", "child"), filepath.Join(root, "alias"))
 	filesystem := mustNewLocalFileSystemWithPolicy(t, root, security.Policy{FollowSymlinks: true})
 
 	err := filesystem.Move("source", filepath.Join("alias", "moved"), false)

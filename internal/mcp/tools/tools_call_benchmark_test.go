@@ -1,7 +1,6 @@
 package tools
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -223,16 +222,14 @@ func serializeStructuredCallToolResult(value any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var compact bytes.Buffer
-	if err := json.Compact(&compact, structured); err != nil {
-		return nil, err
-	}
-	return json.Marshal(struct {
+	// Marshal already returns compact JSON, as in the production object path.
+	// Pass an addressable envelope to avoid Go 1.27's reflective value copy.
+	return json.Marshal(&struct {
 		Content           []protocol.TextContent `json:"content"`
 		StructuredContent json.RawMessage        `json:"structuredContent"`
 	}{
-		Content:           []protocol.TextContent{protocol.NewTextContent(compact.String())},
-		StructuredContent: compact.Bytes(),
+		Content:           []protocol.TextContent{protocol.NewTextContent(string(structured))},
+		StructuredContent: structured,
 	})
 }
 

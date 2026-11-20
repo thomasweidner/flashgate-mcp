@@ -12,6 +12,12 @@ the intended release date. Publication evidence is separate.
 
 ### Breaking Changes
 
+- Replace `security.follow_symlinks` with a strict boolean in named policies
+  and individual roots. The default remains false; only supported relative
+  in-root links can be followed. Absolute links, junctions, unsupported reparse
+  objects and unsafe mount transitions are denied. There are no legacy aliases
+  or automatic rewrites. See [link-policy migration](docs/migration.md#per-root-link-policy).
+
 - Use `_size` configuration keys for file writes, protocol messages/arguments/
   responses, IPC frames and logging records. Remove `max_copy_bytes`; one
   `max_write_size` bounds writes and copies. Old byte keys are rejected.
@@ -103,6 +109,14 @@ the intended release date. Publication evidence is separate.
 - Added an explicit manual pre-1.0 publication workflow and releaseaudit adapter consuming the existing verified four-target candidate and complete supply-chain bundle. Publication binds externally approved source, notes, evidence and asset hashes, stages a draft, transfers exact bytes once, downloads every asset before publishing, and confirms the final prerelease. Conflicts and failed or ambiguous writes hold for read-only reconciliation. This records local implementation, not an actual public release; product VERSION is unchanged.
 
 ### Added
+
+- Bind link policy and native open/effect identity checks below MCP across all
+  eight filesystem operations. Preserve configuration protection, per-root
+  access, file types and resource limits. Linux uses `openat2` without a weaker
+  fallback; Windows uses root/parent-relative content opens with no final
+  reparse traversal. Resolve relative targets from their actual parents before
+  applying `..`, and retain the complete identity chain behind directory aliases.
+  The project minimum Go version is 1.27.4.
 
 - Configure immutable per-root file-type restrictions with `allowed_extensions`
   and `allow_extensionless`, inherited independently from named policies.

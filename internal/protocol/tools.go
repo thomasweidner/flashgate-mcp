@@ -95,7 +95,7 @@ func NewCallToolErrorResultContext(ctx context.Context, category, message string
 		Category string `json:"category"`
 		Message  string `json:"message"`
 	}{category, message}
-	encoded, err := wiretrace.Marshal(ctx, payload)
+	encoded, err := wiretrace.Marshal(ctx, &payload)
 	if err != nil {
 		return CallToolResult{}, err
 	}

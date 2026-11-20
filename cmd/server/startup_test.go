@@ -357,11 +357,15 @@ func TestStartupBindsOverlappingRootsAndHardlinks(t *testing.T) {
 			settings := profile
 			if aliasRoot {
 				configuredRoot = filepath.Join(t.TempDir(), "data-alias")
-				if err := os.Symlink(root, configuredRoot); err != nil {
+				target, err := filepath.Rel(filepath.Dir(configuredRoot), root)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Symlink(target, configuredRoot); err != nil {
 					t.Logf("native directory symlink unavailable: %v", err)
 					continue
 				}
-				settings += "[security]\nfollow_symlinks = true\n"
+				settings = "roots.work.follow_symlinks = true\n" + settings
 			}
 			document := configDocument(t, configuredRoot, settings)
 			testconfig.Write(t, path, []byte(document))

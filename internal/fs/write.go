@@ -1,7 +1,6 @@
 package fs
 
 import (
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -108,7 +107,7 @@ func (f *LocalFileSystem) mkdirProtected(path string, admission []func() error) 
 		if err := admitEffect(admission); err != nil {
 			return false, err
 		}
-		if err := os.Mkdir(current, 0o700); err != nil {
+		if err := f.mkdirNative(operand, 0o700); err != nil {
 			return false, err
 		}
 		if index < len(missing)-1 {
@@ -131,33 +130,14 @@ func (f *LocalFileSystem) Mkdir(path string, admission ...func() error) (bool, e
 		return false, err
 	}
 	if pathsEquivalent(safePath.String(), f.guard.Root()) {
+		operand, err := f.inspectPath(safePath.String())
+		if err != nil {
+			return false, err
+		}
+		if err := f.recheckPath(operand); err != nil {
+			return false, err
+		}
 		return false, admitEffect(admission)
 	}
-	if f.checksIdentity() {
-		return f.mkdirProtected(safePath.String(), admission)
-	}
-	if err := admitEffect(admission); err != nil {
-		return false, err
-	}
-
-	parent := safePath.Dir()
-	if err := os.MkdirAll(parent, 0o700); err != nil {
-		return false, err
-	}
-
-	if err := os.Mkdir(safePath.String(), 0o700); err == nil {
-		return true, nil
-	} else if !errors.Is(err, os.ErrExist) {
-		return false, err
-	}
-
-	info, err := os.Stat(safePath.String())
-	if err != nil {
-		return false, err
-	}
-	if !info.IsDir() {
-		return false, ErrPathIsNotDirectory
-	}
-
-	return false, nil
+	return f.mkdirProtected(safePath.String(), admission)
 }

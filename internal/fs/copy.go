@@ -67,7 +67,7 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool, adm
 	if err := f.recheckEffect(sourceOperand, false); err != nil {
 		return err
 	}
-	sourceFile, err := os.Open(sourceOperand.path)
+	sourceFile, err := f.openNative(sourceOperand, os.O_RDONLY, 0)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,8 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool, adm
 		}
 		return admitEffect(admission)
 	}
-	targetFile, err := f.openDestination(targetOperand, sourceInfo.Mode().Perm(), checkSource)
+	targetFile, err := f.openDestination(targetOperand, sourceInfo.Mode().Perm(), checkSource,
+		func() error { return f.checkOpened(sourceFile, sourceOperand, false) })
 	if err != nil {
 		return err
 	}

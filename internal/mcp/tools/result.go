@@ -218,7 +218,7 @@ func (variant ResultVariant) wrapParts(ctx context.Context, parts []ResultPart) 
 	if len(`{"size":}`)+decimalSize(size) > variant.MaxObjectBytes {
 		return protocol.CallToolResult{}, errToolResultLimit
 	}
-	object, err := wiretrace.Marshal(ctx, payloadMetadata{Size: size})
+	object, err := wiretrace.Marshal(ctx, &payloadMetadata{Size: size})
 	if err != nil {
 		return protocol.CallToolResult{}, errInvalidToolResult
 	}

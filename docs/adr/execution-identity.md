@@ -93,7 +93,10 @@ The implementation must:
 - add negative cross-user and privilege-escalation tests;
 - keep all service endpoints local-only.
 
-Every backend inherits the [configuration protection contract](../security.md#configuration-trust-and-protection).
+Every backend inherits the [configuration protection contract](../security.md#configuration-trust-and-protection)
+and [per-root link/native effect boundary](../security.md#symlinks). Backend
+availability or execution identity cannot turn link permission into access;
+delegated effects prove confinement, native classification and object binding.
 It also inherits the [effective root file-type policy](../configuration.md#file-types)
 for its applicable file operands and indirect effects. Installation, available
 OS permissions and execution identity cannot turn a suffix match into a grant.

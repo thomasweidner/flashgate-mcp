@@ -21,6 +21,8 @@ path = ""
 # Missing access at both levels defaults to ["read"]. Use [] to deny all.
 # Set access = ["read", "write"] here or reference the example policy below.
 # policy = "workspace"
+# Supported relative links inside this root only; omission defaults to false.
+follow_symlinks = false
 # Optional file restrictions; omitted fields add no extension restriction.
 # allowed_extensions = [".txt", ".md", ".tar.gz"]
 # allow_extensionless = false
@@ -28,6 +30,7 @@ path = ""
 # Override allow_extensionless separately to replace an inherited boolean.
 # [policy.workspace]
 # access = ["read", "write"]
+# follow_symlinks = false
 # max_file_size = "1 MiB"
 # max_write_size = "1 MiB"
 # max_scan_size = "2 MiB"
@@ -41,7 +44,6 @@ path = ""
 [security]
 allow_hidden_files = false
 allow_unc_paths = false
-follow_symlinks = false
 
 [protocol]
 max_message_size = "16 MiB"
