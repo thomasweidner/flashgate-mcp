@@ -351,10 +351,11 @@ func (g *PathGuard) AllowListEntry(parent SafePath, name string) (bool, error) {
 		return false, ErrOutsideRoot
 	}
 
-	if err := validatePathMetadata(entryPath, g.policy); err != nil {
+	if err := g.validateExistingPathPolicy(entryPath); err != nil {
 		if errors.Is(err, ErrHiddenPathDenied) ||
 			errors.Is(err, ErrSymlinkDenied) ||
-			errors.Is(err, ErrReparsePointDenied) {
+			errors.Is(err, ErrReparsePointDenied) ||
+			errors.Is(err, ErrOutsideRoot) {
 			return false, nil
 		}
 

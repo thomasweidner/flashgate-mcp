@@ -136,6 +136,65 @@ func TestLinkPolicyAbsoluteEscapesChainsAndCycles(t *testing.T) {
 	}
 }
 
+func TestLinkPolicyListFiltersDeniedChainsAndPreservesSiblings(t *testing.T) {
+	for _, follow := range []bool{false, true} {
+		for _, hidden := range []bool{false, true} {
+			t.Run(fmt.Sprintf("follow=%t/hidden=%t", follow, hidden), func(t *testing.T) {
+				root := t.TempDir()
+				f, err := NewLocalFileSystemWithPolicy(root, security.Policy{FollowSymlinks: follow, AllowHiddenFiles: hidden})
+				if err != nil {
+					t.Fatal(err)
+				}
+				writeTestFile(t, filepath.Join(root, "visible.txt"), "visible")
+				writeTestFile(t, filepath.Join(root, ".hidden.txt"), "hidden")
+				outside := t.TempDir()
+				writeTestFile(t, filepath.Join(outside, "outside.txt"), "outside")
+				escape, err := filepath.Rel(root, filepath.Join(outside, "outside.txt"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				for name, target := range map[string]string{
+					"alias.txt": "visible.txt", "chain.txt": "alias.txt",
+					"hidden-alias.txt": ".hidden.txt", "hidden-chain.txt": "hidden-alias.txt",
+					"absolute.txt": filepath.Join(root, "visible.txt"), "absolute-chain.txt": "absolute.txt",
+					"escape.txt": escape, "escape-chain.txt": "escape.txt",
+					"cycle-a.txt": "cycle-b.txt", "cycle-b.txt": "cycle-a.txt",
+				} {
+					createTestSymlinkOrSkip(t, target, filepath.Join(root, name))
+				}
+				want := map[string]bool{"visible.txt": true}
+				if follow {
+					want["alias.txt"], want["chain.txt"] = true, true
+				}
+				if hidden {
+					want[".hidden.txt"] = true
+					if follow {
+						want["hidden-alias.txt"], want["hidden-chain.txt"] = true, true
+					}
+				}
+				entries, err := f.List(".")
+				if err != nil || len(entries) != len(want) {
+					t.Fatal("allowed siblings lost", entries, err)
+				}
+				for _, entry := range entries {
+					if !want[entry.Name] {
+						t.Fatal("denied link disclosed", entry)
+					}
+					delete(want, entry.Name)
+				}
+				if len(want) != 0 {
+					t.Fatal("missing allowed siblings", want)
+				}
+				for _, name := range []string{"absolute-chain.txt", "escape-chain.txt", "cycle-a.txt"} {
+					if _, err := f.Read(name, 100); err == nil {
+						t.Fatal("listing granted denied target access", name)
+					}
+				}
+			})
+		}
+	}
+}
+
 func TestLinkPolicyDeterministicProtectedDrift(t *testing.T) {
 	for _, op := range []string{"read", "write-open", "write-truncate", "create", "mkdir", "delete", "move-source", "move-target", "copy-source", "copy-target"} {
 		t.Run(op, func(t *testing.T) {

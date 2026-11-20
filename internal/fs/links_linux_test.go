@@ -23,8 +23,7 @@ func TestLinkPolicyNativeBindMountDenied(t *testing.T) {
 		command.Env = append(os.Environ(), marker+"=namespace", "LC_ALL=C")
 		output, err := command.CombinedOutput()
 		if err != nil {
-			if os.IsNotExist(err) || bytes.HasPrefix(output, []byte("unshare: unshare failed: Operation not permitted")) ||
-				bytes.HasPrefix(output, []byte("unshare: unshare failed: Permission denied")) {
+			if mountNamespaceUnavailable(err, output) {
 				t.Skip("native bind-mount test unavailable: unprivileged mount namespace denied; NOT PASS")
 			}
 			t.Fatalf("native mount child failed: %v\n%s", err, output)
@@ -89,5 +88,50 @@ func TestLinkPolicyNativeBindMountDenied(t *testing.T) {
 	}
 	if _, err := os.Lstat(filepath.Join(outside, "new.txt")); !os.IsNotExist(err) {
 		t.Fatal("late mount redirected create", err)
+	}
+}
+
+func mountNamespaceUnavailable(err error, output []byte) bool {
+	if err == nil {
+		return false
+	}
+	if os.IsNotExist(err) {
+		return true
+	}
+	// Only exact launcher capability failures are unavailable fixtures. Child
+	// assertion failures, including permission errors after launch, still fail.
+	for _, message := range []string{
+		"unshare: unshare failed: Operation not permitted",
+		"unshare: unshare failed: Permission denied",
+		"unshare: write failed /proc/self/uid_map: Operation not permitted",
+	} {
+		if bytes.Equal(bytes.TrimSpace(output), []byte(message)) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestMountNamespaceUnavailableClassification(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		err    error
+		output string
+		want   bool
+	}{
+		{"success", nil, "unshare: unshare failed: Operation not permitted", false},
+		{"missing launcher", os.ErrNotExist, "", true},
+		{"namespace denied", os.ErrPermission, "unshare: unshare failed: Operation not permitted\n", true},
+		{"namespace permission", os.ErrPermission, "unshare: unshare failed: Permission denied\n", true},
+		{"uid mapping denied", os.ErrPermission, "unshare: write failed /proc/self/uid_map: Operation not permitted\n", true},
+		{"child assertion", os.ErrPermission, "--- FAIL: TestLinkPolicyNativeBindMountDenied\nOperation not permitted\n", false},
+		{"extra child failure", os.ErrPermission, "unshare: write failed /proc/self/uid_map: Operation not permitted\nFAIL\n", false},
+		{"unknown launch failure", os.ErrPermission, "unshare: unknown failure\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := mountNamespaceUnavailable(tc.err, []byte(tc.output)); got != tc.want {
+				t.Fatalf("unavailable=%t, want %t", got, tc.want)
+			}
+		})
 	}
 }
