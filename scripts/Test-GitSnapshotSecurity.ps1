@@ -36,7 +36,7 @@ try {
 
     [IO.File]::WriteAllText(
         (Join-Path $Repository '.gitignore'),
-        "ignored.bin`n.env`n",
+        "ignored.bin`n.env`nAGENTS.md`n",
         [Text.UTF8Encoding]::new($false)
     )
     [IO.File]::WriteAllText(
@@ -55,12 +55,18 @@ try {
         [Text.UTF8Encoding]::new($false)
     )
     Invoke-GitRequired -Arguments @('add', '.gitignore', 'tracked.txt')
+    [IO.File]::WriteAllText(
+        (Join-Path $Repository 'AGENTS.md'),
+        "# Public contributor instructions`n",
+        [Text.UTF8Encoding]::new($false)
+    )
+    Invoke-GitRequired -Arguments @('add', '--force', 'AGENTS.md')
 
     $null = Invoke-Snapshot -Name 'valid'
     $Manifest = Get-Content -LiteralPath (Join-Path $Output 'valid.json') -Raw |
         ConvertFrom-Json -Depth 5
     $ManifestPaths = @($Manifest.files.Path)
-    foreach ($Expected in @('.gitignore', 'tracked.txt', 'untracked.txt')) {
+    foreach ($Expected in @('.gitignore', 'tracked.txt', 'untracked.txt', 'AGENTS.md')) {
         if ($Expected -notin $ManifestPaths) {
             $Errors.Add("Expected snapshot file missing: $Expected")
         }

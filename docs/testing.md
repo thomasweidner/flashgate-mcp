@@ -22,6 +22,128 @@ branch dispatches, job-level permission overrides, manual version inputs,
 tag-derived versions, and missing source gates. Direct and default script
 builds use `0.0.0-dev` and Windows file version `0.0.0.0`.
 
+## Validation entry point
+
+Use `scripts/test.ps1` from PowerShell 7.6 or the equivalent
+`python -B scripts/validation.py` from a native checkout. Python 3.11 or newer
+is development tooling only; the shipped server gains no runtime dependency.
+Supply an existing, task-owned work directory outside the checkout. All private
+caches, process logs and summaries go there. Existing smoke tests retain their
+documented ignored `build` output. Never use a live product data directory.
+
+```powershell
+./scripts/test.ps1 -Mode FAST -WorkingPath $workRoot
+./scripts/test.ps1 -Mode CANDIDATE -WorkingPath $workRoot -NativeConfig $nativeConfig
+./scripts/test.ps1 -Mode PUBLISH -WorkingPath $workRoot -NativeConfig $nativeConfig `
+    -EvidencePath $candidateSummary -EvidenceSHA256 $candidateSummarySHA256 `
+    -ReviewPath $classicDecision -ReviewSHA256 $classicDecisionSHA256 `
+    -ReviewManifestPath $reviewedManifest
+```
+
+`-PlanOnly` displays the actual gate selection and candidate binding without
+running tests. FAST uses changed tracked and nonignored new paths, or explicit
+`-ChangedPath` values. A change consisting solely of Go test files selects
+their packages. Unknown dependency reach conservatively selects all packages.
+CANDIDATE runs documentation, runner regressions, shell checks and their negative
+fixtures, formatting, vet, lint, full repository tests through product coverage,
+MCP conformance, build and all existing smoke variants. Native Linux also runs
+the complete race suite. Coverage and MCP remain distinct gates.
+
+On Windows, CANDIDATE requires a caller-owned native configuration JSON with
+the required `distribution`, `user`, `task_root`, `go`, `lint`, and `pwsh` strings.
+The root must already exist on a native filesystem below `/home`; tool paths
+refer to existing native installations. These are local inputs, never repository
+configuration or committed host paths. The runner uses the existing verified
+source snapshot producer/extractor and creates one isolated local validation
+checkout below that root. Authorize this local test-copy creation where your
+workflow requires it. It does not stage, commit, change branches or contact
+remotes in the leading checkout. No tool is installed or updated. On native
+Linux, the same command runs directly against its native checkout:
+
+```bash
+python3 -B scripts/validation.py --mode CANDIDATE --work-root "$work_root"
+```
+
+The optional native `source_root` reuses a previously prepared validation
+checkout below the same task root. Its base and recorded source bytes must
+still match before a verified overlay is applied. Unbound or changed native
+sources fail closed. Snapshots retain committed source even when a local
+exclude rule matches it; ignored untracked files and sensitive names retain
+their existing rejection rules.
+
+Heavy Windows work and its WSL stage use one checkout-scoped Windows mutex.
+They run sequentially with bounded package parallelism. Lightweight gates need
+no heavy lock. Native Linux uses `flock` on the existing checkout directory
+inode, opened through nonfollowing directory-relative descriptors. It creates,
+opens and writes no resource lock file. Separate work roots automatically share
+the same checkout lock; independent checkout directories remain independent.
+An optional `--resource-root` remains a validated external resource path and
+does not select the lock domain. An unavailable filesystem lock or changed
+directory binding produces HOLD. A busy resource produces HOLD rather than
+an uncontrolled retry. Never stop another developer's process to obtain a lock.
+
+Each fresh run prints its summary path and SHA-256. The summary binds the gate
+plan, source/test/vendor bytes and modes, executable hashes, Python identity,
+OS, relevant environment hashes, process results and output artifacts. Coverage
+records unrounded platform totals and a Go JSON test log with per-test elapsed
+times. Timeout, missing exit state, output limits and unconfirmed cleanup do
+not become PASS. Process ownership remains with the existing Windows and Linux
+controllers. The runner does not increase Go's package timeout or retry gates.
+
+Retain the printed summary digest separately from the evidence directory.
+`-EvidencePath` plus that digest permits reuse only when the complete required
+plan, current bindings, successful results and every recorded artifact still
+match. Windows reuse also probes the native source, toolchain and environment
+without launching quality tests. Missing or modified evidence is rejected.
+Hashes provide integrity against the retained anchor, not author authentication.
+
+PUBLISH never starts a local quality matrix. It additionally requires the actual
+independent Classic outcome JSON, its separately retained SHA-256 and the actual
+reviewed technical manifest (`-ReviewManifestPath` / `--review-manifest`). The
+portable outcome contract has exactly these fields:
+
+| Field | Required meaning |
+| --- | --- |
+| `ContractVersion`, `EvidenceClass` | `1.0.0`, `CLASSIC_REVIEW_OUTCOME` |
+| `TaskId` | Same work item as the reviewed manifest |
+| `ArtifactClass`, `TransitionType` | Matching implementation or correction class and transition declared in the [public outcome validator](../scripts/validation.py) |
+| `ReviewActorClass`, `SelfApproval`, `ReviewOutcome` | `CHATGPT_CLASSIC`, boolean `false`, `PASS` from the external independent workflow |
+| `ClassicFocusedDeltaReviewOutcome` | `NOT_APPLICABLE` for a full implementation review; `PASS` for a finding correction |
+| `HandoffSHA256` | Original reviewed transport identity, as a lowercase SHA-256 |
+| `ReviewedPostimageIdentity` | Canonical identity of the actual reviewed technical manifest |
+| `ReviewedCommitIdentity` | `null`; this entry checks content, not a Git operation |
+
+The manifest uses `ContractVersion: "1.0.0"`, the same `TaskId`, `Entries` and
+`TechnicalCandidate` with `Scope: "FULL_WORK_ITEM:<TaskId>"`, `BaseBindings`,
+`DependencyBindings` and `PayloadBindings`. Entries plus dependencies must cover
+the entire current checkout with matching bytes and applicable types/modes.
+The reviewed payload must contain the exact successful validation summary.
+For the content identity, replace optional entry `Path` with `TargetPath`, sort
+entries and payload bindings by `Path`, serialize with sorted JSON keys, compact
+separators and unescaped Unicode, then SHA-256 the UTF-8 bytes.
+
+Unknown decision fields, including explicit TEST_ONLY, synthetic, fixture or
+self-review markers, are rejected. The legacy three-field decision is rejected.
+Tests exercise a nominal outcome only as an in-memory contract double; a real
+PUBLISH success requires the actual external decision. This consumes the
+human-governed assertion and introduces no reviewer authentication service or
+private workflow dependency. Callers must not manufacture their own approval.
+External workflow checks for the reviewed handoff, historical bases and complete
+payload remain prerequisites. Git authorization, hosted CI, provider
+reviews, immediate operation preflights and external writes remain separate.
+Commit, packaging and context changes alone do not invalidate unchanged bytes.
+Source, test, relevant dependency, toolchain, environment or gate changes do.
+
+The wire mutation tests reuse only immutable, real captures within one test
+invocation for byte and budget mutations. Every mutation still executes its
+coverage, framing, secret, semantic, exact-byte and budget assertions. Registry
+and case-plan changes always capture again. The positive gate still traverses
+the full real filesystem and protocol matrix. No case, security negative,
+coverage minimum or race requirement is removed.
+
+The existing CI commands remain compatible and blocking. Local orchestration
+does not activate a hosted workflow or claim hosted CI success.
+
 ## Test Commands
 
 For native MCP revision/profile contracts, complete schema/wire snapshots,

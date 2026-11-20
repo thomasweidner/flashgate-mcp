@@ -42,6 +42,14 @@ type wireGateMutation struct {
 	registry func(*tools.Registry) error
 	cases    func([]serverWireCase) []serverWireCase
 	frame    func(benchmark.WireIdentity, []byte) []byte
+	// Only a single mutation test owns this cache. Registry and case-plan
+	// mutations always execute fresh; only byte/budget mutations reuse it.
+	captures map[benchmark.WireIdentity]wireGateCapture
+}
+
+type wireGateCapture struct {
+	fixture benchmark.WireFixture
+	root    string
 }
 
 func TestMCPConformanceWireEfficiency(t *testing.T) {
@@ -125,6 +133,18 @@ func runServerWireGate(t *testing.T, budgets benchmark.WireBudgets, mutation wir
 	if err := benchmark.CheckWireCoverage(ids, budgets); err != nil {
 		return err
 	}
+	// Keep the full collection cases, but execute them after the small
+	// contracts. Byte/budget negatives should fail on their actual subject
+	// before paying for unrelated native traversal of 500 files.
+	slices.SortStableFunc(cases, func(a, b serverWireCase) int {
+		large := func(row serverWireCase) int {
+			if row.id.Fixture == "500-entries" {
+				return 1
+			}
+			return 0
+		}
+		return large(a) - large(b)
+	})
 	check := func(fixture benchmark.WireFixture) error {
 		id := fixture.Identity
 		budget := budgets.Classes[budgets.Cases[id.BudgetCase()].Class]
@@ -442,6 +462,12 @@ func replaceWireBody(template json.RawMessage, fields map[string]any) (json.RawM
 
 func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMutation) (benchmark.WireFixture, error) {
 	id := fixture.id
+	reusable := mutation.captures != nil && mutation.registry == nil && mutation.cases == nil
+	if reusable {
+		if captured, ok := mutation.captures[id]; ok {
+			return mutateCapturedWire(captured, mutation.frame)
+		}
+	}
 	limits := fs.DefaultLimits()
 	if fixture.tightLimits {
 		limits.MaxWriteSize = 3
@@ -511,21 +537,6 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 	if err != nil {
 		return benchmark.WireFixture{}, err
 	}
-	if mutation.frame != nil {
-		wire = mutation.frame(id, wire)
-	}
-	if err := checkSingleSTDIOFrame(wire); err != nil {
-		return benchmark.WireFixture{}, err
-	}
-	if id.Outcome == "error" {
-		escapedRoot, err := json.Marshal(root)
-		if err != nil {
-			return benchmark.WireFixture{}, err
-		}
-		if bytes.Contains(wire, []byte(wirePrivateMarker)) || bytes.Contains(wire, escapedRoot[1:len(escapedRoot)-1]) {
-			return benchmark.WireFixture{}, fmt.Errorf("error frame leaked a private fixture value")
-		}
-	}
 	if observed != nil && id.Outcome == "success" && observed.variant != id.Variant {
 		return benchmark.WireFixture{}, fmt.Errorf("executed variant %q, want %q", observed.variant, id.Variant)
 	}
@@ -543,7 +554,42 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 			frame.EncodingPasses, frame.DecodingPasses, frame.PayloadCopies, frame.ExplicitCopyBytes)
 	}
 	frame.Wire = wire
-	return benchmark.WireFixture{Identity: id, Reference: fixture.reference, Frames: []benchmark.WireFrame{frame}}, nil
+	captured := wireGateCapture{
+		fixture: benchmark.WireFixture{Identity: id, Reference: fixture.reference, Frames: []benchmark.WireFrame{frame}},
+		root:    root,
+	}
+	// Validate the original before storing it; never cache a mutated frame.
+	if _, err := mutateCapturedWire(captured, nil); err != nil {
+		return benchmark.WireFixture{}, err
+	}
+	if reusable {
+		mutation.captures[id] = captured
+	}
+	return mutateCapturedWire(captured, mutation.frame)
+}
+
+func mutateCapturedWire(captured wireGateCapture, mutate func(benchmark.WireIdentity, []byte) []byte) (benchmark.WireFixture, error) {
+	fixture := captured.fixture
+	fixture.Frames = slices.Clone(fixture.Frames)
+	// The mutator may edit in place. No mutation can poison a later case.
+	wire := bytes.Clone(fixture.Frames[0].Wire)
+	if mutate != nil {
+		wire = mutate(fixture.Identity, wire)
+	}
+	if err := checkSingleSTDIOFrame(wire); err != nil {
+		return benchmark.WireFixture{}, err
+	}
+	if fixture.Identity.Outcome == "error" {
+		escapedRoot, err := json.Marshal(captured.root)
+		if err != nil {
+			return benchmark.WireFixture{}, err
+		}
+		if bytes.Contains(wire, []byte(wirePrivateMarker)) || bytes.Contains(wire, escapedRoot[1:len(escapedRoot)-1]) {
+			return benchmark.WireFixture{}, fmt.Errorf("error frame leaked a private fixture value")
+		}
+	}
+	fixture.Frames[0].Wire = wire
+	return fixture, nil
 }
 
 func checkSingleSTDIOFrame(wire []byte) error {
@@ -580,6 +626,7 @@ func checkExactSTDIOResponseSize(frame benchmark.WireFrame, actual uint64) error
 
 func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 	t.Run("catalog budgets", testCatalogBudgetMutations)
+	captures := make(map[benchmark.WireIdentity]wireGateCapture)
 	for _, test := range []struct {
 		name, want string
 		budget     func(*benchmark.WireBudgets)
@@ -648,6 +695,7 @@ func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 		{"malformed encoding", "invalid", nil, wireGateMutation{frame: mutateReadReference(`"text":"seed"`, `"text":"\x"`)}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
+			test.mutation.captures = captures
 			budgets := loadServerWireBudgets(t)
 			if test.budget != nil {
 				test.budget(&budgets)
@@ -663,6 +711,53 @@ func removeWireCase(rows []serverWireCase, tool, name string) []serverWireCase {
 	return slices.DeleteFunc(rows, func(row serverWireCase) bool {
 		return row.id.Tool == tool && row.id.Fixture == name
 	})
+}
+
+func TestWireCaptureReuseIsolation(t *testing.T) {
+	registry, _ := mcpRegistryWithLimit(t, true, wireFileLimit)
+	base := benchmark.WireIdentity{Source: benchmark.WireProduction, Revision: protocol.ProtocolVersion,
+		Profile: "read", Transport: "stdio-lf", Transfer: "inline", State: "complete", Outcome: "success"}
+	rows, err := serverWireCases(base, registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var row serverWireCase
+	for _, candidate := range rows {
+		if candidate.id.Tool == "read_file" && candidate.id.Fixture == "reference" {
+			row = candidate
+		}
+	}
+	if row.id.Tool == "" {
+		t.Fatal("reference fixture missing")
+	}
+	cache := make(map[benchmark.WireIdentity]wireGateCapture)
+	mutation := wireGateMutation{captures: cache}
+	original, err := captureServerWire(t, row, mutation)
+	if err != nil || len(cache) != 1 {
+		t.Fatalf("initial real capture: %v, entries=%d", err, len(cache))
+	}
+	want := bytes.Clone(original.Frames[0].Wire)
+	mutation.frame = func(_ benchmark.WireIdentity, wire []byte) []byte {
+		wire[0] = ' '
+		return wire
+	}
+	if _, err := captureServerWire(t, row, mutation); err == nil {
+		t.Fatal("in-place framing mutation accepted")
+	}
+	mutation.frame = nil
+	reused, err := captureServerWire(t, row, mutation)
+	if err != nil || !bytes.Equal(want, reused.Frames[0].Wire) {
+		t.Fatalf("cache poisoned by earlier mutation: %v", err)
+	}
+	// Registry and executable-case changes must bypass the capture cache.
+	called := false
+	mutation.registry = func(*tools.Registry) error {
+		called = true
+		return fmt.Errorf("fresh registry mutation")
+	}
+	if _, err := captureServerWire(t, row, mutation); err == nil || !called {
+		t.Fatal("registry mutation reused an unmodified capture")
+	}
 }
 
 func mutateReadReference(before, after string) func(benchmark.WireIdentity, []byte) []byte {

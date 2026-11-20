@@ -10,6 +10,12 @@ the intended release date. Publication evidence is separate.
 
 ## [Unreleased]
 
+### Changed
+
+- Add a local validation entry point that composes existing gates, records timed
+  results and verifies bound evidence for unchanged candidates. Reuse real wire
+  captures within byte/budget mutation tests to avoid repeated fixture execution.
+
 ### Breaking Changes
 
 - Replace `security.follow_symlinks` with a strict boolean in named policies

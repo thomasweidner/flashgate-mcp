@@ -32,6 +32,10 @@ before retiring a document.
   release, or scope decision instead of converting it into an assumption.
 - Validate directly affected areas first, then run the repository-wide gates
   required by `docs/testing.md`.
+- Use `scripts/test.ps1` (or `python -B scripts/validation.py`) as the validation
+  entry point: FAST during development, CANDIDATE for the converged review
+  candidate, and PUBLISH to check unchanged evidence after independent review.
+  Bind an external work root and follow the setup in `docs/testing.md`.
 - Preserve FlashGate's local-first, least-privilege, fail-closed design.
 - Do not add secrets, private host paths, credential material, or machine-local
   workflow dependencies to the repository.

@@ -116,7 +116,7 @@ function Invoke-GitNullList {
         $Process.WaitForExit()
         $ErrorText = $ErrorTask.GetAwaiter().GetResult()
         if ($Process.ExitCode -ne 0) {
-            throw "git $($Arguments -join ' ') failed: $ErrorText"
+            throw ('git {0} failed: {1}' -f ($Arguments -join ' '), $ErrorText)
         }
     }
     finally {
@@ -224,9 +224,15 @@ function New-FlashGateGitSnapshot {
         }
     }
 
+    $TrackedPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($TrackedPath in @($Tracked)) {
+        [void]$TrackedPaths.Add($TrackedPath)
+    }
     $Paths = @(
         @($Tracked) + @($Untracked) |
-            Where-Object { -not $Ignored.Contains($_) } |
+            # A local exclusion must not remove committed public source.
+            # Sensitive names remain rejected independently below.
+            Where-Object { $TrackedPaths.Contains($_) -or -not $Ignored.Contains($_) } |
             Sort-Object -Unique
     )
     if ($Paths.Count -eq 0) {
@@ -242,7 +248,7 @@ function New-FlashGateGitSnapshot {
                 [IO.Path]::IsPathRooted($RelativePath) -or
                 $RelativePath.Contains('\') -or
                 $RelativePath -match '(^|/)\.\.?(/|$)' -or
-                $RelativePath.IndexOfAny([char[]]"`0`r`n") -ge 0
+                $RelativePath.IndexOfAny([char[]]@(0, 13, 10)) -ge 0
             ) {
                 throw "Unsafe Git inventory path: $RelativePath"
             }

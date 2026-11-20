@@ -34,6 +34,8 @@ $packageInventory = $null
 $productPackageCount = 0
 $productRoot = './cmd/server'
 $coverageScope = 'server-module-dependency-closure'
+$runClock = [Diagnostics.Stopwatch]::StartNew()
+$testDurationSeconds = $null
 
 function Resolve-OutputPath {
     [CmdletBinding()]
@@ -149,14 +151,18 @@ try {
     [IO.File]::WriteAllLines($packageInventory, $sortedPackages, [Text.UTF8Encoding]::new($false))
 
     $coveragePackages = $sortedPackages -join ','
+    $testClock = [Diagnostics.Stopwatch]::StartNew()
     $testOutput = @(
         & go test `
+            -json `
             -covermode=atomic `
             "-coverpkg=$coveragePackages" `
             "-coverprofile=$coverageProfile" `
             ./... 2>&1
     )
     $testExitCode = $LASTEXITCODE
+    $testClock.Stop()
+    $testDurationSeconds = $testClock.Elapsed.TotalSeconds
 
     [IO.File]::WriteAllText(
         $testLog,
@@ -331,6 +337,9 @@ finally {
             text_report = $textReport
             html_report = $htmlReport
             test_log = $testLog
+            test_log_format = 'go-test-json'
+            test_duration_seconds = $testDurationSeconds
+            duration_seconds = $runClock.Elapsed.TotalSeconds
             error = $errorMessage
         }
 
