@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/resource"
+	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
 // Move moves or renames a file or directory on the same filesystem volume.
@@ -74,7 +77,7 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 		return ErrSamePath
 	}
 
-	effectiveSource, err := filepath.EvalSymlinks(sourcePath.String())
+	effectiveSource, err := effectivePathForComparison(sourcePath.String())
 	if err != nil {
 		return err
 	}
@@ -110,8 +113,17 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 	if err := revalidateMoveState(sourcePath.String(), targetPath.String(), sourceInfo, targetInfo, targetExists); err != nil {
 		return err
 	}
-	if sourceInfo.IsDir() {
-		if _, err := f.inspectTree(sourceOperand, false, targetOperand.path); err != nil {
+	var checkTree func() error
+	if sourceInfo.IsDir() && !sourceOperand.leafLink {
+		meter, err := resource.NewMeter(f.limits.ResourceLimits())
+		if err != nil {
+			return err
+		}
+		checkTree = func() error {
+			_, err := f.inspectTreeWithMeter(sourceOperand, false, meter, targetOperand.path)
+			return err
+		}
+		if err := checkTree(); err != nil {
 			return err
 		}
 	}
@@ -125,32 +137,11 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 	if err := admitEffect(admission); err != nil {
 		return err
 	}
-	return renameOnSameVolume(sourcePath.String(), targetPath.String(), sameVolume, os.Rename)
+	return f.renameNative(sourceOperand, targetOperand, checkTree)
 }
 
 func effectivePathForComparison(path string) (string, error) {
-	current := filepath.Clean(path)
-	missingSuffix := make([]string, 0)
-
-	for {
-		effective, err := filepath.EvalSymlinks(current)
-		if err == nil {
-			for index := len(missingSuffix) - 1; index >= 0; index-- {
-				effective = filepath.Join(effective, missingSuffix[index])
-			}
-			return filepath.Clean(effective), nil
-		}
-		if !errors.Is(err, os.ErrNotExist) {
-			return "", err
-		}
-
-		parent := filepath.Dir(current)
-		if parent == current {
-			return "", err
-		}
-		missingSuffix = append(missingSuffix, filepath.Base(current))
-		current = parent
-	}
+	return security.EffectivePath(path)
 }
 
 func revalidateMoveState(source string, target string, expectedSource os.FileInfo, expectedTarget os.FileInfo, targetExists bool) error {

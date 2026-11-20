@@ -132,6 +132,11 @@ exposure; there is no global file-type section, second configuration source
 or runtime reparse. Explicit unrestricted matching supplies no authorization
 and does not waive selected-source protection.
 
+BL-107 resolves the root-specific link boolean at the same bootstrap boundary.
+Root overrides replace inherited booleans; the default is false. The retired
+global field is rejected. Link policy does not waive role, source, execution
+identity or configuration protection.
+
 The planned configuration domains extend Runtime, Endpoints, Protocol, Files,
 Profiles, Capabilities, Authorization, Search, Operations,
 Results, Resources, Processes, Commands, System, Platform, Services, Scheduling,

@@ -60,6 +60,37 @@ confinement and selected-source protection remain independent.
 
 ## Current implementation
 
+The [Linux openat2 contract](https://man7.org/linux/man-pages/man2/openat2.2.html)
+defines no-cross-mount/no-link resolution and unavailable-interface failure.
+The [Windows reparse data contract](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_reparse_data_buffer)
+defines the actual substitute name and relative flag; a human-readable print
+name supplies no traversal authority. [Windows no-follow handle semantics](https://learn.microsoft.com/en-us/windows/win32/fileio/symbolic-link-effects-on-file-systems-functions)
+explain the final reparse-point open. The implementation also binds these
+choices to the tested Go 1.27.4 standard-library behavior.
+
+BL-107 adds the immutable per-root link boolean to named-policy composition
+and removes the global field without a compatibility path. PathGuard owns
+relative-chain classification and effective-root confinement. Native execution
+binds the root/parent/object before each operation. `os.Root` confines paths
+but permits Linux bind mounts, and its ordinary opens follow supported links.
+Linux therefore requires targeted `openat2` no-follow/no-cross-mount binding.
+Windows opens final objects through an opened parent with the reparse-point
+flag and classifies the handle before content I/O or truncation. There is no
+weaker fallback, new dependency, second registry or generic execution engine.
+
+Every current open/effect route, recursive inspection and compound operand
+uses the binding. Raw link, source/target and parent drift are rechecked at
+native boundaries. Configuration protection, root rights, grants, suffix
+matching and limits remain separate. Native metadata snapshots preserve the
+selected hidden-file policy.
+Only implicit tree descendants use structural-name handling; Windows hidden
+attribute drift and changed opened-root metadata are denied before I/O/effects.
+The fixed Windows metadata procedure and Linux syscall operations have exact
+path/platform/operation exceptions
+in the existing runtime source gate; generic loading and syscall function
+values remain denied. The [BL-107 implementation contract](../planning/implementation-contract.md#bl-107-per-root-symlink-and-reparse-policy)
+binds acceptance, unsupported projections and future consumer ownership.
+
 BL-106 binds the immutable root file-type policy below MCP through this same
 interface. Bootstrap resolves its typed fields once; the native filesystem
 checks lexical and resolved file names, source/target and recursive effects.
@@ -84,7 +115,7 @@ creation retains parent creation and reports actual leaf creation state.
 `move_path` supports same-volume file and directory movement and rename.
 It rejects same-path and same-file aliases, effective self-subtrees, unsafe
 overwrite type combinations, changed path identities, and cross-volume
-operations. File replacement uses rename without a separate target deletion;
+operations. File replacement uses a confined native rename without a separate target deletion;
 there is no cross-volume copy/delete fallback. The residual target-identity
 race of the path-based rename API is documented in [security](../security.md)
 and [migration](../migration.md#input-and-operation-semantics), not presented

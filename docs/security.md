@@ -91,6 +91,10 @@ The configured root must exist, pass policy, and resolve effectively to a direct
 
 Only `PathGuard` creates `SafePath` values.
 
+A SafePath string is a metadata observation, not a durable grant or a native
+handle. Namespace state can change. Consumers execute through the root-bound
+filesystem, which binds and rechecks native operands at the actual effect.
+
 This prevents unvalidated user input from being passed directly to filesystem operations.
 
 ## Blocked Path Types
@@ -138,9 +142,12 @@ Destructive operations are intentionally conservative.
 
 ### Move
 
-`Move()` does not overwrite existing targets unless `overwrite=true`. Replacement is restricted to file-to-file, revalidates the observed source and target identities immediately before the rename, and uses `os.Rename` without a separate target deletion. Directory targets are never explicitly removed.
+`Move()` does not overwrite existing targets unless `overwrite=true`. Replacement is restricted to file-to-file and revalidates source and target identities immediately before a confined native rename, without a separate target deletion. Directory targets are never explicitly removed.
 
-The standard cross-platform API remains path-based: a concurrent writer could exchange the file at the already authorized target path after final revalidation. That residual race is bounded to the target path, cannot invoke directory removal or copy/delete fallback, and is narrower than the previous remove-then-rename sequence.
+The native namespace API does not provide atomic identity-conditional rename.
+Independent OS changes after final revalidation retain the specific residual
+described under [configuration protection](#configuration-trust-and-protection).
+There is no directory-removal or copy/delete fallback.
 
 ### Copy
 
@@ -157,7 +164,7 @@ Explicit symlink policy is enforced.
 Configuration:
 
 ```toml
-[security]
+[policy.workspace]
 follow_symlinks = false
 ```
 
@@ -165,7 +172,58 @@ Default: `false`.
 
 When `follow_symlinks = false`, existing symlink path components are denied before filesystem operations. Create targets are denied when the nearest existing parent contains a symlink. `list_directory` filters symlink entries instead of exposing them.
 
-When `follow_symlinks = true`, classic symlinks may be followed only if the effective target remains inside the effective root. Symlink escapes are still denied. Windows junctions and non-symlink reparse points remain denied by default.
+Configure this boolean per named policy/root only; a root value replaces the
+inherited value and omission at both levels means false. The old global
+`security.follow_symlinks` is rejected without an alias or automatic migration.
+Each effective root snapshot is immutable and grants no access or capability.
+
+When true, only supported relative symlinks whose complete resolution remains
+inside the chosen effective root may be followed. Absolute targets, escaping
+chains, cycles/excessive chains, Windows junctions and unsupported reparse
+objects remain denied. Inspect root-path ancestors as well. Windows tag
+classification requires an actual symlink tag; a generic reparse bit or an
+unknown metadata representation is not sufficient. Lists omit denied links;
+metadata denials are not converted to target access or absence.
+
+Native execution binds the root identity established at bootstrap. Linux
+uses `os.Root` for the opened root and requires `openat2` with `RESOLVE_BENEATH`,
+`RESOLVE_NO_SYMLINKS`, `RESOLVE_NO_MAGICLINKS` and `RESOLVE_NO_XDEV` for
+canonical parent/object binding. Reject nested mounts, including same-device
+bind mounts, and fail closed if the required kernel interface is unavailable.
+The fixed native syscall ABI is admitted on Linux amd64/arm64 only.
+Windows uses `os.Root`/opened parents and `FILE_FLAG_OPEN_REPARSE_POINT` for
+content handles, rejecting final reparse objects before content I/O. These
+supplements are necessary because `os.Root` alone permits mount traversal
+and its ordinary Open methods follow supported links.
+
+Open existing outputs without truncation, then check the opened object,
+selected-source protection, source/target snapshots and result admission
+before effects. Recheck raw link objects/targets and parent/object identity
+at native boundaries, including copy-source checks immediately before a
+destination effect. Native unlink/mkdir use bound parents.
+Content-target parents and namespace-entry parents are bound independently
+when a relative leaf link points into another directory. Deleting or renaming
+a leaf directory link does not scan, move or remove its target's children.
+Directory moves repeat projection validation at the native effect boundary;
+both scans share one operation SCAN meter and cannot each spend the full cap.
+Rename remains root-confined and retains the explicit final namespace residual above.
+Relative leaf links may be renamed within one parent; unproved reparenting
+and tree-link projections are denied. Recursive scans never descend into
+directory links. Allowing a link or extension never overrides configuration
+protection, file-type restrictions, access, grants or resource limits.
+
+Selected operands retain the original hidden-file policy at revalidation.
+Structural hidden-name handling belongs only to implicit descendants of an
+authorized tree effect. Native Windows snapshots also compare hidden
+attributes on link, parent and object observations, and validate the opened
+root's metadata against its policy. A late hidden-attribute change cannot
+turn a selected operand into an allowed read or effect. Structural traversal
+does not grant a client permission to select a hidden descendant.
+
+Future filesystem, search, operations, execution, Native Tool and provider
+consumers must use the same root/PathGuard/filesystem contract and prove their
+actual delegated effects. This introduces no extra public tool, capability,
+root registry or generic execution engine. See the [BL-107 contract](planning/implementation-contract.md#bl-107-per-root-symlink-and-reparse-policy).
 
 ## UNC Paths
 

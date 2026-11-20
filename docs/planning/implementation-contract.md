@@ -363,6 +363,60 @@ proved. Same-parent link renames and absolute links still pass normal guards.
 No productive external backend, new tool or deferred BL-106 feature is implied
 by these explicit fail-closed unsupported routes.
 
+## BL-107 per-root symlink and reparse policy
+
+BL-107 extends the existing configuration, PathGuard and native filesystem
+boundary. Its hard prerequisites are completed BL-104, BL-105, BL-106 and
+BL-374 and their named-root/configuration foundations. Reuse the immutable
+root registry, per-field policy inheritance, shared cross-root effect lock,
+file-type checks and selected-configuration identity protection. Retrofit all
+eight existing operations, their recursive/compound effects and bootstrap.
+There is no second registry, policy engine or generic execution engine.
+
+Only named policies and root tables accept `follow_symlinks`, a strict
+boolean. Resolve root override, inherited value and default false once at
+bootstrap. Validate unused policies. Remove `security.follow_symlinks` without
+an alias or automatic migration. A link setting adds no capability or access.
+Preserve all independent access, resource, extension, risk and protection
+checks. Tool names, arguments, result schemas, VERSION and dependencies stay
+unchanged; Go's project minimum becomes 1.27.4.
+
+PathGuard owns link classification, bounded relative-link resolution and
+effective-root confinement. Deny absolute targets, Windows junctions and
+unknown/unsupported reparse objects. Native execution binds the authorized
+root and parent/object identities rather than reopening an unchecked absolute
+pathname. Use `os.Root` for the root handle and confined standard operations;
+add only operation-specific native no-follow and mount/volume checks where
+the standard library cannot establish the required boundary. Linux must not
+traverse nested mounts, including same-device bind aliases. Unknown native
+enforcement fails closed. Symlink metadata never implies target permission.
+
+Open existing output handles without truncation. Check identity, protection,
+both operands and result admission before destructive effects, and recheck
+after deterministic test interception. Bind parent effects for create,
+mkdir, unlink and rename; preserve the shared effect lock across overlapping
+root IDs. Recursive scans do not descend into links and preflight all effects.
+Do not claim identity-conditional namespace mutation or absolute race freedom
+where the OS cannot prove it. The narrowly accepted independent-OS-process
+final-window residual in the BL-374 security contract remains explicit.
+
+Acceptance covers defaults and mixed roots, inheritance and explicit false,
+strict schema and retired global fields, relative/absolute links, chains,
+cycles, native junction/reparse/mount cases, hardlinks, overlapping IDs,
+protected read/copy sources and mutation destinations, deterministic late
+link/parent/source/target drift, extension-policy independence, unchanged
+siblings, redaction and native/MCP parity. Run the complete applicable Windows
+and native Linux testing, race, coverage, conformance, source and budget gates.
+Privileged unavailable cases are reported as unexecuted, never PASS.
+
+Future filesystem, search, operations, process, Native Tool and provider
+owners consume this existing boundary for every operand and effect and prove
+their own routes before activation. They do not reopen BL-107. BL-108/109 and
+other independent product tasks remain separate. Documentation, migration,
+Unreleased, traceability and reviewed backlog closure belong to this delivery;
+release/distribution and taskroot cleanup are outside it. Independent terminal
+review and actual integration/main readback govern completion.
+
 ## BL-220 adapter acceptance binding
 
 Every new or changed consumer inherits the [BL-105 resource contract](#bl-105-resource-limits).

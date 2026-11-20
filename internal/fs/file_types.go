@@ -8,11 +8,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
+	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
-
-func (f *LocalFileSystem) checksIdentity() bool {
-	return f.protection != nil || f.fileTypes.Restricted()
-}
 
 func (f *LocalFileSystem) validateFileOperandSpelling(raw string) error {
 	name := fileOperandBasename(raw)
@@ -132,9 +129,6 @@ func ambiguousNativeFileName(name string) bool {
 // A relative link moved to another parent has no proved future target. Keep
 // this route denied under a restriction rather than classify its old target.
 func (f *LocalFileSystem) checkLinkProjection(source, target effectPath) error {
-	if !f.fileTypes.Restricted() {
-		return nil
-	}
 	entry, err := os.Lstat(source.path)
 	if err != nil {
 		return ErrFileTypeDenied
@@ -142,8 +136,11 @@ func (f *LocalFileSystem) checkLinkProjection(source, target effectPath) error {
 	if entry.Mode()&os.ModeSymlink == 0 {
 		return nil
 	}
-	link, err := os.Readlink(source.path)
-	if err != nil || (!filepath.IsAbs(link) && !sameEffectInfo(source.parent, target.parent)) {
+	link, err := security.RelativeLinkTarget(source.path)
+	if err != nil || (!filepath.IsAbs(link) && !sameEffectInfo(source.entryParent, target.entryParent)) {
+		if !f.fileTypes.Restricted() {
+			return security.ErrSymlinkDenied
+		}
 		return ErrFileTypeDenied
 	}
 	return nil

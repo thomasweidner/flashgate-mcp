@@ -83,19 +83,21 @@ type RootID string
 
 // RootDefinition is a value snapshot of a configured root.
 type RootDefinition struct {
-	ID        RootID
-	Path      string
-	Access    RootAccess
-	Limits    resource.Limits
-	FileTypes FileTypePolicy
+	ID             RootID
+	Path           string
+	Access         RootAccess
+	Limits         resource.Limits
+	FileTypes      FileTypePolicy
+	FollowSymlinks bool
 }
 
 type rootFields struct {
 	resourceFields
 	fileTypeFields
-	Path   string       `toml:"path"`
-	Policy *policyID    `toml:"policy"`
-	Access accessFields `toml:"access"`
+	Path           string       `toml:"path"`
+	Policy         *policyID    `toml:"policy"`
+	Access         accessFields `toml:"access"`
+	FollowSymlinks *bool        `toml:"follow_symlinks"`
 }
 
 type filesFields struct {
@@ -113,7 +115,6 @@ type filesFields struct {
 type securityFields struct {
 	AllowHiddenFiles bool `toml:"allow_hidden_files"`
 	AllowUNCPaths    bool `toml:"allow_unc_paths"`
-	FollowSymlinks   bool `toml:"follow_symlinks"`
 }
 
 type protocolFields struct {
@@ -478,7 +479,6 @@ func (f FilesConfig) Limits() resource.Limits   { return f.data.limits() }
 func (f FilesConfig) MaxDeleteEntries() int     { return f.data.MaxDeleteEntries }
 func (s SecurityConfig) AllowHiddenFiles() bool { return s.data.AllowHiddenFiles }
 func (s SecurityConfig) AllowUNCPaths() bool    { return s.data.AllowUNCPaths }
-func (s SecurityConfig) FollowSymlinks() bool   { return s.data.FollowSymlinks }
 func (s ServerConfig) Name() string             { return "flashgate" }
 func (s ServerConfig) Version() string          { return "0.1.0-dev" }
 func (s ServerConfig) MaxMessageSize() int64    { return int64(s.data.MaxMessageBytes) }

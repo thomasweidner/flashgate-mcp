@@ -1,6 +1,6 @@
 module github.com/thomasweidner/flashgate-mcp
 
-go 1.26.4
+go 1.27.4
 
 require github.com/josephspurrier/goversioninfo v1.7.0
 

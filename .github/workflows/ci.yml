@@ -12,6 +12,7 @@ permissions:
   contents: read
 
 env:
+  GOTOOLCHAIN: local
   POWERSHELL_766_URI: https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-x64.zip
   POWERSHELL_766_SHA256: 02FE458BE20493FBDF43F61EA20610B811EE6C738AB1676C61B9CFCD1A33C860
 
@@ -93,8 +94,15 @@ jobs:
       - name: Set up Go for documentation checks
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: "1.27.4"
           cache: false
+
+      - name: Verify Go toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          test "$(go env GOVERSION)" = "go1.27.4"
 
       - name: Validate PowerShell and Bash scripts on Windows
         shell: pwsh
@@ -127,8 +135,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: "1.27.4"
           cache: false
+
+      - name: Verify Go toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          test "$(go env GOVERSION)" = "go1.27.4"
 
       - name: Prepare Windows test PowerShell 7.6.6
         if: matrix.os == 'windows-latest'
@@ -220,9 +235,20 @@ jobs:
           /usr/bin/bash scripts/test-shell-scripts.tests.sh
 
       - name: Check formatting
+        shell: bash
         run: |
-          go fmt ./...
-          git diff --exit-code
+          set -euo pipefail
+          files_output=$(go list -f '{{range .GoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .CgoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .TestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}{{range .XTestGoFiles}}{{$.Dir}}/{{.}}{{"\n"}}{{end}}' ./...)
+          go_files=()
+          while IFS= read -r file; do
+            if [[ -n "$file" ]]; then go_files+=("$file"); fi
+          done <<< "$files_output"
+          test "${#go_files[@]}" -gt 0
+          unformatted=$(gofmt -l "${go_files[@]}")
+          if [[ -n "$unformatted" ]]; then
+            printf '%s\n' "$unformatted"
+            exit 1
+          fi
 
       - name: Validate documentation inventory, names, language, and links
         run: go run ./cmd/doccheck
@@ -329,11 +355,41 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: "1.27.4"
           cache: false
 
+      - name: Verify Go toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          go version
+          test "$(go env GOVERSION)" = "go1.27.4"
+
       - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/golangci-lint-2.15.0-linux-amd64.tar.gz"
+          install_root="$RUNNER_TEMP/golangci-lint-2.15.0"
+          curl --fail --show-error --location --proto '=https' --tlsv1.2 \
+            --output "$archive" \
+            https://github.com/golangci/golangci-lint/releases/download/v2.15.0/golangci-lint-2.15.0-linux-amd64.tar.gz
+          printf '%s  %s\n' '9b7fe6a6bf6334b98decf8d86b11415ea7889afdabdd1959fdce23af2a9ebcea' "$archive" | sha256sum --check --strict -
+          mkdir -- "$install_root"
+          tar -xzf "$archive" --directory "$install_root" --strip-components=1 \
+            golangci-lint-2.15.0-linux-amd64/golangci-lint
+          "$install_root/golangci-lint" version
+          test "$("$install_root/golangci-lint" version --short)" = '2.15.0'
+          printf '%s\n' "$install_root" >> "$GITHUB_PATH"
+
+      - name: Verify golangci-lint version and configuration
+        run: |
+          test "$(golangci-lint version --short)" = '2.15.0'
+          golangci-lint version
+          golangci-lint config verify
 
       - name: Run golangci-lint
         run: golangci-lint run
+
+      - name: Check formatting without modifying source
+        run: golangci-lint fmt --diff

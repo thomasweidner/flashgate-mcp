@@ -62,7 +62,9 @@ func mkdirReceiptSize(path string, created bool) int64 {
 		switch {
 		case char == '"' || char == '\\':
 			escapes += 2
-		case char < ' ' || char == '<' || char == '>' || char == '&' || char == '\u2028' || char == '\u2029' || char == utf8.RuneError && width == 1:
+		case char < ' ' || char == '<' || char == '>' || char == '&' || char == '\u2028' || char == '\u2029':
+			escapes++
+		case char == utf8.RuneError && width == 1 && len(invalidUTF8JSON) == 6:
 			escapes++
 		}
 		path = path[width:]

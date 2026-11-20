@@ -40,7 +40,7 @@ func (f *LocalFileSystem) Stat(path string) (Metadata, error) {
 	}
 
 	return Metadata{
-		Name:  info.Name(),
+		Name:  safePath.Base(),
 		IsDir: info.IsDir(),
 		Size:  info.Size(),
 	}, nil

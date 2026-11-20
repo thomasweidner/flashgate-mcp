@@ -224,9 +224,12 @@ needed.
 
 The source gate uses the Go toolchain to resolve non-test dependencies of
 `./cmd/server` for the four released Windows/Linux amd64/arm64 configurations
-with CGO disabled and default build tags. The two fixed Windows system DLLs
-used by the configuration source checks are permitted only in that bootstrap
-source. It inspects the active non-standard
+with CGO disabled and default build tags. Fixed Windows metadata procedures
+are permitted only in their exact reviewed source/platform bindings: bootstrap
+source checks and BL-107 symlink-tag classification. Linux BL-107 permits only
+direct fixed `openat2`/`unlinkat` calls in their exact native functions on
+released ABIs. Other procedure/syscall IDs, generic function values and
+alternate source paths remain denied by mutation fixtures. It inspects the active non-standard
 Go sources, including reachable vendored packages. Development commands
 such as `cmd/mcpcheck`, test files and ignored build-tag variants remain
 outside these graphs. The checker fails on graph or source inspection errors
@@ -491,6 +494,33 @@ Currently tested:
 
 The sections below define acceptance for current shared filesystem controls
 and additional Version 1.0 gates.
+
+### Per-root link policy acceptance
+
+Run configuration, PathGuard, native filesystem, root and MCP tests for strict
+boolean inheritance/override, unused definitions, retired global-key denial,
+mixed and overlapping IDs, default deny, relative/absolute targets, escaping
+chains and cycles. Prove every existing operation preserves root rights,
+file-type matching, selected-source protection and resource ceilings.
+
+Use deterministic native interception to exchange link, parent, source and
+target immediately before Open, truncation, create, unlink or rename. Denied
+reads/copy sources expose no protected bytes; denied output paths have no
+premature truncation or creation. Check unchanged siblings and backend/MCP
+denial parity with allowed extensions. Windows covers junctions and a native
+unknown reparse tag, plus deterministic hidden-attribute changes on selected
+files, parents, intermediate ancestors and opened roots. Structural hidden
+descendants must remain movable/deletable without granting hidden selection.
+Cover leaf-link namespace parents distinct from target parents, and preserve
+directory-link target contents under either recursive-delete flag. Inject a
+relative link after directory-move preflight and before native rename; deny
+the projection without creating the destination. Prove preflight and final
+tree scans consume one aggregate SCAN budget at its exact boundary.
+Linux covers same-device bind mounts in an isolated
+mount namespace where the host permits it. Record unavailable privileged
+fixtures as unexecuted, never PASS. Run native Linux race, both platform
+coverage gates and the unchanged conformance/catalog/wire/source gates.
+See the [BL-107 acceptance contract](planning/implementation-contract.md#bl-107-per-root-symlink-and-reparse-policy).
 
 ### File-type policy acceptance
 

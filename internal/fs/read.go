@@ -47,7 +47,7 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 	if err := f.recheckEffect(operand, false); err != nil {
 		return nil, err
 	}
-	file, err := os.Open(operand.path)
+	file, err := f.openNative(operand, os.O_RDONLY, 0)
 	if err != nil {
 		return nil, err
 	}

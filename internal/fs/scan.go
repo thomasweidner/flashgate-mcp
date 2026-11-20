@@ -8,14 +8,17 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
-// scanTree visits each directory entry once without eagerly allocating an
+// scanTreeWithMeter visits each directory entry once without eagerly allocating an
 // entire directory. Names (including filtered/link entries) consume bytes;
 // entries independently consume the operation's traversal bound. No contents
 // are read and directory symlinks are never followed.
-func (f *LocalFileSystem) scanTree(root string, maxEntries int, visit func(string, os.DirEntry) error) error {
-	meter, err := resource.NewMeter(f.limits.ResourceLimits())
-	if err != nil {
-		return err
+func (f *LocalFileSystem) scanTreeWithMeter(root string, maxEntries int, visit func(string, os.DirEntry) error, meter *resource.Meter) error {
+	if meter == nil {
+		var err error
+		meter, err = resource.NewMeter(f.limits.ResourceLimits())
+		if err != nil {
+			return err
+		}
 	}
 	remaining := maxEntries
 	rootInfo, err := effectInfo(root)
@@ -26,10 +29,11 @@ func (f *LocalFileSystem) scanTree(root string, maxEntries int, visit func(strin
 		return ErrPathIsNotDirectory
 	}
 	type directorySnapshot struct {
-		path string
-		info os.FileInfo
+		path       string
+		info       os.FileInfo
+		structural bool
 	}
-	queue := []directorySnapshot{{root, rootInfo}}
+	queue := []directorySnapshot{{root, rootInfo, false}}
 	queueRemaining := maxListResultCost - len(root) - listEntryCost
 	for len(queue) != 0 {
 		next := queue[len(queue)-1]
@@ -37,7 +41,7 @@ func (f *LocalFileSystem) scanTree(root string, maxEntries int, visit func(strin
 		queue = queue[:len(queue)-1]
 		directory := next.path
 		queueRemaining += len(directory) + listEntryCost
-		operand, err := f.inspectEffect(directory, true)
+		operand, err := f.inspectEffectContext(directory, true, next.structural)
 		if err != nil {
 			return err
 		}
@@ -47,7 +51,7 @@ func (f *LocalFileSystem) scanTree(root string, maxEntries int, visit func(strin
 		if err := f.recheckTreeEntry(treeEffect{effectPath: operand}); err != nil {
 			return err
 		}
-		file, err := os.Open(directory)
+		file, err := f.openNative(operand, os.O_RDONLY, 0)
 		if err != nil {
 			return err
 		}
@@ -81,11 +85,12 @@ func (f *LocalFileSystem) scanTree(root string, maxEntries int, visit func(strin
 						return err
 					}
 					if e.IsDir() {
-						info, err := e.Info()
+						child, err := f.inspectPath(p)
 						if err != nil {
 							return err
 						}
-						if !info.IsDir() {
+						info := child.info
+						if info == nil || !info.IsDir() {
 							return ErrMovePathChanged
 						}
 						cost := len(p) + listEntryCost
@@ -93,7 +98,7 @@ func (f *LocalFileSystem) scanTree(root string, maxEntries int, visit func(strin
 							return ErrLimitExceeded
 						}
 						queueRemaining -= cost
-						queue = append(queue, directorySnapshot{p, info})
+						queue = append(queue, directorySnapshot{p, info, true})
 					}
 				}
 				if readErr == io.EOF {

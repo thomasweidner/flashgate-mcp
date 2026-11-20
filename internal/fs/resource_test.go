@@ -151,7 +151,9 @@ func TestMoveInspectionKeepsImplicitHiddenChildren(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "tree", ".nested", "file"), "payload is not scanned")
 	l := DefaultLimits()
 	l.MaxDeleteEntries = 1
-	l.MaxScanSize = int64(len(".nested") + len("file"))
+	// Both actual inspections spend the same operation allowance. This test
+	// isolates structural hidden descendants and the independent deletion cap.
+	l.MaxScanSize = 2 * int64(len(".nested")+len("file"))
 	f := mustNewLocalFileSystemWithLimits(t, root, l)
 	if err := f.Move("tree", "moved", false); err != nil {
 		t.Fatal("rename acquired a deletion or hidden-selection limit", err)

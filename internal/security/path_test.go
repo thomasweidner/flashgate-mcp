@@ -100,7 +100,11 @@ func TestNewPathGuardSymlinkRootPolicy(t *testing.T) {
 
 	target := t.TempDir()
 	link := filepath.Join(t.TempDir(), "root-link")
-	createSecurityTestSymlinkOrSkip(t, target, link)
+	relative, err := filepath.Rel(filepath.Dir(link), target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	createSecurityTestSymlinkOrSkip(t, relative, link)
 
 	if _, err := NewPathGuard(link); !errors.Is(err, ErrSymlinkDenied) {
 		t.Fatalf("expected symlink root to be denied by default, got %v", err)
@@ -116,9 +120,13 @@ func TestNewPathGuardRejectsSymlinkRootToFileWhenFollowing(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "target.txt")
 	writeSecurityTestFile(t, target, "file")
 	link := filepath.Join(t.TempDir(), "root-link")
-	createSecurityTestSymlinkOrSkip(t, target, link)
+	relative, err := filepath.Rel(filepath.Dir(link), target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	createSecurityTestSymlinkOrSkip(t, relative, link)
 
-	_, err := NewPathGuardWithPolicy(link, Policy{FollowSymlinks: true})
+	_, err = NewPathGuardWithPolicy(link, Policy{FollowSymlinks: true})
 	if !errors.Is(err, ErrRootNotDirectory) {
 		t.Fatalf("expected ErrRootNotDirectory, got %v", err)
 	}
@@ -254,7 +262,7 @@ func TestResolveExistingAllowsInRootSymlinkWhenConfigured(t *testing.T) {
 
 	root := t.TempDir()
 	writeSecurityTestFile(t, filepath.Join(root, "target.txt"), "target")
-	createSecurityTestSymlinkOrSkip(t, filepath.Join(root, "target.txt"), filepath.Join(root, "link.txt"))
+	createSecurityTestSymlinkOrSkip(t, "target.txt", filepath.Join(root, "link.txt"))
 
 	guard := mustNewPathGuardWithPolicy(t, root, Policy{FollowSymlinks: true})
 
@@ -271,11 +279,15 @@ func TestResolveExistingRejectsSymlinkEscapeEvenWhenFollowingSymlinks(t *testing
 	root := t.TempDir()
 	outside := t.TempDir()
 	writeSecurityTestFile(t, filepath.Join(outside, "secret.txt"), "secret")
-	createSecurityTestSymlinkOrSkip(t, filepath.Join(outside, "secret.txt"), filepath.Join(root, "escape.txt"))
+	relative, err := filepath.Rel(root, filepath.Join(outside, "secret.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	createSecurityTestSymlinkOrSkip(t, relative, filepath.Join(root, "escape.txt"))
 
 	guard := mustNewPathGuardWithPolicy(t, root, Policy{FollowSymlinks: true})
 
-	_, err := guard.ResolveExisting("escape.txt")
+	_, err = guard.ResolveExisting("escape.txt")
 
 	if !errors.Is(err, ErrOutsideRoot) {
 		t.Fatalf("expected ErrOutsideRoot, got %v", err)
@@ -319,7 +331,7 @@ func TestResolveForCreateAllowsSymlinkedParentWhenConfigured(t *testing.T) {
 
 	root := t.TempDir()
 	mkdirSecurityTestDir(t, filepath.Join(root, "real-dir"))
-	createSecurityTestSymlinkOrSkip(t, filepath.Join(root, "real-dir"), filepath.Join(root, "link-dir"))
+	createSecurityTestSymlinkOrSkip(t, "real-dir", filepath.Join(root, "link-dir"))
 
 	guard := mustNewPathGuardWithPolicy(t, root, Policy{FollowSymlinks: true})
 

@@ -161,7 +161,7 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 		}
 	}
 	systemDLLCalls := map[*ast.SelectorExpr]bool{}
-	if name == "internal/config/source_windows.go" && strings.HasPrefix(target, "windows/") {
+	if strings.HasPrefix(target, "windows/") {
 		// BL-233 uses these fixed system libraries to inspect the security
 		// descriptor and final path of the already opened bootstrap file.
 		ast.Inspect(file, func(node ast.Node) bool {
@@ -185,13 +185,52 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 			qualifier, ok := selector.X.(*ast.Ident)
 			value, literal := library.Args[0].(*ast.BasicLit)
 			if ok && imports[qualifier.Name] == "syscall" && literal && value.Kind == token.STRING &&
-				(value.Value == `"advapi32.dll"` && procedure.Value == `"GetSecurityInfo"` ||
-					value.Value == `"kernel32.dll"` && (procedure.Value == `"GetFinalPathNameByHandleW"` ||
-						procedure.Value == `"GetDriveTypeW"`)) {
+				allowedSystemProcedure(name, value.Value, procedure.Value) {
 				systemDLLCalls[selector] = true
 			}
 			return true
 		})
+	}
+	if name == "internal/fs/native_linux.go" && (target == "linux/amd64" || target == "linux/arm64") {
+		// BL-107 needs openat2's NO_XDEV/NO_SYMLINKS and parent-relative
+		// unlinkat. Permit only direct calls with their fixed operation IDs
+		// in the exact implementation functions, never a syscall function value.
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			ast.Inspect(fn.Body, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				selector, ok := call.Fun.(*ast.SelectorExpr)
+				if !ok {
+					return true
+				}
+				qualifier, ok := selector.X.(*ast.Ident)
+				if !ok || imports[qualifier.Name] != "syscall" || len(call.Args) == 0 {
+					return true
+				}
+				if fn.Recv == nil && fn.Name.Name == "nativeOpenAt" && selector.Sel.Name == "Syscall6" && len(call.Args) == 7 {
+					id, ok := call.Args[0].(*ast.BasicLit)
+					if ok && id.Kind == token.INT && id.Value == "437" {
+						systemDLLCalls[selector] = true
+					}
+				}
+				if fn.Recv != nil && fn.Name.Name == "remove" && selector.Sel.Name == "Syscall" && len(call.Args) == 4 {
+					id, ok := call.Args[0].(*ast.SelectorExpr)
+					if ok {
+						q, ok := id.X.(*ast.Ident)
+						if ok && imports[q.Name] == "syscall" && id.Sel.Name == "SYS_UNLINKAT" {
+							systemDLLCalls[selector] = true
+						}
+					}
+				}
+				return true
+			})
+		}
 	}
 	ast.Inspect(file, func(node ast.Node) bool {
 		selector, ok := node.(*ast.SelectorExpr)
@@ -217,6 +256,17 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 		}
 	}
 	return findings
+}
+
+func allowedSystemProcedure(name, library, procedure string) bool {
+	switch name {
+	case "internal/config/source_windows.go":
+		return library == `"advapi32.dll"` && procedure == `"GetSecurityInfo"` ||
+			library == `"kernel32.dll"` && (procedure == `"GetFinalPathNameByHandleW"` || procedure == `"GetDriveTypeW"`)
+	case "internal/security/policy_windows.go":
+		return library == `"kernel32.dll"` && procedure == `"GetFileInformationByHandleEx"`
+	}
+	return false
 }
 
 func sensitiveRuntimeAPI(importPath, name string) bool {

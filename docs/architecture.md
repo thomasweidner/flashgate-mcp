@@ -90,6 +90,15 @@ Startup fails closed before runtime exposure if any configured root fails
 validation. Each root gets its own PathGuard. All roots share the selected
 configuration protection and filesystem effect coordination.
 
+BL-107 resolves a strict `follow_symlinks` boolean per root from named-policy
+inheritance and root override, defaulting to false. The retired global field
+is rejected. PathGuard owns relative-link classification and confinement;
+`internal/fs` binds native opens/effects to the root and inspected parents/
+objects. Linux adds no-follow/no-cross-mount `openat2` binding; Windows uses
+root/parent-relative opens with no final reparse traversal. All eight current
+operations preserve independent access, file types, limits and BL-374
+protection. Later consumers reuse this boundary and validate their own routes.
+
 Not yet implemented:
 
 - named-root discovery;

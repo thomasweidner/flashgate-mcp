@@ -93,10 +93,10 @@ func TestRegistryProtectsConfigThroughOverlappingRoots(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := filepath.Join(inner, "config.toml")
-	document := "[files]\ndefault_id = 'outer'\n[security]\nfollow_symlinks = true\n" +
+	document := "[files]\ndefault_id = 'outer'\n" +
 		rootTable(t, "outer", outer) + "policy = 'workspace'\n" +
 		rootTable(t, "inner", inner) + "policy = 'workspace'\n" +
-		"[policy.workspace]\naccess = ['read', 'write']\n"
+		"[policy.workspace]\naccess = ['read', 'write']\nfollow_symlinks = true\n"
 	r := loadRegistry(t, source, document)
 	outerPath := func(path string) fs.Operand { return fs.Operand{RootID: "outer", Path: path} }
 	innerPath := func(path string) fs.Operand { return fs.Operand{RootID: "inner", Path: path} }

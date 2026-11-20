@@ -83,6 +83,7 @@ type PathGuard struct {
 	root          string
 	effectiveRoot string
 	rootInfo      os.FileInfo
+	rootLinks     []LinkIdentity
 	policy        Policy
 }
 
@@ -113,6 +114,9 @@ func NewPathGuardWithPolicy(root string, policy Policy) (*PathGuard, error) {
 	if err := validatePathMetadata(absoluteRoot, policy); err != nil {
 		return nil, err
 	}
+	if err := validateRootChain(absoluteRoot, policy, 0); err != nil {
+		return nil, err
+	}
 
 	effectiveRoot, err := evalEffectivePath(absoluteRoot)
 	if err != nil {
@@ -126,11 +130,20 @@ func NewPathGuardWithPolicy(root string, policy Policy) (*PathGuard, error) {
 	if !effectiveInfo.IsDir() {
 		return nil, ErrRootNotDirectory
 	}
+	rootLinks, err := snapshotLinks(filepath.VolumeName(absoluteRoot)+string(filepath.Separator), absoluteRoot)
+	if err != nil {
+		return nil, err
+	}
+	current, err := PathIdentity(absoluteRoot)
+	if err != nil || !os.SameFile(current, effectiveInfo) {
+		return nil, ErrOutsideRoot
+	}
 
 	return &PathGuard{
 		root:          absoluteRoot,
 		effectiveRoot: effectiveRoot,
 		rootInfo:      effectiveInfo,
+		rootLinks:     rootLinks,
 		policy:        policy,
 	}, nil
 }
@@ -143,6 +156,43 @@ func (g *PathGuard) Root() string {
 // EffectiveRoot returns the validated, resolved data-root path.
 func (g *PathGuard) EffectiveRoot() string {
 	return g.effectiveRoot
+}
+
+// ValidateRootIdentity binds a native operation's opened root to bootstrap.
+// A path-only resolution is never authority to substitute a different root.
+func (g *PathGuard) ValidateRootIdentity(info os.FileInfo) error {
+	if info == nil || !info.IsDir() || !os.SameFile(g.rootInfo, info) {
+		return ErrOutsideRoot
+	}
+	if err := validateNativeRootMetadata(info, g.policy); err != nil {
+		return err
+	}
+	if err := validateRootChain(g.root, g.policy, 0); err != nil {
+		return err
+	}
+	links, err := snapshotLinks(filepath.VolumeName(g.root)+string(filepath.Separator), g.root)
+	if err != nil || !SameLinks(g.rootLinks, links) {
+		return ErrOutsideRoot
+	}
+	return nil
+}
+
+// RevalidateEffect rechecks a previously selected absolute operand or an
+// implicit descendant of an authorized tree effect. Hidden-name selection is
+// done by ResolveExisting/ResolveForCreate before domain dispatch; a rename
+// of a directory must also inspect its implicit hidden descendants. This
+// metadata-only method grants no selection, root access or effect permission.
+func (g *PathGuard) RevalidateEffect(path string) (SafePath, error) {
+	if !filepath.IsAbs(path) || !isInsideRoot(g.root, path) {
+		return SafePath{}, ErrOutsideRoot
+	}
+	relative, err := filepath.Rel(g.root, path)
+	if err != nil {
+		return SafePath{}, ErrOutsideRoot
+	}
+	structural := *g
+	structural.policy.AllowHiddenFiles = true
+	return structural.ResolveForCreate(relative)
 }
 
 // Resolve validates and resolves a user path against the sandbox root.
@@ -179,6 +229,11 @@ func (g *PathGuard) ResolveExisting(userPath string) (SafePath, error) {
 func (g *PathGuard) ResolveForCreate(userPath string) (SafePath, error) {
 	resolvedPath, err := g.resolveLexical(userPath)
 	if err != nil {
+		return SafePath{}, err
+	}
+	// Enforce link policy on existing components before an evaluator can
+	// traverse their targets. Missing suffixes still use the parent contract.
+	if err := g.validateExistingPathPolicy(resolvedPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return SafePath{}, err
 	}
 
@@ -319,6 +374,13 @@ func (g *PathGuard) AllowListEntry(parent SafePath, name string) (bool, error) {
 }
 
 func (g *PathGuard) validateExistingPathPolicy(path string) error {
+	return g.validatePathChain(path, 0)
+}
+
+func (g *PathGuard) validatePathChain(path string, depth int) error {
+	if depth > 8 {
+		return ErrSymlinkDenied
+	}
 	relative, err := filepath.Rel(g.root, path)
 	if err != nil {
 		return ErrOutsideRoot
@@ -341,6 +403,23 @@ func (g *PathGuard) validateExistingPathPolicy(path string) error {
 		current = filepath.Join(current, component)
 		if err := validatePathMetadata(current, g.policy); err != nil {
 			return err
+		}
+		info, err := os.Lstat(current)
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := relativeLinkTarget(current)
+			if err != nil {
+				return err
+			}
+			target = filepath.Clean(filepath.Join(filepath.Dir(current), target))
+			if !isInsideRoot(g.root, target) {
+				return ErrOutsideRoot
+			}
+			if err := g.validatePathChain(target, depth+1); err != nil {
+				return err
+			}
 		}
 	}
 
