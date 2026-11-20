@@ -21,6 +21,156 @@ func linkFilesystem(t *testing.T, follow bool) (*LocalFileSystem, string) {
 	return f, root
 }
 
+func TestLinkAliasParentCannotExposeDeniedActualTarget(t *testing.T) {
+	for _, kind := range []string{"absolute", "hidden", "allowed"} {
+		t.Run(kind, func(t *testing.T) {
+			f, root := linkFilesystem(t, true)
+			real := filepath.Join(root, "real")
+			if err := os.MkdirAll(filepath.Join(real, "deep"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			writeTestFile(t, filepath.Join(root, "secret.txt"), "decoy")
+			writeTestFile(t, filepath.Join(real, ".hidden.txt"), "denied-marker")
+			writeTestFile(t, filepath.Join(real, "target.txt"), "allowed-marker")
+			createTestSymlinkOrSkip(t, filepath.Join("real", "deep"), filepath.Join(root, "alias"))
+			createTestSymlinkOrSkip(t, filepath.Join("..", "secret.txt"), filepath.Join(real, "deep", "leaf.txt"))
+			target := "target.txt"
+			if kind == "hidden" {
+				target = ".hidden.txt"
+			} else if kind == "absolute" {
+				target = filepath.Join(real, ".hidden.txt")
+			}
+			createTestSymlinkOrSkip(t, target, filepath.Join(real, "secret.txt"))
+			b, err := f.Read(filepath.Join("alias", "leaf.txt"), 100)
+			if kind == "allowed" {
+				if err != nil || string(b) != "allowed-marker" {
+					t.Fatal("wrong actual allowed target", string(b), err)
+				}
+			} else if err == nil || len(b) != 0 {
+				t.Fatal("denied actual target exposed", string(b), err)
+			}
+			entries, err := f.List("alias")
+			if err != nil || len(entries) != map[bool]int{false: 0, true: 1}[kind == "allowed"] {
+				t.Fatal("wrong actual-target listing", entries, err)
+			}
+		})
+	}
+}
+
+func TestLinkAliasParentDenialsPrecedeAllEffects(t *testing.T) {
+	for _, kind := range []string{"absolute", "hidden"} {
+		for _, op := range []string{"read", "stat", "list", "write", "mkdir", "delete", "copy-source", "copy-target", "move-source", "move-target"} {
+			t.Run(kind+"/"+op, func(t *testing.T) {
+				f, root := linkFilesystem(t, true)
+				real := filepath.Join(root, "real")
+				for _, dir := range []string{"real/deep", "real/.hidden-dir", "secret-dir"} {
+					if err := os.MkdirAll(filepath.Join(root, filepath.FromSlash(dir)), 0700); err != nil {
+						t.Fatal(err)
+					}
+				}
+				writeTestFile(t, filepath.Join(root, "secret.txt"), "decoy")
+				writeTestFile(t, filepath.Join(real, ".hidden.txt"), "retained-marker")
+				writeTestFile(t, filepath.Join(root, "source.txt"), "source-marker")
+				createTestSymlinkOrSkip(t, filepath.Join("real", "deep"), filepath.Join(root, "alias"))
+				createTestSymlinkOrSkip(t, filepath.Join("..", "secret.txt"), filepath.Join(real, "deep", "leaf.txt"))
+				createTestSymlinkOrSkip(t, filepath.Join("..", "secret-dir"), filepath.Join(real, "deep", "branch"))
+				fileTarget, dirTarget := ".hidden.txt", ".hidden-dir"
+				if kind == "absolute" {
+					fileTarget, dirTarget = filepath.Join(real, fileTarget), filepath.Join(real, dirTarget)
+				}
+				createTestSymlinkOrSkip(t, fileTarget, filepath.Join(real, "secret.txt"))
+				createTestSymlinkOrSkip(t, dirTarget, filepath.Join(real, "secret-dir"))
+				name := filepath.Join("alias", "leaf.txt")
+				var err error
+				switch op {
+				case "read":
+					var b []byte
+					b, err = f.Read(name, 100)
+					if len(b) != 0 {
+						t.Fatal("denied source bytes disclosed", string(b))
+					}
+				case "stat":
+					_, err = f.Stat(name)
+				case "list":
+					_, err = f.List(filepath.Join("alias", "branch"))
+				case "write":
+					err = f.Write(name, []byte("changed"), true)
+				case "mkdir":
+					_, err = f.Mkdir(filepath.Join("alias", "branch", "new"))
+				case "delete":
+					err = f.Delete(name, false)
+				case "copy-source":
+					err = f.Copy(name, "output.txt", false)
+				case "copy-target":
+					err = f.Copy("source.txt", name, true)
+				case "move-source":
+					err = f.Move(name, "moved.txt", false)
+				case "move-target":
+					err = f.Move("source.txt", name, true)
+				}
+				if err == nil {
+					t.Fatal("actual-target policy denial bypassed", op)
+				}
+				for path, want := range map[string]string{
+					filepath.Join(real, ".hidden.txt"): "retained-marker",
+					filepath.Join(root, "source.txt"):  "source-marker",
+					filepath.Join(root, "secret.txt"):  "decoy",
+				} {
+					if b, err := os.ReadFile(path); err != nil || string(b) != want {
+						t.Fatal("denied effect changed content", path, string(b), err)
+					}
+				}
+				for _, path := range []string{filepath.Join(root, "output.txt"), filepath.Join(root, "moved.txt"), filepath.Join(real, ".hidden-dir", "new")} {
+					if _, err := os.Lstat(path); !os.IsNotExist(err) {
+						t.Fatal("denied effect created output", path, err)
+					}
+				}
+				if info, err := os.Lstat(filepath.Join(real, "deep", "leaf.txt")); err != nil || info.Mode()&os.ModeSymlink == 0 {
+					t.Fatal("denied namespace effect changed leaf link", err)
+				}
+			})
+		}
+	}
+}
+
+func TestLinkAliasParentLeafNamespaceEffectsKeepTarget(t *testing.T) {
+	for _, move := range []bool{false, true} {
+		t.Run(map[bool]string{false: "delete", true: "move"}[move], func(t *testing.T) {
+			f, root := linkFilesystem(t, true)
+			real := filepath.Join(root, "real")
+			if err := os.MkdirAll(filepath.Join(real, "deep"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			writeTestFile(t, filepath.Join(root, "secret.txt"), "decoy")
+			writeTestFile(t, filepath.Join(real, "target.txt"), "retained-marker")
+			createTestSymlinkOrSkip(t, filepath.Join("real", "deep"), filepath.Join(root, "alias"))
+			createTestSymlinkOrSkip(t, filepath.Join("..", "secret.txt"), filepath.Join(real, "deep", "leaf.txt"))
+			createTestSymlinkOrSkip(t, "target.txt", filepath.Join(real, "secret.txt"))
+			name := filepath.Join("alias", "leaf.txt")
+			var err error
+			if move {
+				err = f.Move(name, filepath.Join("alias", "renamed.txt"), false)
+			} else {
+				err = f.Delete(name, false)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Lstat(filepath.Join(real, "deep", "leaf.txt")); !os.IsNotExist(err) {
+				t.Fatal("source link entry retained", err)
+			}
+			if b, err := os.ReadFile(filepath.Join(real, "target.txt")); err != nil || string(b) != "retained-marker" {
+				t.Fatal("leaf namespace effect changed target", string(b), err)
+			}
+			if move {
+				if b, err := f.Read(filepath.Join("alias", "renamed.txt"), 100); err != nil || string(b) != "retained-marker" {
+					t.Fatal("moved link lost actual-parent target", string(b), err)
+				}
+			}
+		})
+	}
+}
+
 func TestLinkPolicyNativeEightOperations(t *testing.T) {
 	for _, follow := range []bool{false, true} {
 		for _, op := range []string{"read", "stat", "list", "write", "mkdir", "delete", "copy-source", "copy-target", "move-source", "move-target"} {

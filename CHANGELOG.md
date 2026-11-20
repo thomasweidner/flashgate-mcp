@@ -114,7 +114,9 @@ the intended release date. Publication evidence is separate.
   eight filesystem operations. Preserve configuration protection, per-root
   access, file types and resource limits. Linux uses `openat2` without a weaker
   fallback; Windows uses root/parent-relative content opens with no final
-  reparse traversal. The project minimum Go version is 1.27.4.
+  reparse traversal. Resolve relative targets from their actual parents before
+  applying `..`, and retain the complete identity chain behind directory aliases.
+  The project minimum Go version is 1.27.4.
 
 - Configure immutable per-root file-type restrictions with `allowed_extensions`
   and `allow_extensionless`, inherited independently from named policies.

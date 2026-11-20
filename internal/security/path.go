@@ -379,11 +379,8 @@ func (g *PathGuard) validateExistingPathPolicy(path string) error {
 }
 
 func (g *PathGuard) validatePathChain(path string, depth int) error {
-	if depth > 8 {
-		return ErrSymlinkDenied
-	}
 	relative, err := filepath.Rel(g.root, path)
-	if err != nil {
+	if err != nil || !isInsideRoot(g.root, path) {
 		return ErrOutsideRoot
 	}
 
@@ -391,40 +388,8 @@ func (g *PathGuard) validatePathChain(path string, depth int) error {
 		return validatePathMetadata(g.root, g.policy)
 	}
 
-	current := g.root
-	for _, component := range strings.Split(relative, string(filepath.Separator)) {
-		if component == "" || component == "." {
-			continue
-		}
-
-		if !g.policy.AllowHiddenFiles && isHiddenName(component) {
-			return ErrHiddenPathDenied
-		}
-
-		current = filepath.Join(current, component)
-		if err := validatePathMetadata(current, g.policy); err != nil {
-			return err
-		}
-		info, err := os.Lstat(current)
-		if err != nil {
-			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			target, err := relativeLinkTarget(current)
-			if err != nil {
-				return err
-			}
-			target = filepath.Clean(filepath.Join(filepath.Dir(current), target))
-			if !isInsideRoot(g.root, target) {
-				return ErrOutsideRoot
-			}
-			if err := g.validatePathChain(target, depth+1); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	_, err = walkLinkComponents(g.effectiveRoot, relative, path, &g.policy, depth, false)
+	return err
 }
 
 func isTraversalPath(path string) bool {

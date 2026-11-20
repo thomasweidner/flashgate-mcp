@@ -20,6 +20,144 @@ func TestCreateChecksLinkPolicyBeforeTargetTraversal(t *testing.T) {
 	}
 }
 
+func TestLinkAliasParentUsesActualTraversalAndSnapshots(t *testing.T) {
+	for _, tc := range []struct {
+		kind        string
+		targetAlias bool
+	}{
+		{"absolute", false}, {"hidden", false}, {"allowed", false},
+		{"absolute", true}, {"hidden", true}, {"allowed", true},
+	} {
+		name := tc.kind + "/parent-alias"
+		if tc.targetAlias {
+			name = tc.kind + "/target-alias"
+		}
+		t.Run(name, func(t *testing.T) {
+			kind := tc.kind
+			root := t.TempDir()
+			real := filepath.Join(root, "real")
+			if err := os.MkdirAll(filepath.Join(real, "deep"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			for _, name := range []string{"secret.txt", "real/.hidden.txt", "real/target.txt"} {
+				if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte("retained"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			createSecurityTestSymlinkOrSkip(t, filepath.Join("real", "deep"), filepath.Join(root, "alias"))
+			name := filepath.Join("alias", "leaf.txt")
+			if tc.targetAlias {
+				name = "leaf.txt"
+				createSecurityTestSymlinkOrSkip(t, "alias"+string(filepath.Separator)+".."+string(filepath.Separator)+"secret.txt", filepath.Join(root, name))
+			} else {
+				createSecurityTestSymlinkOrSkip(t, filepath.Join("..", "secret.txt"), filepath.Join(real, "deep", "leaf.txt"))
+			}
+			target := "target.txt"
+			if kind == "hidden" {
+				target = ".hidden.txt"
+			} else if kind == "absolute" {
+				target = filepath.Join(real, ".hidden.txt")
+			}
+			selected := filepath.Join(real, "secret.txt")
+			createSecurityTestSymlinkOrSkip(t, target, selected)
+			g := mustNewPathGuardWithPolicy(t, root, Policy{FollowSymlinks: true})
+			for _, resolve := range []func(string) (SafePath, error){g.ResolveExisting, g.ResolveForCreate} {
+				_, err := resolve(name)
+				if (err == nil) != (kind == "allowed") {
+					t.Fatalf("actual target policy: kind=%s err=%v", kind, err)
+				}
+			}
+			parent, err := g.ResolveExisting(filepath.Dir(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			listed, err := g.AllowListEntry(parent, "leaf.txt")
+			if err != nil || listed != (kind == "allowed") {
+				t.Fatal("list chain policy", listed, err)
+			}
+			before, err := g.LinkIdentities(filepath.Join(root, name))
+			if kind == "absolute" {
+				if !errors.Is(err, ErrSymlinkDenied) {
+					t.Fatal("snapshot skipped absolute target link", err)
+				}
+				return
+			}
+			if err != nil || len(before) != 3 || !HasLeafLink(filepath.Join(root, name), before) {
+				t.Fatal("incomplete actual chain snapshot", len(before), err)
+			}
+			if err := os.Rename(selected, selected+".previous"); err != nil {
+				t.Fatal(err)
+			}
+			createSecurityTestSymlinkOrSkip(t, target, selected)
+			after, err := g.LinkIdentities(filepath.Join(root, name))
+			if err != nil || SameLinks(before, after) {
+				t.Fatal("actual target-link replacement was invisible", err)
+			}
+		})
+	}
+}
+
+func TestRootAliasParentUsesActualBootstrapChain(t *testing.T) {
+	for _, absolute := range []bool{false, true} {
+		t.Run(map[bool]string{false: "relative", true: "absolute"}[absolute], func(t *testing.T) {
+			base := t.TempDir()
+			real := filepath.Join(base, "real")
+			for _, dir := range []string{"selected", "real/data", "real/deep"} {
+				if err := os.MkdirAll(filepath.Join(base, filepath.FromSlash(dir)), 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			createSecurityTestSymlinkOrSkip(t, filepath.Join("real", "deep"), filepath.Join(base, "alias"))
+			createSecurityTestSymlinkOrSkip(t, filepath.Join("..", "selected"), filepath.Join(real, "deep", "root-link"))
+			target := "data"
+			if absolute {
+				target = filepath.Join(real, "data")
+			}
+			selected := filepath.Join(real, "selected")
+			createSecurityTestSymlinkOrSkip(t, target, selected)
+			g, err := NewPathGuardWithPolicy(filepath.Join(base, "alias", "root-link"), Policy{FollowSymlinks: true})
+			if absolute {
+				if !errors.Is(err, ErrSymlinkDenied) {
+					t.Fatal("bootstrap skipped absolute actual-parent target", err)
+				}
+				return
+			}
+			root := filepath.Join(base, "alias", "root-link")
+			effective, effectiveErr := evalEffectivePath(root)
+			if effectiveErr != nil || effective != filepath.Join(real, "data") {
+				t.Fatal("metadata resolution selected the decoy", effective, effectiveErr)
+			}
+			// Some Windows kernels refuse this nested relative root chain.
+			// That must deny bootstrap, never substitute the lexical decoy.
+			info, nativeErr := PathIdentity(root)
+			if nativeErr != nil {
+				if g != nil || !errors.Is(err, ErrOutsideRoot) {
+					t.Fatal("bootstrap admitted a root without native identity", err, nativeErr)
+				}
+				t.Log("native root handle unavailable; bootstrap denied:", nativeErr)
+			} else if err != nil || g.EffectiveRoot() != effective || g.ValidateRootIdentity(info) != nil {
+				t.Fatal("valid native bootstrap chain rejected", err)
+			}
+			volume := filepath.VolumeName(root) + string(filepath.Separator)
+			before, err := snapshotLinks(volume, root)
+			if err != nil || len(before) != 3 {
+				t.Fatal("incomplete bootstrap chain snapshot", len(before), err)
+			}
+			if err := os.Rename(selected, selected+".previous"); err != nil {
+				t.Fatal(err)
+			}
+			createSecurityTestSymlinkOrSkip(t, target, selected)
+			after, err := snapshotLinks(volume, root)
+			if err != nil || SameLinks(before, after) {
+				t.Fatal("actual bootstrap link replacement was invisible", err)
+			}
+			if g != nil && !errors.Is(g.ValidateRootIdentity(info), ErrOutsideRoot) {
+				t.Fatal("actual bootstrap chain replacement admitted", err)
+			}
+		})
+	}
+}
+
 func TestRootAncestorLinkPolicyAndIdentity(t *testing.T) {
 	base := t.TempDir()
 	real := filepath.Join(base, "real")

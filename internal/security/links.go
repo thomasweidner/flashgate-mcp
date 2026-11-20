@@ -51,16 +51,17 @@ func EffectivePath(path string) (string, error) {
 // LinkIdentity is an opaque metadata-only snapshot. It grants no access.
 // Native consumers recheck it together with their opened parent and object.
 type LinkIdentity struct {
-	path   string
-	info   os.FileInfo
-	target string
+	path         string
+	info         os.FileInfo
+	target       string
+	selectedPath string
 }
 
 // HasLeafLink identifies the input entry in an already captured link snapshot.
 // It grants no access and does not classify or follow an uncaptured object.
 func HasLeafLink(path string, links []LinkIdentity) bool {
 	for _, link := range links {
-		if configPathEqual(path, link.path) {
+		if configPathEqual(path, link.selectedPath) {
 			return true
 		}
 	}
@@ -71,85 +72,117 @@ func HasLeafLink(path string, links []LinkIdentity) bool {
 // Callers first resolve the operand through PathGuard. Missing suffixes have
 // no link identities; their existing parents are still inspected.
 func (g *PathGuard) LinkIdentities(path string) ([]LinkIdentity, error) {
-	return snapshotLinks(g.root, path)
+	if !isInsideRoot(g.root, path) {
+		return nil, ErrSymlinkDenied
+	}
+	relative, err := filepath.Rel(g.root, path)
+	if err != nil {
+		return nil, ErrOutsideRoot
+	}
+	return walkLinkComponents(g.effectiveRoot, relative, path, nil, 0, true)
 }
 
 func snapshotLinks(base, path string) ([]LinkIdentity, error) {
-	var links []LinkIdentity
-	var walk func(string, int) error
-	walk = func(path string, depth int) error {
-		if depth > 8 || !isInsideRoot(base, path) {
-			return ErrSymlinkDenied
-		}
-		relative, err := filepath.Rel(base, path)
-		if err != nil {
-			return ErrOutsideRoot
-		}
-		if relative == "." {
-			return nil
-		}
-		current := base
-		for _, part := range strings.Split(relative, string(filepath.Separator)) {
-			current = filepath.Join(current, part)
-			info, err := PathEntryIdentity(current)
-			if os.IsNotExist(err) {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-			if info.Mode()&os.ModeSymlink == 0 {
-				continue
-			}
-			target, err := relativeLinkTarget(current)
-			if err != nil {
-				return err
-			}
-			links = append(links, LinkIdentity{current, info, target})
-			if err := walk(filepath.Join(filepath.Dir(current), target), depth+1); err != nil {
-				return err
-			}
-		}
-		return nil
+	if !isInsideRoot(base, path) {
+		return nil, ErrSymlinkDenied
 	}
-	err := walk(path, 0)
-	return links, err
+	relative, err := filepath.Rel(base, path)
+	if err != nil {
+		return nil, ErrOutsideRoot
+	}
+	return walkLinkComponents(base, relative, path, nil, 0, true)
+}
+
+// walkLinkComponents shares the actual component order between policy checks
+// and identity snapshots. A target is spliced before the remaining components;
+// it is never cleaned across an unresolved link. current is therefore always
+// the resolved parent when a relative target or its ".." component is applied.
+func walkLinkComponents(base, relative, selected string, policy *Policy, depth int, capture bool) ([]LinkIdentity, error) {
+	var links []LinkIdentity
+	current := base
+	pending := strings.Split(relative, string(filepath.Separator))
+	selectingLeaf := true
+	for len(pending) > 0 {
+		if depth > 8 {
+			return nil, ErrSymlinkDenied
+		}
+		part := pending[0]
+		pending = pending[1:]
+		if part == "" || part == "." {
+			continue
+		}
+		if part == ".." {
+			current = filepath.Dir(current)
+			if !isInsideRoot(base, current) {
+				return nil, ErrOutsideRoot
+			}
+			continue
+		}
+		if policy != nil && !policy.AllowHiddenFiles && isHiddenName(part) {
+			return nil, ErrHiddenPathDenied
+		}
+		entry := filepath.Join(current, part)
+		if policy != nil {
+			if err := validatePathMetadata(entry, *policy); err != nil {
+				return nil, err
+			}
+		}
+		var info os.FileInfo
+		var err error
+		if capture {
+			info, err = PathEntryIdentity(entry)
+		} else {
+			info, err = os.Lstat(entry)
+		}
+		if os.IsNotExist(err) && policy == nil {
+			return links, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, err := relativeLinkTarget(entry)
+			if err != nil {
+				return nil, err
+			}
+			leaf := len(pending) == 0 && selectingLeaf
+			if capture {
+				link := LinkIdentity{path: entry, info: info, target: target}
+				if leaf {
+					link.selectedPath = selected
+				}
+				links = append(links, link)
+			}
+			if leaf {
+				selectingLeaf = false
+			}
+			depth++
+			pending = append(strings.Split(filepath.FromSlash(target), string(filepath.Separator)), pending...)
+			continue
+		}
+		if len(pending) > 0 && !info.IsDir() {
+			return nil, ErrRootNotDirectory
+		}
+		current = entry
+	}
+	if depth > 8 {
+		return nil, ErrSymlinkDenied
+	}
+	return links, nil
 }
 
 // Root ancestors participate in native resolution too. Inspect their reparse
 // classification without treating an explicitly configured ancestor's hidden
 // name as a client selection. Only relative supported links may be followed.
 func validateRootChain(path string, policy Policy, depth int) error {
-	if depth > 8 {
-		return ErrSymlinkDenied
-	}
 	policy.AllowHiddenFiles = true
 	base := filepath.VolumeName(path) + string(filepath.Separator)
 	relative, err := filepath.Rel(base, path)
 	if err != nil {
 		return ErrOutsideRoot
 	}
-	current := base
-	for _, part := range strings.Split(relative, string(filepath.Separator)) {
-		current = filepath.Join(current, part)
-		if err := validatePathMetadata(current, policy); err != nil {
-			return err
-		}
-		info, err := os.Lstat(current)
-		if err != nil {
-			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			target, err := relativeLinkTarget(current)
-			if err != nil {
-				return err
-			}
-			if err := validateRootChain(filepath.Join(filepath.Dir(current), target), policy, depth+1); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	_, err = walkLinkComponents(base, relative, path, &policy, depth, false)
+	return err
 }
 
 // SameLinks reports unchanged order, spelling, link objects and raw targets.
@@ -159,7 +192,7 @@ func SameLinks(left, right []LinkIdentity) bool {
 	}
 	for i, l := range left {
 		r := right[i]
-		if !configPathEqual(l.path, r.path) || l.target != r.target || !os.SameFile(l.info, r.info) || !SamePolicyMetadata(l.info, r.info) {
+		if !configPathEqual(l.path, r.path) || l.selectedPath != r.selectedPath || l.target != r.target || !os.SameFile(l.info, r.info) || !SamePolicyMetadata(l.info, r.info) {
 			return false
 		}
 	}

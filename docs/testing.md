@@ -502,6 +502,10 @@ boolean inheritance/override, unused definitions, retired global-key denial,
 mixed and overlapping IDs, default deny, relative/absolute targets, escaping
 chains and cycles. Prove every existing operation preserves root rights,
 file-type matching, selected-source protection and resource ceilings.
+Include directory-alias parents and targets containing an unresolved alias
+before `..`, with a permitted lexical decoy and a denied actual target. Verify
+complete snapshots and drift detection, bootstrap parity, allowed leaf namespace
+effects and denial before every read, disclosure or mutation effect.
 
 Use deterministic native interception to exchange link, parent, source and
 target immediately before Open, truncation, create, unlink or rename. Denied

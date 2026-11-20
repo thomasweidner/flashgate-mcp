@@ -196,8 +196,15 @@ func evalEffectivePathDepth(path string, depth int) (string, error) {
 
 	parts := strings.Split(remainder, string(filepath.Separator))
 	for index := 0; index < len(parts); index++ {
+		if depth > 255 {
+			return "", errors.New("too many links")
+		}
 		part := parts[index]
 		if part == "" || part == "." {
+			continue
+		}
+		if part == ".." {
+			current = filepath.Dir(current)
 			continue
 		}
 
@@ -228,6 +235,9 @@ func evalEffectivePathDepth(path string, depth int) (string, error) {
 				return "", err
 			}
 			current = filepath.Join(filepath.Dir(current), syscall.UTF16ToString(data.FileName[:]))
+			if index+1 < len(parts) && !info.IsDir() {
+				return "", ErrRootNotDirectory
+			}
 			continue
 		}
 
@@ -235,22 +245,12 @@ func evalEffectivePathDepth(path string, depth int) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if !filepath.IsAbs(target) {
-			target = filepath.Join(filepath.Dir(current), target)
-		}
-
-		remaining := append([]string{}, parts[index+1:]...)
-		nextPath := target
-		if len(remaining) > 0 {
-			nextPath = filepath.Join(append([]string{target}, remaining...)...)
-		}
-
-		resolved, err := evalEffectivePathDepth(nextPath, depth+1)
-		if err != nil {
-			return "", err
-		}
-
-		return resolved, nil
+		// Resolve target components before their following ".." or suffix.
+		// Joining the whole target here would clean across unresolved links.
+		parts = append(strings.Split(filepath.FromSlash(target), string(filepath.Separator)), parts[index+1:]...)
+		current = filepath.Dir(current)
+		index = -1
+		depth++
 	}
 
 	return filepath.Clean(current), nil

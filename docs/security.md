@@ -185,6 +185,13 @@ classification requires an actual symlink tag; a generic reparse bit or an
 unknown metadata representation is not sufficient. Lists omit denied links;
 metadata denials are not converted to target access or absence.
 
+Process each relative target from its actual resolved parent, in component
+order. Resolve an intervening directory link before applying a following `..`;
+lexically cleaning the whole target can skip a denied link or hidden name.
+Policy checks and link-identity snapshots use the same traversal order, including
+root bootstrap chains. Snapshots retain the selected leaf entry separately from
+its resolved target chain so unlink and same-parent rename affect the leaf only.
+
 Native execution binds the root identity established at bootstrap. Linux
 uses `os.Root` for the opened root and requires `openat2` with `RESOLVE_BENEATH`,
 `RESOLVE_NO_SYMLINKS`, `RESOLVE_NO_MAGICLINKS` and `RESOLVE_NO_XDEV` for
