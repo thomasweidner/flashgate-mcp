@@ -20,6 +20,10 @@ import time
 import uuid
 
 
+SMOKE_BUILD_LINUX = 'build/flashgate-mcp'
+SMOKE_BUILD_WINDOWS = 'build/flashgate-mcp.exe'
+
+
 class Hold(RuntimeError):
     """An unproven binding or process state must not become PASS."""
 
@@ -163,11 +167,22 @@ def source_file(root, root_fd, name):
             os.close(descriptor)
 
 
-def sources(root):
+def sources(root, *, check_ignored=False):
     names = set(git(root, 'ls-files', '-z').decode().split('\0'))
     names.update(git(root, 'ls-files', '--others', '--exclude-standard', '-z').decode().split('\0'))
     records = []
     with source_boundary(root) as root_fd:
+        if check_ignored:
+            ignored = set(git(root, 'ls-files', '--others', '--ignored', '--exclude-standard', '-z').split(b'\0'))
+            ignored.discard(b'')
+            outputs = {SMOKE_BUILD_LINUX.encode(), SMOKE_BUILD_WINDOWS.encode()}
+            if ignored - outputs:
+                raise Hold('Ignored checkout files may affect candidate evidence; move them outside the checkout')
+            for name in sorted(ignored):
+                # Smoke uses fresh build outputs. Their existing paths still
+                # need the same regular-file and link boundaries as sources.
+                with source_file(root, root_fd, name.decode('ascii')):
+                    pass
         for name in sorted(names - {''}):
             # A missing path is outside the postimage. Git deletions are
             # validated separately against the historical tree.
@@ -364,7 +379,7 @@ def tools_binding(env):
     return result
 
 
-def binding(root, env):
+def binding(root, env, *, check_ignored=True):
     # Conservative whole-checkout binding: docs and tests are not silently
     # excluded. No commit binding: an unchanged commit/transport may change.
     names = {'PATH', 'PATHEXT', 'AR', 'CC', 'CXX', 'FC', 'GCCGO', 'GCCGOTOOLDIR',
@@ -377,7 +392,7 @@ def binding(root, env):
     # Include architecture, cgo security flags and future Go build settings.
     # Record hashes only, including the distinction between absent and empty.
     names.update(name for name in env if name.startswith(('GO', 'CGO_', 'PKG_CONFIG_')))
-    postimage = sources(root)
+    postimage = sources(root, check_ignored=check_ignored)
     return {'sources': postimage, 'git_modes': git_modes(root, postimage),
             'git_blobs': git_blobs(root, postimage, env.get('FLASHGATE_WORK_ROOT')), 'tools': tools_binding(env),
             'os': [platform.system(), platform.release(), platform.machine(), platform.version()],
@@ -570,7 +585,7 @@ def plan(mode, changed, root, work, tools):
     if os.name != 'nt':
         add('race', [go, 'test', '-race', '-json', './...'], True)
     add('mcp', [go, 'run', '-mod=vendor', './cmd/mcpcheck', '-report', str(work / 'mcp.md')], True)
-    binary = root / 'build' / ('flashgate-mcp.exe' if os.name == 'nt' else 'flashgate-mcp')
+    binary = root / (SMOKE_BUILD_WINDOWS if os.name == 'nt' else SMOKE_BUILD_LINUX)
     # Existing smoke entry points consume this established ignored build path.
     add('build', [go, 'build', '-o', str(binary), './cmd/server'], True)
     if os.name == 'nt':
@@ -918,7 +933,8 @@ def main(argv=None):
     resource = safe_directory(args.resource_root or work)
     env = environment(work, create=args.mode != 'PUBLISH')
     hygiene = source_hygiene(root)
-    current = binding(root, env)
+    check_ignored = args.mode != 'FAST'
+    current = binding(root, env, check_ignored=check_ignored)
     config = native_config(args.native_config) if args.native_config else None
     if os.name == 'nt' and args.mode in ('CANDIDATE', 'PUBLISH') and not config:
         raise Hold('Complete Windows candidate needs --native-config for the required native Linux gates')
@@ -954,7 +970,7 @@ def main(argv=None):
     try:
         # Retain the work root's caches between runs; outputs are always fresh.
         for step in steps:
-            observed = binding(root, env)
+            observed = binding(root, env, check_ignored=check_ignored)
             if config:
                 observed['native_config'] = config
             if observed != current:
@@ -983,7 +999,7 @@ def main(argv=None):
                 status = result['status']
                 break
         else:
-            observed = binding(root, env)
+            observed = binding(root, env, check_ignored=check_ignored)
             if config:
                 observed['native_config'] = config
             if observed != current:

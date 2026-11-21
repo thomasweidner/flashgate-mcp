@@ -44,6 +44,10 @@ documented ignored `build` output. Never use a live product data directory.
 running tests. FAST uses changed tracked and nonignored new paths, or explicit
 `-ChangedPath` values. A change consisting solely of Go test files selects
 their packages. Unknown dependency reach conservatively selects all packages.
+CANDIDATE and PUBLISH refuse ignored untracked files because compilers and
+tests can consume them, including Go sources and embedded assets. Keep
+local-only files outside the checkout for these modes. The two documented
+smoke build outputs may exist as regular files on link-free paths.
 CANDIDATE runs documentation, runner regressions, shell checks and their negative
 fixtures, formatting, vet, lint, full repository tests through product coverage,
 MCP conformance, build and all existing smoke variants. Native Linux also runs

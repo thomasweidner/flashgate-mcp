@@ -90,6 +90,31 @@ class ValidationTests(unittest.TestCase):
             with patch.object(v, 'run_process', side_effect=AssertionError('must not run')):
                 self.assertEqual(self.verify_synthetic_evidence(path, anchor, v.binding(self.work, baseline), steps)['status'], 'PASS')
 
+    def test_reusable_evidence_rejects_ignored_checkout_inputs(self):
+        root = self.work / 'checkout'
+        package = root / 'pkg'
+        package.mkdir(parents=True)
+        v.git(root, 'init', '--quiet')
+        (root / '.gitignore').write_bytes(b'/build/\n/pkg/extra.go\n')
+        (root / '.git/info/exclude').write_bytes(b'/pkg/extra.json\n')
+        (package / 'fixture.go').write_bytes(b'package fixture\n')
+        (root / 'build').mkdir()
+        env = {'FLASHGATE_WORK_ROOT': str(self.work)}
+        with patch.object(v, 'tools_binding', return_value={}):
+            original = v.binding(root, env)
+            for name in ('flashgate-mcp', 'flashgate-mcp.exe'):
+                (root / 'build' / name).write_bytes(b'generated output')
+            self.assertEqual(v.binding(root, env), original)
+            for name, content in (('extra.go', b'package fixture\n'), ('extra.json', b'{}\n')):
+                with self.subTest(name=name):
+                    path = package / name
+                    path.write_bytes(content)
+                    self.assertEqual(v.binding(root, env, check_ignored=False), original)
+                    with self.assertRaisesRegex(v.Hold, 'Ignored checkout file'):
+                        v.binding(root, env)
+                    path.unlink()
+            self.assertEqual(v.binding(root, env), original)
+
     def test_deleted_postimage_is_stable_across_git_states(self):
         path, data, _, steps = self.proof()
         root = self.work / 'checkout'
