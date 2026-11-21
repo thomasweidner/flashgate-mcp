@@ -187,6 +187,43 @@ class ValidationTests(unittest.TestCase):
                 path.write_text(json.dumps(data), encoding='utf-8')
                 self.assertEqual(v.verify_evidence(path, v.digest(path), committed, steps, root=root)['status'], 'PASS')
 
+    @unittest.skipUnless(os.name == 'posix', 'Native tracked executable-mode contract')
+    def test_tracked_chmod_reuses_across_stage_and_commit(self):
+        path, data, _, steps = self.proof()
+        root = self.work / 'checkout'
+        root.mkdir()
+        def git(*args):
+            return v.git(root, *args)
+        def binding():
+            with patch.object(v, 'tools_binding', return_value={}):
+                return v.binding(root, {'FLASHGATE_WORK_ROOT': str(self.work)})
+        git('init', '--quiet')
+        git('config', 'core.filemode', 'true')
+        file = root / 'checked.sh'
+        file.write_bytes(b'#!/bin/sh\nexit 0\n')
+        file.chmod(0o644)
+        git('add', file.name)
+        commit = ('-c', 'core.hooksPath=' + str(self.work / 'no-hooks'),
+                  '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                  '-c', 'commit.gpgsign=false', 'commit', '-qm')
+        git(*commit, 'base')
+        for tested_mode, alternate in ((0o755, '-x'), (0o644, '+x')):
+            with self.subTest(mode=oct(tested_mode)):
+                base = git('rev-parse', 'HEAD').decode().strip()
+                file.chmod(tested_mode)
+                tested = binding()
+                data.update(binding=tested, source_base=base, deleted_sources=[])
+                path.write_text(json.dumps(data), encoding='utf-8')
+                anchor = v.digest(path)
+                git('add', '--', file.name)
+                self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root)['status'], 'PASS')
+                git(*commit, 'record tested mode')
+                self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root)['status'], 'PASS')
+                git('update-index', '--chmod=' + alternate, file.name)
+                with self.assertRaises(v.Hold):
+                    v.verify_evidence(path, anchor, binding(), steps, root=root)
+                git('add', '--', file.name)
+
     def test_different_index_or_committed_blobs_cannot_reuse_tested_bytes(self):
         path, data, _, steps = self.proof()
         root = self.work / 'checkout'

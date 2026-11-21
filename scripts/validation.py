@@ -196,21 +196,16 @@ def git_index(root):
 
 def git_modes(root, postimage):
     indexed = git_index(root)
-    # Git honors the owner execute bit for new files only when filemode is
-    # enabled. Existing paths are bound to their actual stage-zero modes,
-    # even on checkouts where the filesystem cannot report that distinction.
-    honor_executable = False
-    if any(row[0] not in indexed for row in postimage):
-        honor_executable = git(root, 'config', '--type=bool', '--default=true',
-                               '--get', 'core.filemode').strip() == b'true'
+    honor_executable = git(root, 'config', '--type=bool', '--default=true',
+                           '--get', 'core.filemode').strip() == b'true'
     result = []
     for name, _, filesystem_mode in postimage:
-        if name in indexed:
-            mode = indexed[name][0]
-        else:
-            mode = '100755' if honor_executable and filesystem_mode & stat.S_IXUSR else '100644'
-        if mode not in ('100644', '100755'):
+        index_mode = indexed[name][0] if name in indexed else '100644'
+        if index_mode not in ('100644', '100755'):
             raise Hold('Nonregular Git mode in source inventory: ' + name)
+        # Predict the tested mode Git would stage. The separate Git postimage
+        # check still detects an incompatible mode already staged or committed.
+        mode = ('100755' if filesystem_mode & stat.S_IXUSR else '100644') if honor_executable else index_mode
         result.append([name, mode])
     return result
 

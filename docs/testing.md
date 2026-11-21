@@ -101,10 +101,11 @@ plan, current bindings, successful results and every recorded artifact still
 match. Windows reuse also probes the native source, toolchain and environment
 without launching quality tests. Missing or modified evidence is rejected.
 The reusable source inventory binds the resulting files, filesystem modes and
-Git modes. Tracked Git modes come from the index, including on Windows where
-filesystem mode bits can be identical for executable and non-executable Git
-entries. New files use the mode Git would stage under the checkout's
-`core.filemode` setting. Source reads reject links and Windows reparse points
+Git modes. With `core.filemode=true`, both tracked and new regular files
+project the tested executable bit before staging. With `core.filemode=false`,
+tracked files retain their index mode and new regular files project mode
+100644. The separate index and commit checks still reject an incompatible
+mode. Source reads reject links and Windows reparse points
 in the file path, including parent directories. Linux opens files relative to
 nonfollowing directory descriptors. Windows checks the resolved path on the
 opened file handle before reading.
