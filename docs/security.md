@@ -740,6 +740,25 @@ adapter validates each request independently and is tested with an injected
 support policy. It remains disabled and unadvertised until BL-204, BL-212, and
 BL-219 pass. Client metadata, extension claims, and cache hints never authorize
 tools or filesystem access.
+The activation prerequisites are exact-revision conformance, JSON Schema
+validation and the fingerprint and cache-scope contract.
+
+<!-- mcp-activation-contract:v1 -->
+
+| Activation condition | Required value |
+|---|---|
+| Advertised revision | `2025-11-25` |
+| Candidate revision | `2026-07-28` |
+| Candidate exposure | disabled and unadvertised |
+| Conformance | exact revision |
+| Schema dialect | JSON Schema Draft 2020-12 |
+| Catalog fingerprint | deterministic and bound to effective policy |
+| Cache scope | private unless proven principal/profile-independent |
+| Security | client metadata and cache hints grant no authority |
+| Public activation | all prerequisites and explicit matrix entry |
+| Activation owner | BL-219 |
+
+<!-- /mcp-activation-contract -->
 
 Version 1.0 protocol security includes:
 

@@ -407,7 +407,26 @@ The core is protocol independent. The MCP adapter owns all revision-specific wir
 
 The production policy enables and advertises only `2025-11-25`. A separate
 `2026-07-28` stateless adapter is compiled in and exercised through an injected
-test policy; public activation remains gated by BL-204, BL-212, and BL-219.
+test policy. Public activation requires exact-revision conformance, JSON
+Schema validation, and the fingerprint and cache-scope checks. The current
+activation gate binds BL-204, BL-212, and BL-219.
+
+<!-- mcp-activation-contract:v1 -->
+
+| Activation condition | Required value |
+|---|---|
+| Advertised revision | `2025-11-25` |
+| Candidate revision | `2026-07-28` |
+| Candidate exposure | disabled and unadvertised |
+| Conformance | exact revision |
+| Schema dialect | JSON Schema Draft 2020-12 |
+| Catalog fingerprint | deterministic and bound to effective policy |
+| Cache scope | private unless proven principal/profile-independent |
+| Security | client metadata and cache hints grant no authority |
+| Public activation | all prerequisites and explicit matrix entry |
+| Activation owner | BL-219 |
+
+<!-- /mcp-activation-contract -->
 
 FlashGate names protocol paths by exact revision:
 
@@ -717,7 +736,7 @@ MCP protocol extensions are separate negotiated wire features and do not imply a
 
 Authoritative tasks and status are in [BACKLOG.md](../BACKLOG.md).
 
-**Remaining executable lane.**
+**Implementation sequence.**
 
 1. Finish SPR-048 with BL-214 wire metrics on the completed BL-213 result contract and the recommended BL-205 response-size regression follow-up. BL-205 has no hard BL-214 dependency. BL-215 catalog and initialization budgets and BL-220 native-adapter and no-interpreter policy can proceed independently or earlier.
 2. Establish SPR-053 configuration, capabilities, named roots, profiles and root policies, then backend-neutral context, central authorization, effective catalog, audit and correlation, and reusable state binding. Its validation, catalog, and protocol work follows the applicable [hard predecessors](planning/architecture-traceability.md#core-policy-context-catalog-and-state-foundation).

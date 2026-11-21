@@ -274,6 +274,23 @@ validated with an internal test policy. Public activation remains dependent on
 BL-204, BL-212, and BL-219. The Version 1.0 release matrix targets both exact
 revisions.
 
+<!-- mcp-activation-contract:v1 -->
+
+| Activation condition | Required value |
+|---|---|
+| Advertised revision | `2025-11-25` |
+| Candidate revision | `2026-07-28` |
+| Candidate exposure | disabled and unadvertised |
+| Conformance | exact revision |
+| Schema dialect | JSON Schema Draft 2020-12 |
+| Catalog fingerprint | deterministic and bound to effective policy |
+| Cache scope | private unless proven principal/profile-independent |
+| Security | client metadata and cache hints grant no authority |
+| Public activation | all prerequisites and explicit matrix entry |
+| Activation owner | BL-219 |
+
+<!-- /mcp-activation-contract -->
+
 FlashGate documentation and code name protocol paths by exact revision. A later MCP revision therefore receives its own explicit support-matrix entry, adapter delta, and tests.
 
 Before Version 1.0:

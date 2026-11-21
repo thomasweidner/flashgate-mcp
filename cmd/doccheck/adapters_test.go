@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -110,23 +111,43 @@ func TestRuntimeGraphFailure(t *testing.T) {
 	}
 }
 
+const fixtureAdapterEvidence = `- **authorization**: Require effective authorization before dispatch and deny fallback for unauthorized requests.
+- **bounded-resources**: Prove bounded resource behavior for the actual operation and failure paths.
+- **gated-activation**: Keep unproved routes disabled or return a safe denial before activation.
+- **native-platform**: Exercise the actual native backend on each applicable platform.
+- **protected-effects**: Deny protected reads, mutations and disclosure across direct and delegated effects.
+`
+
+func adapterFixture(inventory string, families map[string]string, backlog string) (string, string) {
+	var plan strings.Builder
+	plan.WriteString(adapterInventoryStart + "\n" + inventory + adapterInventoryEnd + "\n")
+	plan.WriteString(adapterContractStart + "\n" + fixtureAdapterEvidence)
+	for i, key := range adapterFamilyKeys {
+		owners := families[key]
+		if owners == "" {
+			owners = fmt.Sprintf("BL-%03d", 901+i)
+			backlog += "| " + owners + " | Completed | Historical owner | Retained fixture |\n"
+		}
+		fmt.Fprintf(&plan, "<a id=\"adapter-acceptance-%s\"></a>\n<a id=\"bl-220-%s\"></a>\n\n### %s acceptance\n\n**Applicable owners** %s\n", key, key, key, owners)
+	}
+	plan.WriteString(adapterContractEnd + "\n")
+	return plan.String(), backlog
+}
+
 func TestAdapterBindings(t *testing.T) {
-	const plan = "## 20. Public tool inventory by target\n" +
-		"| Family | Public names | Owner | Milestone / state | Eligible capability / class | Adapter acceptance |\n" +
+	const inventory = "| Family | Public names | Owner | Milestone / state | Eligible capability / class | Adapter acceptance |\n" +
 		"|---|---|---|---|---|---|\n" +
 		"| Test | `future_tool` | BL-987 | Post-1.0 / CANDIDATE | Scoped / O | [Acceptance](#bl-220-native-tools) |\n" +
-		"| Historical | `existing_tool` | BL-986 | 1.0 / IMPLEMENTED | Scoped / R | — |\n" +
-		"## BL-220 successor acceptance\n" +
-		"### BL-220 native tools\n**Applicable owners** BL-987\n" +
-		"### BL-220 operations\n**Applicable owners** BL-988–BL-989\n"
+		"| Historical | `existing_tool` | BL-986 | 1.0 / IMPLEMENTED | Scoped / R | — |\n"
 	const native = "[Adapter acceptance](docs/planning/tool-adapters.md#bl-220-native-tools)"
 	const operations = "[Adapter acceptance](docs/planning/tool-adapters.md#bl-220-operations)"
 	const public = "| BL-987 | **Planned** | New tool | " + native + ". |\n"
 	const internal = "| BL-988 | **Planned** | Internal dispatch | " + operations + ". |\n"
-	const backlog = public + internal +
+	const rows = public + internal +
 		"| BL-984 | **Planned** | Unrelated work | Separate contract |\n" +
 		"| BL-986 | Completed | Existing tool | Historical acceptance |\n" +
 		"| BL-989 | Completed | Historical internal work | Historical acceptance |\n"
+	plan, backlog := adapterFixture(inventory, map[string]string{"native-tools": "BL-987", "operations": "BL-988–BL-989"}, rows)
 	if findings := checkAdapterBindings(plan, backlog); len(findings) != 0 {
 		t.Fatalf("valid binding rejected: %+v", findings)
 	}
@@ -136,8 +157,8 @@ func TestAdapterBindings(t *testing.T) {
 		backlog string
 		detail  string
 	}{
-		{"existing wrong family", plan, strings.Replace(backlog, native, operations, 1), "link to #bl-220-native-tools for BL-987"},
-		{"missing internal link", plan, strings.Replace(backlog, operations, "Reuse BL-220", 1), "link to #bl-220-operations for BL-988"},
+		{"existing wrong family", plan, strings.Replace(backlog, native, operations, 1), "link to #adapter-acceptance-native-tools for BL-987"},
+		{"missing internal link", plan, strings.Replace(backlog, operations, "Reuse BL-220", 1), "link to #adapter-acceptance-operations for BL-988"},
 		{"public row owner drift", strings.Replace(plan, "| BL-987 |", "| BL-988 |", 1), backlog, "different adapter applicability: BL-988"},
 		{"public row family drift", strings.Replace(plan, "[Acceptance](#bl-220-native-tools)", "[Acceptance](#bl-220-operations)", 1), backlog, "different adapter applicability: BL-987"},
 		{"missing canonical owner", plan, strings.Replace(backlog, internal, "", 1), "exactly one canonical backlog row: BL-988"},
@@ -145,9 +166,20 @@ func TestAdapterBindings(t *testing.T) {
 		{"inactive planned public owner", plan, strings.Replace(backlog, "| BL-987 | **Planned** |", "| BL-987 | Completed |", 1), "needs an active backlog owner: BL-987"},
 		{"missing applicability", strings.Replace(plan, "BL-988–BL-989", "BL-989", 1), backlog, "no matching applicability declaration: BL-988"},
 		{"duplicate applicability", strings.Replace(plan, "BL-988–BL-989", "BL-987–BL-989", 1), backlog, "Multiple adapter applicability declarations for BL-987"},
-		{"code example", plan, strings.Replace(backlog, native, "`"+native+"`", 1), "link to #bl-220-native-tools for BL-987"},
+		{"code example", plan, strings.Replace(backlog, native, "`"+native+"`", 1), "link to #adapter-acceptance-native-tools for BL-987"},
 		{"active implementation still requires acceptance", strings.Replace(plan, "Post-1.0 / CANDIDATE", "Post-1.0 / IMPLEMENTED", 1),
-			strings.Replace(strings.Replace(backlog, "**Planned**", "**In Progress**", 1), native, "Reuse BL-220", 1), "link to #bl-220-native-tools for BL-987"},
+			strings.Replace(strings.Replace(backlog, "**Planned**", "**In Progress**", 1), native, "Reuse BL-220", 1), "link to #adapter-acceptance-native-tools for BL-987"},
+		{"missing security evidence", strings.Replace(plan, "**authorization**", "**unrelated**", 1), backlog, "Missing or incorrect adapter acceptance evidence: authorization"},
+		{"weakened protected effects", strings.Replace(plan, "Deny protected reads, mutations and disclosure", "Log protected reads, mutations and disclosure", 1), backlog, "Missing or incorrect adapter acceptance evidence: protected-effects"},
+		{"missing bounded resources", strings.Replace(plan, "**bounded-resources**", "**unrelated**", 1), backlog, "Missing or incorrect adapter acceptance evidence: bounded-resources"},
+		{"weakened activation evidence", strings.Replace(plan, "Keep unproved routes disabled", "Enable unproved routes", 1), backlog, "Missing or incorrect adapter acceptance evidence: gated-activation"},
+		{"missing native platform", strings.Replace(plan, "**native-platform**", "**unrelated**", 1), backlog, "Missing or incorrect adapter acceptance evidence: native-platform"},
+		{"hidden contract", strings.Replace(plan, adapterContractStart, "<!-- archived\n"+adapterContractStart, 1), backlog, "Exactly one complete adapter acceptance contract is required"},
+		{"missing semantic family", strings.Replace(plan, "<a id=\"adapter-acceptance-native-tools\"></a>", "### BL-220 native tools", 1), backlog, "Missing adapter applicability declaration for #adapter-acceptance-native-tools"},
+		{"duplicate legacy anchor", plan + "<a id=\"bl-220-native-tools\"></a>\n", backlog, "Duplicate adapter acceptance anchor: #bl-220-native-tools"},
+		{"misbound legacy anchor", strings.Replace(plan, "<a id=\"bl-220-native-tools\"></a>", "<a id=\"bl-220-native-tools-old\"></a>", 1), backlog, "Compatibility anchor points to a different adapter acceptance family"},
+		{"missing inventory", strings.Replace(plan, adapterInventoryEnd, "", 1), backlog, "complete public tool inventory must be present"},
+		{"duplicate tool", strings.Replace(plan, "existing_tool", "future_tool", 1), backlog, "Duplicate public tool name"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -160,18 +192,21 @@ func TestAdapterBindings(t *testing.T) {
 			t.Fatalf("want %q, got %+v", tc.detail, findings)
 		})
 	}
+	renamed := strings.ReplaceAll(plan, "### native-tools acceptance", "### First-party executables")
+	renamed = strings.Replace(renamed, "[Acceptance](#bl-220-native-tools)", "[Acceptance](#adapter-acceptance-native-tools)", 1)
+	if got := checkAdapterBindings(renamed, backlog); len(got) != 0 {
+		t.Fatalf("semantic inventory link with a legacy backlog link and renamed heading rejected: %+v", got)
+	}
 }
 
 func TestStagedPublicAdapterBindings(t *testing.T) {
-	const plan = "## 20. Public tool inventory by target\n" +
-		"| Process | `fixture_start` | BL-987 / activation BL-151 | 1.0 / PLANNED | Scoped / O | [Acceptance](#bl-220-managed-execution) |\n" +
-		"## BL-220 successor acceptance\n" +
-		"### BL-220 managed execution\n**Applicable owners** BL-151, BL-987–BL-988\n"
+	const inventory = "| Process | `fixture_start` | BL-987 / activation BL-151 | 1.0 / PLANNED | Scoped / O | [Acceptance](#bl-220-managed-execution) |\n"
 	const binding = "[Adapter acceptance](docs/planning/tool-adapters.md#bl-220-managed-execution)"
 	const transfer = "[Launch transfer to BL-151](docs/planning/implementation-contract.md#managed-process-activation)"
-	const backlog = "| BL-987 | Completed | Non-launching foundation | " + binding + ". " + transfer + ". BL-151 accepts real start evidence. |\n" +
+	const rows = "| BL-987 | Completed | Non-launching foundation | " + binding + ". " + transfer + ". BL-151 accepts real start evidence. |\n" +
 		"| BL-151 | **Planned** | Activate | " + binding + ". Accept transferred launch obligations from BL-987. |\n" +
 		"| BL-988 | **Planned** | Other same-family work | " + binding + ". |\n"
+	plan, backlog := adapterFixture(inventory, map[string]string{"managed-execution": "BL-151, BL-987–BL-988"}, rows)
 	if got := checkAdapterBindings(plan, backlog); len(got) != 0 {
 		t.Fatalf("planned surface with a completed foundation was rejected: %+v", got)
 	}
@@ -193,21 +228,18 @@ func TestStagedPublicAdapterBindings(t *testing.T) {
 }
 
 func TestInternalLaunchAcceptanceTransfers(t *testing.T) {
-	const plan = "## 20. Public tool inventory by target\n" +
-		"| Historical | `existing_tool` | BL-986 | 1.0 / IMPLEMENTED | Scoped / R | — |\n" +
-		"## BL-220 successor acceptance\n" +
-		"### BL-220 operations\n**Applicable owners** BL-097, BL-164\n" +
-		"### BL-220 managed execution\n**Applicable owners** BL-151, BL-252–BL-253\n"
+	const inventory = "| Historical | `existing_tool` | BL-986 | 1.0 / IMPLEMENTED | Scoped / R | — |\n"
 	const ops = "[Adapter acceptance](docs/planning/tool-adapters.md#bl-220-operations)"
 	const process = "[Adapter acceptance](docs/planning/tool-adapters.md#bl-220-managed-execution)"
 	const transfer = "[Launch transfer to BL-151](docs/planning/implementation-contract.md#managed-process-activation)"
 	const receipt = "Accept transferred launch obligations from BL-097, BL-164, BL-252–BL-253."
-	const backlog = "| BL-097 | **Planned** | Decide dispatch | " + ops + ". " + transfer + ". BL-151 accepts native dispatch evidence. |\n" +
+	const rows = "| BL-097 | **Planned** | Decide dispatch | " + ops + ". " + transfer + ". BL-151 accepts native dispatch evidence. |\n" +
 		"| BL-151 | **Planned** | Activate | " + process + ". " + receipt + " |\n" +
 		"| BL-164 | Completed | Job limit tests | " + transfer + ". BL-151 accepts native exhaustion evidence. |\n" +
 		"| BL-252 | **Planned** | Race checks | " + process + ". " + transfer + ". BL-151 accepts native race evidence. |\n" +
 		"| BL-253 | **Planned** | CI checks | " + process + ". " + transfer + ". BL-151 accepts native CI evidence. |\n" +
 		"| BL-986 | Completed | Existing tool | Historical acceptance |\n"
+	plan, backlog := adapterFixture(inventory, map[string]string{"operations": "BL-097, BL-164", "managed-execution": "BL-151, BL-252–BL-253"}, rows)
 	if got := checkAdapterBindings(plan, backlog); len(got) != 0 {
 		t.Fatalf("complete acceptance rejected: %+v", got)
 	}

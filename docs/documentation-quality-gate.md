@@ -77,6 +77,15 @@ path references in scripts, CI, plain code spans, and generators as well as
 rendered Markdown links. Unchanged release/security/compatibility requirements
 must not be weakened to pass the checker.
 
+Review topic names and dependencies for their technical meaning. Product
+documents describe capabilities, requirements and gates. The backlog carries
+task IDs, owners, execution status, milestones and task-specific acceptance.
+Retain open work-item associations, stable decision identifiers, meaningful
+release history and the exact format of any marker that validators consume.
+Verify the inheriting open work item's own acceptance before retiring a
+completed reference. Review incoming links and their rendered anchors when a
+section is renamed.
+
 Retain original execution evidence outside the public tree before retiring a
 historical report. Consolidate applicable contracts and retain unresolved work
 under its existing owner. Removing a report never resolves its findings.

@@ -1,4 +1,4 @@
-# Technical Backlog Implementation Contract
+# Technical Implementation Contract
 
 ## Authority and use
 
@@ -8,10 +8,10 @@ work. [BACKLOG.md](../../BACKLOG.md) owns the ID, status, sprint or Post-1.0
 placement, and task-specific acceptance. [Architecture](../architecture.md),
 [security](../security.md), the relevant [ADRs](../adr/README.md), and detailed
 plans own their respective designs. The [architecture traceability matrix](architecture-traceability.md)
-records changing ownership, retrofit, and validation state. A short backlog row
-inherits this contract and its family binding; it does not waive them.
+records prerequisites, retrofit targets and closure evidence. Every backlog
+row inherits this contract and its applicable technical family.
 
-Before implementation, the owning BL must resolve and record, directly or by
+Before implementation, the owning backlog item must resolve and record, directly or by
 precise links to its family and traceability rows:
 
 1. **Target architecture role:** MCP adapter, transport, application and
@@ -21,7 +21,7 @@ precise links to its family and traceability rows:
 2. **Authoritative sources:** the maintained architecture, security,
    specification, planning, ADR, and public-contract sections governing it.
 3. **Hard prerequisites:** only decisions and technical owners whose completed contracts must exist before this owner's implementation can start. Keep later consumers, same-family work, validation owners, and retrofit targets out of this field. Planned predecessors must occur earlier in the documented sprint and within-sprint order; completed historical prerequisites may be reused without reopening them.
-4. **Must reuse:** retained packages, completed BL contracts, stores, guards,
+4. **Must reuse:** retained packages, established contracts, stores, guards,
    validators, and interfaces to extend instead of rebuilding.
 5. **Retrofit targets:** existing implementation, configuration, and public
    contracts that must migrate when the new architecture lands; write `none`
@@ -40,7 +40,7 @@ precise links to its family and traceability rows:
 10. **Completion state:** the old path to migrate or retire, and any residual
     explicitly dual-bound in both the closing BL and one concrete successor BL.
 
-A BL is not implementation-ready while its architecture role, hard prerequisites,
+A backlog item is not implementation-ready while its architecture role, hard prerequisites,
 reuse, retrofit obligations, or acceptance path are unresolved. The hard-prerequisite graph must be acyclic and have no planned predecessor scheduled after its consumer. A later consumer never becomes a prerequisite merely because it reuses this owner's output. A new or
 materially changed technical BL updates its family/task binding here and its
 row in [architecture traceability](architecture-traceability.md) in the same
@@ -538,7 +538,11 @@ implemented, and BL-257 owns dedicated CI drift enforcement. This change adds
 no wire fields, runtime checks, product dependencies, activation, or migration.
 Independent terminal review is required before closure.
 
-## BL-371 MCP `ping` receiver for `2025-11-25`
+<a id="bl-371-mcp-ping-receiver-for-2025-11-25"></a>
+
+## MCP `ping` receiver for `2025-11-25`
+
+Backlog applicability: BL-371.
 
 **Role and authority.** BL-371 is a revision-specific MCP-adapter implementation
 owner in SPR-048, separate from the BL-204 conformance/snapshot candidate.
@@ -572,7 +576,11 @@ Windows/native Linux, CI/coverage, documentation and independent terminal
 review gates. Record the support decision and actual result in BL-371; do not
 claim full official conformance or change BL-204's already reviewed bytes.
 
-## BL-257 CI enforcement binding
+<a id="bl-257-ci-enforcement-binding"></a>
+
+## MCP contract enforcement in CI
+
+Backlog applicability: BL-257.
 
 BL-257 owns the blocking test and release-quality gate in SPR-048. It
 consumes the completed BL-204 and BL-212 contracts through the existing
@@ -685,7 +693,11 @@ framing, bytes, semantics, registration, result variants, applicability and
 budget parity, followed by the applicable native quality chain and independent
 review. This contract remains in force after BL-205 closes.
 
-## BL-215 catalog and entry budget binding
+<a id="bl-215-catalog-and-entry-budget-binding"></a>
+
+## Catalog and entry budgets
+
+Backlog applicability: BL-215.
 
 New tools and adapters declare their applicable [resource dimensions](#bl-105-resource-limits)
 in the existing contract and prove limits under the same executable revision,
@@ -770,7 +782,11 @@ separate authorization. The published v0.3.0 identity is retained.
 | Accepted Post-1.0 capabilities — Post-1.0 workstream BLs in BACKLOG.md | Inherit the same context, root, authorization, domain, state, result, adapter, and validation contracts. A later milestone does not relax them or imply current implementation. Detailed names and adapter boundaries live in [tool adapters](tool-adapters.md). |
 | Documentation navigation tooling — BL-368 | Independent release-unassigned development tooling, outside the product runtime and release-security owners. Reuse completed documentation validation and extend its local/read-only CI consumers under the [BL-368 binding](#bl-368-documentation-navigation); no hard dependency on BL-365 or release obligation. |
 
-## BL-100 functional capability model
+<a id="bl-100-functional-capability-model"></a>
+
+## Functional capability model
+
+Backlog applicability: BL-100.
 
 The transport-neutral policy foundation implements the
 [ADR-009 functional capability contract](../adr/capability-profiles.md#functional-capability-contract)
@@ -808,7 +824,11 @@ own runtime visibility, direct-call and root negatives. BL-256 owns
 effective-composition CI. Independent terminal review is required before
 closing BL-100.
 
-## BL-103 capability profiles and risk policy
+<a id="bl-103-capability-profiles-and-risk-policy"></a>
+
+## Capability profiles and risk policy
+
+Backlog applicability: BL-103.
 
 **Role and prerequisites.** Apply [ADR-009](../adr/capability-profiles.md)
 using the BL-100 catalog and all-rights evaluator, BL-101/102 root binding
@@ -865,7 +885,11 @@ candidate independently. Update public setup, migration and Unreleased notes
 with `VERSION` unchanged. Release candidates and publication use their
 existing separate owners.
 
-## BL-233 central runtime configuration
+<a id="bl-233-central-runtime-configuration"></a>
+
+## Typed runtime configuration
+
+Backlog applicability: BL-233.
 
 **Role and prerequisites.** SPR-053 bootstrap and core configuration owner.
 Implement the [ADR-014 configuration contract](../adr/runtime-modes.md#configuration-contract).
@@ -909,7 +933,11 @@ template covers the supported settings and passes the shared validator.
 BL-241/242 validate the enabled managed-mode integrations, and BL-243
 documents the delivered paths.
 
-## BL-374 configuration trust and protection
+<a id="bl-374-configuration-trust-and-protection"></a>
+
+## Configuration trust and protection
+
+Backlog applicability: BL-374.
 
 **Role and prerequisites.** SPR-053 bootstrap and filesystem retrofit. The
 completed BL-233 typed model, ADR-014 role selection, PathGuard and the
@@ -972,7 +1000,11 @@ Keep BL-220 and completed BL-374 closed for ordinary extensions. A change
 to the shared protection boundary requires an explicit security decision
 and an identified owner. BL-373 owns authorized configuration changes.
 
-## BL-373 authorized MCP configuration management
+<a id="bl-373-authorized-mcp-configuration-management"></a>
+
+## Authorized MCP configuration management
+
+Backlog applicability: BL-373.
 
 **Role and prerequisites.** Post-1.0 application and authorization owner.
 Implementation requires BL-233 (typed model and validation), BL-374
@@ -1021,7 +1053,11 @@ and direct calls, authorization changes before commit, redaction, persistence
 failures, and restart. Verify optional UI and later transport exposure
 against the same server-side policy before enabling them.
 
-## BL-369 human-readable release quality reporting
+<a id="bl-369-human-readable-release-quality-reporting"></a>
+
+## Human-readable release quality reporting
+
+Backlog applicability: BL-369.
 
 **Architecture role and prerequisites.** Independent release-unassigned
 presentation/aggregation owner; reuse completed BL-248/255/262 verification and
@@ -1051,7 +1087,11 @@ Publishing a version-specific permanent report is a separate authorized Git
 operation with poststate readback. Until a separate release-gate decision, this
 release-unassigned owner does not block existing prereleases or stable BL-263.
 
-## BL-370 future Streamable HTTP MCP transport
+<a id="bl-370-future-streamable-http-mcp-transport"></a>
+
+## Future Streamable HTTP MCP transport
+
+Backlog applicability: BL-370.
 
 **Architecture role and prerequisites.** Separate accepted Post-1.0
 transport/host/security implementation owner. Reuse BL-224 transport/core
@@ -1079,7 +1119,11 @@ HTTP-to-STDIO bridge, uncontrolled remote listener, new dependency, permission
 or service change without its own decision and authorization. Future additions
 belong to this transport owner, not a reopening of BL-204.
 
-## BL-368 documentation navigation
+<a id="bl-368-documentation-navigation"></a>
+
+## Documentation navigation
+
+Backlog applicability: BL-368.
 
 **Role and authorities.** BL-368 owns future deterministic README navigation
 generation and drift validation in development tooling, outside `cmd/server`.
@@ -1146,7 +1190,11 @@ BL-368 remains Planned until separately authorized implementation and validation
 complete. It creates no product/release artifact, migration or active security
 change and leaves BL-365 and completed owners unchanged.
 
-## BL-363 implementation binding
+<a id="bl-363-implementation-binding"></a>
+
+## Persistent public prerelease publication
+
+Backlog applicability: BL-363.
 
 Architecture role: release and validation, with a narrow provider adapter.
 The publication correction keeps that role: read a positively identified draft
@@ -1363,7 +1411,11 @@ or release-blocking obligation. They may be scheduled whenever their prerequisit
 and a separate implementation authorization are satisfied. Their registration
 activates no tool, external provider, workflow permission or credential change.
 
-### BL-366 SBOM security management
+<a id="bl-366-sbom-security-management"></a>
+
+### SBOM security management
+
+Backlog applicability: BL-366.
 
 Architecture role: dependency security management and validation. Authorities are
 [security](../security.md#release-and-supply-chain-security),
@@ -1404,7 +1456,11 @@ public SBOM asset or runtime/MCP contract. Close only with accepted triage,
 gates, tests and current guidance; disposition VERSION/CHANGELOG, CI, artifacts,
 release, migration and security under the shared closure contract.
 
-### BL-367 GitHub Artifact Attestations
+<a id="bl-367-github-artifact-attestations"></a>
+
+### GitHub Artifact Attestations
+
+Backlog applicability: BL-367.
 
 Architecture role: release supply-chain authentication and validation. Authorities
 are [DEC-FP-003](../adr/product-metadata.md#accepted-public-distribution-target),

@@ -75,7 +75,11 @@ The target contract intentionally has no separate public:
 
 ## 3. Adapter and provider taxonomy
 
-### BL-220 adapter selection
+<a id="bl-220-adapter-selection"></a>
+
+### Native adapter selection
+
+Backlog applicability: BL-220.
 
 Use the first option that meets the operation's semantics and effective policy
 on the supported platform:
@@ -232,7 +236,11 @@ Public FlashGate contracts and guidance remain consumer-independent. They have n
 
 ## 5. Version 1.0 filesystem and discovery corrections
 
-### 5.1 Named-root discovery — `BL-352`
+<a id="51-named-root-discovery--bl-352"></a>
+
+### 5.1 Named-root discovery
+
+Backlog applicability: BL-352.
 
 Public tools:
 
@@ -243,7 +251,11 @@ Purpose: let an agent discover root IDs and the bounded properties it needs with
 
 Default fields are compact and may include root ID, safe label, read/write availability, and a compact capability summary. Optional `fields` can request relevant limits, allowed file types, or other policy-visible properties. Absolute host paths, raw ACLs, principal internals, and backend implementation details are not returned by default.
 
-### 5.2 Path metadata — `BL-043`, `BL-345`, `BL-351`, `BL-359`
+<a id="52-path-metadata--bl-043-bl-345-bl-351-bl-359"></a>
+
+### 5.2 Path metadata
+
+Backlog applicability: BL-043, BL-345, BL-351, BL-359.
 
 `get_path_info` remains the single path-metadata query owner. Field selection prevents the baseline call from becoming a large platform dump.
 
@@ -256,7 +268,11 @@ Field groups may include:
 - `link`: symlink/reparse classification without unnecessary target/host disclosure;
 - `security`: normalized security summary where authorized.
 
-### 5.3 Directory listing — `BL-037`–`BL-040`, `BL-049`
+<a id="53-directory-listing--bl-037bl-040-bl-049"></a>
+
+### 5.3 Directory listing
+
+Backlog applicability: BL-037–BL-040, BL-049.
 
 `list_directory` owns both shallow and recursive directory enumeration. Target options include:
 
@@ -271,7 +287,11 @@ Field groups may include:
 
 Recursive output should prefer flat root-relative entries that can be paged deterministically instead of an unbounded deeply nested JSON tree.
 
-### 5.4 File write modes — `BL-050`–`BL-055`, `BL-063`
+<a id="54-file-write-modes--bl-050bl-055-bl-063"></a>
+
+### 5.4 File write modes
+
+Backlog applicability: BL-050–BL-055, BL-063.
 
 `write_file` owns complete-content writes and append behavior. Canonical modes are:
 
@@ -282,7 +302,11 @@ Recursive output should prefer flat root-relative entries that can be paged dete
 
 Atomic replacement and conditional preconditions remain explicit options where supported. `edit_file` remains the targeted-delta operation with exact range/match contracts, expected-match-count checks, and dry-run support.
 
-### 5.5 Compare and verify — `BL-346` (Version 1.0)
+<a id="55-compare-and-verify--bl-346-version-10"></a>
+
+### 5.5 Compare and verify (Version 1.0)
+
+Backlog applicability: BL-346.
 
 Public tools:
 
@@ -318,7 +342,11 @@ For cloud/local-only content, `unknown`/`indeterminate` must not be silently con
 
 ## 6. Version 1.0 search and execution corrections
 
-### 6.1 Search — `BL-068`–`BL-083`
+<a id="61-search--bl-068bl-083"></a>
+
+### 6.1 Search
+
+Backlog applicability: BL-068–BL-083.
 
 Canonical public tools:
 
@@ -327,7 +355,11 @@ Canonical public tools:
 
 Pure Go is the normative portable baseline (`BL-082`). The optional ripgrep adapter (`BL-081`) is cross-platform and may accelerate `search_text` only when security, semantics, deterministic result requirements, and benchmark evidence permit it. It never creates a public `ripgrep_*` tool. Raw ripgrep options, preprocessors, and helper-spawning archive search are outside the adapter contract unless separately modeled and approved.
 
-### 6.2 Managed process and typed commands — `BL-119`–`BL-152`, `BL-353`
+<a id="62-managed-process-and-typed-commands--bl-119bl-152-bl-353"></a>
+
+### 6.2 Managed process and typed commands
+
+Backlog applicability: BL-119–BL-152, BL-353.
 
 `start_process(command_id, typed_args)` and `run_command(command_id, typed_args)` use the same Managed Process / Typed Command engine. `run_command` is only the synchronous wrapper; FlashGate has no second arbitrary execution engine.
 
@@ -344,7 +376,11 @@ Public command discovery:
 
 Only commands available to the effective profile/capability context are exposed. Discovery returns compact typed argument/limit information and does not reveal absolute executable paths or adapter identity by default.
 
-### 6.3 System information — `BL-153`–`BL-158`
+<a id="63-system-information--bl-153bl-158"></a>
+
+### 6.3 System information
+
+Backlog applicability: BL-153–BL-158.
 
 The canonical planned public name is `get_system_info`, not `system_info`. Related V1 candidates remain `get_disk_usage` and `get_environment_info` with strict field allowlists/redaction.
 
@@ -363,7 +399,11 @@ Candidate tools:
 
 Network probes use explicit policy rather than generic outbound authority. The policy must support bounded host/exact-name or suffix allowlists, port allowlists, and explicit treatment of loopback, private, link-local, multicast, unspecified, and other non-public destination classes. DNS names are resolved under policy and the actual address used for connection is validated again so rebinding or multi-answer resolution cannot bypass destination rules. Timeouts, attempted addresses, returned fields, and diagnostic text stay small and bounded. There is no generic HTTP client in the core. ICMP/ping is not a baseline requirement unless a later native/security decision justifies it.
 
-## 7. Cloud-backed and placeholder paths — `BL-345`
+<a id="7-cloud-backed-and-placeholder-paths--bl-345"></a>
+
+## 7. Cloud-backed and placeholder paths
+
+Backlog applicability: BL-345.
 
 The model is vendor-neutral. OneDrive is a required Windows validation case, not a FlashGate dependency or a public tool prefix.
 
@@ -423,7 +463,11 @@ When explicitly requested through `get_path_info(fields=["availability"])`, norm
 
 Windows Cloud Files/CFAPI is an internal Platform Adapter for this domain.
 
-## 8. Filesystem watch — `BL-347`
+<a id="8-filesystem-watch--bl-347"></a>
+
+## 8. Filesystem watch
+
+Backlog applicability: BL-347.
 
 Canonical public family:
 
@@ -446,7 +490,11 @@ The watched target may be one file or a directory. The watch handle is opaque an
 
 Expected internal adapters: Windows ReadDirectoryChangesW-class implementation and Linux inotify-class implementation. `watch` alone and `watch_paths` are rejected as public names because FlashGate can later watch other domains.
 
-## 9. Archives — `BL-348`
+<a id="9-archives--bl-348"></a>
+
+## 9. Archives
+
+Backlog applicability: BL-348.
 
 Archive is a format-neutral domain with the public family:
 
@@ -500,7 +548,11 @@ FlashGate distinguishes three concepts:
 2. **Content compression** — transform a file's bytes into a compressed representation, for example GZIP or Zstandard.
 3. **Transparent filesystem/path compression** — the logical file/directory remains the same object while the filesystem stores it compressed.
 
-### 10.1 Content compression — `BL-354`
+<a id="101-content-compression--bl-354"></a>
+
+### 10.1 Content compression
+
+Backlog applicability: BL-354.
 
 Public tools:
 
@@ -521,7 +573,11 @@ The codec interface plans support for the useful portable format set, subject to
 
 Go standard-library support is used first. Optional codec/native adapters are allowed only through the common bounded typed contract. Compression levels are semantic presets or bounded enums, not raw backend flags.
 
-### 10.2 Transparent path compression/encryption — `BL-351`
+<a id="102-transparent-path-compressionencryption--bl-351"></a>
+
+### 10.2 Transparent path compression and encryption
+
+Backlog applicability: BL-351.
 
 Query state through `get_path_info(fields=["storage"])`; there is no separate `get_path_storage_info`. Where reliably supported, normalized requested storage fields may include `compression_supported`, `compression_enabled`, `compression_inherited_default`, `encryption_supported`, `encryption_enabled`, `encryption_inherited_default`, sparse state, logical size, and allocated/physical size. An inherited default describes directory/child behavior, not the enabled state of the current path. Unknown/unsupported fields are explicit and do not fabricate cross-filesystem equivalence.
 
@@ -537,11 +593,19 @@ Separate high-risk mutation:
 
 Compression and encryption are independent operations. FlashGate does not silently decompress to encrypt or decrypt to compress; conflicting states return an explicit error/decision result. Volume/partition compression or encryption administration is outside this owner.
 
-## 11. Platform configuration — `BL-349` and `BL-355`
+<a id="11-platform-configuration--bl-349-and-bl-355"></a>
+
+## 11. Platform configuration
+
+Backlog applicability: BL-349, BL-355.
 
 Registry and sysctl are not artificially mapped to one generic settings store.
 
-### 11.1 Read-only platform configuration — `BL-349`
+<a id="111-read-only-platform-configuration--bl-349"></a>
+
+### 11.1 Read-only platform configuration
+
+Backlog applicability: BL-349.
 
 Windows candidates:
 
@@ -556,7 +620,11 @@ Linux candidates:
 
 These tools are absent from portable/default profiles unless an explicit platform-sensitive capability is enabled. Registry access is constrained to configured key roots/namespaces. sysctl access is constrained to an allowlisted key set/namespace. xattr does not belong to this owner.
 
-### 11.2 Platform configuration mutation — `BL-355`
+<a id="112-platform-configuration-mutation--bl-355"></a>
+
+### 11.2 Platform configuration mutation
+
+Backlog applicability: BL-355.
 
 Windows candidates:
 
@@ -571,7 +639,11 @@ Linux candidate:
 
 Mutation is separate high-risk work with explicit capability, allowlist, audit, negative tests, and no general Registry editor/sysctl browser.
 
-## 12. System logs — `BL-356`
+<a id="12-system-logs--bl-356"></a>
+
+## 12. System logs
+
+Backlog applicability: BL-356.
 
 Public tools:
 
@@ -585,7 +657,11 @@ Internal adapters:
 
 The query contract uses bounded time range, source/provider/unit, severity/event ID, field selection, cursor, and limit. Default output is compact and does not render large full event payloads unless requested and within budget.
 
-## 13. OS service observation/control — `BL-357`
+<a id="13-os-service-observationcontrol--bl-357"></a>
+
+## 13. OS service observation and control
+
+Backlog applicability: BL-357.
 
 This domain controls **other operating-system services** and is separate from FlashGate's own SCM/systemd host lifecycle.
 
@@ -599,7 +675,11 @@ Public tools:
 
 Internal adapters: Windows SCM and Linux systemd. Observation and mutation have separate capabilities; service control is high-risk and requires explicit activation/audit.
 
-## 14. Scheduled jobs/timers — `BL-358`
+<a id="14-scheduled-jobstimers--bl-358"></a>
+
+## 14. Scheduled jobs and timers
+
+Backlog applicability: BL-358.
 
 Public tools:
 
@@ -614,7 +694,11 @@ Public tools:
 
 Internal adapters: Windows Task Scheduler and Linux systemd timers. Cron may be evaluated as an optional limited adapter; it is not the portable baseline. Creation/update/delete/run are high-risk because they can create persistence or execute later without the initiating MCP session.
 
-## 15. Path security and extended metadata — `BL-359`
+<a id="15-path-security-and-extended-metadata--bl-359"></a>
+
+## 15. Path security and extended metadata
+
+Backlog applicability: BL-359.
 
 Portable security surface:
 
@@ -637,7 +721,11 @@ Linux extended attributes:
 
 ADS and xattr are not described as semantically identical. Platform-sensitive profile/disclosure rules apply. Security mutations require explicit capability and must preserve root/identity/audit boundaries.
 
-## 16. Git first-party Native Tool adapter — `BL-360`
+<a id="16-git-first-party-native-tool-adapter--bl-360"></a>
+
+## 16. Git first-party Native Tool adapter
+
+Backlog applicability: BL-360.
 
 Initial scope is read-only and local:
 
@@ -650,7 +738,11 @@ Initial scope is read-only and local:
 
 The repository must be within an authorized Named Root. The adapter must disable or reject hooks, arbitrary `-c`, external diff/pager, raw CLI options, uncontrolled environment, and implicit remote/credential activity. Remote fetch/push/pull is not part of this owner. Git binary identity is governed by the shared executable-identity contract.
 
-## 17. Audit integrity and query — `BL-166`, `BL-361`
+<a id="17-audit-integrity-and-query--bl-166-bl-361"></a>
+
+## 17. Audit integrity and query
+
+Backlog applicability: BL-166, BL-361.
 
 `BL-166` remains the Version 1.0 owner for bounded structured audit events, immutable event/correlation IDs, rotation, retention, disk-full/backpressure behavior, redaction, and log-injection protection.
 
@@ -670,7 +762,11 @@ Post-Version-1.0 candidates:
 
 Optional hash-chain evidence may include sequence, previous-event hash, event hash, and rotation-link hash. It is documented as tamper evidence/defense in depth, not as protection against a fully privileged local attacker who can replace all audit storage.
 
-## 18. User-session capabilities — `BL-362`
+<a id="18-user-session-capabilities--bl-362"></a>
+
+## 18. User-session capabilities
+
+Backlog applicability: BL-362.
 
 These tools are only available through a valid user-session backend and are not simulated through a system service account:
 
@@ -682,7 +778,11 @@ These tools are only available through a valid user-session backend and are not 
 
 Clipboard/notification permissions, payload types, size limits, and session identity require explicit platform/user-session contracts. Broad UI automation, screenshots, accessibility input, and desktop control remain provider/future-architecture work rather than this owner.
 
-## 19. Portable public agent skill — `BL-350`
+<a id="19-portable-public-agent-skill--bl-350"></a>
+
+## 19. Portable public agent skill
+
+Backlog applicability: BL-350.
 
 Publish exactly one canonical optional FlashGate skill rather than separate cache/file/search/process skills. The skill has a small always-loaded decision core and progressively loaded capability references, for example filesystem, identity-and-verification, search, process/execution, platform-storage, and efficiency recipes. This grouping is an authoring/layout choice, not a new public API taxonomy.
 
@@ -717,6 +817,8 @@ registration. Each class follows the
 [whole-catalog composition rule](efficiency.md#tool-catalog-and-initialization-budgets).
 Windows and Linux are the intended platforms unless the row specifies a
 narrower gate. All planned platform availability remains subject to proof.
+
+<!-- public-tool-inventory:v1 -->
 
 | Family | Public names | Owner | Milestone / state | Eligible capability / class | Adapter acceptance |
 |---|---|---|---|---|---|
@@ -770,6 +872,8 @@ narrower gate. All planned platform availability remains subject to proof.
 | Git first-party Native Tool adapter | `get_git_status`, `get_git_diff`, `list_git_branches`, `list_git_commits`, `get_git_commit`, `get_git_blame` | BL-360 | Post-1.0 / PLANNED | Local authorized repository read and approved executable / O | [Acceptance](#bl-220-native-tools) |
 | Audit administration | `get_audit_status`, `query_audit_events`, `verify_audit_integrity` | BL-361 | Post-1.0 / PLANNED | Administrative audit access / O | [Acceptance](#bl-220-system-and-platform) |
 | User session | `list_clipboard_formats`, `read_clipboard`, `write_clipboard`, `clear_clipboard`, `send_desktop_notification` | BL-362 | Post-1.0 / PLANNED | Separate clipboard and notification permissions in a verified user session / O | [Acceptance](#bl-220-system-and-platform) |
+
+<!-- /public-tool-inventory -->
 
 Operations and Jobs (BL-084–099) provide internal lifecycle and storage.
 BL-209–211 own MCP Tasks selection, mapping and fallback. Neither defines extra
@@ -849,7 +953,21 @@ BL-181–188 own the separate contract for SSH, Web/API, containers, package
 managers, desktop automation, cloud and databases. BL-169 owns the security
 boundary. None is an approved core backend, public tool or plugin today.
 
-## BL-220 successor acceptance
+<a id="bl-220-successor-acceptance"></a>
+
+## Adapter successor acceptance
+
+<!-- adapter-acceptance-contract:v1 -->
+
+The BL-220 adapter selection decision establishes this acceptance contract.
+
+**Required evidence**
+
+- **authorization**: Require effective authorization before dispatch and deny fallback for unauthorized requests.
+- **bounded-resources**: Prove bounded resource behavior for the actual operation and failure paths.
+- **gated-activation**: Keep unproved routes disabled or return a safe denial before activation.
+- **native-platform**: Exercise the actual native backend on each applicable platform.
+- **protected-effects**: Deny protected reads, mutations and disclosure across direct and delegated effects.
 
 Each canonical backlog row binds the applicable family below and its own
 behavior. Each family's **Applicable owners** line records the scope of that
@@ -887,7 +1005,12 @@ its normal policy.
 An unproved route stays disabled or returns a safe denial. BL-374 owns
 initial enforcement for current mutations. The successor owns its delta.
 
-### BL-220 filesystem
+<a id="adapter-acceptance-filesystem"></a>
+<a id="bl-220-filesystem"></a>
+
+### Filesystem acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-036–BL-061, BL-063–BL-067, BL-346
 
@@ -905,7 +1028,12 @@ through direct, batch, ranged, streamed, copy and compare/verify routes
 where applicable. Test safe metadata and absence of digests or equality
 oracles for the source.
 
-### BL-220 search
+<a id="adapter-acceptance-search"></a>
+<a id="bl-220-search"></a>
+
+### Search acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-068–BL-080, BL-082–BL-083
 
@@ -920,7 +1048,12 @@ Exclude protected objects before content scan, indexing and ignore-rule
 reads. Prove aliases, snippets, match indicators and counters cannot reveal
 their contents across accelerators, previews or continuations.
 
-### BL-220 operations
+<a id="adapter-acceptance-operations"></a>
+<a id="bl-220-operations"></a>
+
+### Operations acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-084–BL-099, BL-164, BL-210–BL-211, BL-218, BL-254
 
@@ -930,7 +1063,12 @@ boundary. Preserve domain authorization and lifecycle ownership. Exercise
 limit exhaustion, denial, timeout, cancellation, result expiry, shutdown and
 cleanup for affected work and prove bounded queues and temporary resources.
 
-### BL-220 context and policy
+<a id="adapter-acceptance-context-and-policy"></a>
+<a id="bl-220-context-and-policy"></a>
+
+### Context and policy acceptance
+
+Backlog applicability: BL-220.
 
 All consumers use the [shared resource contract](implementation-contract.md#bl-105-resource-limits).
 Bind the effective root snapshot below MCP; declare FILE/WRITE/SCAN/RESULT/TEMP
@@ -954,7 +1092,12 @@ backend availability and cached results independent of authorization. Test the
 affected direct calls, backend parity and context mismatch, including denial
 before dispatch and secret-safe errors and audit.
 
-### BL-220 managed execution
+<a id="adapter-acceptance-managed-execution"></a>
+<a id="bl-220-managed-execution"></a>
+
+### Managed execution acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-113–BL-152, BL-162–BL-163, BL-252–BL-253, BL-353
 
@@ -976,7 +1119,12 @@ typed input that would read or mutate it, including reads relayed to
 stdout, stderr, temporary output, helpers or children. Refuse launch if the
 backend cannot prove confinement.
 
-### BL-220 system and platform
+<a id="adapter-acceptance-system-and-platform"></a>
+<a id="bl-220-system-and-platform"></a>
+
+### System and platform acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-062, BL-153–BL-158, BL-345, BL-347, BL-349, BL-351, BL-355–BL-359, BL-361–BL-362
 
@@ -994,7 +1142,12 @@ execution effects under the effective identity, including returned data and
 diagnostics that can disclose the source. Enforce protection again
 at execution when earlier validation cannot bind the object.
 
-### BL-220 host and transport
+<a id="adapter-acceptance-host-and-transport"></a>
+<a id="bl-220-host-and-transport"></a>
+
+### Host and transport acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-221–BL-235, BL-237–BL-238, BL-240–BL-244, BL-341, BL-370
 
@@ -1011,7 +1164,12 @@ argv or alternate engine. BL-242 validates the actual artifact and enabled
 runtime modes without installed interpreters, including service assets and
 platform-specific paths, and extends the gate matrix when build inputs change.
 
-### BL-220 native tools
+<a id="adapter-acceptance-native-tools"></a>
+<a id="bl-220-native-tools"></a>
+
+### Native tools acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-081, BL-348, BL-354, BL-360
 
@@ -1028,7 +1186,12 @@ even read-only invocations for helpers, optional writes and hostile
 configuration. Prove content cannot be relayed through output, intermediate
 files or archive members. Reject an unconfined backend before dispatch.
 
-### BL-220 provider boundary
+<a id="adapter-acceptance-provider-boundary"></a>
+<a id="bl-220-provider-boundary"></a>
+
+### Provider boundary acceptance
+
+Backlog applicability: BL-220.
 
 **Applicable owners** BL-169, BL-176, BL-181–BL-188, BL-313
 
@@ -1043,6 +1206,8 @@ Bind filesystem operands in provider operations and host callbacks to BL-102.
 Prove the protection boundary across provider-owned writes, host callbacks,
 helper processes, returned resources, and shutdown or failure cleanup before
 any dispatch. A provider must not observe or return protected source values.
+
+<!-- /adapter-acceptance-contract -->
 
 ## 22. Implementation gate for every new public tool
 
