@@ -144,6 +144,9 @@ Run `scripts/Test-DocumentationConsistency.ps1` for documentation changes and co
 
 ## Validation
 
+Start with the [project validation entry point](docs/testing.md#validation-entry-point).
+It composes the existing commands below and records bound, timed results.
+
 Run the checks relevant to the change. The normal code chain is:
 
 ```bash

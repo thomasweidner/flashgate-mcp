@@ -36,7 +36,7 @@ try {
 
     [IO.File]::WriteAllText(
         (Join-Path $Repository '.gitignore'),
-        "ignored.bin`n.env`n",
+        "ignored.bin`n.env`nAGENTS.md`n",
         [Text.UTF8Encoding]::new($false)
     )
     [IO.File]::WriteAllText(
@@ -55,12 +55,18 @@ try {
         [Text.UTF8Encoding]::new($false)
     )
     Invoke-GitRequired -Arguments @('add', '.gitignore', 'tracked.txt')
+    [IO.File]::WriteAllText(
+        (Join-Path $Repository 'AGENTS.md'),
+        "# Public contributor instructions`n",
+        [Text.UTF8Encoding]::new($false)
+    )
+    Invoke-GitRequired -Arguments @('add', '--force', 'AGENTS.md')
 
     $null = Invoke-Snapshot -Name 'valid'
     $Manifest = Get-Content -LiteralPath (Join-Path $Output 'valid.json') -Raw |
         ConvertFrom-Json -Depth 5
     $ManifestPaths = @($Manifest.files.Path)
-    foreach ($Expected in @('.gitignore', 'tracked.txt', 'untracked.txt')) {
+    foreach ($Expected in @('.gitignore', 'tracked.txt', 'untracked.txt', 'AGENTS.md')) {
         if ($Expected -notin $ManifestPaths) {
             $Errors.Add("Expected snapshot file missing: $Expected")
         }
@@ -70,6 +76,24 @@ try {
             $Errors.Add("Ignored file entered the snapshot: $Forbidden")
         }
     }
+
+    Remove-Item -LiteralPath (Join-Path $Repository 'tracked.txt')
+    try {
+        $null = Invoke-Snapshot -Name 'missing-strict'
+        $Errors.Add('The strict snapshot accepted a missing tracked file.')
+    }
+    catch [System.Management.Automation.ItemNotFoundException] {
+    }
+    $DeletedManifestPath = Join-Path $Output 'deleted.json'
+    $null = New-FlashGateGitSnapshot -RootPath $Repository `
+        -SnapshotPath (Join-Path $Output 'deleted.tar') -ManifestPath $DeletedManifestPath `
+        -AllowTrackedDeletions
+    $DeletedManifest = Get-Content -LiteralPath $DeletedManifestPath -Raw | ConvertFrom-Json -Depth 5
+    $ExpectedPostimage = @($ManifestPaths | Where-Object { $_ -cne 'tracked.txt' })
+    if (Compare-Object -ReferenceObject $ExpectedPostimage -DifferenceObject @($DeletedManifest.files.Path)) {
+        $Errors.Add('The deletion snapshot does not match the exact remaining inventory.')
+    }
+    [IO.File]::WriteAllText((Join-Path $Repository 'tracked.txt'), 'tracked', [Text.UTF8Encoding]::new($false))
 
     [IO.File]::WriteAllText(
         (Join-Path $Repository '.env'),
