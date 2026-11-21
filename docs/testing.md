@@ -980,7 +980,11 @@ identity still needs its own valid four-target verification evidence; historical
 completion does not verify later bytes. Local promotion performs no build or
 remote write.
 
-#### BL-363 public prerelease gates
+<a id="bl-363-public-prerelease-gates"></a>
+
+#### Public prerelease gates
+
+Backlog applicability: BL-363.
 
 Local stage-promotion tests inject rename, clock and sleep operations to prove
 immediate success, exact Win32 5/32 classification, eight-call and two-second

@@ -67,9 +67,25 @@ architecture decisions, contributor guidance, and accepted planning separately.
 Use one canonical location for each contract and link to it instead of copying
 requirements into multiple competing authorities.
 
-`BACKLOG.md` owns task identifiers, ownership, status, and milestone. The [implementation contract](planning/implementation-contract.md) owns shared technical-BL readiness and retrofit rules; [architecture traceability](planning/architecture-traceability.md) owns the living requirement-to-owner and closure map. New or materially changed technical BLs update both in one planning change; architecture changes identify affected current controls. Keep
-assigned identifiers stable and retain concise completed entries without
-turning the backlog into an execution-report archive.
+Use capability, requirement and interface names in public headings and links.
+Describe dependencies as the technical conditions a consumer needs. Identify
+the existing control or interface a change must retrofit and the acceptance
+evidence it must produce.
+
+[`BACKLOG.md`](../BACKLOG.md) owns task IDs, ownership, status, milestones and
+task-specific acceptance. The [implementation contract](planning/implementation-contract.md)
+owns shared technical readiness and retrofit rules. [Architecture traceability](planning/architecture-traceability.md)
+binds requirements, prerequisites, reuse, retrofit and validation. A planning
+change that adds or materially changes technical backlog work updates both
+authorities and identifies affected current controls.
+
+Use a backlog link when readers need current execution status. Preserve open
+work-item IDs and their concrete obligations. Before retiring a completed
+work-item reference, preserve the product contract and confirm that each open
+successor records the inherited obligations in its own backlog acceptance.
+Keep stable ADR and decision identities, historical release facts and existing
+machine-readable bindings. Check downstream consumers before changing a
+structured marker or compatibility anchor.
 
 `CHANGELOG.md` remains the sole manually maintained narrative release-notes
 source. Preserve release history. Include user-relevant migration guidance when

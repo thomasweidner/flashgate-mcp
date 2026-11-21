@@ -12,12 +12,32 @@ import (
 const adapterPlan = "docs/planning/tool-adapters.md"
 
 const (
-	launchReceiver      = "BL-151"
-	launchTransferLink  = "[Launch transfer to BL-151](docs/planning/implementation-contract.md#managed-process-activation)"
-	launchReceiptPrefix = "Accept transferred launch obligations from "
+	launchReceiver        = "BL-151"
+	launchTransferLink    = "[Launch transfer to BL-151](docs/planning/implementation-contract.md#managed-process-activation)"
+	launchReceiptPrefix   = "Accept transferred launch obligations from "
+	adapterInventoryStart = "<!-- public-tool-inventory:v1 -->"
+	adapterInventoryEnd   = "<!-- /public-tool-inventory -->"
+	adapterContractStart  = "<!-- adapter-acceptance-contract:v1 -->"
+	adapterContractEnd    = "<!-- /adapter-acceptance-contract -->"
+	adapterFamilyPrefix   = "adapter-acceptance-"
 )
 
 var adapterOwnerID = regexp.MustCompile(`^BL-[0-9]{3}$`)
+var adapterAnchor = regexp.MustCompile(`^<a id="([a-z0-9-]+)"></a>$`)
+var publicToolName = regexp.MustCompile("^`([a-z][a-z0-9_]*)`$")
+
+var adapterFamilyKeys = []string{
+	"filesystem", "search", "operations", "context-and-policy", "managed-execution",
+	"system-and-platform", "host-and-transport", "native-tools", "provider-boundary",
+}
+
+var adapterEvidence = map[string]string{
+	"authorization":     "Require effective authorization before dispatch and deny fallback for unauthorized requests.",
+	"bounded-resources": "Prove bounded resource behavior for the actual operation and failure paths.",
+	"gated-activation":  "Keep unproved routes disabled or return a safe denial before activation.",
+	"native-platform":   "Exercise the actual native backend on each applicable platform.",
+	"protected-effects": "Deny protected reads, mutations and disclosure across direct and delegated effects.",
+}
 
 type adapterOwner struct {
 	line       int
@@ -35,12 +55,12 @@ func (o adapterOwner) launchTransfer() bool {
 }
 
 func checkAdapterBindings(plan, backlog string) []finding {
-	planLines := documentLines(plan, false)
+	planLines := adapterPlanLines(plan)
 	var findings []finding
 	add := func(path string, line int, detail string) {
 		findings = append(findings, finding{Path: path, Line: line, Rule: "ADAPTER_BINDING", Detail: detail})
 	}
-	families, expected := successorApplicability(planLines, func(line int, detail string) {
+	links, expected := successorApplicability(planLines, func(line int, detail string) {
 		add(adapterPlan, line, detail)
 	})
 	owners := map[string]adapterOwner{}
@@ -72,8 +92,8 @@ func checkAdapterBindings(plan, backlog string) []finding {
 			acceptance: acceptance,
 		}
 		for _, target := range inlineDestinations(acceptance) {
-			if fragment, local := strings.CutPrefix(target, adapterPlan); local && families[fragment] {
-				owner.targets = append(owner.targets, fragment)
+			if fragment, local := strings.CutPrefix(target, adapterPlan); local && links[fragment] != "" {
+				owner.targets = append(owner.targets, links[fragment])
 			}
 		}
 		owners[id] = owner
@@ -103,8 +123,25 @@ func checkAdapterBindings(plan, backlog string) []finding {
 	checkLaunchTransfers(owners, duplicate, expected, func(line int, detail string) {
 		add("BACKLOG.md", line, detail)
 	})
-	findings = append(findings, checkPublicAdapterInventory(planLines, owners, duplicate, expected)...)
+	findings = append(findings, checkPublicAdapterInventory(planLines, owners, duplicate, expected, links)...)
 	return findings
+}
+
+func adapterPlanLines(plan string) []string {
+	lines := documentLines(plan, false)
+	inComment := false
+	for i, raw := range lines {
+		line := strings.TrimSuffix(raw, "\r")
+		lines[i] = line
+		if inComment {
+			lines[i] = ""
+			inComment = !strings.Contains(line, "-->")
+		} else if _, after, opens := strings.Cut(line, "<!--"); opens && !strings.Contains(after, "-->") {
+			lines[i] = ""
+			inComment = true
+		}
+	}
+	return lines
 }
 
 // The canonical receiver lists the accepted donors. Compare both directions
@@ -182,19 +219,27 @@ func launchReceipt(acceptance string) (map[string]bool, error) {
 
 // The inventory declares the applicable policy for the public surface.
 // Compare that classification with the independently declared owner scope.
-func checkPublicAdapterInventory(lines []string, owners map[string]adapterOwner, duplicate map[string]bool, expected map[string]string) []finding {
+func checkPublicAdapterInventory(lines []string, owners map[string]adapterOwner, duplicate map[string]bool, expected, familyLinks map[string]string) []finding {
 	var findings []finding
 	add := func(line int, detail string) {
 		findings = append(findings, finding{Path: adapterPlan, Line: line, Rule: "ADAPTER_BINDING", Detail: detail})
 	}
 	inInventory := false
-	rowCount := 0
+	starts, ends, rowCount := 0, 0, 0
+	names := map[string]bool{}
 	for i, line := range lines {
-		switch {
-		case line == "## 20. Public tool inventory by target":
+		switch line {
+		case adapterInventoryStart:
+			starts++
 			inInventory = true
-		case strings.HasPrefix(line, "## "):
+			continue
+		case adapterInventoryEnd:
+			ends++
+			if !inInventory {
+				add(i+1, "Public tool inventory closes before it opens.")
+			}
 			inInventory = false
+			continue
 		}
 		if !inInventory || !strings.HasPrefix(line, "|") {
 			continue
@@ -207,6 +252,16 @@ func checkPublicAdapterInventory(lines []string, owners map[string]adapterOwner,
 		if len(fields) != 8 {
 			add(i+1, "Invalid public tool inventory row.")
 			continue
+		}
+		for _, name := range strings.Split(strings.TrimSpace(fields[2]), ", ") {
+			match := publicToolName.FindStringSubmatch(name)
+			if match == nil {
+				add(i+1, "Invalid public tool name in inventory: "+name)
+			} else if names[match[1]] {
+				add(i+1, "Duplicate public tool name in inventory: "+match[1])
+			} else {
+				names[match[1]] = true
+			}
 		}
 		id, activationID, staged := strings.Cut(strings.TrimSpace(fields[3]), " / activation ")
 		owner, exists := owners[id]
@@ -253,52 +308,95 @@ func checkPublicAdapterInventory(lines []string, owners map[string]adapterOwner,
 			continue
 		}
 		links := inlineDestinations(stripInlineCode(acceptance))
-		if expected[id] == "" || len(links) != 1 || links[0] != expected[id] {
+		if expected[id] == "" || len(links) != 1 || familyLinks[links[0]] != expected[id] {
 			add(i+1, "Public tool row and canonical owner have different adapter applicability: "+id)
 		}
 	}
-	if rowCount == 0 {
-		add(0, "Public tool inventory must be present.")
+	if starts != 1 || ends != 1 || inInventory || rowCount == 0 {
+		add(0, "Exactly one complete public tool inventory must be present.")
 	}
 	return findings
 }
 
-func successorApplicability(lines []string, add func(int, string)) (map[string]bool, map[string]string) {
-	families := map[string]bool{}
+func successorApplicability(lines []string, add func(int, string)) (map[string]string, map[string]string) {
+	links := map[string]string{}
 	expected := map[string]string{}
-	inSuccessors := false
+	declared := map[string]bool{}
+	anchors := map[string]int{}
+	for _, line := range lines {
+		for _, anchor := range explicitAnchor.FindAllStringSubmatch(line, -1) {
+			anchors[anchor[1]]++
+		}
+	}
+	inContract := false
+	starts, ends := 0, 0
+	evidence := map[string]string{}
 	current := ""
 	for i, line := range lines {
-		if strings.HasPrefix(line, "## ") {
-			inSuccessors = line == "## BL-220 successor acceptance"
+		switch line {
+		case adapterContractStart:
+			starts++
+			inContract = true
 			current = ""
-		}
-		if !inSuccessors {
+			continue
+		case adapterContractEnd:
+			ends++
+			if !inContract {
+				add(i+1, "Adapter acceptance contract closes before it opens.")
+			}
+			inContract = false
 			continue
 		}
-		if strings.HasPrefix(line, "### ") {
-			current = ""
-			if !strings.HasPrefix(line, "### BL-220 ") {
+		if !inContract {
+			continue
+		}
+		if value, ok := strings.CutPrefix(line, "- **"); ok && current == "" {
+			key, outcome, valid := strings.Cut(value, "**: ")
+			if valid && adapterEvidence[key] != "" {
+				if _, duplicate := evidence[key]; duplicate {
+					add(i+1, "Duplicate adapter acceptance evidence: "+key)
+				}
+				evidence[key] = outcome
 				continue
 			}
-			for anchor := range headingAnchors(line) {
-				current = "#" + anchor
-				if _, exists := families[current]; exists {
-					add(i+1, "Duplicate adapter acceptance family: "+current)
-				}
-				families[current] = false
+		}
+		if anchor := adapterAnchor.FindStringSubmatch(line); anchor != nil {
+			id := anchor[1]
+			link := "#" + id
+			if anchors[id] != 1 || links[link] != "" {
+				add(i+1, "Duplicate adapter acceptance anchor: "+link)
+				continue
 			}
+			if key, family := strings.CutPrefix(id, adapterFamilyPrefix); family {
+				current = ""
+				if !slices.Contains(adapterFamilyKeys, key) {
+					add(i+1, "Unknown adapter acceptance family: "+key)
+					continue
+				}
+				current = link
+				links[link] = current
+				continue
+			}
+			if current == "" || declared[current] {
+				add(i+1, "Compatibility anchor must precede applicability in its adapter family.")
+				continue
+			}
+			if legacyFamily, legacy := strings.CutPrefix(id, "bl-220-"); legacy && current != "#"+adapterFamilyPrefix+legacyFamily {
+				add(i+1, "Compatibility anchor points to a different adapter acceptance family: "+link)
+				continue
+			}
+			links[link] = current
 			continue
 		}
 		owners, declaration := strings.CutPrefix(line, "**Applicable owners** ")
 		if !declaration {
 			continue
 		}
-		if current == "" || families[current] {
+		if current == "" || declared[current] {
 			add(i+1, "Adapter applicability must be declared once inside a successor family.")
 			continue
 		}
-		families[current] = true
+		declared[current] = true
 		for _, span := range strings.Split(owners, ",") {
 			from, to, valid := adapterOwnerBounds(span)
 			if !valid {
@@ -315,20 +413,21 @@ func successorApplicability(lines []string, add func(int, string)) (map[string]b
 			}
 		}
 	}
-	if len(families) == 0 || len(expected) == 0 {
-		add(0, "BL-220 successor families and applicable owners must be present.")
+	if starts != 1 || ends != 1 || inContract {
+		add(0, "Exactly one complete adapter acceptance contract is required.")
 	}
-	missing := make([]string, 0)
-	for family, declared := range families {
-		if !declared {
-			missing = append(missing, family)
+	for _, key := range slices.Sorted(maps.Keys(adapterEvidence)) {
+		if evidence[key] != adapterEvidence[key] {
+			add(0, "Missing or incorrect adapter acceptance evidence: "+key)
 		}
 	}
-	slices.Sort(missing)
-	for _, family := range missing {
-		add(0, "Missing adapter applicability declaration for "+family)
+	for _, key := range adapterFamilyKeys {
+		family := "#" + adapterFamilyPrefix + key
+		if !declared[family] {
+			add(0, "Missing adapter applicability declaration for "+family)
+		}
 	}
-	return families, expected
+	return links, expected
 }
 
 func adapterOwnerBounds(span string) (int, int, bool) {

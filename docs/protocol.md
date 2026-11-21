@@ -13,6 +13,25 @@ An entry means publicly enabled and validated support. The `2026-07-28`
 adapter is compiled in and tested with an injected internal support policy, but
 remains disabled by the production policy and absent from the matrix until
 BL-204, BL-212, and BL-219 pass.
+These bindings cover exact-revision conformance, JSON Schema validation,
+and the catalog fingerprint and cache-scope contract.
+
+<!-- mcp-activation-contract:v1 -->
+
+| Activation condition | Required value |
+|---|---|
+| Advertised revision | `2025-11-25` |
+| Candidate revision | `2026-07-28` |
+| Candidate exposure | disabled and unadvertised |
+| Conformance | exact revision |
+| Schema dialect | JSON Schema Draft 2020-12 |
+| Catalog fingerprint | deterministic and bound to effective policy |
+| Cache scope | private unless proven principal/profile-independent |
+| Security | client metadata and cache hints grant no authority |
+| Public activation | all prerequisites and explicit matrix entry |
+| Activation owner | BL-219 |
+
+<!-- /mcp-activation-contract -->
 
 The current server:
 

@@ -63,6 +63,91 @@ function Read-StrictUtf8 {
     }
 }
 
+function Test-McpActivationContract {
+    param(
+        [AllowEmptyString()]
+        [string]$Document,
+
+        [AllowEmptyString()]
+        [string]$BacklogText
+    )
+
+    $expected = [ordered]@{
+        'Advertised revision' = '`2025-11-25`'
+        'Candidate revision'  = '`2026-07-28`'
+        'Candidate exposure'  = 'disabled and unadvertised'
+        Conformance           = 'exact revision'
+        'Schema dialect'      = 'JSON Schema Draft 2020-12'
+        'Catalog fingerprint' = 'deterministic and bound to effective policy'
+        'Cache scope'         = 'private unless proven principal/profile-independent'
+        Security              = 'client metadata and cache hints grant no authority'
+        'Public activation'   = 'all prerequisites and explicit matrix entry'
+        'Activation owner'    = 'BL-219'
+    }
+    $findings = [System.Collections.Generic.List[string]]::new()
+    $rows = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
+    $start = '<!-- mcp-activation-contract:v1 -->'
+    $end = '<!-- /mcp-activation-contract -->'
+    $header = '| Activation condition | Required value |'
+    $separator = '|---|---|'
+    $text = $Document.Replace("`r`n", "`n")
+    $fences = '(?ms)^ {0,3}(?<Fence>(?<Backtick>`{3,})|~{3,})[^\n]*\n.*?(?:^ {0,3}\k<Fence>(?(Backtick)`*|~*)[ \t]*(?:\n|\z)|\z)'
+    $text = [regex]::Replace($text, $fences, '')
+    $text = [regex]::Replace($text, '(?s)<!--.*?(?:-->|\z)', {
+            param([System.Text.RegularExpressions.Match]$Comment)
+            if ($Comment.Value -ceq $start -or $Comment.Value -ceq $end) {
+                return $Comment.Value
+            }
+            return ''
+        })
+    $blocks = [regex]::Matches($text, '(?ms)^' + $start + '\n(?<Table>.*?)^' + $end + '$')
+    if ($blocks.Count -ne 1 -or
+        [regex]::Matches($text, '(?m)^' + $start + '$').Count -ne 1 -or
+        [regex]::Matches($text, '(?m)^' + $end + '$').Count -ne 1) {
+        $findings.Add('Exactly one complete MCP activation contract is required.')
+    }
+    else {
+        $table = $blocks[0].Groups['Table'].Value.Trim("`n").Split("`n")
+        if ($table.Count -lt 2 -or $table[0] -cne $header -or $table[1] -cne $separator) {
+            $findings.Add('Invalid MCP activation table header.')
+        }
+        foreach ($line in ($table | Select-Object -Skip 2)) {
+            $row = [regex]::Match($line, '^\| (?<Key>[A-Za-z ]+) \| (?<Value>[^|]+) \|$')
+            if (-not $row.Success -or -not $rows.TryAdd($row.Groups['Key'].Value, $row.Groups['Value'].Value)) {
+                $findings.Add('Malformed or duplicate MCP activation condition.')
+            }
+        }
+        foreach ($key in $expected.Keys) {
+            if (-not $rows.ContainsKey($key) -or $rows[$key] -cne $expected[$key]) {
+                $findings.Add(('Missing or incorrect MCP activation condition: {0}' -f $key))
+            }
+        }
+        if ($rows.Count -gt $expected.Count) {
+            $findings.Add('Unknown MCP activation condition.')
+        }
+    }
+
+    $ownerId = $expected['Activation owner']
+    $ownerRows = [regex]::Matches($BacklogText, '(?m)^\| ' + $ownerId + ' \| (?<Status>[^|\r\n]+) \| [^|\r\n]+ \| (?<Acceptance>[^\r\n]+)')
+    if ($ownerRows.Count -ne 1 -or $ownerRows[0].Groups['Status'].Value -cnotin @('**Planned**', '**In Progress**', '**Blocked**')) {
+        $findings.Add(('Exactly one open canonical MCP activation owner is required: {0}' -f $ownerId))
+    }
+    else {
+        $acceptance = $ownerRows[0].Groups['Acceptance'].Value
+        if (-not $acceptance.Contains('exact-revision/profile/config fingerprint') -or
+            -not $acceptance.Contains('`2026-07-28`') -or
+            -not $acceptance.Contains('`ttlMs`/`cacheScope`') -or
+            -not $acceptance.Contains('default to non-shared/private caching unless the complete result is proven principal/profile-independent') -or
+            -not $acceptance.Contains('Bind cache and fingerprint identity to the full effective policy')) {
+            $findings.Add(('Canonical MCP activation owner lacks its revision and effective-policy acceptance: {0}' -f $ownerId))
+        }
+    }
+    return [pscustomobject]@{
+        Passed   = ($findings.Count -eq 0)
+        Findings = $findings.ToArray()
+    }
+}
+
 function Get-BacklogHighestIdentifier {
     param(
         [Parameter(Mandatory)]
@@ -476,6 +561,52 @@ $obsoleteMcpClaims = [string[]]@(
         $_.Contains('Those behaviors are target architecture only until BL-207/208')
     }
 )
+$activationDocuments = [ordered]@{
+    'docs/architecture.md'           = $architecture
+    'docs/protocol.md'               = $protocol
+    'docs/security.md'               = $security
+    'docs/planning/release-scope.md'  = $scope
+}
+foreach ($entry in $activationDocuments.GetEnumerator()) {
+    $result = Test-McpActivationContract -Document $entry.Value -BacklogText $backlog
+    Add-Check -Id ('MCP-ACTIVATION-{0}' -f $entry.Key) -Passed $result.Passed -Message (
+        ConvertTo-Json -InputObject ([string[]]$result.Findings) -Compress
+    )
+}
+
+# Exercise the checked-in protocol contract and its owner with one targeted mutation per fixture.
+$mcpActivationFixtures = @(
+    @{ Id = 'NO-SECURITY'; Document = $protocol.Replace('| Security | client metadata and cache hints grant no authority |', ''); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Security' }
+    @{ Id = 'NO-ACTIVATION'; Document = $protocol.Replace('| Public activation | all prerequisites and explicit matrix entry |', ''); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Public activation' }
+    @{ Id = 'NO-CONFORMANCE'; Document = $protocol.Replace('| Conformance | exact revision |', ''); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Conformance' }
+    @{ Id = 'WRONG-SCHEMA'; Document = $protocol.Replace('JSON Schema Draft 2020-12 |', 'JSON Schema Draft 7 |'); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Schema dialect' }
+    @{ Id = 'SHARED-CACHE'; Document = $protocol.Replace('private unless proven principal/profile-independent |', 'shared |'); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Cache scope' }
+    @{ Id = 'WRONG-REVISION'; Document = $protocol.Replace('| Candidate revision | `2026-07-28` |', '| Candidate revision | `2025-11-25` |'); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Candidate revision' }
+    @{ Id = 'CANDIDATE-EXPOSED'; Document = $protocol.Replace('disabled and unadvertised |', 'enabled and advertised |'); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Candidate exposure' }
+    @{ Id = 'NO-OWNER'; Document = $protocol.Replace('| Activation owner | BL-219 |', ''); Backlog = $backlog; Detail = 'Missing or incorrect MCP activation condition: Activation owner' }
+    @{ Id = 'CLOSED-OWNER'; Document = $protocol; Backlog = [regex]::Replace($backlog, '(?m)^\| BL-219 \| \*\*Planned\*\*', '| BL-219 | Completed'); Detail = 'Exactly one open canonical MCP activation owner is required: BL-219' }
+    @{ Id = 'DUPLICATE-OWNER'; Document = $protocol; Backlog = ($backlog + "`n" + '| BL-219 | **Planned** | Duplicate owner | Fixture |'); Detail = 'Exactly one open canonical MCP activation owner is required: BL-219' }
+    @{ Id = 'NO-OWNER-ACCEPTANCE'; Document = $protocol; Backlog = $backlog.Replace('Bind cache and fingerprint identity to the full effective policy', 'Keep separate notes'); Detail = 'Canonical MCP activation owner lacks its revision and effective-policy acceptance: BL-219' }
+    @{
+        Id       = 'FENCED-CONTRACT'
+        Document = ('~~~~markdown' + "`n" + $protocol + "`n" + '~~~~')
+        Backlog  = $backlog
+        Detail   = 'Exactly one complete MCP activation contract is required.'
+    }
+    @{
+        Id       = 'ARCHIVED-CONTRACT'
+        Document = $protocol.Replace('<!-- mcp-activation-contract:v1 -->', "<!-- archived`n<!-- mcp-activation-contract:v1 -->")
+        Backlog  = $backlog
+        Detail   = 'Exactly one complete MCP activation contract is required.'
+    }
+)
+foreach ($fixture in $mcpActivationFixtures) {
+    $result = Test-McpActivationContract -Document $fixture.Document -BacklogText $fixture.Backlog
+    Add-Check -Id ('MCP-ACTIVATION-FIXTURE-{0}' -f $fixture.Id) -Passed (
+        -not $result.Passed -and $fixture.Detail -cin $result.Findings
+    ) -Message (ConvertTo-Json -InputObject ([string[]]$result.Findings) -Compress)
+}
+
 Add-Check -Id 'CURRENT-AND-V1-SCOPE-PARITY' -Passed (
     $readme.Contains('Today it provides secure, root-confined filesystem access') -and
     $readme.Contains('Version 1.0 extends that foundation') -and
@@ -493,11 +624,7 @@ Add-Check -Id 'MCP-REVISION-PARITY' -Passed (
     $protocol.Contains('adapter is compiled in and tested with an injected internal support policy') -and
     $protocol.Contains('remains disabled by the production policy and absent from the matrix until') -and
     $protocol.Contains('advertises MCP revision `2025-11-25`') -and
-    $scope.Contains('Public activation remains dependent on') -and
-    $security.Contains('It remains disabled and unadvertised until BL-204, BL-212, and') -and
-    $architecture.Contains('BL-204, BL-212, and BL-219') -and
-    $protocol.Contains('BL-204, BL-212, and BL-219') -and
-    $scope.Contains('BL-204, BL-212, and BL-219')
+    $scope.Contains('Public activation remains dependent on')
 ) -Message ('Implemented candidate and sole advertised 2025 revision remain distinct; ObsoleteClaimDocumentCount={0}; MatrixParity={1}.' -f $obsoleteMcpClaims.Count, $advertised2025Only)
 
 $storagePlan = [string]$documents['docs/planning/tool-adapters.md']

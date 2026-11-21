@@ -2,7 +2,8 @@
 
 ## Document status
 
-**Accepted Version 1.0 target architecture; implementation not started.**
+**Accepted Version 1.0 target architecture.** Direct STDIO is available
+today. Proxy, auto and system service are target modes.
 
 The authoritative service tasks are `BL-221` through `BL-244` plus BL-341 in [BACKLOG.md](../../BACKLOG.md), with post-Version-1.0 tasks `BL-232` and `BL-240`. ADR-014 defines the multi-mode runtime, ADR-015 defines the hybrid execution-identity architecture, and ADR-017 defines host-process ownership and lifecycle.
 
@@ -583,7 +584,11 @@ Version 1.0 also includes the pinned cross-project filesystem benchmark.
 
 ## Delivery sequence
 
-### SPR-059 — architecture, contracts, identity, and security
+<a id="spr-059--architecture-contracts-identity-and-security"></a>
+
+### Architecture, contracts, identity and security
+
+Sprint: SPR-059.
 
 Backlog: `BL-221`–`BL-225`, `BL-233`–`BL-239`, and `BL-166`.
 
@@ -599,7 +604,11 @@ Deliverables:
 - identity-bound state model;
 - audit lifecycle and correlation.
 
-### SPR-060 — transports and Version 1.0 system hosts
+<a id="spr-060--transports-and-version-10-system-hosts"></a>
+
+### Transports and Version 1.0 system hosts
+
+Sprint: SPR-060.
 
 Backlog: `BL-226`–`BL-231` and `BL-341`.
 
@@ -617,7 +626,11 @@ Deliverables:
 
 `BL-232` user-scoped hosts and `BL-240` user workers remain post-Version-1.0.
 
-### SPR-061 — validation and release readiness
+<a id="spr-061--validation-and-release-readiness"></a>
+
+### Validation and release readiness
+
+Sprint: SPR-061.
 
 Backlog: `BL-241`–`BL-244` plus applicable CI/release/documentation tasks through `BL-263` and `BL-315`.
 

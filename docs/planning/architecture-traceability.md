@@ -3,20 +3,21 @@
 ## Authority and dependency semantics
 
 This living matrix maps accepted Version 1.0, Post-1.0, and release-unassigned
-architecture requirements to implementation, retrofit, validation, and closure
-owners. [BACKLOG.md](../../BACKLOG.md)
-owns BL status, sprint placement, and task acceptance. The [implementation
-contract](implementation-contract.md) defines shared readiness and closure
-rules. These rows describe targets, not current implementation claims.
+architecture requirements to technical prerequisites, reuse, retrofit,
+validation and closure evidence. [BACKLOG.md](../../BACKLOG.md) owns the
+implementation items, statuses, milestones and task-specific acceptance.
+The [implementation contract](implementation-contract.md) defines shared
+readiness and closure. Rows describe requirements and identify any existing
+baseline where it matters to later work.
 
-`Hard predecessors` contains only BL contracts that must exist before the row's
-owner starts implementation. An owner with multiple predecessors needs all of
-them. `—` means no BL predecessor beyond maintained architecture/ADR sources.
-Completed historical predecessors are reusable evidence and are not reopened.
+`Hard predecessors` contains only technical contracts that must exist before
+implementation can start. Every listed prerequisite applies. `—` means the
+maintained architecture and ADRs suffice. Completed prerequisite contracts
+remain available as reuse evidence.
 `Reuse / later consumers` names retained code and downstream work without
 making a consumer a predecessor. `Validation / gate` names closure evidence,
 not a hard implementation dependency unless it also appears in `Hard
-predecessors`. Within a sprint, follow hard-edge order. The graph must be
+predecessors`. Within a sprint, follow hard-edge order. The graph must remain
 acyclic and no Planned predecessor may be scheduled after its consumer.
 
 Abbreviations: `A` = [architecture](../architecture.md), `S` =

@@ -1,12 +1,11 @@
 # FlashGate MCP Roadmap
 
-`BACKLOG.md` is the only authoritative planning and steering document. This roadmap summarizes sequence and release boundaries without duplicating every canonical task.
+This roadmap describes capability sequence and release boundaries. The
+[backlog](../BACKLOG.md) owns implementation work, status, and milestones.
 
 ## Current direction
 
 FlashGate MCP is the binding project name. The current implementation is a native Go filesystem MCP over STDIO. Version 1.0 expands that core into a bounded local host-operation platform while preserving low startup latency, low RAM/CPU use, compact tool catalogs, and no interpreter runtime.
-
-Backlog status describes execution state. The sprint sequence identifies Version 1.0 work, while the separate Post-1.0 workstream table identifies accepted work beyond Version 1.0.
 
 ## Version 1.0 sequence
 
@@ -24,7 +23,11 @@ Backlog status describes execution state. The sprint sequence identifies Version
 | Native system services | `SPR-060` | Named Pipe/Unix socket, proxy/auto, Windows SCM, Linux systemd, service-account root backend |
 | Version 1.0 release gate | `SPR-061` | Multi-client/security validation, CI, cross-project benchmarks, verification and consumption of BL-262 supply-chain evidence, governance, documentation, packaging and rollback checks |
 
-### SPR-048 quality and version prerequisites
+<a id="spr-048-quality-and-version-prerequisites"></a>
+
+### Quality and version prerequisites
+
+Sprint: SPR-048.
 
 The completed `BL-260 -> BL-245 -> BL-203` chain established production-server
 coverage and canonical product versioning. Completed BL-372 assigns versions
@@ -37,9 +40,12 @@ boundary, and no publication-time rebuild.
 BL-364 established five-asset distribution. The stable Version 1.0 gate and
 publication remain exclusively with BL-263.
 
-### MCP revision migration sequence (SPR-048 and SPR-053)
+<a id="mcp-revision-migration-sequence-spr-048-and-spr-053"></a>
 
-The protocol migration is intentionally split so each implementation chat has a bounded owner and the current `2025-11-25` runtime stays truthful until the new path is complete:
+### MCP revision migration
+
+The migration spans SPR-048 and SPR-053. The [protocol activation
+gates](protocol.md) govern when production can advertise `2026-07-28`.
 
 1. **BL-207 — completed revision matrix and dispatch contract:** the exact revision matrix and dispatch invariants are defined while production continues to advertise only enabled support.
 2. **BL-208 — completed `2026-07-28` stateless candidate path:** per-request metadata, `server/discover`, unsupported-version/result/cache semantics, and exact extension negotiation are implemented behind the production policy without weakening the `2025-11-25` path.
@@ -47,11 +53,14 @@ The protocol migration is intentionally split so each implementation chat has a 
 4. **BL-219 in SPR-053:** implement fingerprints and safe cache scope after the effective catalog and state-binding contracts. Only then may the support matrix advertise `2026-07-28`.
 5. **BL-209 / BL-211, then conditional BL-210 in SPR-049:** decide final Tasks support after BL-219, define the bounded fallback, and map eligible Operations/Jobs only if selected and the shared result store is in place.
 
-Prepared Mobile PRs #60, #69, and #149 are inputs to those later chats, not merge-ready authority after this convergence.
+Prepared Mobile PRs #60, #69 and #149 serve as inputs to those tasks.
+Integration requires separate approval.
 
 Version 1.0 implements service execution Variant A. Variant B's backend boundary and threat model are included so later user workers do not require public tool or domain redesign. Shared-process impersonation is excluded.
 
-### Remaining executable lane
+<a id="remaining-executable-lane"></a>
+
+### Remaining implementation sequence
 
 In SPR-048, BL-214 builds wire metrics on the completed BL-213 result contract.
 BL-205 response-size regression tests are the recommended follow-up and have no
@@ -71,7 +80,7 @@ Later domains consume the applicable foundation contracts. BL-305/306/315 apply
 at every owner closure. BL-367, BL-368, and BL-369 remain independent of the
 release sequence. See the [backlog sequence](../BACKLOG.md#sprint-sequence-and-status)
 and [architecture traceability](planning/architecture-traceability.md) for
-hard predecessors and retrofit owners.
+hard prerequisites and retrofit targets.
 
 ## Version 1.0 release boundary
 
