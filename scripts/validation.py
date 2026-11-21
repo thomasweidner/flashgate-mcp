@@ -15,6 +15,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import uuid
 
@@ -61,29 +62,270 @@ def safe_directory(path):
     return path
 
 
-def git(root, *args):
+def git(root, *args, stdin=None):
     result = subprocess.run(['git', '-C', str(root), *args], check=True,
-                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+                            input=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
     return result.stdout
+
+
+def source_parts(name):
+    parts = name.split('/')
+    if any(part in ('', '.', '..') or part.casefold() == '.git' for part in parts):
+        raise Hold('Invalid Git source path')
+    if os.name == 'nt' and any(':' in part or '\\' in part or part.rstrip(' .') != part for part in parts):
+        raise Hold('Invalid Windows Git source path')
+    return parts
+
+
+def source_boundary(root):
+    if os.name == 'nt':
+        safe_directory(root)
+        return contextlib.nullcontext(None)
+    return checkout_descriptor(root)
+
+
+@contextlib.contextmanager
+def source_parent(root, root_fd, parts):
+    if root_fd is None:
+        parent = root
+        for part in parts:
+            parent /= part
+            meta = parent.lstat()
+            if not stat.S_ISDIR(meta.st_mode) or getattr(meta, 'st_file_attributes', 0) & 0x400:
+                raise Hold('Source parent is not a link-free directory')
+        yield parent
+        return
+    with contextlib.ExitStack() as descriptors:
+        parent = root_fd
+        for part in parts:
+            try:
+                parent = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                                 dir_fd=parent)
+            except FileNotFoundError:
+                raise
+            except OSError as error:
+                raise Hold('Source parent is not a link-free directory') from error
+            descriptors.callback(os.close, parent)
+        yield parent
+
+
+def source_stat(parent, leaf):
+    return ((parent / leaf).lstat() if isinstance(parent, Path)
+            else os.stat(leaf, dir_fd=parent, follow_symlinks=False))
+
+
+def verify_windows_source_handle(descriptor, requested):
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+    lookup = ctypes.WinDLL('kernel32', use_last_error=True).GetFinalPathNameByHandleW
+    lookup.argtypes = (wintypes.HANDLE, wintypes.LPWSTR, wintypes.DWORD, wintypes.DWORD)
+    lookup.restype = wintypes.DWORD
+    handle = msvcrt.get_osfhandle(descriptor)
+    size = lookup(handle, None, 0, 0)
+    if not size:
+        raise Hold('Cannot verify opened Windows source path')
+    buffer = ctypes.create_unicode_buffer(size)
+    length = lookup(handle, buffer, size, 0)
+    if not length or length >= size:
+        raise Hold('Cannot verify opened Windows source path')
+    final = buffer.value
+    if final.startswith('\\\\?\\UNC\\'):
+        final = '\\\\' + final[8:]
+    elif final.startswith('\\\\?\\'):
+        final = final[4:]
+    if os.path.normcase(final) != os.path.normcase(os.path.abspath(requested)):
+        raise Hold('Opened Windows source resolved to a different path')
+
+
+@contextlib.contextmanager
+def source_file(root, root_fd, name):
+    parts = source_parts(name)
+    with source_parent(root, root_fd, parts[:-1]) as parent:
+        before = source_stat(parent, parts[-1])
+        if not stat.S_ISREG(before.st_mode) or getattr(before, 'st_file_attributes', 0) & 0x400:
+            raise Hold('Nonregular source input')
+        if root_fd is None:
+            requested = parent / parts[-1]
+            descriptor = os.open(requested, os.O_RDONLY | os.O_BINARY)
+        else:
+            descriptor = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+                                 dir_fd=parent)
+        try:
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode) or not os.path.samestat(before, opened):
+                raise Hold('Source file changed while opening')
+            if root_fd is None:
+                verify_windows_source_handle(descriptor, requested)
+            with os.fdopen(descriptor, 'rb', closefd=False) as stream:
+                yield stream, stat.S_IMODE(opened.st_mode)
+        finally:
+            os.close(descriptor)
 
 
 def sources(root):
     names = set(git(root, 'ls-files', '-z').decode().split('\0'))
     names.update(git(root, 'ls-files', '--others', '--exclude-standard', '-z').decode().split('\0'))
     records = []
-    for name in sorted(names - {''}):
-        path = root / name
-        # Deletions also affect identity and package selection.
-        if not path.exists() and not path.is_symlink():
-            records.append([name, 'DELETED'])
-            continue
-        meta = path.lstat()
-        if not stat.S_ISREG(meta.st_mode) or path.is_symlink() or getattr(meta, 'st_file_attributes', 0) & 0x400:
-            raise Hold('Nonregular source input')
-        records.append([name, digest(path), stat.S_IMODE(meta.st_mode)])
+    with source_boundary(root) as root_fd:
+        for name in sorted(names - {''}):
+            # A missing path is outside the postimage. Git deletions are
+            # validated separately against the historical tree.
+            try:
+                with source_file(root, root_fd, name) as (stream, mode):
+                    records.append([name, hashlib.file_digest(stream, 'sha256').hexdigest(), mode])
+            except FileNotFoundError:
+                continue
     if not records:
         raise Hold('Empty source inventory')
     return records
+
+
+def git_index(root):
+    indexed = {}
+    for record in git(root, 'ls-files', '--stage', '-z').split(b'\0'):
+        if not record:
+            continue
+        metadata, path = record.split(b'\t', 1)
+        mode, blob, stage = metadata.decode('ascii').split()
+        if stage != '0':
+            raise Hold('Unmerged Git index entry in source inventory')
+        indexed[path.decode('utf-8')] = (mode, blob)
+    return indexed
+
+
+def git_modes(root, postimage):
+    indexed = git_index(root)
+    # Git honors the owner execute bit for new files only when filemode is
+    # enabled. Existing paths are bound to their actual stage-zero modes,
+    # even on checkouts where the filesystem cannot report that distinction.
+    honor_executable = False
+    if any(row[0] not in indexed for row in postimage):
+        honor_executable = git(root, 'config', '--type=bool', '--default=true',
+                               '--get', 'core.filemode').strip() == b'true'
+    result = []
+    for name, _, filesystem_mode in postimage:
+        if name in indexed:
+            mode = indexed[name][0]
+        else:
+            mode = '100755' if honor_executable and filesystem_mode & stat.S_IXUSR else '100644'
+        if mode not in ('100644', '100755'):
+            raise Hold('Nonregular Git mode in source inventory: ' + name)
+        result.append([name, mode])
+    return result
+
+
+def project_mirror_blobs(mirror, git_dir, postimage):
+    names = [row[0].encode('utf-8') for row in postimage]
+    context = ('--git-dir=' + git_dir, '--work-tree=' + str(mirror))
+    attrs = git(mirror, *context, 'check-attr', '--stdin', '-z', 'filter',
+                stdin=b'\0'.join(names) + b'\0').split(b'\0')
+    if (len(attrs) != 3 * len(names) + 1 or attrs[-1] != b''
+            or any(path != name or attribute != b'filter' or value not in (b'unspecified', b'unset')
+                   for name, path, attribute, value in zip(names, attrs[::3], attrs[1::3], attrs[2::3]))):
+        raise Hold('Source Git blob projection requires paths without external clean filters')
+    # hash-object expects LF-delimited, C-quoted paths. It applies Git's
+    # built-in clean representation without writing blob objects.
+    quoted = [b'"' + name.replace(b'\\', b'\\\\').replace(b'"', b'\\"')
+              .replace(b'\r', b'\\r').replace(b'\n', b'\\n') + b'"\n' for name in names]
+    # check-attr uses the same output for sentinel values and literal driver
+    # names. Disable those two driver names and require Git to reject their use.
+    filter_guards = [arg for name in ('unspecified', 'unset')
+                     for arg in ('-c', f'filter.{name}.clean=', '-c', f'filter.{name}.process=',
+                                 '-c', f'filter.{name}.required=true')]
+    try:
+        blobs = git(mirror, *context, *filter_guards, 'hash-object', '--stdin-paths',
+                    stdin=b''.join(quoted)).decode('ascii').splitlines()
+    except subprocess.CalledProcessError as error:
+        raise Hold('Git could not project source blobs safely') from error
+    if len(blobs) != len(names) or any(not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', oid) for oid in blobs):
+        raise Hold('Git blob projection returned an invalid inventory')
+    return [[row[0], oid] for row, oid in zip(postimage, blobs)]
+
+
+def git_blobs(root, postimage, work):
+    work = safe_directory(work)
+    root = Path(os.path.abspath(root))
+    if work == root or root in work.parents:
+        raise Hold('Git projection scratch must be outside source')
+    names = {record[0] for record in postimage}
+    attribute_paths = {'.gitattributes'}
+    for name in names:
+        parts = source_parts(name)
+        attribute_paths.update('/'.join(parts[:depth] + ['.gitattributes'])
+                               for depth in range(1, len(parts)))
+    verify_absent(root, attribute_paths - names, 'Unbound Git attribute file')
+    git_dir = git(root, 'rev-parse', '--absolute-git-dir').decode().strip()
+    # Git's batch interface opens paths itself. Only give it a private copy
+    # of bytes obtained through the same guarded reader as the inventory.
+    with tempfile.TemporaryDirectory(prefix='v-', dir=work) as scratch:
+        mirror = Path(scratch)
+        with source_boundary(root) as root_fd:
+            for name, expected, mode in postimage:
+                target = mirror.joinpath(*source_parts(name))
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with source_file(root, root_fd, name) as (stream, actual_mode):
+                    with target.open('xb') as output:
+                        shutil.copyfileobj(stream, output)
+                if actual_mode != mode or digest(target) != expected:
+                    raise Hold('Source changed before Git blob projection: ' + name)
+        return project_mirror_blobs(mirror, git_dir, postimage)
+
+
+def git_tree(root, commit):
+    records = {}
+    for record in git(root, 'ls-tree', '-r', '-z', commit).split(b'\0'):
+        if record:
+            metadata, path = record.split(b'\t', 1)
+            mode, _, blob = metadata.decode('ascii').split()
+            records[path.decode('utf-8')] = (mode, blob)
+    return records
+
+
+def verify_git_postimage(root, current, base):
+    modes = dict(current['git_modes'])
+    target = {path: (modes[path], blob) for path, blob in current['git_blobs']}
+    head = git(root, 'rev-parse', 'HEAD').decode().strip()
+    committed = git_tree(root, head)
+    if head != base and committed != target:
+        raise Hold('Git commit differs from the tested postimage')
+    indexed = git_index(root)
+    # Before staging, a path may still have its entry from the bound base.
+    # Any other stage-zero entry must be the tested Git representation.
+    for path in sorted(indexed.keys() | target.keys() | committed.keys()):
+        if indexed.get(path) not in (target.get(path), committed.get(path)):
+            raise Hold('Git index differs from the tested postimage: ' + path)
+
+
+def tracked_at(root, base):
+    return set(git(root, 'ls-tree', '-r', '--name-only', '-z', base).decode().split('\0')) - {''}
+
+
+def verify_absent(root, names, description='A source expected to be deleted'):
+    with source_boundary(root) as root_fd:
+        for name in names:
+            parts = source_parts(name)
+            try:
+                with source_parent(root, root_fd, parts[:-1]) as parent:
+                    source_stat(parent, parts[-1])
+            except FileNotFoundError:
+                continue
+            raise Hold(description + ' still exists: ' + name)
+
+
+def deleted_sources(root, base, postimage):
+    names = sorted(tracked_at(root, base) - {row[0] for row in postimage})
+    verify_absent(root, names)
+    return names
+
+
+def verify_source_postimage(root, current, proof):
+    base = proof.get('source_base')
+    if not isinstance(base, str) or not re.fullmatch('[0-9a-f]{40,64}', base):
+        raise Hold('Evidence has no valid historical source base')
+    if deleted_sources(root, base, current['sources']) != proof.get('deleted_sources'):
+        raise Hold('Evidence deletion inventory differs')
+    verify_git_postimage(root, current, base)
 
 
 def source_hygiene(root):
@@ -130,14 +372,22 @@ def tools_binding(env):
 def binding(root, env):
     # Conservative whole-checkout binding: docs and tests are not silently
     # excluded. No commit binding: an unchanged commit/transport may change.
-    names = ('PATH', 'GOOS', 'GOARCH', 'CGO_ENABLED', 'CC', 'CXX', 'GOFLAGS',
-             'GOEXPERIMENT', 'GOTOOLCHAIN', 'GOENV', 'GOWORK', 'GOPROXY', 'GOSUMDB',
-             'GODEBUG', 'GOMAXPROCS', 'GIT_DIR', 'GIT_WORK_TREE', 'FLASHGATE_TASK_ROOT')
-    names += ('TEMP', 'TMP', 'TMPDIR', 'GOTMPDIR', 'FLASHGATE_WORK_ROOT')
-    return {'sources': sources(root), 'tools': tools_binding(env),
+    names = {'PATH', 'PATHEXT', 'AR', 'CC', 'CXX', 'FC', 'GCCGO', 'GCCGOTOOLDIR',
+             'PKG_CONFIG', 'PKG_CONFIG_PATH', 'PKG_CONFIG_LIBDIR', 'PKG_CONFIG_SYSROOT_DIR',
+             'CFLAGS', 'CPPFLAGS', 'CXXFLAGS', 'FFLAGS', 'LDFLAGS', 'CPATH',
+             'C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH', 'LIBRARY_PATH', 'COMPILER_PATH',
+             'GCC_EXEC_PREFIX', 'SDKROOT', 'MACOSX_DEPLOYMENT_TARGET', 'INCLUDE', 'LIB', 'LIBPATH',
+             'GIT_DIR', 'GIT_WORK_TREE', 'FLASHGATE_TASK_ROOT', 'FLASHGATE_WORK_ROOT',
+             'TEMP', 'TMP', 'TMPDIR'}
+    # Include architecture, cgo security flags and future Go build settings.
+    # Record hashes only, including the distinction between absent and empty.
+    names.update(name for name in env if name.startswith(('GO', 'CGO_', 'PKG_CONFIG_')))
+    postimage = sources(root)
+    return {'sources': postimage, 'git_modes': git_modes(root, postimage),
+            'git_blobs': git_blobs(root, postimage, env.get('FLASHGATE_WORK_ROOT')), 'tools': tools_binding(env),
             'os': [platform.system(), platform.release(), platform.machine(), platform.version()],
             'python': [sys.version, digest(sys.executable)],
-            'environment': {name: identity(env.get(name, '')) for name in names},
+            'environment': {name: identity(env.get(name)) for name in sorted(names)},
             'actor': os.getuid() if hasattr(os, 'getuid') else os.environ.get('USERNAME', '')}
 
 
@@ -339,7 +589,7 @@ def plan(mode, changed, root, work, tools):
     return steps
 
 
-def verify_evidence(path, expected, current, steps):
+def verify_evidence(path, expected, current, steps, *, root):
     if not expected or digest(path) != expected.lower():
         raise Hold('Evidence requires an independently retained matching SHA-256')
     proof = load(path)
@@ -365,6 +615,7 @@ def verify_evidence(path, expected, current, steps):
         raise Hold('Evidence has no artifacts')
     if artifact_inventory(base) != proof['artifacts']:
         raise Hold('Evidence inventory changed')
+    verify_source_postimage(root, current, proof)
     return proof
 
 
@@ -484,7 +735,7 @@ def native_config(path):
     return config
 
 
-def prepare_native(root, run, config, env):
+def prepare_native(root, run, config, env, current, base, deletions):
     request, result = run / 'snapshot.request.json', run / 'snapshot.result.json'
     archive, manifest = run / 'source.tar', run / 'source.manifest.json'
     write(request, {'operation': 'snapshot', 'directory': str(root), 'archive': str(archive), 'manifest': str(manifest)})
@@ -493,16 +744,41 @@ def prepare_native(root, run, config, env):
                                env=env, capture_output=True, timeout=120, check=False)
     if completed.returncode or load(result).get('status') != 'PASS':
         raise Hold('Existing source snapshot producer failed')
+    captured = load(manifest)
+    if {row['Path']: row['SHA256'] for row in captured['files']} != {
+            row[0]: row[1] for row in current['sources']}:
+        raise Hold('Snapshot files differ from the bound postimage')
+    verify_absent(root, deletions)
     task = dict(config)
     task.update(archive=wsl_path(archive), manifest=wsl_path(manifest), archive_sha256=digest(archive),
                 manifest_sha256=digest(manifest), export_root=wsl_path(run / 'native-evidence'),
                 git_dir=wsl_path(git(root, 'rev-parse', '--absolute-git-dir').decode().strip()),
-                base=git(root, 'rev-parse', 'HEAD').decode().strip())
+                base=base, deleted_sources=deletions)
     path = run / 'native.request.json'
     write(path, task)
     return ['C:/Windows/System32/wsl.exe', '--distribution', config['distribution'], '--user', config['user'],
             '--cd', config['task_root'], '--exec', '/usr/bin/python3', '-B',
             wsl_path(root / 'scripts/validation.py'), '--native-stage', wsl_path(path)]
+
+
+def remove_native_deletions(source, names, snapshot):
+    # Only verified deletions from this isolated checkout's base reach here.
+    with checkout_descriptor(source) as root_fd:
+        for name in names:
+            path = Path(snapshot.normalize_path(name))
+            with contextlib.ExitStack() as descriptors:
+                parent_fd = root_fd
+                try:
+                    for part in path.parts[:-1]:
+                        parent_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                            dir_fd=parent_fd)
+                        descriptors.callback(os.close, parent_fd)
+                    meta = os.stat(path.name, dir_fd=parent_fd, follow_symlinks=False)
+                except FileNotFoundError:
+                    continue
+                if not stat.S_ISREG(meta.st_mode) or meta.st_nlink != 1:
+                    raise Hold('Native deletion target is not a singly linked regular file: ' + name)
+                os.unlink(path.name, dir_fd=parent_fd)
 
 
 def native_stage(path):
@@ -555,8 +831,12 @@ def native_stage(path):
                         '--quiet', request['git_dir'], str(source)], env=clone_env, check=True, timeout=120)
         subprocess.run(['/usr/bin/git', '-c', 'core.hooksPath=/dev/null', '-C', str(source), 'checkout', '--detach',
                         '--quiet', request['base']], env=clone_env, check=True, timeout=120)
-    if reuse and set(state['sources']) - set(manifest):
+    deletions = sorted(tracked_at(source, request['base']) - set(manifest))
+    if deletions != request.get('deleted_sources'):
+        raise Hold('Native snapshot deletion paths differ from the bound base')
+    if reuse and set(state['sources']) - set(manifest) - set(deletions):
         raise Hold('Existing native source has files absent from the new snapshot')
+    remove_native_deletions(source, deletions, module)
     module.overlay_verified_files(extracted, source, manifest)
     actual = {row[0]: row[1] for row in sources(source)}
     if actual != {name: value[1] for name, value in manifest.items()}:
@@ -597,8 +877,10 @@ def native_verify(context_path, summary_path):
     env = environment(work, create=False)
     env['PATH'] = os.pathsep.join(context['tools'] + [os.environ['PATH']])
     proof = load(summary_path)
-    if proof.get('status') != 'PASS' or binding(source, env) != proof.get('binding'):
+    current = binding(source, env)
+    if proof.get('status') != 'PASS' or current != proof.get('binding'):
         raise Hold('Native source, toolchain or environment drifted')
+    verify_source_postimage(source, current, proof)
     print(json.dumps({'status': 'PASS', 'quality_processes_started': 0}))
     return 0
 
@@ -659,7 +941,7 @@ def main(argv=None):
         print(json.dumps({'mode': args.mode, 'binding_sha256': identity(current), 'plan': steps}, indent=2))
         return 0
     if args.evidence:
-        verify_evidence(args.evidence, args.evidence_sha256, current, steps)
+        verify_evidence(args.evidence, args.evidence_sha256, current, steps, root=root)
         if config:
             check_native_reuse(root, args.evidence, config, env)
         if args.mode == 'PUBLISH':
@@ -669,6 +951,8 @@ def main(argv=None):
         return 0
     if args.mode == 'PUBLISH':
         raise Hold('PUBLISH requires candidate evidence; it never launches a test matrix')
+    source_base = git(root, 'rev-parse', 'HEAD').decode().strip()
+    deletions = deleted_sources(root, source_base, current['sources'])
     run.mkdir()
     results = []
     status = 'FAIL'
@@ -680,12 +964,15 @@ def main(argv=None):
                 observed['native_config'] = config
             if observed != current:
                 raise Hold('Source/toolchain/environment changed during validation')
+            verify_absent(root, deletions)
+            verify_git_postimage(root, observed, source_base)
             print(json.dumps({'status': 'RUNNING', 'gate': step['name']}), flush=True)
             guard = heavy_lock(resource, root) if step['heavy'] else contextlib.nullcontext()
             with guard:
                 if step['heavy']:
                     assert_no_competing_go()
-                command = prepare_native(root, run, config, env) if step['name'] == 'native-linux' else step['argv']
+                command = (prepare_native(root, run, config, env, current, source_base, deletions)
+                           if step['name'] == 'native-linux' else step['argv'])
                 result = run_process(root, run, step['name'], command, env,
                                      timeout=10800 if step['name'] == 'native-linux' else 1800)
                 if step['name'] == 'native-linux' and result.get('timed_out'):
@@ -706,6 +993,8 @@ def main(argv=None):
                 observed['native_config'] = config
             if observed != current:
                 raise Hold('Candidate drifted during validation')
+            verify_absent(root, deletions)
+            verify_git_postimage(root, observed, source_base)
             hygiene = source_hygiene(root)
             status = 'PASS'
     except (Hold, subprocess.TimeoutExpired, KeyboardInterrupt) as error:
@@ -716,6 +1005,7 @@ def main(argv=None):
         write(summary, {'schema': 1, 'status': status, 'mode': args.mode, 'platform': platform.system(),
                         'binding': current, 'plan': steps, 'results': results,
                         'artifacts': artifact_inventory(run), 'binding_sha256': identity(current),
+                        'source_base': source_base, 'deleted_sources': deletions,
                         'source_hygiene': hygiene,
                         'matrix_scope': 'local-platform; Windows and native Linux evidence both required for handoff'})
         print(json.dumps({'status': status, 'report_path': str(summary), 'sha256': digest(summary)}), flush=True)

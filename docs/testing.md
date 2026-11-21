@@ -69,7 +69,9 @@ checkout below the same task root. Its base and recorded source bytes must
 still match before a verified overlay is applied. Unbound or changed native
 sources fail closed. Snapshots retain committed source even when a local
 exclude rule matches it; ignored untracked files and sensitive names retain
-their existing rejection rules.
+their existing rejection rules. Candidate snapshots contain the resulting
+files. The native stage checks the deletion list against its bound Git base
+and removes only those tracked files from the isolated validation checkout.
 
 Heavy Windows work and its WSL stage use one checkout-scoped Windows mutex.
 They run sequentially with bounded package parallelism. Lightweight gates need
@@ -84,8 +86,11 @@ an uncontrolled retry. Never stop another developer's process to obtain a lock.
 
 Each fresh run prints its summary path and SHA-256. The summary binds the gate
 plan, source/test/vendor bytes and modes, executable hashes, Python identity,
-OS, relevant environment hashes, process results and output artifacts. Coverage
-records unrounded platform totals and a Go JSON test log with per-test elapsed
+OS, relevant environment hashes, process results and output artifacts.
+The environment binding includes inherited Go and cgo settings as well as
+compiler and pkg-config settings. Only their hashes are recorded. Changes
+such as GOAMD64, GOARM64, GOROOT or CGO_LDFLAGS invalidate reuse.
+Coverage records unrounded platform totals and a Go JSON test log with per-test elapsed
 times. Timeout, missing exit state, output limits and unconfirmed cleanup do
 not become PASS. Process ownership remains with the existing Windows and Linux
 controllers. The runner does not increase Go's package timeout or retry gates.
@@ -95,6 +100,28 @@ Retain the printed summary digest separately from the evidence directory.
 plan, current bindings, successful results and every recorded artifact still
 match. Windows reuse also probes the native source, toolchain and environment
 without launching quality tests. Missing or modified evidence is rejected.
+The reusable source inventory binds the resulting files, filesystem modes and
+Git modes. Tracked Git modes come from the index, including on Windows where
+filesystem mode bits can be identical for executable and non-executable Git
+entries. New files use the mode Git would stage under the checkout's
+`core.filemode` setting. Source reads reject links and Windows reparse points
+in the file path, including parent directories. Linux opens files relative to
+nonfollowing directory descriptors. Windows checks the resolved path on the
+opened file handle before reading.
+
+The binding also records Git blob IDs projected from the tested working
+files. Git applies its built-in clean conversion, including line ending
+normalization, to a short-lived private copy of the checked bytes under the
+external work root. Git does not reopen the live source paths for projection.
+Unbound per-directory attributes and external clean filters cause HOLD.
+
+Before staging, an index entry can still match the original Git base. Any
+staged change must match the tested Git blob and mode, or its tested absence.
+Once HEAD advances, its complete tree and the index must match the tested Git
+postimage. Staging or committing that same postimage keeps the evidence
+reusable. The summary records deletions separately against the original Git
+base and reuse verifies those paths are still absent, even when Git ignores
+them after commit.
 Hashes provide integrity against the retained anchor, not author authentication.
 
 PUBLISH never starts a local quality matrix. It additionally requires the actual

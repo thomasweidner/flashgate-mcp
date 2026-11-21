@@ -166,7 +166,9 @@ function New-FlashGateGitSnapshot {
         [string] $SnapshotPath,
 
         [Parameter(Mandatory)]
-        [string] $ManifestPath
+        [string] $ManifestPath,
+
+        [switch] $AllowTrackedDeletions
     )
 
     $RootPath = [IO.Path]::GetFullPath($RootPath).TrimEnd('\')
@@ -228,6 +230,12 @@ function New-FlashGateGitSnapshot {
     foreach ($TrackedPath in @($Tracked)) {
         [void]$TrackedPaths.Add($TrackedPath)
     }
+    $DeletedPaths = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    if ($AllowTrackedDeletions) {
+        foreach ($Path in Invoke-GitNullList -RootPath $RootPath -Arguments @('ls-files', '--deleted', '-z')) {
+            [void]$DeletedPaths.Add($Path)
+        }
+    }
     $Paths = @(
         @($Tracked) + @($Untracked) |
             # A local exclusion must not remove committed public source.
@@ -269,7 +277,15 @@ function New-FlashGateGitSnapshot {
                 throw "Snapshot input escapes the repository: $RelativePath"
             }
 
-            $Item = Get-Item -LiteralPath $CandidatePath -Force
+            try {
+                $Item = Get-Item -LiteralPath $CandidatePath -Force
+            }
+            catch [System.Management.Automation.ItemNotFoundException] {
+                if ($DeletedPaths.Contains($RelativePath)) {
+                    continue
+                }
+                throw
+            }
             if (
                 -not $Item.PSIsContainer -and
                 ($Item.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0 -and

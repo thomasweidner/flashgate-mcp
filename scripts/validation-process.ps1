@@ -25,7 +25,7 @@ try {
     if ($request.PSObject.Properties.Name -contains 'operation') {
         if ($request.operation -cne 'snapshot') { throw 'UnknownBridgeOperation' }
         . (Join-Path $PSScriptRoot 'New-GitSnapshot.ps1')
-        New-FlashGateGitSnapshot -RootPath $request.directory -SnapshotPath $request.archive -ManifestPath $request.manifest | Out-Null
+        New-FlashGateGitSnapshot -RootPath $request.directory -SnapshotPath $request.archive -ManifestPath $request.manifest -AllowTrackedDeletions | Out-Null
         [IO.File]::WriteAllText($ResultPath, '{"status":"PASS"}' + "`n", [Text.UTF8Encoding]::new($false))
         exit 0
     }
