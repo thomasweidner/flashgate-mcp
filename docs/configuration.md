@@ -195,6 +195,48 @@ renames and absolute links still require every other check. File effects,
 overwrites and bounded recursive preflights use the same policy below MCP;
 see [tool semantics](tools.md#file-type-enforcement).
 
+## Planned path exclusions
+
+The following example shows the future BL-375 syntax. The current TOML
+schema does not accept `excluded`.
+
+```toml
+[files]
+default_id = "work"
+
+[policy.workspace]
+excluded = ["A/X", "logs/my*.log", "reports/report-202?.pdf"]
+
+[files.work]
+path = "/srv/flashgate/work"
+policy = "workspace"
+
+[files.other]
+path = "/srv/flashgate/other"
+policy = "workspace"
+excluded = []
+```
+
+Set `excluded` in a named policy or a root table. Omit it on a root to
+inherit the policy's list, with an empty list when no policy value applies.
+An explicit root list replaces the whole inherited list. In the example,
+`files.other` clears its inherited list. Any effective exclusion from
+another applicable root still applies to overlapping paths.
+
+Patterns are root-relative and match complete paths or their ancestors.
+`A/X` excludes `A/X` and paths such as `A/X/y.z` and `A/X/Z/file.txt`.
+`A/X2`, `A/XY` and `B/file.txt` remain eligible under this rule.
+Within a component, `*` matches zero or more characters and `?` matches
+one character. The grammar excludes recursive `**`, character classes,
+brace expansion and regular expressions. The same list applies to files,
+directories, symlinks and paths that have yet to be created. Matching
+uses the native filesystem's verified case semantics.
+
+See [ADR-005](adr/filesystem-abstraction.md#planned-bl-375-path-exclusions)
+for link and overlap semantics and the
+[security boundary](security.md#planned-path-exclusion-boundary) for
+interaction with active configuration protection.
+
 ## Resource limits
 
 `files.max_file_size`, `max_write_size`, `max_scan_size`, `max_result_size`

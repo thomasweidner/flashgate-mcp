@@ -578,6 +578,35 @@ Version 1.0 system-service roots support `service-account`. A reserved `user-wor
 
 Deprecated MCP Roots is never authoritative and is post-Version-1.0 compatibility work only.
 
+#### Planned path exclusion boundary
+
+[BL-375](adr/filesystem-abstraction.md#planned-bl-375-path-exclusions) will
+deny FlashGate access and effects when an affected root-relative path or an
+ancestor matches an effective exclusion under any applicable root. This
+check applies to alternate root IDs and native name aliases. Check the
+symlink entry and any supported resolved target, and preserve BL-107
+confinement and native link, reparse, junction and mount checks. An
+unresolved or unsupported path must fail closed at the shared boundary.
+
+BL-375 evaluates an existing hardlink by the name used. With
+`excluded = ["A/X"]`, `A/X/secret.txt` is denied. An existing
+`B/alias.txt` hardlink to the same file can read or write the shared content
+when its own path passes every applicable control. BL-374
+continues to protect the selected configuration by path and object
+identity across roots, including hardlinks, and retains its parent
+safeguards, native drift checks and confidentiality requirements. An
+exclusion override cannot relax those checks or supply any BL-108 grant.
+
+Omit excluded entries from parent listings and redact direct denials.
+Preflight source, destination, replacement, and recursive or projected
+effects before a mutation reaches an excluded path, including descendants
+of an allowed parent. Apply the same policy to staging, delegated work
+and retained results so that logs, metadata, hashes, previews and other
+outputs cannot disclose data through an excluded path. Independent OS
+actors remain outside FlashGate's control. Each operation must establish
+its own guarantees or fail closed before activation. Prior race residuals
+do not grant BL-375 a new exception.
+
 ### Operations, handles, resources, quotas, and fairness
 
 Operations/jobs use opaque non-guessable handles. All stateful objects are bound to:
