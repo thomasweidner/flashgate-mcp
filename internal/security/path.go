@@ -130,7 +130,7 @@ func NewPathGuardWithPolicy(root string, policy Policy) (*PathGuard, error) {
 	if !effectiveInfo.IsDir() {
 		return nil, ErrRootNotDirectory
 	}
-	rootLinks, err := snapshotLinks(filepath.VolumeName(absoluteRoot)+string(filepath.Separator), absoluteRoot)
+	rootLinks, err := snapshotLinks(filepath.VolumeName(absoluteRoot)+string(filepath.Separator), absoluteRoot, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (g *PathGuard) ValidateRootIdentity(info os.FileInfo) error {
 	if err := validateRootChain(g.root, g.policy, 0); err != nil {
 		return err
 	}
-	links, err := snapshotLinks(filepath.VolumeName(g.root)+string(filepath.Separator), g.root)
+	links, err := snapshotLinks(filepath.VolumeName(g.root)+string(filepath.Separator), g.root, nil)
 	if err != nil || !SameLinks(g.rootLinks, links) {
 		return ErrOutsideRoot
 	}

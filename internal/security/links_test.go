@@ -139,7 +139,7 @@ func TestRootAliasParentUsesActualBootstrapChain(t *testing.T) {
 				t.Fatal("valid native bootstrap chain rejected", err)
 			}
 			volume := filepath.VolumeName(root) + string(filepath.Separator)
-			before, err := snapshotLinks(volume, root)
+			before, err := snapshotLinks(volume, root, nil)
 			if err != nil || len(before) != 3 {
 				t.Fatal("incomplete bootstrap chain snapshot", len(before), err)
 			}
@@ -147,12 +147,51 @@ func TestRootAliasParentUsesActualBootstrapChain(t *testing.T) {
 				t.Fatal(err)
 			}
 			createSecurityTestSymlinkOrSkip(t, target, selected)
-			after, err := snapshotLinks(volume, root)
+			after, err := snapshotLinks(volume, root, nil)
 			if err != nil || SameLinks(before, after) {
 				t.Fatal("actual bootstrap link replacement was invisible", err)
 			}
 			if g != nil && !errors.Is(g.ValidateRootIdentity(info), ErrOutsideRoot) {
 				t.Fatal("actual bootstrap chain replacement admitted", err)
+			}
+		})
+	}
+}
+
+func TestExclusionTraversalRejectsConfiguredRootLinkDrift(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		absolute bool
+	}{
+		{name: "replacement with the same target"},
+		{name: "unproved absolute substitute", absolute: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := t.TempDir()
+			root := filepath.Join(base, "real")
+			if err := os.Mkdir(root, 0700); err != nil {
+				t.Fatal(err)
+			}
+			alias := filepath.Join(base, "alias")
+			createSecurityTestSymlinkOrSkip(t, "real", alias)
+			guard := mustNewPathGuardWithPolicy(t, alias, Policy{FollowSymlinks: true})
+			operand, err := guard.ResolveForCreate("new.txt")
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Retain the original entry so a recycled file identity cannot
+			// turn the replacement into an apparent match.
+			if err := os.Rename(alias, filepath.Join(base, "original-alias")); err != nil {
+				t.Fatal(err)
+			}
+			target := "real"
+			if tc.absolute {
+				target = root
+			}
+			createSecurityTestSymlinkOrSkip(t, target, alias)
+			links, visited, err := guard.ExclusionTraversal(operand.String())
+			if len(links) != 0 || len(visited) != 0 || !errors.Is(err, ErrOutsideRoot) {
+				t.Fatalf("changed root link supplied a traversal: %v, %v, %v", links, visited, err)
 			}
 		})
 	}

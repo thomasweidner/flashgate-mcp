@@ -185,3 +185,47 @@ func TestPathExclusionLinkEntriesAndTargets(t *testing.T) {
 		t.Fatalf("ordinary sibling lost access: %v", err)
 	}
 }
+
+func TestExclusionChecksConfiguredRootTraversal(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	for _, dir := range []string{"private", "public/child"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	file := filepath.Join(root, "public", "child", "data.txt")
+	testconfig.Write(t, file, []byte("fixture"))
+	alias := filepath.Join(root, "through-private")
+	target := filepath.FromSlash("private/../public")
+	if err := os.Symlink(target, alias); err != nil {
+		if runtime.GOOS == "windows" {
+			t.Skipf("relative symlink fixture unavailable: %v", err)
+		}
+		t.Fatal(err)
+	}
+	if actual, err := security.RelativeLinkTarget(alias); err != nil || actual != target {
+		t.Fatalf("fixture did not preserve its intermediate directory: %q, %v", actual, err)
+	}
+	r := loadRegistry(t, filepath.Join(t.TempDir(), "active.toml"), "[files]\ndefault_id='outer'\n"+
+		rootTable(t, "outer", root)+"policy='work'\nexcluded=['private']\n"+
+		rootTable(t, "alias", alias)+"policy='work'\n"+
+		rootTable(t, "alias_parent", filepath.Join(alias, "child"))+"policy='work'\n"+
+		"[policy.work]\nfollow_symlinks=true\naccess=['files.read','files.write']\n")
+	for _, operand := range []fs.Operand{
+		{RootID: "outer", Path: "through-private/child/data.txt"},
+		{RootID: "alias", Path: "child/data.txt"},
+		{RootID: "alias_parent", Path: "data.txt"},
+	} {
+		if data, err := r.Read(operand, 40); len(data) != 0 || !errors.Is(err, fs.ErrPathExcluded) {
+			t.Errorf("root %s exposed a route through an excluded directory: %v", operand.RootID, err)
+		}
+		if err := r.Write(operand, []byte("changed"), true); !errors.Is(err, fs.ErrPathExcluded) {
+			t.Errorf("root %s allowed mutation through an excluded directory: %v", operand.RootID, err)
+		}
+	}
+	ordinary := fs.Operand{RootID: "outer", Path: "public/child/data.txt"}
+	if data, err := r.Read(ordinary, 40); err != nil || string(data) != "fixture" {
+		t.Fatalf("ordinary route changed or became unavailable: %v", err)
+	}
+}

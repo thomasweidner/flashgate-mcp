@@ -81,11 +81,15 @@ func (g *PathGuard) LinkIdentities(path string) ([]LinkIdentity, error) {
 // Its link identities bind this same traversal. The caller must first
 // admit the operand through this PathGuard.
 func (g *PathGuard) ExclusionTraversal(path string) ([]LinkIdentity, []string, error) {
-	// Include links used to select the configured root itself. Another
-	// configured root can cover the entry even when it does not cover the target.
-	visited := make([]string, 0, len(g.rootLinks)+1)
-	for _, link := range g.rootLinks {
-		visited = append(visited, link.path)
+	var visited []string
+	if len(g.rootLinks) != 0 {
+		// Another root's exclusions may cover directories traversed while
+		// resolving this root, including ones removed by ".." in a link target.
+		volume := filepath.VolumeName(g.root) + string(filepath.Separator)
+		rootLinks, err := snapshotLinks(volume, g.root, &visited)
+		if err != nil || !SameLinks(g.rootLinks, rootLinks) {
+			return nil, nil, ErrOutsideRoot
+		}
 	}
 	links, err := g.captureLinks(path, &visited)
 	return links, visited, err
@@ -102,7 +106,7 @@ func (g *PathGuard) captureLinks(path string, visited *[]string) ([]LinkIdentity
 	return walkLinkComponents(g.effectiveRoot, relative, path, nil, 0, true, visited)
 }
 
-func snapshotLinks(base, path string) ([]LinkIdentity, error) {
+func snapshotLinks(base, path string, visited *[]string) ([]LinkIdentity, error) {
 	if !isInsideRoot(base, path) {
 		return nil, ErrSymlinkDenied
 	}
@@ -110,7 +114,7 @@ func snapshotLinks(base, path string) ([]LinkIdentity, error) {
 	if err != nil {
 		return nil, ErrOutsideRoot
 	}
-	return walkLinkComponents(base, relative, path, nil, 0, true, nil)
+	return walkLinkComponents(base, relative, path, nil, 0, true, visited)
 }
 
 // walkLinkComponents shares the actual component order between policy checks
