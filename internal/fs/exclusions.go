@@ -247,26 +247,44 @@ func (f *LocalFileSystem) inspectExclusionLinks(path string) ([]security.LinkIde
 	if err := checks.verify(f.exclusions); err != nil {
 		return nil, err
 	}
+	links, paths, err := f.exclusionRoutes(path)
+	if err != nil {
+		return nil, err
+	}
+	return links, checks.checkRoutes(f.exclusions, paths, "", "")
+}
+
+func (f *LocalFileSystem) exclusionRoutes(path string) ([]security.LinkIdentity, []security.ExclusionRoute, error) {
 	selected, err := filepath.Rel(f.guard.Root(), path)
 	if err != nil || !filepath.IsLocal(selected) {
-		return nil, security.ErrConfigurationAccess
+		return nil, nil, security.ErrConfigurationAccess
 	}
 	links, paths, err := f.guard.ExclusionTraversal(path)
 	if err != nil {
-		return nil, security.ErrConfigurationAccess
+		return nil, nil, security.ErrConfigurationAccess
 	}
-	paths = append(paths, path, filepath.Join(f.guard.EffectiveRoot(), selected))
-	seen := make(map[string]bool, len(paths))
+	return links, append(paths, security.ExclusionRoute{Path: path, Complete: true},
+		security.ExclusionRoute{Path: filepath.Join(f.guard.EffectiveRoot(), selected), Complete: true}), nil
+}
+
+func (c *exclusionChecks) checkRoutes(roots exclusionRoots, paths []security.ExclusionRoute, from, relative string) error {
+	seen := make(map[security.ExclusionRoute]bool, len(paths))
 	for _, route := range paths {
 		if seen[route] {
 			continue
 		}
 		seen[route] = true
-		if err := checks.check(f.exclusions, route, exclusionProjection{}); err != nil {
-			return nil, err
+		path := route.Path
+		var projection exclusionProjection
+		if from != "" && route.Complete {
+			path = filepath.Join(route.Path, relative)
+			projection = exclusionProjection{from: from, to: route.Path}
+		}
+		if err := c.check(roots, path, projection); err != nil {
+			return err
 		}
 	}
-	return links, nil
+	return nil
 }
 
 func (f *LocalFileSystem) resolveExisting(path string) (security.SafePath, error) {
@@ -293,17 +311,9 @@ func (f *LocalFileSystem) checkProjectedExclusions(source effectPath, target str
 	if err := checks.verify(f.exclusions); err != nil {
 		return err
 	}
-	effective, err := security.EffectivePath(target)
+	_, paths, err := f.exclusionRoutes(target)
 	if err != nil {
-		return security.ErrConfigurationAccess
+		return err
 	}
-	for _, route := range []string{target, effective} {
-		if err := checks.check(f.exclusions, filepath.Join(route, relative), exclusionProjection{from: source.effective, to: route}); err != nil {
-			return err
-		}
-		if effective == target {
-			break
-		}
-	}
-	return nil
+	return checks.checkRoutes(f.exclusions, paths, source.effective, relative)
 }

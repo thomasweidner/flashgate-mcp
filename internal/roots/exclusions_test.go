@@ -229,3 +229,85 @@ func TestExclusionChecksConfiguredRootTraversal(t *testing.T) {
 		t.Fatalf("ordinary route changed or became unavailable: %v", err)
 	}
 }
+
+func TestExclusionPreservesSuffixesAcrossLinkChains(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "public", "sub"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"secret.txt", "allowed.txt"} {
+		testconfig.Write(t, filepath.Join(root, "public", name), []byte(name))
+	}
+	if err := os.Mkdir(filepath.Join(root, "source"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	testconfig.Write(t, filepath.Join(root, "source", "secret.txt"), []byte("move fixture"))
+	for _, link := range [][2]string{
+		{"virtual", "public"},
+		{"chain", "virtual/secret.txt"},
+		{"missing-chain", "virtual/not-created.txt"},
+		{"directory-chain", "virtual"},
+		{"safe-chain", "virtual/allowed.txt"},
+		{"nested-virtual", "public/sub"},
+		{"parent-hop", "nested-virtual/../allowed.txt"},
+	} {
+		if err := os.Symlink(filepath.FromSlash(link[1]), filepath.Join(root, link[0])); err != nil {
+			if runtime.GOOS == "windows" {
+				t.Skipf("relative symlink fixture unavailable: %v", err)
+			}
+			t.Fatal(err)
+		}
+	}
+	r := loadRegistry(t, filepath.Join(t.TempDir(), "active.toml"), "[files]\ndefault_id='work'\n"+
+		rootTable(t, "work", root)+"policy='shared'\nexcluded=['virtual/secret.txt','virtual/not-created.txt','virtual/moved/secret.txt','allowed.txt']\n"+
+		rootTable(t, "alias", filepath.Join(root, "directory-chain"))+"policy='shared'\n"+
+		"[policy.shared]\nfollow_symlinks=true\naccess=['files.read','files.write']\n")
+	for _, operand := range []fs.Operand{
+		{RootID: "work", Path: "virtual/secret.txt"},
+		{RootID: "work", Path: "chain"},
+		{RootID: "work", Path: "directory-chain/secret.txt"},
+		{RootID: "work", Path: "missing-chain"},
+		{RootID: "alias", Path: "secret.txt"},
+	} {
+		if data, err := r.Read(operand, 40); len(data) != 0 || !errors.Is(err, fs.ErrPathExcluded) {
+			t.Errorf("%s/%s did not deny the full intermediate path: %v", operand.RootID, operand.Path, err)
+		}
+		if err := r.Write(operand, []byte("changed"), true); !errors.Is(err, fs.ErrPathExcluded) {
+			t.Errorf("%s/%s did not deny before mutation: %v", operand.RootID, operand.Path, err)
+		}
+	}
+	for _, path := range []string{"public/secret.txt", "safe-chain", "parent-hop"} {
+		expected := "allowed.txt"
+		if path == "public/secret.txt" {
+			expected = "secret.txt"
+		}
+		if data, err := r.Read(fs.Operand{RootID: "work", Path: path}, 40); err != nil || string(data) != expected {
+			t.Errorf("ordinary route %s changed or was denied: %v", path, err)
+		}
+	}
+	entries, err := r.List(fs.Operand{RootID: "work", Path: "."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.Name == "chain" || entry.Name == "missing-chain" {
+			t.Errorf("listed an excluded chain: %s", entry.Name)
+		}
+	}
+	source := fs.Operand{RootID: "work", Path: "source"}
+	target := fs.Operand{RootID: "work", Path: "directory-chain/moved"}
+	if err := r.Move(source, target, false); !errors.Is(err, fs.ErrPathExcluded) {
+		t.Fatalf("directory move did not check its intermediate projected paths: %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "public", "moved")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("the denied destination was created: %v", err)
+	}
+	target.Path = "directory-chain/safe-moved"
+	if err := r.Move(source, target, false); err != nil {
+		t.Fatalf("ordinary move through a directory chain was denied: %v", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "public", "safe-moved", "secret.txt")); err != nil || string(got) != "move fixture" {
+		t.Fatalf("moved fixture was changed: %v", err)
+	}
+}
