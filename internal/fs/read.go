@@ -14,7 +14,7 @@ func (f *LocalFileSystem) Read(path string, maxBytes int64) ([]byte, error) {
 		return nil, err
 	}
 
-	safePath, err := f.guard.ResolveExisting(path)
+	safePath, err := f.resolveExisting(path)
 	if err != nil {
 		return nil, err
 	}

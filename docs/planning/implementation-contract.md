@@ -152,8 +152,8 @@ and defaults to `files.read` if absent at both levels. An explicit list replaces
 the inherited list. Reject the old nesting and short access values.
 
 Preserve BL-105 limits, BL-106 file-type checks, BL-107 native identity and
-link checks, and BL-374 configuration protection. BL-375 will add an
-independent exclusion check that also applies with full functional grants.
+link checks, and BL-374 configuration protection. BL-375 adds an independent
+exclusion check that also applies with full functional grants.
 Exercise the cutover, exact operands, profile/root intersection, risk,
 pre-effect denial, active and inactive definitions, alias protection and
 native platform gates. Tools, wire schemas, VERSION and dependencies remain
@@ -453,7 +453,7 @@ review and actual integration/main readback govern completion.
 
 ## BL-375 per-root file and directory exclusions
 
-BL-375 is Planned and release-unassigned. The [backlog](../../BACKLOG.md#named-roots-capabilities-and-profiles-epic)
+BL-375 is release-unassigned. The [backlog](../../BACKLOG.md#named-roots-capabilities-and-profiles-epic)
 owns acceptance and scheduling. The [traceability row](architecture-traceability.md#core-policy-context-catalog-and-state-foundation)
 records the same dependencies and retrofit.
 
@@ -466,8 +466,8 @@ records the same dependencies and retrofit.
 2. **Authoritative sources.** Follow the [named-root architecture](../architecture.md#profiles-capabilities-and-named-roots),
    [per-root security policy](../security.md#per-root-policies-and-execution-backend),
    [configuration protection](../security.md#configuration-trust-and-protection),
-   [planned typed configuration](../configuration.md#planned-path-exclusions),
-   [ADR-005 exclusion decision](../adr/filesystem-abstraction.md#planned-bl-375-path-exclusions),
+   [typed configuration](../configuration.md#path-exclusions),
+   [ADR-005 exclusion decision](../adr/filesystem-abstraction.md#bl-375-path-exclusions),
    [ADR-009](../adr/capability-profiles.md),
    [ADR-010](../adr/operations-and-jobs.md) for retained and deferred work, and
    the [adapter policy](tool-adapters.md#bl-220-adapter-selection) as
@@ -477,8 +477,8 @@ records the same dependencies and retrofit.
    policy, BL-107 native link/effect safeguards, BL-108 capability intersection,
    BL-233 typed configuration and BL-374 configuration protection are the
    required foundations. Later search, jobs, context, authorization, Native
-   Tools and providers are consumers. Resolve the open guarantees below
-   before enabling affected operations.
+   Tools and providers are consumers. Each must prove the effect and result
+   boundary for its own routes before activation.
 4. **Must reuse.** Extend `internal/config`, `cmd/server` bootstrap,
    `internal/roots`, PathGuard and `internal/fs`. Reuse shared cross-root
    effect coordination, native root/parent/object binding and revalidation,
@@ -498,14 +498,13 @@ records the same dependencies and retrofit.
    Tools (BL-360), providers (BL-181/188) and authorized configuration
    management (BL-373) must demonstrate the boundary for their own effects
    and results when applicable.
-6. **Public contract delta.** On implementation, add the single
-   [server-side `excluded` list](../configuration.md#planned-path-exclusions)
+6. **Public contract delta.** The
+   [server-side `excluded` list](../configuration.md#path-exclusions) applies
    to named policies and root overrides. Omission inherits or defaults to
    empty. An explicit root list replaces the inherited list, including
    `[]`. Only `*` and `?` have wildcard meaning within a component. Existing
    operations gain redacted denials and listing omission. Tool names,
-   operands, schemas and transport contracts stay unchanged. The setting
-   remains outside the shipped schema until implementation and activation.
+   operands, schemas and transport contracts stay unchanged.
 7. **Security and resource invariants.** Exclusions remain authoritative
    with full root read/write rights, profile and capability grants, and with
    permissive file-type or link policy. Apply them after admission by both
@@ -555,12 +554,12 @@ records the same dependencies and retrofit.
     deferred BL-375 deliverable must be accepted by one concrete successor
     and recorded in both backlog items. Completed foundations remain closed.
 
-Operation-specific guarantees against independent OS actors remain open.
-For each affected native and delegated boundary, demonstrate the required
-effect binding or a concrete fail-closed outcome before activation. Obtain
-an explicitly approved architecture and security decision if neither is
-established. Existing BL-107 and BL-374 residuals apply to their respective
-controls. BL-375 has no approved race exception or absolute race guarantee.
+Prove effect binding or fail closed at each affected native and delegated
+boundary. FlashGate checks every applicable path before its own effects and
+rejects detectable drift. Independent OS actors continue to operate under
+native namespace and handle semantics. BL-107 and BL-374 retain their
+existing bindings and residuals. BL-375 adds neither snapshot isolation nor
+content-version checks.
 
 ## BL-220 adapter acceptance binding
 

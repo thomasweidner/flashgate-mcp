@@ -48,6 +48,44 @@ func nativeOpenAt(parent *os.File, name string, flags int, mode os.FileMode) (*o
 	return os.NewFile(fd, filepath.Join(parent.Name(), name)), nil
 }
 
+func nativeExclusionVolume(string) (string, error) { return "/", nil }
+
+func nativeExclusionName(path string) (string, error) { return filepath.Base(path), nil }
+
+const exclusionCaseNeedsTopologyCheck = true
+
+func nativeExclusionDirectory(path string) (bool, error) {
+	base, err := os.Open("/")
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = base.Close() }()
+	relative, err := filepath.Rel("/", path)
+	if err != nil || !filepath.IsLocal(relative) {
+		return false, os.ErrPermission
+	}
+	// Prove the path in the root mount. In particular a separately
+	// configured bind mount must not evade a rule on its original name.
+	dir, err := nativeOpenAt(base, relative, os.O_RDONLY|syscall.O_DIRECTORY, 0)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = dir.Close() }()
+	var filesystem syscall.Statfs_t
+	if err := syscall.Fstatfs(int(dir.Fd()), &filesystem); err != nil || filesystem.Type != 0xef53 {
+		return false, os.ErrPermission
+	}
+	var flags uint64
+	// FS_IOC_GETFLAGS on the supported 64-bit Linux ABIs. Deny an ext
+	// directory with FS_CASEFOLD_FL or an unclassified flag result.
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, dir.Fd(), 0x80086601, uintptr(unsafe.Pointer(&flags)))
+	runtime.KeepAlive(dir)
+	if errno != 0 || flags&0x40000000 != 0 {
+		return false, os.ErrPermission
+	}
+	return false, nil
+}
+
 func bindNativePath(root *os.Root, relative, _ string) (*nativePath, error) {
 	base, err := root.Open(".")
 	if err != nil {

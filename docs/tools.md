@@ -98,6 +98,23 @@ with an unproved future target is denied independently of file-type restrictions
 These rules do not inspect MIME or contents, hydrate placeholders or override
 PathGuard, configuration protection, grants, root access, risk or limits.
 
+## Path exclusion enforcement
+
+Each [effective exclusion list](configuration.md#path-exclusions) applies
+under its configured root, including requests through another root ID.
+Listing omits excluded entries and charges them to the scan and entry
+budgets. Selecting an excluded path returns `access_denied`, including
+when its name matches before the path exists. Errors omit the name and
+rule. Supported relative links must pass for both the entry and its target.
+
+Copy and move check both operands, including overwrites. Recursive delete
+preflights descendants and move also checks projected destination paths
+before renaming a directory. Directory creation preflights each missing
+component before creating the first one. The native effect boundary
+rechecks the operands and rejects detectable changes. Existing hardlinks
+are checked by the path used, with separate object-identity protection for
+the active server configuration.
+
 ## Successful MCP result envelope
 
 Every successful `tools/call` uses an MCP `CallToolResult`. A small metadata

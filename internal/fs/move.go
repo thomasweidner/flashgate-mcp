@@ -24,7 +24,7 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 		return err
 	}
 
-	sourcePath, err := f.guard.ResolveExisting(source)
+	sourcePath, err := f.resolveExisting(source)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrNotFound
@@ -52,13 +52,16 @@ func (f *LocalFileSystem) Move(source string, target string, overwrite bool, adm
 	if err != nil {
 		return err
 	}
-	if pathsEquivalent(sourcePath.String(), targetPath.String()) {
+	samePath := pathsEquivalent(sourcePath.String(), targetPath.String())
+	if samePath && len(f.exclusions) == 0 {
 		return ErrSamePath
 	}
-
 	targetOperand, err := f.inspectEffect(targetPath.String(), true)
 	if err != nil {
 		return err
+	}
+	if samePath {
+		return ErrSamePath
 	}
 	targetInfo := targetOperand.info
 	if err := f.checkOperandName(target, targetOperand, !sourceInfo.IsDir()); err != nil {

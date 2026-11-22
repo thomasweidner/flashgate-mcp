@@ -31,7 +31,7 @@ func (f *LocalFileSystem) inspectPath(path string) (effectPath, error) {
 		}
 		return effectPath{}, security.ErrConfigurationAccess
 	}
-	operand.links, err = f.guard.LinkIdentities(path)
+	operand.links, err = f.inspectExclusionLinks(path)
 	if err != nil {
 		return effectPath{}, err
 	}

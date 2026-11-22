@@ -32,7 +32,7 @@ The registry checks the effective profile's grants and risk ceiling and each
 operand's required [root access](configuration.md#named-policies) before
 invoking the native backend. An absent access list at both policy levels
 defaults to `files.read`. The selected configuration's protection still
-applies after functional admission. The planned BL-375 path exclusions will
+applies after functional admission. BL-375 path exclusions
 also apply independently of functional admission. An overlap,
 alias, default ID or available backend supplies no extra rights. A denied
 request returns a redacted `access_denied` result without backend dispatch.
@@ -578,9 +578,9 @@ Version 1.0 system-service roots support `service-account`. A reserved `user-wor
 
 Deprecated MCP Roots is never authoritative and is post-Version-1.0 compatibility work only.
 
-#### Planned path exclusion boundary
+#### Path exclusion boundary
 
-[BL-375](adr/filesystem-abstraction.md#planned-bl-375-path-exclusions) will
+[BL-375](adr/filesystem-abstraction.md#bl-375-path-exclusions) can
 deny FlashGate access and effects when an affected root-relative path or an
 ancestor matches an effective exclusion under any applicable root. This
 check applies to alternate root IDs and native name aliases. Check the
@@ -601,11 +601,12 @@ Omit excluded entries from parent listings and redact direct denials.
 Preflight source, destination, replacement, and recursive or projected
 effects before a mutation reaches an excluded path, including descendants
 of an allowed parent. Apply the same policy to staging, delegated work
-and retained results so that logs, metadata, hashes, previews and other
-outputs cannot disclose data through an excluded path. Independent OS
-actors remain outside FlashGate's control. Each operation must establish
-its own guarantees or fail closed before activation. Prior race residuals
-do not grant BL-375 a new exception.
+and retained results before a future consumer can expose them. Each
+FlashGate operation checks the current namespace and denies detectable
+drift before effects. Independently authorized OS processes may move paths
+or change file contents. Open handles follow native lifetime semantics.
+The boundary provides no snapshot isolation or content version check.
+BL-107 and BL-374 retain their existing rechecks and documented residuals.
 
 ### Operations, handles, resources, quotas, and fairness
 

@@ -72,6 +72,26 @@ func HasLeafLink(path string, links []LinkIdentity) bool {
 // Callers first resolve the operand through PathGuard. Missing suffixes have
 // no link identities; their existing parents are still inspected.
 func (g *PathGuard) LinkIdentities(path string) ([]LinkIdentity, error) {
+	return g.captureLinks(path, nil)
+}
+
+// ExclusionTraversal records visited link entries, the resolved target, and
+// directories traversed before a link target's ".." removes them from the
+// final path. Missing suffixes preserve their names for policy evaluation.
+// Its link identities bind this same traversal. The caller must first
+// admit the operand through this PathGuard.
+func (g *PathGuard) ExclusionTraversal(path string) ([]LinkIdentity, []string, error) {
+	// Include links used to select the configured root itself. Another
+	// configured root can cover the entry even when it does not cover the target.
+	visited := make([]string, 0, len(g.rootLinks)+1)
+	for _, link := range g.rootLinks {
+		visited = append(visited, link.path)
+	}
+	links, err := g.captureLinks(path, &visited)
+	return links, visited, err
+}
+
+func (g *PathGuard) captureLinks(path string, visited *[]string) ([]LinkIdentity, error) {
 	if !isInsideRoot(g.root, path) {
 		return nil, ErrSymlinkDenied
 	}
@@ -79,7 +99,7 @@ func (g *PathGuard) LinkIdentities(path string) ([]LinkIdentity, error) {
 	if err != nil {
 		return nil, ErrOutsideRoot
 	}
-	return walkLinkComponents(g.effectiveRoot, relative, path, nil, 0, true)
+	return walkLinkComponents(g.effectiveRoot, relative, path, nil, 0, true, visited)
 }
 
 func snapshotLinks(base, path string) ([]LinkIdentity, error) {
@@ -90,14 +110,14 @@ func snapshotLinks(base, path string) ([]LinkIdentity, error) {
 	if err != nil {
 		return nil, ErrOutsideRoot
 	}
-	return walkLinkComponents(base, relative, path, nil, 0, true)
+	return walkLinkComponents(base, relative, path, nil, 0, true, nil)
 }
 
 // walkLinkComponents shares the actual component order between policy checks
 // and identity snapshots. A target is spliced before the remaining components;
 // it is never cleaned across an unresolved link. current is therefore always
 // the resolved parent when a relative target or its ".." component is applied.
-func walkLinkComponents(base, relative, selected string, policy *Policy, depth int, capture bool) ([]LinkIdentity, error) {
+func walkLinkComponents(base, relative, selected string, policy *Policy, depth int, capture bool, visited *[]string) ([]LinkIdentity, error) {
 	var links []LinkIdentity
 	current := base
 	pending := strings.Split(relative, string(filepath.Separator))
@@ -112,6 +132,9 @@ func walkLinkComponents(base, relative, selected string, policy *Policy, depth i
 			continue
 		}
 		if part == ".." {
+			if visited != nil {
+				*visited = append(*visited, current)
+			}
 			current = filepath.Dir(current)
 			if !isInsideRoot(base, current) {
 				return nil, ErrOutsideRoot
@@ -135,12 +158,24 @@ func walkLinkComponents(base, relative, selected string, policy *Policy, depth i
 			info, err = os.Lstat(entry)
 		}
 		if os.IsNotExist(err) && policy == nil {
+			if visited != nil {
+				for _, name := range pending {
+					if name == ".." {
+						return nil, ErrSymlinkDenied
+					}
+					entry = filepath.Join(entry, name)
+				}
+				*visited = append(*visited, entry)
+			}
 			return links, nil
 		}
 		if err != nil {
 			return nil, err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
+			if visited != nil {
+				*visited = append(*visited, entry)
+			}
 			target, err := relativeLinkTarget(entry)
 			if err != nil {
 				return nil, err
@@ -168,6 +203,9 @@ func walkLinkComponents(base, relative, selected string, policy *Policy, depth i
 	if depth > 8 {
 		return nil, ErrSymlinkDenied
 	}
+	if visited != nil {
+		*visited = append(*visited, current)
+	}
 	return links, nil
 }
 
@@ -181,7 +219,7 @@ func validateRootChain(path string, policy Policy, depth int) error {
 	if err != nil {
 		return ErrOutsideRoot
 	}
-	_, err = walkLinkComponents(base, relative, path, &policy, depth, false)
+	_, err = walkLinkComponents(base, relative, path, &policy, depth, false, nil)
 	return err
 }
 

@@ -195,10 +195,7 @@ renames and absolute links still require every other check. File effects,
 overwrites and bounded recursive preflights use the same policy below MCP;
 see [tool semantics](tools.md#file-type-enforcement).
 
-## Planned path exclusions
-
-The following example shows the future BL-375 syntax. The current TOML
-schema does not accept `excluded`.
+## Path exclusions
 
 ```toml
 [files]
@@ -226,15 +223,33 @@ another applicable root still applies to overlapping paths.
 Patterns are root-relative and match complete paths or their ancestors.
 `A/X` excludes `A/X` and paths such as `A/X/y.z` and `A/X/Z/file.txt`.
 `A/X2`, `A/XY` and `B/file.txt` remain eligible under this rule.
-Within a component, `*` matches zero or more characters and `?` matches
-one character. The grammar excludes recursive `**`, character classes,
-brace expansion and regular expressions. The same list applies to files,
+Use `/` as the separator on both platforms. Within a component, `*`
+matches zero or more Unicode characters and `?` matches one. Other
+accepted characters are literal. The grammar rejects recursive `**`,
+character classes, brace expansion, rooted or traversing patterns and
+ambiguous components such as trailing dots or whitespace. The same list applies to files,
 directories, symlinks and paths that have yet to be created. Matching
 uses the native filesystem's verified case semantics.
 
-See [ADR-005](adr/filesystem-abstraction.md#planned-bl-375-path-exclusions)
+Each list accepts up to 64 patterns. A pattern accepts up to 1,024 UTF-8
+bytes and 64 components, with up to 255 bytes per component. The 64 KiB
+configuration ceiling still applies. An active policy bounds an operand
+route to 4,096 bytes, 128 components and 65,536 component-matching steps
+across all its applicable rules and spellings.
+The server denies unproved mappings or work beyond those limits.
+
+Use local NTFS paths on Windows. Case-sensitive lookup uses exact spelling.
+Case-insensitive lookup supports provable ASCII folding and exact Unicode
+characters. A comparison that would require an unproved Unicode fold
+denies access. On Linux use the native ext filesystem of the root mount,
+without casefolding, bind mounts or additional mount transitions in data
+routes. The server rejects configuration if it cannot bind the configured
+roots when any effective exclusion list is active. A configuration with
+only empty effective lists retains the existing filesystem behavior.
+
+See [ADR-005](adr/filesystem-abstraction.md#bl-375-path-exclusions)
 for link and overlap semantics and the
-[security boundary](security.md#planned-path-exclusion-boundary) for
+[security boundary](security.md#path-exclusion-boundary) for
 interaction with active configuration protection.
 
 ## Resource limits

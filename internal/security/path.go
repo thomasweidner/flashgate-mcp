@@ -388,7 +388,7 @@ func (g *PathGuard) validatePathChain(path string, depth int) error {
 		return validatePathMetadata(g.root, g.policy)
 	}
 
-	_, err = walkLinkComponents(g.effectiveRoot, relative, path, &g.policy, depth, false)
+	_, err = walkLinkComponents(g.effectiveRoot, relative, path, &g.policy, depth, false, nil)
 	return err
 }
 

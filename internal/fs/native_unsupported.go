@@ -7,6 +7,12 @@ import "os"
 // Other ports cannot silently inherit Windows/Linux enforcement claims.
 type nativePath struct{}
 
+const exclusionCaseNeedsTopologyCheck = true
+
+func nativeExclusionVolume(string) (string, error)  { return "", os.ErrPermission }
+func nativeExclusionName(string) (string, error)    { return "", os.ErrPermission }
+func nativeExclusionDirectory(string) (bool, error) { return false, os.ErrPermission }
+
 func bindNativePath(*os.Root, string, string) (*nativePath, error) { return nil, os.ErrPermission }
 func (*nativePath) close()                                         {}
 func (*nativePath) parentInfo() (os.FileInfo, error)               { return nil, os.ErrPermission }

@@ -92,6 +92,85 @@ func samePolicyMetadata(left, right os.FileInfo) bool {
 }
 
 var attributeTagInfo = syscall.NewLazyDLL("kernel32.dll").NewProc("GetFileInformationByHandleEx")
+var exclusionFinalPath = syscall.NewLazyDLL("kernel32.dll").NewProc("GetFinalPathNameByHandleW")
+var exclusionVolumeInfo = syscall.NewLazyDLL("kernel32.dll").NewProc("GetVolumeInformationByHandleW")
+
+// WindowsExclusionVolume binds a drive root to a local NTFS volume GUID.
+// Substituted drives and redirected roots cannot masquerade as a volume root.
+func WindowsExclusionVolume(driveRoot string) (string, error) {
+	dir, err := openExclusionDirectory(driveRoot)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = syscall.CloseHandle(dir) }()
+	var fsName [32]uint16
+	ok, _, _ := exclusionVolumeInfo.Call(uintptr(dir), 0, 0, 0, 0, 0, uintptr(unsafe.Pointer(&fsName[0])), uintptr(len(fsName)))
+	if ok == 0 || syscall.UTF16ToString(fsName[:]) != "NTFS" {
+		return "", os.ErrPermission
+	}
+	var name [64]uint16
+	// VOLUME_NAME_GUID (1), with FILE_NAME_NORMALIZED (0).
+	n, _, _ := exclusionFinalPath.Call(uintptr(dir), uintptr(unsafe.Pointer(&name[0])), uintptr(len(name)), 1)
+	if n == 0 || n >= uintptr(len(name)) {
+		return "", os.ErrPermission
+	}
+	path := syscall.UTF16ToString(name[:n])
+	if !strings.HasPrefix(path, `\\?\Volume{`) || !strings.HasSuffix(path, `}\`) || len(path) != len(`\\?\Volume{00000000-0000-0000-0000-000000000000}\`) {
+		return "", os.ErrPermission
+	}
+	return strings.ToUpper(path), nil // the volume GUID is ASCII
+}
+
+// WindowsExclusionCase classifies lookup in the given existing directory.
+func WindowsExclusionCase(path string) (bool, error) {
+	dir, err := openExclusionDirectory(path)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = syscall.CloseHandle(dir) }()
+	var flags uint32
+	// FILE_CASE_SENSITIVE_INFO uses FileCaseSensitiveInfo (23).
+	ok, _, _ := attributeTagInfo.Call(uintptr(dir), 23, uintptr(unsafe.Pointer(&flags)), unsafe.Sizeof(flags))
+	if ok == 0 || flags&^uint32(1) != 0 {
+		return false, os.ErrPermission
+	}
+	return flags == 0, nil
+}
+
+func openExclusionDirectory(path string) (syscall.Handle, error) {
+	if !filepath.IsAbs(path) || len(filepath.VolumeName(path)) != 2 {
+		return syscall.InvalidHandle, os.ErrPermission
+	}
+	name, err := syscall.UTF16PtrFromString(`\\?\` + path)
+	if err != nil {
+		return syscall.InvalidHandle, err
+	}
+	const fileReadAttributes = 0x80
+	return syscall.CreateFile(name, fileReadAttributes, syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE|
+		syscall.FILE_SHARE_DELETE, nil, syscall.OPEN_EXISTING, syscall.FILE_FLAG_BACKUP_SEMANTICS, 0)
+}
+
+// WindowsExclusionName looks up the actual entry spelling without opening
+// file contents or following the final reparse point.
+func WindowsExclusionName(path string) (string, error) {
+	nativeName := `\\?\` + path
+	if isUNCPath(path) {
+		nativeName = `\\?\UNC\` + strings.TrimLeft(path, `\`)
+	}
+	name, err := syscall.UTF16PtrFromString(nativeName)
+	if err != nil {
+		return "", err
+	}
+	var data syscall.Win32finddata
+	handle, err := syscall.FindFirstFile(name, &data)
+	if err != nil {
+		return "", err
+	}
+	if err := syscall.FindClose(handle); err != nil {
+		return "", err
+	}
+	return syscall.UTF16ToString(data.FileName[:]), nil
+}
 
 func nativeLinkTarget(path string) (string, error) {
 	namePath := path
@@ -218,23 +297,11 @@ func evalEffectivePathDepth(path string, depth int) (string, error) {
 			// FindFirstFile returns the actual directory entry spelling for
 			// an 8.3 alias without opening file contents or following a leaf
 			// reparse point. Retain that spelling for BL-106 classification.
-			nativeName := `\\?\` + current
-			if isUNCPath(current) {
-				nativeName = `\\?\UNC\` + strings.TrimLeft(current, `\`)
-			}
-			name, err := syscall.UTF16PtrFromString(nativeName)
+			name, err := WindowsExclusionName(current)
 			if err != nil {
 				return "", err
 			}
-			var data syscall.Win32finddata
-			handle, err := syscall.FindFirstFile(name, &data)
-			if err != nil {
-				return "", err
-			}
-			if err := syscall.FindClose(handle); err != nil {
-				return "", err
-			}
-			current = filepath.Join(filepath.Dir(current), syscall.UTF16ToString(data.FileName[:]))
+			current = filepath.Join(filepath.Dir(current), name)
 			if index+1 < len(parts) && !info.IsDir() {
 				return "", ErrRootNotDirectory
 			}

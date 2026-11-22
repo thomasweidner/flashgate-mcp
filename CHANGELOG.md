@@ -10,6 +10,13 @@ the intended release date. Publication evidence is separate.
 
 ## [Unreleased]
 
+### Added
+
+- Enforce per-root `excluded` path patterns under named policies or roots.
+  All eight filesystem tools apply every applicable root's exclusions.
+  Listings omit excluded entries, and mutations check their affected paths
+  before effects. See [path exclusions](docs/configuration.md#path-exclusions).
+
 ### Changed
 
 - Add a local validation entry point that composes existing gates, records timed

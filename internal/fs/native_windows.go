@@ -15,6 +15,20 @@ type nativePath struct {
 	name, relative string
 }
 
+const exclusionCaseNeedsTopologyCheck = false
+
+func nativeExclusionVolume(path string) (string, error) {
+	return security.WindowsExclusionVolume(path)
+}
+
+func nativeExclusionName(path string) (string, error) {
+	return security.WindowsExclusionName(path)
+}
+
+func nativeExclusionDirectory(path string) (bool, error) {
+	return security.WindowsExclusionCase(path)
+}
+
 // The effect uses the opened parent, never an absolute pathname reopened
 // after validation. Root's native traversal rejects absolute reparse targets;
 // PathGuard additionally classifies every supported link and rejects junctions.

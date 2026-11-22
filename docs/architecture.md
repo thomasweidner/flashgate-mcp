@@ -368,15 +368,15 @@ filter, runtime parser, new registry, dependency or tool catalog. Missing
 settings preserve existing extension behavior; explicit restrictions and
 unsupported classification fail closed under the [file-type contract](configuration.md#file-types).
 
-Planned [BL-375 exclusions](adr/filesystem-abstraction.md#planned-bl-375-path-exclusions)
-will bind an immutable `excluded` policy to the same bootstrap and native
+[BL-375 exclusions](adr/filesystem-abstraction.md#bl-375-path-exclusions)
+bind an immutable `excluded` policy to the same bootstrap and native
 filesystem boundary. Every applicable root contributes its effective
 path exclusions independently of profile grants, risk and the selected
 root's access. The shared boundary checks affected entry and resolved
 symlink target paths and preserves the current effect coordination and
-BL-374 configuration protection. See the [planned configuration
-syntax](configuration.md#planned-path-exclusions) and [security
-boundary](security.md#planned-path-exclusion-boundary).
+BL-374 configuration protection. See the [configuration
+syntax](configuration.md#path-exclusions) and [security
+boundary](security.md#path-exclusion-boundary).
 
 The root model includes current and planned rules for:
 
@@ -384,7 +384,7 @@ The root model includes current and planned rules for:
 - size/result/scan/temp limits;
 - allowed file types;
 - symlink/reparse policy;
-- path exclusions (BL-375, planned and release-unassigned);
+- path exclusions;
 - capability mapping;
 - process working-directory permission;
 - service execution backend.

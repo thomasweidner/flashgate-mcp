@@ -5,6 +5,24 @@ FlashGate builds. Follow the current [tool reference](tools.md),
 [protocol reference](protocol.md), and [changelog](../CHANGELOG.md) when
 updating an integration. Internal task renumbering is not a product migration.
 
+## Per-root path exclusions
+
+Existing configurations can omit `excluded`. To restrict paths, add it
+under a named policy or a root in the active TOML file and restart the
+server. A root inherits only when its own field is absent. Replace the
+whole list to change a root's rules, or use `[]` to clear its inherited
+list. Other overlapping roots retain their own exclusions.
+
+Check the [supported native paths and pattern grammar](configuration.md#path-exclusions)
+before enabling the setting. Verify one denied path and one allowed sibling
+under each relevant root ID, including any configured alias. Clients can
+use their existing tools and arguments. Excluded paths produce
+`access_denied`, and parent listings omit the excluded names.
+
+An older server rejects the new TOML field. To roll back to an older version,
+restore the prior configuration and use that version's existing access and
+root boundaries for any paths that must remain private.
+
 ## Per-root link policy
 
 Remove `security.follow_symlinks` before starting this build. That global

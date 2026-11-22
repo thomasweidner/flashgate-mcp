@@ -32,9 +32,17 @@ The current interface is defined in
 optional result-admission hook runs after domain validation and before the
 first effect; it grants no rights and cannot replace native safeguards.
 
-### Planned BL-375 path exclusions
+### BL-375 path exclusions
 
-BL-375 will add one server-side `excluded` list of root-relative patterns to
+FlashGate must prove that its own and delegated effects comply with the
+exclusion policy, including compound preflight and rechecks before native
+effects. Unproved bindings and detectable drift deny the effect. Independently
+authorized OS processes can change the namespace or the contents of an open
+object under ordinary OS semantics. Each new FlashGate operation checks the
+current namespace. BL-375 provides no transactional isolation, snapshots,
+or content-version checks. The existing BL-107 and BL-374 checks still apply.
+
+BL-375 adds one server-side `excluded` list of root-relative patterns to
 named policies and root overrides. Bootstrap validates all definitions,
 including unused policies, and publishes immutable effective lists. An
 omitted root field inherits its policy's list. With neither field set, the
@@ -78,12 +86,13 @@ including recursive effects, before access or mutation. The exclusion list
 can only restrict access. Exact-root access, effective profile and risk
 checks, resource limits and BL-374 protection each remain in force.
 
-Reuse the native root, parent and object bindings, effect coordination and
-pre-effect checks. Operation-specific guarantees against independent OS
-actors remain open. BL-107 and BL-374 retain their own documented limits.
-Before activating any BL-375 route, prove its enforcement or fail-closed
-behavior, or obtain a separately approved architecture and security
-decision for the unresolved boundary.
+The enforcement boundary reuses the native root, parent and object bindings,
+effect coordination and pre-effect checks. Windows binds local NTFS drive
+roots by volume GUID, uses verified directory-entry spellings, and queries
+case sensitivity on the lookup directory. Linux uses confined native opens
+in the ext filesystem of the namespace root and checks the directory
+casefold flag. Mount aliases or a directory with unproved comparisons fail
+closed. Later consumers must prove the same boundary before activation.
 
 ## Consequences
 
