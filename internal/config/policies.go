@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 )
 
 type policyID string
@@ -19,52 +21,28 @@ type policyFields struct {
 }
 
 // A nil list means absent. A present empty list explicitly grants no access.
-type accessFields []string
+type accessFields []capability.ID
 
-// RootAccess is the effective set of filesystem rights for one root ID.
-// Its zero value denies all access.
-type RootAccess uint8
-
-const (
-	RootRead RootAccess = 1 << iota
-	RootWrite
-)
-
-func (a RootAccess) Allows(required RootAccess) bool {
-	return required != 0 && a&required == required
-}
-
-func (a accessFields) resolve() (RootAccess, error) {
+func (a accessFields) resolve(catalog capability.Catalog) (capability.Set, error) {
 	if a == nil {
-		return RootRead, nil
+		return catalog.NewSet(capability.FilesRead)
 	}
-	var access RootAccess
-	for _, value := range a {
-		var right RootAccess
-		switch value {
-		case "read":
-			right = RootRead
-		case "write":
-			right = RootWrite
-		default:
-			return 0, errors.New("invalid filesystem right")
+	for _, id := range a {
+		if !capability.AppliesToFilesystemRoot(id) {
+			return capability.Set{}, errors.New("capability does not apply to filesystem roots")
 		}
-		if access&right != 0 {
-			return 0, errors.New("duplicate filesystem right")
-		}
-		access |= right
 	}
-	return access, nil
+	return catalog.NewSet(a...)
 }
 
-func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
+func (s settings) resolveRootDefinitions(catalog capability.Catalog) ([]RootDefinition, error) {
 	// Validate every definition, including ones that no resource references.
-	policies := make(map[policyID]RootAccess, len(s.Policy))
+	policies := make(map[policyID]capability.Set, len(s.Policy))
 	for id, policy := range s.Policy {
 		if !validConfigID(string(id)) {
 			return nil, NewError(CategoryInvalidConfig, errors.New("invalid policy name"))
 		}
-		access, err := policy.Access.resolve()
+		access, err := policy.Access.resolve(catalog)
 		if err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
@@ -79,7 +57,7 @@ func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
 
 	roots := make([]RootDefinition, 0, len(s.Files.Roots))
 	for id, root := range s.Files.Roots {
-		access, err := root.resolveAccess(policies)
+		access, err := root.resolveAccess(catalog, policies)
 		if err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
@@ -115,16 +93,16 @@ func (s settings) resolveRootDefinitions() ([]RootDefinition, error) {
 	return roots, nil
 }
 
-func (r rootFields) resolveAccess(policies map[policyID]RootAccess) (RootAccess, error) {
+func (r rootFields) resolveAccess(catalog capability.Catalog, policies map[policyID]capability.Set) (capability.Set, error) {
 	if r.Policy == nil {
-		return r.Access.resolve()
+		return r.Access.resolve(catalog)
 	}
 	inherited, ok := policies[*r.Policy]
 	if !ok {
-		return 0, errors.New("unknown root policy")
+		return capability.Set{}, errors.New("unknown root policy")
 	}
 	if r.Access == nil {
 		return inherited, nil
 	}
-	return r.Access.resolve()
+	return r.Access.resolve(catalog)
 }

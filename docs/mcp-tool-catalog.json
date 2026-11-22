@@ -12,7 +12,7 @@
     },
     "rootConfiguration": {
       "tomlKey": "files.default_id",
-      "rootPathTomlKey": "files.roots.<id>.path",
+      "rootPathTomlKey": "files.<id>.path",
       "pathMode": "relative tool paths with an explicit configured root ID for each operand",
       "required": true,
       "rootPathMustBeAbsolute": true,

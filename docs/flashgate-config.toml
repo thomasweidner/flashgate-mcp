@@ -1,5 +1,5 @@
 # FlashGate configuration template for direct STDIO.
-# Set files.roots.work.path to an existing absolute data directory.
+# Set files.work.path to an existing absolute data directory.
 # On Windows use forward slashes or double each backslash in a basic string.
 # See configuration.md for trusted paths, settings, and migration.
 
@@ -16,10 +16,10 @@ max_temp_size = "10 MiB"
 max_list_entries = 1000
 max_delete_entries = 1000
 
-[files.roots.work]
+[files.work]
 path = ""
-# Missing access at both levels defaults to ["read"]. Use [] to deny all.
-# Set access = ["read", "write"] here or reference the example policy below.
+# Missing access at both levels defaults to ["files.read"]. Use [] to deny all.
+# Set access = ["files.read", "files.write"] here or reference the example policy below.
 # policy = "workspace"
 # Supported relative links inside this root only; omission defaults to false.
 follow_symlinks = false
@@ -29,7 +29,7 @@ follow_symlinks = false
 # [] denies suffixed files. "unrestricted" removes an inherited suffix limit.
 # Override allow_extensionless separately to replace an inherited boolean.
 # [policy.workspace]
-# access = ["read", "write"]
+# access = ["files.read", "files.write"]
 # follow_symlinks = false
 # max_file_size = "1 MiB"
 # max_write_size = "1 MiB"

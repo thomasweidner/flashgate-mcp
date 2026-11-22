@@ -1,14 +1,11 @@
 package roots
 
-import (
-	"github.com/thomasweidner/flashgate-mcp/internal/config"
-	"github.com/thomasweidner/flashgate-mcp/internal/fs"
-)
+import "github.com/thomasweidner/flashgate-mcp/internal/fs"
 
 var _ fs.FileSystem = (*Registry)(nil)
 
 func (r *Registry) List(path fs.Operand) ([]fs.Entry, error) {
-	backend, err := r.backendFor(path.RootID, config.RootRead)
+	backend, err := r.backendFor(path.RootID, fs.ReadOperation)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +13,7 @@ func (r *Registry) List(path fs.Operand) ([]fs.Entry, error) {
 }
 
 func (r *Registry) Read(path fs.Operand, maxBytes int64) ([]byte, error) {
-	backend, err := r.backendFor(path.RootID, config.RootRead)
+	backend, err := r.backendFor(path.RootID, fs.ReadOperation)
 	if err != nil {
 		return nil, err
 	}
@@ -24,7 +21,7 @@ func (r *Registry) Read(path fs.Operand, maxBytes int64) ([]byte, error) {
 }
 
 func (r *Registry) Stat(path fs.Operand) (fs.Metadata, error) {
-	backend, err := r.backendFor(path.RootID, config.RootRead)
+	backend, err := r.backendFor(path.RootID, fs.ReadOperation)
 	if err != nil {
 		return fs.Metadata{}, err
 	}
@@ -32,7 +29,7 @@ func (r *Registry) Stat(path fs.Operand) (fs.Metadata, error) {
 }
 
 func (r *Registry) Write(path fs.Operand, content []byte, overwrite bool) error {
-	backend, err := r.backendFor(path.RootID, config.RootWrite)
+	backend, err := r.backendFor(path.RootID, fs.WriteOperation)
 	if err != nil {
 		return err
 	}
@@ -40,7 +37,7 @@ func (r *Registry) Write(path fs.Operand, content []byte, overwrite bool) error 
 }
 
 func (r *Registry) Mkdir(path fs.Operand) (bool, error) {
-	backend, err := r.backendFor(path.RootID, config.RootWrite)
+	backend, err := r.backendFor(path.RootID, fs.WriteOperation)
 	if err != nil {
 		return false, err
 	}
@@ -48,7 +45,7 @@ func (r *Registry) Mkdir(path fs.Operand) (bool, error) {
 }
 
 func (r *Registry) Delete(path fs.Operand, recursive bool) error {
-	backend, err := r.backendFor(path.RootID, config.RootWrite)
+	backend, err := r.backendFor(path.RootID, fs.WriteOperation)
 	if err != nil {
 		return err
 	}
@@ -56,7 +53,7 @@ func (r *Registry) Delete(path fs.Operand, recursive bool) error {
 }
 
 func (r *Registry) Move(source, target fs.Operand, overwrite bool) error {
-	backend, err := r.pairBackend(source, target, config.RootWrite)
+	backend, err := r.pairBackend(source, target, fs.WriteOperation)
 	if err != nil {
 		return err
 	}
@@ -64,14 +61,14 @@ func (r *Registry) Move(source, target fs.Operand, overwrite bool) error {
 }
 
 func (r *Registry) Copy(source, target fs.Operand, overwrite bool) error {
-	backend, err := r.pairBackend(source, target, config.RootRead|config.RootWrite)
+	backend, err := r.pairBackend(source, target, fs.CopyOperation)
 	if err != nil {
 		return err
 	}
 	return backend.Copy(source.Path, target.Path, overwrite, target.AdmitEffect)
 }
 
-func (r *Registry) pairBackend(source, target fs.Operand, required config.RootAccess) (*fs.LocalFileSystem, error) {
+func (r *Registry) pairBackend(source, target fs.Operand, action fs.Operation) (*fs.LocalFileSystem, error) {
 	if source.RootID != target.RootID {
 		_, sourceKnown := r.entries[source.RootID]
 		_, targetKnown := r.entries[target.RootID]
@@ -81,5 +78,5 @@ func (r *Registry) pairBackend(source, target fs.Operand, required config.RootAc
 		return nil, fs.ErrCrossRootOperation
 	}
 	// Both operands have the same ID. Require all rights of the pair before dispatch.
-	return r.backendFor(source.RootID, required)
+	return r.backendFor(source.RootID, action)
 }

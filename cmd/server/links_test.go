@@ -40,7 +40,7 @@ func TestLinkPolicyOnMCPWire(t *testing.T) {
 					value = "true"
 				}
 				source := filepath.Join(t.TempDir(), "config.toml")
-				testconfig.Write(t, source, []byte(configDocument(t, root, "roots.work.policy='p'\n[policy.p]\naccess=['read','write']\nallowed_extensions=['.txt']\nfollow_symlinks="+value+"\n"+profileSettings(false))))
+				testconfig.Write(t, source, []byte(configDocument(t, root, "work.policy='p'\n[policy.p]\naccess=['files.read','files.write']\nallowed_extensions=['.txt']\nfollow_symlinks="+value+"\n"+profileSettings(false))))
 				deps := defaultBootstrapDependencies(source)
 				cfg, err := deps.loadConfig()
 				if err != nil {

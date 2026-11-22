@@ -1086,8 +1086,10 @@ the primitives independently of runtime activation. Integrating owners
 reuse BL-159 authorization, BL-236 caller/backend separation, BL-166 audit,
 BL-239 state binding and the applicable root/profile contracts. Carry the
 BL-103 derived operation risk and effective ceiling alongside functional
-grants. Retain each
-filesystem operand's BL-102 binding through authorization and dispatch. Keep discovery,
+grants. Use [BL-108](implementation-contract.md#bl-108-per-root-capability-mapping)
+to bind the reviewed resource requirements of each applicable operand to its
+explicit access set on the same catalog snapshot as the effective profile.
+Retain each filesystem operand's BL-102 binding through authorization and dispatch. Keep discovery,
 backend availability and cached results independent of authorization. Test the
 affected direct calls, backend parity and context mismatch, including denial
 before dispatch and secret-safe errors and audit.

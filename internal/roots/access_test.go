@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
@@ -15,10 +16,35 @@ import (
 func TestDeniedOperationsDoNotDispatch(t *testing.T) {
 	t.Parallel()
 	// Any backend call would panic. The registry must deny before dispatch.
-	r := Registry{entries: map[config.RootID]entry{
-		"readonly":  {access: config.RootRead},
-		"writeonly": {access: config.RootWrite},
-		"denied":    {},
+	catalog, err := capability.NewCatalog(capability.BaseDefinitions()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newSet := func(c capability.Catalog, ids ...capability.ID) capability.Set {
+		t.Helper()
+		set, err := c.NewSet(ids...)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return set
+	}
+	profile, err := capability.NewPolicy(newSet(catalog, capability.FilesRead, capability.FilesWrite), capability.RiskMutation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operations, err := fs.BindOperations(catalog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreign, err := capability.NewCatalog(capability.BaseDefinitions()...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Registry{profile: profile, operations: operations, entries: map[config.RootID]entry{
+		"readonly":  {access: newSet(catalog, capability.FilesRead)},
+		"writeonly": {access: newSet(catalog, capability.FilesWrite)},
+		"denied":    {access: newSet(catalog)},
+		"foreign":   {access: newSet(foreign, capability.FilesRead)},
 	}}
 	read := fs.Operand{RootID: "readonly", Path: "file"}
 	write := fs.Operand{RootID: "writeonly", Path: "file"}
@@ -28,6 +54,7 @@ func TestDeniedOperationsDoNotDispatch(t *testing.T) {
 	_, listErr := r.List(write)
 	_, readErr := r.Read(write, 10)
 	_, statErr := r.Stat(write)
+	_, foreignErr := r.Read(fs.Operand{RootID: "foreign", Path: "file"}, 10)
 	_, mkdirErr := r.Mkdir(read)
 	for name, err := range map[string]error{
 		"list write-only":         listErr,
@@ -40,6 +67,7 @@ func TestDeniedOperationsDoNotDispatch(t *testing.T) {
 		"copy lacks source read":  r.Copy(write, writeTarget, true),
 		"move lacks write":        r.Move(read, target, true),
 		"deny all":                r.Write(denied, nil, false),
+		"deny foreign snapshot":   foreignErr,
 	} {
 		if !errors.Is(err, fs.ErrRootAccessDenied) {
 			t.Errorf("%s: %v", name, err)
@@ -63,9 +91,9 @@ func TestOverlappingRootAccessUsesExactID(t *testing.T) {
 	r := loadRegistry(t, filepath.Join(t.TempDir(), "config.toml"),
 		"[files]\ndefault_id = 'a'\n"+
 			rootTable(t, "a", a)+rootTable(t, "b", b)+"policy = 'writer'\n"+
-			rootTable(t, "c", c)+"policy = 'writer'\naccess = ['read']\n"+
+			rootTable(t, "c", c)+"policy = 'writer'\naccess = ['files.read']\n"+
 			rootTable(t, "blocked", c)+"policy = 'writer'\naccess = []\n"+
-			"[policy.writer]\naccess = ['write']\n")
+			"[policy.writer]\naccess = ['files.write']\n")
 	viaA := fs.Operand{RootID: "a", Path: "b/c/file.txt"}
 	viaB := fs.Operand{RootID: "b", Path: "c/file.txt"}
 	viaC := fs.Operand{RootID: "c", Path: "file.txt"}
@@ -103,5 +131,47 @@ func TestOverlappingRootAccessUsesExactID(t *testing.T) {
 	}
 	if err := r.Delete(to, false); err != nil {
 		t.Fatalf("write-only delete failed: %v", err)
+	}
+}
+
+func TestProfileAndRiskCannotBeExpandedByRoot(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name, profile string
+	}{
+		{"default profile", ""},
+		{"read risk ceiling", "[profiles]\nactive = 'write'\nmax_risk = 'read'\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			source := filepath.Join(root, "seed.txt")
+			testconfig.Write(t, source, []byte("seed"))
+			registry := loadRegistryDocument(t, filepath.Join(t.TempDir(), "config.toml"),
+				tc.profile+"[files]\ndefault_id = 'work'\n"+rootTable(t, "work", root)+
+					"access = ['files.read', 'files.write', 'search.run']\n")
+			file := fs.Operand{RootID: "work", Path: "seed.txt"}
+			dest := fs.Operand{RootID: "work", Path: "new"}
+			if data, err := registry.Read(file, 32); err != nil || string(data) != "seed" {
+				t.Fatalf("permitted read failed: %v", err)
+			}
+			_, mkdirErr := registry.Mkdir(dest)
+			for name, err := range map[string]error{
+				"write":  registry.Write(file, []byte("denied"), true),
+				"mkdir":  mkdirErr,
+				"delete": registry.Delete(file, false),
+				"copy":   registry.Copy(file, dest, false),
+				"move":   registry.Move(file, dest, false),
+			} {
+				if !errors.Is(err, fs.ErrRootAccessDenied) {
+					t.Errorf("%s should deny before dispatch: %v", name, err)
+				}
+			}
+			if data, err := os.ReadFile(source); err != nil || string(data) != "seed" {
+				t.Fatalf("denied operation affected the source: %v", err)
+			}
+			if _, err := os.Stat(filepath.Join(root, dest.Path)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("denied operation affected the target: %v", err)
+			}
+		})
 	}
 }

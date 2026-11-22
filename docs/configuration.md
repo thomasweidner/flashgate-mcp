@@ -1,7 +1,7 @@
 # Runtime configuration
 
 FlashGate reads one UTF-8 TOML file at startup. Use the [complete template](flashgate-config.toml)
-and set `files.roots.work.path` to an existing absolute data directory that you
+and set `files.work.path` to an existing absolute data directory that you
 intend to expose. The template uses the default `read` profile.
 In a Windows basic TOML string, use forward slashes or
 escape each backslash. A TOML literal string such as
@@ -15,14 +15,16 @@ Configure one table per root and select the default explicitly.
 [files]
 default_id = "work"
 
-[files.roots.work]
+[files.work]
 path = 'C:\FlashGate\Work'
 
-[files.roots.archive]
+[files.archive]
 path = 'D:\Archive'
 ```
 
-Root IDs are case-sensitive and match `^[a-z][a-z0-9_]{0,63}$`. The default
+Root IDs are case-sensitive and match `^[a-z][a-z0-9_]{0,63}$`. The keys
+`default_id` and the global size and entry settings below are reserved,
+as is the former `roots` namespace. The default
 must name a configured ID exactly. Up to 256 roots fit within the configuration
 contract, subject to the 64 KiB document limit. Every path must be an
 existing absolute directory that passes PathGuard and native protection
@@ -32,8 +34,8 @@ The current MCP tools require an exact configured ID and a relative path for
 each operand, even with one configured root. See the [tool reference](tools.md).
 The configured default ID is a TOML requirement and clients still send the ID
 explicitly. Named-root discovery belongs to BL-352.
-The [migration guide](migration.md#root-configuration) covers conversion
-from the former table.
+The [migration guide](migration.md#flat-toml-and-root-capabilities) covers
+upgrading an existing TOML deployment.
 
 ## Named policies
 
@@ -45,33 +47,37 @@ the referenced fields individually. Lists replace the whole value. References
 between policies are unsupported.
 
 Filesystem roots support [link policy](#symlinks-and-reparse-points), [file-type restrictions](#file-types), the five [resource limits](#resource-limits) and
-`access`, a list of unique `"read"` and
-`"write"` rights. Omit the field at both levels for read-only access. Specify
-`[]` to deny both rights, including when overriding a named policy. Unknown
+`access`, a list of unique full capability IDs that apply to filesystem
+roots. Omit the field at both levels for `["files.read"]`. Specify
+`[]` to grant no root rights, including when overriding a named policy. Unknown
 references or fields, duplicate definitions or rights, and invalid types or
 values fail startup, including in unused policies.
 
 ```toml
 [policy.workspace]
-access = ["read", "write"]
+access = ["files.read", "files.write"]
 
 [files]
 default_id = "documents"
 
-[files.roots.documents]
+[files.documents]
 path = 'C:\Documents'
 
-[files.roots.projects]
+[files.projects]
 path = 'C:\Projects'
 policy = "workspace"
 
-[files.roots.archive]
+[files.archive]
 path = 'D:\Archive'
 policy = "workspace"
-access = ["read"]
+access = ["files.read"]
 ```
 
-Each operand uses the rights of its explicit ID. Two IDs can point to
+The filesystem access list accepts `files.read`, `files.write` and
+`search.run`. The latter is reserved for approved search consumers and
+enables no current tool. Global capabilities such as `processes.read`
+are profile grants and are rejected in filesystem access lists.
+Each operand uses the rights of its explicit root ID. Two IDs can point to
 overlapping paths and grant different access to them. The
 [tool reference](tools.md) lists each operation's required root rights.
 Writing requires a root grant and the applicable profile grants and risk
@@ -89,14 +95,14 @@ functional capabilities.
 
 ```toml
 [policy.workspace]
-access = ["read", "write"]
+access = ["files.read", "files.write"]
 follow_symlinks = false
 
-[files.roots.projects]
+[files.projects]
 path = 'C:\Projects'
 policy = "workspace"
 
-[files.roots.archive]
+[files.archive]
 path = 'D:\Archive'
 policy = "workspace"
 follow_symlinks = true
@@ -136,11 +142,11 @@ additional extension restriction, including for extensionless files.
 allowed_extensions = [".txt", ".md", ".tar.gz"]
 allow_extensionless = false
 
-[files.roots.work]
+[files.work]
 path = "/srv/flashgate/work"
 policy = "documents"
 
-[files.roots.other]
+[files.other]
 path = "/srv/flashgate/other"
 policy = "documents"
 allowed_extensions = "unrestricted"
@@ -193,7 +199,7 @@ see [tool semantics](tools.md#file-type-enforcement).
 
 `files.max_file_size`, `max_write_size`, `max_scan_size`, `max_result_size`
 and `max_temp_size` are global hard ceilings. A named policy can supply any of
-these fields. An explicit `files.roots.<id>` field replaces that policy field;
+these fields. An explicit `files.<id>` field replaces that policy field;
 an absent field inherits the policy or global value. Every effective value
 must stay within its global ceiling. Invalid or expanding unused policy
 definitions also prevent startup. These immutable values grant no access or
@@ -245,14 +251,16 @@ active = "dev"
 include = ["changes"]
 max_risk = "mutation"
 
-[profiles.definitions.dev]
+[profiles.dev]
 grants = ["files.read"]
 
-[profiles.definitions.changes]
+[profiles.changes]
 grants = ["files.write"]
 ```
 
-Profile IDs match `^[a-z][a-z0-9_]{0,63}$`. `read` and `write` are reserved.
+Profile IDs match `^[a-z][a-z0-9_]{0,63}$`. The built-ins `read` and `write`,
+the options `active`, `include`, `max_risk`, and the former `definitions`
+namespace are reserved.
 Each definition requires an explicit array of exact, unique [capability IDs](adr/capability-profiles.md#functional-capability-contract).
 An empty array contributes zero rights. Every definition is validated,
 including inactive definitions. `include` selects distinct additional
@@ -332,27 +340,27 @@ remain milliseconds.
 |---|---|---|
 | `runtime.mode` | String, host-selected (`"stdio"` in the current executable) | Must match the bound runtime role. |
 | `files.default_id` | Required string | Must name an existing root ID. Tool calls provide their own explicit IDs. |
-| `files.roots.<id>.path` | Required string per root | Existing absolute data directory, subject to PathGuard. |
-| `files.roots.<id>.policy` | Optional policy name | Reference one named policy. |
-| `files.roots.<id>.access` | Optional rights array | Replace the referenced access list. Missing access at both levels defaults to `["read"]`. |
+| `files.<id>.path` | Required string per root | Existing absolute data directory, subject to PathGuard. |
+| `files.<id>.policy` | Optional policy name | Reference one named policy. |
+| `files.<id>.access` | Optional capability ID array | Replace the referenced access list. Missing access at both levels defaults to `["files.read"]`. |
 | `policy.<name>.access` | Optional rights array | Supply shared filesystem rights for roots that reference the policy. |
-| `policy.<name>.allowed_extensions`, `files.roots.<id>.allowed_extensions` | Optional extension array or exact `"unrestricted"` | Independent per-field inheritance; absent is unrestricted, `[]` denies suffixed names. |
-| `policy.<name>.allow_extensionless`, `files.roots.<id>.allow_extensionless` | Optional boolean | Inherit independently; default true with absent/unrestricted extensions, false with a list. |
+| `policy.<name>.allowed_extensions`, `files.<id>.allowed_extensions` | Optional extension array or exact `"unrestricted"` | Independent per-field inheritance; absent is unrestricted, `[]` denies suffixed names. |
+| `policy.<name>.allow_extensionless`, `files.<id>.allow_extensionless` | Optional boolean | Inherit independently; default true with absent/unrestricted extensions, false with a list. |
 | `profiles.active` | String, `"read"` | Select a built-in or validated custom base profile. |
 | `profiles.include` | Array of strings, empty | Explicit composition with additional distinct grant sets. Requires explicit `active`. |
 | `profiles.max_risk` | String, `"mutation"` | Operation risk ceiling. Accepts `"read"`, `"mutation"`, or explicit `"high"`. |
-| `profiles.definitions.<id>.grants` | Required array of capability IDs per definition | Declare the custom profile's exact grants. |
+| `profiles.<id>.grants` | Required array of capability IDs per definition | Declare the custom profile's exact grants. |
 | `files.max_file_size` | Size, 10485760 | Maximum file content for read, write and copy. |
 | `files.max_write_size` | Size, 10485760 | Maximum complete write or copied content. |
 | `files.max_scan_size` | Size, 10485760 | Maximum inspected content/name bytes per operation. |
 | `files.max_result_size` | Size, 16777216 | Maximum serialized MCP success result. |
 | `files.max_temp_size` | Size, 10485760 | Maximum aggregate live temporary-data reservations per exact root ID across concurrent operations. |
-| `policy.<name>.max_*_size`, `files.roots.<id>.max_*_size` | Optional size for the five resource fields above | Inherit and replace per field, within global hard ceilings. |
+| `policy.<name>.max_*_size`, `files.<id>.max_*_size` | Optional size for the five resource fields above | Inherit and replace per field, within global hard ceilings. |
 | `files.max_list_entries` | Integer, 1000 | Maximum scanned directory entries, including filtered entries. |
 | `files.max_delete_entries` | Integer, 1000 | Maximum entries for recursive deletion. |
 | `security.allow_hidden_files` | Boolean, `false` | Allows dot-prefixed data paths subject to other checks. |
 | `security.allow_unc_paths` | Boolean, `false` | Allows a UNC data root subject to other checks. |
-| `policy.<name>.follow_symlinks`, `files.roots.<id>.follow_symlinks` | Boolean, `false` | Root override replaces the named-policy value; supported relative in-root links only. |
+| `policy.<name>.follow_symlinks`, `files.<id>.follow_symlinks` | Boolean, `false` | Root override replaces the named-policy value; supported relative in-root links only. |
 | `protocol.max_message_size` | Size, 16777216 | Maximum inbound JSON-RPC message, including newline. |
 | `protocol.max_argument_size` | Size, 12582912 | Maximum tool call params or arguments. |
 | `protocol.max_response_size` | Size, 16777216 | Maximum serialized JSON-RPC response, including newline. |

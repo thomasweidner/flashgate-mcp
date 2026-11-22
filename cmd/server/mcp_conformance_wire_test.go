@@ -164,7 +164,7 @@ func TestMCPConformanceSTDIOProcess(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		settings := profileSettings(readOnly)
 		if !readOnly {
-			settings = "roots.work.access = ['read', 'write']\n" + settings
+			settings = "work.access = ['files.read', 'files.write']\n" + settings
 		}
 		configPath := writeConfig(t, configDocument(t, root, settings))
 		command := exec.CommandContext(ctx, executable, "-test.run=^TestMCPConformanceProcessHelper$", "--", configPath)

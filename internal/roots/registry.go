@@ -4,28 +4,36 @@ package roots
 import (
 	"slices"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
 
-// Registry binds each configured root ID to its access policy and confined
-// backend. The caller remains responsible for capability checks.
+// Registry binds each configured root ID to its access set and confined
+// backend and checks the instance profile at the domain boundary.
 type Registry struct {
-	ids     []config.RootID
-	entries map[config.RootID]entry
+	ids        []config.RootID
+	entries    map[config.RootID]entry
+	profile    capability.Policy
+	operations fs.Operations
 }
 
 type entry struct {
 	budget  *resource.Meter
 	limits  resource.Limits
-	access  config.RootAccess
+	access  capability.Set
 	backend *fs.LocalFileSystem
 }
 
 // New validates and binds every root before returning the registry.
 func New(cfg config.Config) (*Registry, error) {
+	profile := cfg.Profile()
+	operations, err := fs.BindOperations(profile.Catalog())
+	if err != nil {
+		return nil, err
+	}
 	files := cfg.Files()
 	definitions := files.Roots()
 	policy := security.Policy{
@@ -60,6 +68,7 @@ func New(cfg config.Config) (*Registry, error) {
 	registry := &Registry{
 		ids:     make([]config.RootID, 0, len(definitions)),
 		entries: make(map[config.RootID]entry, len(definitions)),
+		profile: profile.Policy(), operations: operations,
 	}
 	for i, def := range definitions {
 		budget, err := resource.NewMeter(def.Limits)
@@ -97,12 +106,13 @@ func (r *Registry) ReserveTemp(id config.RootID, n int64) (func(), error) {
 // IDs returns an independent snapshot in canonical ID order.
 func (r *Registry) IDs() []config.RootID { return slices.Clone(r.ids) }
 
-func (r *Registry) backendFor(id config.RootID, required config.RootAccess) (*fs.LocalFileSystem, error) {
+func (r *Registry) backendFor(id config.RootID, action fs.Operation) (*fs.LocalFileSystem, error) {
 	root, ok := r.entries[id]
 	if !ok {
 		return nil, fs.ErrUnknownRoot
 	}
-	if !root.access.Allows(required) {
+	operation := r.operations[action]
+	if !r.profile.Allows(operation) || !operation.Requirement().SatisfiedBy(root.access) {
 		return nil, fs.ErrRootAccessDenied
 	}
 	return root.backend, nil

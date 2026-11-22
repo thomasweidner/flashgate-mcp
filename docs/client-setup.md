@@ -40,13 +40,13 @@ FlashGate prerequisite.
 
 Copy the [template](flashgate-config.toml) to the
 [trusted user default](configuration.md#source-and-trust) and set
-`files.roots.work.path` to the data directory. For example:
+`files.work.path` to the data directory. For example:
 
 ```toml
 [files]
 default_id = "work"
 
-[files.roots.work]
+[files.work]
 path = 'C:\FlashGateData\ReadOnlyRoot'
 ```
 

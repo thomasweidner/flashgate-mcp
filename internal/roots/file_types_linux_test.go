@@ -22,7 +22,7 @@ func TestFileTypesNativeLinuxStructuralConfigurationAncestor(t *testing.T) {
 	}
 	source := filepath.Join(root, dir, "config.txt")
 	r := loadRegistry(t, source, "[files]\ndefault_id='work'\n"+
-		rootTable(t, "work", root)+"access=['read','write']\nallowed_extensions=['.txt']\n")
+		rootTable(t, "work", root)+"access=['files.read','files.write']\nallowed_extensions=['.txt']\n")
 	op := func(name string) fs.Operand { return fs.Operand{RootID: "work", Path: name} }
 	before, err := os.ReadFile(source)
 	if err != nil {
@@ -59,7 +59,7 @@ func TestFileTypesNativeLinuxUnrestrictedCompatibility(t *testing.T) {
 			root := t.TempDir()
 			source := filepath.Join(root, "config.toml")
 			r := loadRegistry(t, source, "[files]\ndefault_id='work'\n"+
-				rootTable(t, "work", root)+"access=['read','write']\n"+mode.fields)
+				rootTable(t, "work", root)+"access=['files.read','files.write']\n"+mode.fields)
 			op := func(name string) fs.Operand { return fs.Operand{RootID: "work", Path: name} }
 			assertBytes := func(t *testing.T, name, want string) {
 				t.Helper()
@@ -185,7 +185,7 @@ func TestFileTypesNativeLinuxRestrictiveNamesRemainDenied(t *testing.T) {
 	} {
 		root := t.TempDir()
 		r := loadRegistry(t, filepath.Join(root, "config.toml"), "[files]\ndefault_id='work'\n"+
-			rootTable(t, "work", root)+"access=['read','write']\n"+fields)
+			rootTable(t, "work", root)+"access=['files.read','files.write']\n"+fields)
 		op := func(name string) fs.Operand { return fs.Operand{RootID: "work", Path: name} }
 		if err := r.Write(op("normal.txt"), []byte("allowed"), false); err != nil {
 			t.Fatal(err)

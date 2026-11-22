@@ -31,10 +31,10 @@ each operand in addition to the applicable profile grants and risk ceiling.
 
 | Tools | Required root rights |
 |---|---|
-| `list_directory`, `read_file`, `get_path_info` | Read |
-| `write_file`, `create_directory`, `delete_path` | Write |
-| `copy_path` | Read on source, write on target |
-| `move_path` | Write on source and target |
+| `list_directory`, `read_file`, `get_path_info` | `files.read` |
+| `write_file`, `create_directory`, `delete_path` | `files.write` |
+| `copy_path` | `files.read` on source, `files.write` on target |
+| `move_path` | `files.write` on source and target |
 
 Copy and move require matching root IDs. An insufficient root grant yields
 `access_denied` before any filesystem operation. Tool exposure still follows

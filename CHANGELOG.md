@@ -18,6 +18,11 @@ the intended release date. Publication evidence is separate.
 
 ### Breaking Changes
 
+- Use `[files.<id>]` for named roots and `[profiles.<id>]` for custom
+  profiles. Set root and named-policy access with full capability IDs such as
+  `files.read` and `files.write`. The former nesting and short access values
+  are rejected. See [TOML migration](docs/migration.md#flat-toml-and-root-capabilities).
+
 - Replace `security.follow_symlinks` with a strict boolean in named policies
   and individual roots. The default remains false; only supported relative
   in-root links can be followed. Absolute links, junctions, unsupported reparse
@@ -37,7 +42,7 @@ the intended release date. Publication evidence is separate.
   explicitly for the writable catalog. `files.read_only` and the seven
   retired capability spellings are rejected. See the [profile cutover](docs/migration.md#capability-profile-cutover).
 
-- Configure named roots in `[files.roots.<id>]` and set `files.default_id`.
+- Configure named roots and set `files.default_id`.
   Startup validates every root before enabling the filesystem tools.
   Replace the former `[filesystem]` table and CWD opt-in using the
   [migration guide](docs/migration.md#root-configuration).

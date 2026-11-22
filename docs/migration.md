@@ -111,7 +111,7 @@ verified old binary. Convert the configuration manually while the
 client session is stopped:
 
 1. Choose a logical ID such as `work`. Set `default_id = "work"` in `[files]`.
-2. Move the old root value to `path` under `[files.roots.work]`. Replace `.` with
+2. Move the old root value to `path` under `[files.work]`. Replace `.` with
    the absolute directory intended for the client.
 3. Move the five existing filesystem limits to `[files]`. Remove the old
    table, `allow_cwd_root`, and `read_only`. See the profile cutover below.
@@ -122,13 +122,32 @@ The loader rejects the former table and has no automatic conversion.
 Rollback restores the previous binary and its backed-up TOML together.
 The current MCP tool inputs require explicit root IDs and relative paths.
 
+## Flat TOML and root capabilities
+
+Before upgrading, stop the client and retain the previous binary and a backup
+of the selected TOML. Edit the selected file manually:
+
+1. Move each `[files.roots.<id>]` table to `[files.<id>]`. Keep
+   `files.default_id` and global file settings in `[files]`.
+2. Move each `[profiles.definitions.<id>]` table to `[profiles.<id>]`.
+   Keep `active`, `include`, and `max_risk` in `[profiles]`.
+3. In each root and named policy `access` list, change `"read"` to
+   `"files.read"` and `"write"` to `"files.write"`. Keep omitted and empty
+   lists as they are to preserve inheritance and explicit denial.
+4. Restart and run the [acceptance checks](client-setup.md#acceptance-checks)
+   with the intended profile and root IDs.
+
+The loader rejects the former table layouts and short access values. It
+does not rewrite the configuration. For rollback restore the paired binary
+and backup together.
+
 ## Root access
 
 After upgrading to a build with per-root access, roots without explicit
 access still allow reads. A writable profile by itself leaves mutations
 denied. Stop the client, back up the selected TOML, and give only the roots
 that need writes an explicit grant. For example, add
-`access = ["read", "write"]` to `[files.roots.work]` or reference a
+`access = ["files.read", "files.write"]` to `[files.work]` or reference a
 [named policy](configuration.md#named-policies) that supplies those rights.
 Keep the profile grants required by those operations. Restart and check a
 read and an authorized mutation on test data under the intended root ID.
@@ -167,7 +186,7 @@ integers as unquoted decimal values, and paths as strings.
 
 | Previous environment setting | TOML key |
 |---|---|
-| `MCP_ROOT` | Set `files.default_id = "work"` and `files.roots.work.path` to an absolute directory. |
+| `MCP_ROOT` | Set `files.default_id = "work"` and `files.work.path` to an absolute directory. |
 | `MCP_READ_ONLY` | Remove the environment setting and use the current profile configuration. |
 | `MCP_ALLOW_CWD_ROOT` | Removed. Use the intended absolute directory. |
 | `MCP_ALLOW_HIDDEN_FILES` | `security.allow_hidden_files` |

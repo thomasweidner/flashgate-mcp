@@ -16,8 +16,8 @@ func TestRootLinkPolicyMixedOverlappingIDs(t *testing.T) {
 	r := loadRegistry(t, source, "[files]\ndefault_id='allow'\n"+
 		rootTable(t, "allow", root)+"policy='p'\nallowed_extensions=['.txt']\n"+
 		rootTable(t, "deny", root)+"policy='p'\nfollow_symlinks=false\n"+
-		rootTable(t, "default", root)+"access=['read','write']\n"+
-		"[policy.p]\naccess=['read','write']\nfollow_symlinks=true\n")
+		rootTable(t, "default", root)+"access=['files.read','files.write']\n"+
+		"[policy.p]\naccess=['files.read','files.write']\nfollow_symlinks=true\n")
 	if err := os.WriteFile(filepath.Join(root, "ordinary.txt"), []byte("ordinary"), 0600); err != nil {
 		t.Fatal(err)
 	}

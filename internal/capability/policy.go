@@ -40,6 +40,8 @@ func (c Catalog) NewOperation(floor Risk, ids ...ID) (Operation, error) {
 
 func (o Operation) Risk() Risk { return o.risk }
 
+func (o Operation) Requirement() Requirement { return o.requirement }
+
 // Policy is the immutable functional and risk input for an effective profile.
 // Passing it establishes those inputs only. Resource and execution policies
 // are applied separately by the relevant domain and host.

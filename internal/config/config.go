@@ -15,6 +15,7 @@ import (
 
 	"github.com/pelletier/go-toml/v2"
 	"github.com/pelletier/go-toml/v2/unstable"
+	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
@@ -64,10 +65,14 @@ type trustedDocument struct {
 }
 
 type settings struct {
+	commonSettings
+	Files    filesFields
+	Profiles profileFields
+}
+
+type commonSettings struct {
 	Runtime   runtimeFields             `toml:"runtime"`
-	Files     filesFields               `toml:"files"`
 	Policy    map[policyID]policyFields `toml:"policy"`
-	Profiles  profileFields             `toml:"profiles"`
 	Security  securityFields            `toml:"security"`
 	Protocol  protocolFields            `toml:"protocol"`
 	Endpoints endpointFields            `toml:"endpoints"`
@@ -85,7 +90,7 @@ type RootID string
 type RootDefinition struct {
 	ID             RootID
 	Path           string
-	Access         RootAccess
+	Access         capability.Set
 	Limits         resource.Limits
 	FileTypes      FileTypePolicy
 	FollowSymlinks bool
@@ -101,15 +106,19 @@ type rootFields struct {
 }
 
 type filesFields struct {
-	DefaultID        RootID                `toml:"default_id"`
-	Roots            map[RootID]rootFields `toml:"roots"`
-	MaxFileSize      sizeValue             `toml:"max_file_size"`
-	MaxWriteSize     sizeValue             `toml:"max_write_size"`
-	MaxScanSize      sizeValue             `toml:"max_scan_size"`
-	MaxResultSize    sizeValue             `toml:"max_result_size"`
-	MaxTempSize      sizeValue             `toml:"max_temp_size"`
-	MaxListEntries   int                   `toml:"max_list_entries"`
-	MaxDeleteEntries int                   `toml:"max_delete_entries"`
+	fileOptions
+	Roots map[RootID]rootFields
+}
+
+type fileOptions struct {
+	DefaultID        RootID    `toml:"default_id"`
+	MaxFileSize      sizeValue `toml:"max_file_size"`
+	MaxWriteSize     sizeValue `toml:"max_write_size"`
+	MaxScanSize      sizeValue `toml:"max_scan_size"`
+	MaxResultSize    sizeValue `toml:"max_result_size"`
+	MaxTempSize      sizeValue `toml:"max_temp_size"`
+	MaxListEntries   int       `toml:"max_list_entries"`
+	MaxDeleteEntries int       `toml:"max_delete_entries"`
 }
 
 type securityFields struct {
@@ -164,23 +173,25 @@ type loggingFields struct {
 
 func defaultSettings(role Role) settings {
 	return settings{
-		Runtime: runtimeFields{Mode: role},
-		Files: filesFields{
+		Files: filesFields{fileOptions: fileOptions{
 			MaxFileSize: sizeValue(defaultFileBytes), MaxWriteSize: sizeValue(defaultFileBytes),
 			MaxScanSize: sizeValue(defaultFileBytes), MaxResultSize: sizeValue(defaultWireBytes),
 			MaxTempSize: sizeValue(defaultFileBytes), MaxListEntries: 1000, MaxDeleteEntries: 1000,
-		},
-		Profiles: profileFields{MaxRisk: "mutation"},
-		Protocol: protocolFields{
-			MaxMessageBytes: sizeValue(defaultWireBytes), MaxArgumentBytes: 12 * 1024 * 1024,
-			MaxResponseBytes: sizeValue(defaultWireBytes),
-		},
-		Endpoints: endpointFields{
-			ConnectMS: 5000, RequestMS: 30000, ShutdownMS: 5000,
-			MaxFrameSize: sizeValue(defaultWireBytes), IPCVersion: 1, Fallback: NoFallback,
-		},
-		Logging: loggingFields{
-			Level: LogOff, Sink: LogStderr, Format: LogText, MaxRecordSize: 4096, MaxRecords: 10000,
+		}},
+		Profiles: profileFields{profileOptions: profileOptions{MaxRisk: "mutation"}},
+		commonSettings: commonSettings{
+			Runtime: runtimeFields{Mode: role},
+			Protocol: protocolFields{
+				MaxMessageBytes: sizeValue(defaultWireBytes), MaxArgumentBytes: 12 * 1024 * 1024,
+				MaxResponseBytes: sizeValue(defaultWireBytes),
+			},
+			Endpoints: endpointFields{
+				ConnectMS: 5000, RequestMS: 30000, ShutdownMS: 5000,
+				MaxFrameSize: sizeValue(defaultWireBytes), IPCVersion: 1, Fallback: NoFallback,
+			},
+			Logging: loggingFields{
+				Level: LogOff, Sink: LogStderr, Format: LogText, MaxRecordSize: 4096, MaxRecords: 10000,
+			},
 		},
 	}
 }
@@ -268,13 +279,11 @@ func Decode(document []byte, role Role) (Config, error) {
 	}
 
 	wire := defaultSettings(role)
-	decoder := toml.NewDecoder(bytes.NewReader(document)).DisallowUnknownFields().EnableUnmarshalerInterface()
-	if err := decoder.Decode(&wire); err != nil {
+	if err := wire.decode(document); err != nil {
 		return Config{}, NewError(CategoryInvalidConfig, err)
 	}
 	cfg := Config{data: wire, role: role}
-	roots, err := cfg.validateAndResolveRoots()
-	if err != nil {
+	if err := cfg.validateSettings(); err != nil {
 		return Config{}, err
 	}
 	profile, err := wire.Profiles.resolve()
@@ -282,6 +291,10 @@ func Decode(document []byte, role Role) (Config, error) {
 		return Config{}, NewError(CategoryInvalidProfile, err)
 	}
 	cfg.profile = profile
+	roots, err := wire.resolveRootDefinitions(profile.Catalog())
+	if err != nil {
+		return Config{}, err
+	}
 	cfg.data.Profiles = profileFields{}
 	cfg.roots = roots
 	return cfg, nil
@@ -323,15 +336,15 @@ func canonicalTOMLKeys(node *unstable.Node) bool {
 
 // Validate checks the typed settings independently of TOML decoding.
 func (c Config) Validate() error {
-	_, err := c.validateAndResolveRoots()
+	if err := c.validateSettings(); err != nil {
+		return err
+	}
+	_, err := c.data.resolveRootDefinitions(c.profile.Catalog())
 	return err
 }
 
-func (c Config) validateAndResolveRoots() ([]RootDefinition, error) {
-	if err := c.validateSettings(); err != nil {
-		return nil, err
-	}
-	return c.data.resolveRootDefinitions()
+func decodeTOML(document []byte, target any) error {
+	return toml.NewDecoder(bytes.NewReader(document)).DisallowUnknownFields().EnableUnmarshalerInterface().Decode(target)
 }
 
 func (c Config) validateSettings() error {
