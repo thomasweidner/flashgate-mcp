@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 	"github.com/thomasweidner/flashgate-mcp/internal/testconfig"
 )
@@ -21,7 +22,7 @@ func documentWithRoot(t *testing.T, root string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return "[files]\ndefault_id = 'work'\nroots.work.path = " + string(value) + "\n"
+	return "[files]\ndefault_id = 'work'\nwork.path = " + string(value) + "\n"
 }
 
 func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
@@ -34,7 +35,9 @@ func TestDecodeDefaultsAndValueSnapshots(t *testing.T) {
 	f := cfg.Files()
 	s := cfg.Security()
 	p := cfg.Server()
-	if !slices.Equal(f.Roots(), []RootDefinition{{ID: "work", Path: filepath.Clean(root), Access: RootRead, Limits: DefaultConfig().Files().Limits()}}) || f.DefaultID() != "work" ||
+	roots := f.Roots()
+	if len(roots) != 1 || roots[0].ID != "work" || roots[0].Path != filepath.Clean(root) ||
+		!roots[0].Access.Equal(cfg.Profile().Policy().Grants()) || roots[0].Limits != DefaultConfig().Files().Limits() || f.DefaultID() != "work" ||
 		cfg.Profile().ID() != ProfileRead || s.AllowHiddenFiles() ||
 		s.AllowUNCPaths() || f.Roots()[0].FollowSymlinks || cfg.Role() != Direct {
 		t.Fatal("default filesystem or runtime policy drift")
@@ -67,7 +70,7 @@ func TestDecodeRejectsInvalidDocuments(t *testing.T) {
 		category       ErrorCategory
 	}{
 		{"missing root", "[files]\ndefault_id = 'work'\n", CategoryMissingRoot},
-		{"missing default", "[files.roots.work]\npath = 'ignored'\n", CategoryMissingRoot},
+		{"missing default", "[files.work]\npath = 'ignored'\n", CategoryMissingRoot},
 		{"empty default", strings.Replace(root, "'work'", "''", 1), CategoryMissingRoot},
 		{"unknown default", strings.Replace(root, "'work'", "'unknown'", 1), CategoryInvalidRoot},
 		{"case alias default", strings.Replace(root, "'work'", "'Work'", 1), CategoryInvalidRoot},
@@ -76,21 +79,21 @@ func TestDecodeRejectsInvalidDocuments(t *testing.T) {
 		{"whitespace", documentWithRoot(t, "   "), CategoryInvalidRoot},
 		{"relative root", documentWithRoot(t, "other"), CategoryInvalidRoot},
 		{"CWD", documentWithRoot(t, "."), CategoryInvalidRoot},
-		{"root type", "[files]\ndefault_id = 'work'\nroots.work.path = 42\n", CategoryInvalidConfig},
-		{"duplicate root path", root + "roots.work.path = 'x'\n", CategoryInvalidConfig},
-		{"duplicate root table", root + "[files.roots.work]\npath = 'x'\n", CategoryInvalidConfig},
+		{"root type", "[files]\ndefault_id = 'work'\nwork.path = 42\n", CategoryInvalidConfig},
+		{"duplicate root path", root + "work.path = 'x'\n", CategoryInvalidConfig},
+		{"duplicate root table", root + "[files.work]\npath = 'x'\n", CategoryInvalidConfig},
 		{"duplicate default", root + "default_id = 'work'\n", CategoryInvalidConfig},
-		{"missing secondary path", root + "[files.roots.archive]\n", CategoryInvalidRoot},
-		{"relative secondary path", root + "roots.archive.path = 'subdir'\n", CategoryInvalidRoot},
-		{"unknown root policy", root + "roots.work.read_only = true\n", CategoryInvalidConfig},
-		{"unknown root table", root + "[files.roots.work.policy]\n", CategoryInvalidConfig},
+		{"missing secondary path", root + "[files.archive]\n", CategoryInvalidRoot},
+		{"relative secondary path", root + "archive.path = 'subdir'\n", CategoryInvalidRoot},
+		{"unknown root policy", root + "work.read_only = true\n", CategoryInvalidConfig},
+		{"unknown root table", root + "[files.work.policy]\n", CategoryInvalidConfig},
 		{"legacy group", strings.Replace(root, "[files]", "[filesystem]", 1), CategoryInvalidConfig},
 		{"legacy group with named roots", root + "[filesystem]\n", CategoryInvalidConfig},
 		{"legacy CWD opt-in", root + "allow_cwd_root = true\n", CategoryInvalidConfig},
 		{"case alias", root + "[profiles]\nactive = 'read'\nActive = 'write'\n", CategoryInvalidConfig},
 		{"case alias in inline table", "files = { Default_ID = \"work\" }\n", CategoryInvalidConfig},
 		{"case alias in table header", "[Files]\ndefault_id = \"work\"\n", CategoryInvalidConfig},
-		{"case collision", root + "roots.Work.path = 'x'\n", CategoryInvalidConfig},
+		{"case collision", root + "Work.path = 'x'\n", CategoryInvalidConfig},
 		{"empty unknown domain", root + "[capabilities]\n", CategoryInvalidConfig},
 		{"unknown policy", root + "[security]\nadmin = true\n", CategoryInvalidConfig},
 		{"unknown domain", root + "[capabilities]\nwrite = true\n", CategoryInvalidConfig},
@@ -124,18 +127,24 @@ func TestDecodeNamedRootDefinitions(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	archive := root + string(filepath.Separator) + "archive" + string(filepath.Separator)
-	document := fmt.Sprintf("[files]\ndefault_id = 'work'\n[files.roots.work]\npath = %q\n[files.roots.a_7]\npath = %q\n", root, archive)
+	document := fmt.Sprintf("[files]\ndefault_id = 'work'\n[files.work]\npath = %q\n[files.a_7]\npath = %q\n", root, archive)
 	cfg, err := Decode([]byte(document), Direct)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []RootDefinition{{ID: "a_7", Path: filepath.Clean(archive), Access: RootRead, Limits: DefaultConfig().Files().Limits()}, {ID: "work", Path: filepath.Clean(root), Access: RootRead, Limits: DefaultConfig().Files().Limits()}}
+	read := cfg.Profile().Policy().Grants()
+	want := []RootDefinition{{ID: "a_7", Path: filepath.Clean(archive), Access: read, Limits: DefaultConfig().Files().Limits()}, {ID: "work", Path: filepath.Clean(root), Access: read, Limits: DefaultConfig().Files().Limits()}}
+	equal := func(a, b RootDefinition) bool {
+		return a.ID == b.ID && a.Path == b.Path && a.Limits == b.Limits && a.Access.Equal(b.Access)
+	}
 	snapshot := cfg.Files().Roots()
-	if !slices.Equal(snapshot, want) {
+	if !slices.EqualFunc(snapshot, want, equal) {
 		t.Fatalf("unexpected definitions: %v", snapshot)
 	}
-	snapshot[0].ID, snapshot[1].Path, snapshot[1].Access = "changed", "", RootWrite
-	if !slices.Equal(cfg.Files().Roots(), want) {
+	ids := snapshot[0].Access.IDs()
+	ids[0] = capability.FilesWrite
+	snapshot[0].ID, snapshot[1].Path, snapshot[1].Access = "changed", "", capability.Set{}
+	if !slices.EqualFunc(cfg.Files().Roots(), want, equal) || !cfg.Files().Roots()[0].Access.Contains(capability.FilesRead) {
 		t.Fatal("definition changes escaped the snapshot")
 	}
 	quotedPath, err := json.Marshal(root)
@@ -144,7 +153,7 @@ func TestDecodeNamedRootDefinitions(t *testing.T) {
 	}
 	for _, id := range []string{"", "Upper", "x-y", "é", "a b", "1root", "_root", strings.Repeat("x", 65)} {
 		t.Run(id, func(t *testing.T) {
-			doc := documentWithRoot(t, root) + fmt.Sprintf("roots.%q.path = %s\n", id, quotedPath)
+			doc := documentWithRoot(t, root) + fmt.Sprintf("%q.path = %s\n", id, quotedPath)
 			if _, err := Decode([]byte(doc), Direct); err == nil {
 				t.Fatal("accepted an invalid root ID")
 			}
@@ -153,14 +162,69 @@ func TestDecodeNamedRootDefinitions(t *testing.T) {
 	var bounded strings.Builder
 	bounded.WriteString(documentWithRoot(t, root))
 	for i := range MaxRoots - 1 {
-		fmt.Fprintf(&bounded, "roots.r%d.path = %s\n", i, quotedPath)
+		fmt.Fprintf(&bounded, "r%d.path = %s\n", i, quotedPath)
 	}
 	if cfg, err := Decode([]byte(bounded.String()), Direct); err != nil || len(cfg.Files().Roots()) != MaxRoots {
 		t.Fatalf("root limit rejected: %v", err)
 	}
-	fmt.Fprintf(&bounded, "roots.excess.path = %s\n", quotedPath)
+	fmt.Fprintf(&bounded, "excess.path = %s\n", quotedPath)
 	_, err = Decode([]byte(bounded.String()), Direct)
 	assertCategory(t, err, CategoryInvalidConfig)
+}
+
+func TestDecodeFlatNamespaceConflicts(t *testing.T) {
+	t.Parallel()
+	root := documentWithRoot(t, t.TempDir())
+	for _, extra := range []string{
+		"[files.roots.archive]\npath = 'retired'\n",
+		"[files.roots]\npath = 'reserved'\n",
+		"roots = {archive = {path = 'retired'}}\n",
+		"[profiles.definitions.other]\ngrants = []\n",
+		"[profiles.definitions]\ngrants = []\n",
+		"[profiles]\ndefinitions = {other = {grants = []}}\n",
+		"[[files.other]]\npath = 'array'\n",
+		"[[profiles.other]]\ngrants = []\n",
+		"[files.other]\naccess = []\nrights = []\n",
+		"[files.other]\ngrants = []\n",
+		"[files.other]\ncapabilities = []\n",
+		"[profiles]\nunknown_option = true\n",
+		"[profiles]\nactive = 'read'\n[profiles.active]\ngrants = []\n",
+		"[profiles]\ninclude = []\n[profiles.include]\ngrants = []\n",
+		"[profiles]\nunknown = 2025-01-01\n",
+	} {
+		t.Run(extra, func(t *testing.T) {
+			_, err := Decode([]byte(root+extra), Direct)
+			assertCategory(t, err, CategoryInvalidConfig)
+		})
+	}
+	for _, reserved := range []string{"default_id", "max_file_size", "max_write_size", "max_scan_size",
+		"max_result_size", "max_temp_size", "max_list_entries", "max_delete_entries"} {
+		t.Run("files."+reserved, func(t *testing.T) {
+			document := fmt.Sprintf("[files.work]\npath = %q\n[files.%s]\npath = %q\n", t.TempDir(), reserved, t.TempDir())
+			_, err := Decode([]byte(document), Direct)
+			assertCategory(t, err, CategoryInvalidConfig)
+		})
+	}
+	for _, reserved := range []string{"active", "include", "max_risk"} {
+		t.Run("profiles."+reserved, func(t *testing.T) {
+			_, err := Decode([]byte(root+"[profiles."+reserved+"]\ngrants = []\n"), Direct)
+			assertCategory(t, err, CategoryInvalidConfig)
+		})
+	}
+}
+
+func TestDecodeFlatInlineDefinitions(t *testing.T) {
+	t.Parallel()
+	document := fmt.Sprintf("files = {default_id = 'work', work = {path = %q, access = []}}\n"+
+		"profiles = {active = 'custom', include = ['read'], custom = {grants = ['files.write']}}\n", t.TempDir())
+	cfg, err := Decode([]byte(document), Direct)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Profile().ID() != "custom" || !cfg.Profile().Policy().Grants().Contains(capability.FilesWrite) ||
+		len(cfg.Files().Roots()[0].Access.IDs()) != 0 {
+		t.Fatal("inline tables did not preserve profile composition and explicit empty access")
+	}
 }
 
 func TestCanonicalTOMLKeysInCollections(t *testing.T) {

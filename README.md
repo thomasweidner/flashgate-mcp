@@ -225,7 +225,7 @@ Use a TOML-enabled binary for these client examples. Replace the example
 executable and data paths with your actual absolute paths.
 
 Copy the [TOML template](docs/flashgate-config.toml) to the executing user's
-`~/.flashgate/flashgate_config.toml`. Set `files.roots.work.path` to your existing
+`~/.flashgate/flashgate_config.toml`. Set `files.work.path` to your existing
 data directory. The template selects `work` as the default root. FlashGate
 starts with the `read` profile.
 See [runtime configuration](docs/configuration.md) for path and ownership rules.

@@ -14,7 +14,7 @@ import (
 
 func configDocument(t testing.TB, root, settings string) string {
 	t.Helper()
-	return "[files]\ndefault_id = 'work'\nroots.work.path = " + quotedConfigPath(t, root) + "\n" + settings
+	return "[files]\ndefault_id = 'work'\nwork.path = " + quotedConfigPath(t, root) + "\n" + settings
 }
 
 func quotedConfigPath(t testing.TB, root string) string {
@@ -56,8 +56,8 @@ func testProfile(t testing.TB, readOnly bool) config.EffectiveProfile {
 
 func testRootRegistry(t *testing.T, root string, limits fs.Limits) *roots.Registry {
 	t.Helper()
-	settings := fmt.Sprintf("roots.work.access = ['read', 'write']\nmax_file_size = %d\nmax_write_size = %d\nmax_scan_size = %d\nmax_result_size = %d\nmax_temp_size = %d\nmax_list_entries = %d\nmax_delete_entries = %d\n", limits.MaxFileSize, limits.MaxWriteSize, limits.MaxScanSize, limits.MaxResultSize, limits.MaxTempSize, limits.MaxListEntries, limits.MaxDeleteEntries)
-	path := writeConfig(t, configDocument(t, root, settings))
+	settings := fmt.Sprintf("work.access = ['files.read', 'files.write']\nmax_file_size = %d\nmax_write_size = %d\nmax_scan_size = %d\nmax_result_size = %d\nmax_temp_size = %d\nmax_list_entries = %d\nmax_delete_entries = %d\n", limits.MaxFileSize, limits.MaxWriteSize, limits.MaxScanSize, limits.MaxResultSize, limits.MaxTempSize, limits.MaxListEntries, limits.MaxDeleteEntries)
+	path := writeConfig(t, configDocument(t, root, settings+profileSettings(false)))
 	cfg, err := config.Load(config.Source{Role: config.Direct, Path: path})
 	if err != nil {
 		t.Fatal(err)

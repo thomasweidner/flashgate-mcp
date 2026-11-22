@@ -22,11 +22,11 @@ func TestEffectiveProfilesOnSTDIO(t *testing.T) {
 		name, settings string
 		writable       bool
 	}{
-		{"default", "[profiles.definitions.future]\ngrants = ['search.run', 'system.read']\n", false},
+		{"default", "[profiles.future]\ngrants = ['search.run', 'system.read']\n", false},
 		{"explicit read ceiling", "[profiles]\nmax_risk = 'read'\n", false},
 		{"builtin write", profileSettings(false), true},
-		{"custom write", "[profiles]\nactive = 'dev'\n[profiles.definitions.dev]\ngrants = ['files.write', 'files.read']\n", true},
-		{"composed write", "[profiles]\nactive = 'read'\ninclude = ['changes']\n[profiles.definitions.changes]\ngrants = ['files.write']\n", true},
+		{"custom write", "[profiles]\nactive = 'dev'\n[profiles.dev]\ngrants = ['files.write', 'files.read']\n", true},
+		{"composed write", "[profiles]\nactive = 'read'\ninclude = ['changes']\n[profiles.changes]\ngrants = ['files.write']\n", true},
 		{"tightened write", "[profiles]\nactive = 'write'\nmax_risk = 'read'\n", false},
 		{"high ceiling with default grants", "[profiles]\nmax_risk = 'high'\n", false},
 		{"high ceiling with write grants", "[profiles]\nactive = 'write'\nmax_risk = 'high'\n", true},
@@ -38,9 +38,9 @@ func TestEffectiveProfilesOnSTDIO(t *testing.T) {
 			}
 			t.Run(tc.name+"/"+variant, func(t *testing.T) {
 				root := t.TempDir()
-				settings := "roots.work.access = ['read', 'write']\n" + tc.settings
+				settings := "work.access = ['files.read', 'files.write', 'search.run']\n" + tc.settings
 				if multiple {
-					settings = "roots.second.path = " + quotedConfigPath(t, t.TempDir()) + "\n" + settings
+					settings = "second.path = " + quotedConfigPath(t, t.TempDir()) + "\n" + settings
 				}
 				path := filepath.Join(root, "flashgate.toml")
 				document := configDocument(t, root, settings)
@@ -108,7 +108,7 @@ func TestStartupRejectsUnmeasuredExplicitGrants(t *testing.T) {
 		{"['files.read', 'processes.control']", "max_risk = 'high'\n"},
 		{"['files.read', 'files.write', 'processes.control']", "max_risk = 'high'\n"},
 	} {
-		path := writeConfig(t, configDocument(t, t.TempDir(), "[profiles]\nactive = 'private'\n"+tc.ceiling+"[profiles.definitions.private]\ngrants = "+tc.grants+"\n"))
+		path := writeConfig(t, configDocument(t, t.TempDir(), "[profiles]\nactive = 'private'\n"+tc.ceiling+"[profiles.private]\ngrants = "+tc.grants+"\n"))
 		var stdout, stderr bytes.Buffer
 		deps := defaultBootstrapDependencies(path)
 		exitCode := runMain(context.Background(), nil, &stdout, &stderr, func(ctx context.Context, _ string) error {

@@ -69,9 +69,9 @@ func TestFileTypeUnrestrictedNativeNames(t *testing.T) {
 	root := documentWithRoot(t, t.TempDir())
 	for _, fields := range []string{
 		"",
-		"roots.work.allowed_extensions='unrestricted'\n",
-		"roots.work.allowed_extensions='unrestricted'\nroots.work.allow_extensionless=true\n",
-		"roots.work.policy='p'\nroots.work.allowed_extensions='unrestricted'\nroots.work.allow_extensionless=true\n[policy.p]\nallowed_extensions=['.txt']\nallow_extensionless=false\n",
+		"work.allowed_extensions='unrestricted'\n",
+		"work.allowed_extensions='unrestricted'\nwork.allow_extensionless=true\n",
+		"work.policy='p'\nwork.allowed_extensions='unrestricted'\nwork.allow_extensionless=true\n[policy.p]\nallowed_extensions=['.txt']\nallow_extensionless=false\n",
 	} {
 		cfg, err := Decode([]byte(root+fields), Direct)
 		if err != nil {
@@ -99,19 +99,19 @@ func TestFileTypeInheritance(t *testing.T) {
 		{"empty", "allowed_extensions=[]", "", false, false, false},
 		{"unrestricted", "allowed_extensions='unrestricted'", "", true, true, true},
 		{"restricted", "allowed_extensions=['.txt']", "", true, false, false},
-		{"empty plus true", "allowed_extensions=[]\nroots.work.allow_extensionless=true", "", false, false, true},
+		{"empty plus true", "allowed_extensions=[]\nwork.allow_extensionless=true", "", false, false, true},
 		{"inherit", "policy='p'", "allowed_extensions=['.txt']", true, false, false},
-		{"inherit false with reset", "policy='p'\nroots.work.allowed_extensions='unrestricted'", "allowed_extensions=['.txt']\nallow_extensionless=false", true, true, false},
-		{"reset both", "policy='p'\nroots.work.allowed_extensions='unrestricted'\nroots.work.allow_extensionless=true", "allowed_extensions=['.txt']\nallow_extensionless=false", true, true, true},
-		{"empty replacement", "policy='p'\nroots.work.allowed_extensions=[]", "allowed_extensions=['.txt']\nallow_extensionless=true", false, false, true},
-		{"list replacement default", "policy='p'\nroots.work.allowed_extensions=['.txt']", "allowed_extensions='unrestricted'", true, false, false},
-		{"independent boolean override", "policy='p'\nroots.work.allow_extensionless=false", "allowed_extensions=['.txt']\nallow_extensionless=true", true, false, false},
+		{"inherit false with reset", "policy='p'\nwork.allowed_extensions='unrestricted'", "allowed_extensions=['.txt']\nallow_extensionless=false", true, true, false},
+		{"reset both", "policy='p'\nwork.allowed_extensions='unrestricted'\nwork.allow_extensionless=true", "allowed_extensions=['.txt']\nallow_extensionless=false", true, true, true},
+		{"empty replacement", "policy='p'\nwork.allowed_extensions=[]", "allowed_extensions=['.txt']\nallow_extensionless=true", false, false, true},
+		{"list replacement default", "policy='p'\nwork.allowed_extensions=['.txt']", "allowed_extensions='unrestricted'", true, false, false},
+		{"independent boolean override", "policy='p'\nwork.allow_extensionless=false", "allowed_extensions=['.txt']\nallow_extensionless=true", true, false, false},
 		{"empty policy", "policy='p'", "", true, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			settings := root
 			if tc.root != "" {
-				settings += "roots.work." + tc.root + "\n"
+				settings += "work." + tc.root + "\n"
 			}
 			if strings.Contains(tc.root, "policy=") {
 				settings += "[policy.p]\n" + tc.policy + "\n"
@@ -138,12 +138,12 @@ func TestFileTypeInheritance(t *testing.T) {
 func TestFileTypeInvalidDocuments(t *testing.T) {
 	root := documentWithRoot(t, t.TempDir())
 	for _, value := range []string{"42", "true", "{}", "'any'", "'UNRESTRICTED'", "['*']", "['.TXT']", "['txt']", "['.']", "['.tar..gz']", "['._txt']", "['.txt ' ]", "['.t/xt']", "['.t:xt']", "['.t\\xt']", "['.txт']", "['.txt', '.txt']", "['.txt', 2]"} {
-		for _, prefix := range []string{"roots.work.allowed_extensions=", "[policy.unused]\nallowed_extensions="} {
+		for _, prefix := range []string{"work.allowed_extensions=", "[policy.unused]\nallowed_extensions="} {
 			_, err := Decode([]byte(root+prefix+value+"\n"), Direct)
 			assertCategory(t, err, CategoryInvalidConfig)
 		}
 	}
-	for _, extra := range []string{"allowed_extensions=['.txt']", "roots.work.allow_extensionless='true'", "roots.work.allowed_extensions=[]\nroots.work.allowed_extensions=[]", "[policy.unused]\nallow_extensionless=1", "roots.work.policy='missing'\nroots.work.allowed_extensions='unrestricted'", "roots.work.ALLOWED_EXTENSIONS=[]"} {
+	for _, extra := range []string{"allowed_extensions=['.txt']", "work.allow_extensionless='true'", "work.allowed_extensions=[]\nwork.allowed_extensions=[]", "[policy.unused]\nallow_extensionless=1", "work.policy='missing'\nwork.allowed_extensions='unrestricted'", "work.ALLOWED_EXTENSIONS=[]"} {
 		_, err := Decode([]byte(root+extra+"\n"), Direct)
 		assertCategory(t, err, CategoryInvalidConfig)
 	}

@@ -104,9 +104,9 @@ function Get-CallToolStructuredContent {
 
 try {
     $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
-    $document = "[files]`ndefault_id = 'work'`n[files.roots.work]`npath = $quotedRoot`n"
+    $document = "[files]`ndefault_id = 'work'`n[files.work]`npath = $quotedRoot`n"
     if (-not $ReadOnly) {
-        $document += "access = ['read', 'write']`n[profiles]`nactive = 'write'`n"
+        $document += "access = ['files.read', 'files.write']`n[profiles]`nactive = 'write'`n"
     }
     New-WindowsConfigFixture -Path $configPath -Document $document
     if ($ReadOnly) {

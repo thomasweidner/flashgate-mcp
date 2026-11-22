@@ -23,19 +23,21 @@ shared across roots.
 
 The registry resolves each exact ID against the [trusted TOML file](configuration.md#named-roots).
 PathGuard confines each relative path to the root identified by that operand.
-Every `files.roots.<id>.path` must be absolute, exist, pass policy and resolve to
+Every `files.<id>.path` must be absolute, exist, pass policy and resolve to
 a directory. An invalid root anywhere in the configuration stops startup.
 
 Expected configuration/root failures use safe categories on stderr and exit code `3`; stdout remains empty. Unexpected bootstrap failures use `startup_failed` and exit code `1`. Raw roots and operating-system errors are not emitted.
 
-The registry checks each operand's required [root access](configuration.md#named-policies)
-before invoking the native backend. Missing access configuration allows reads.
-Writes require an explicit effective grant. Profile capability and risk
-checks and the selected configuration's protection still apply. An overlap,
+The registry checks the effective profile's grants and risk ceiling and each
+operand's required [root access](configuration.md#named-policies) before
+invoking the native backend. An absent access list at both policy levels
+defaults to `files.read`. The selected configuration's protection still
+applies after functional admission. The planned BL-375 path exclusions will
+also apply independently of functional admission. An overlap,
 alias, default ID or available backend supplies no extra rights. A denied
 request returns a redacted `access_denied` result without backend dispatch.
-Copy requires read on its source and write on its target. Move requires
-write on both operands. The current tools require an identical root ID for
+Copy requires `files.read` on its source and `files.write` on its target. Move
+requires `files.write` on both operands. The current tools require an identical root ID for
 each pair. Future delegated effects must preserve the selected root's access
 and the protected configuration boundary at the actual effect.
 

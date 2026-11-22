@@ -59,7 +59,7 @@ The fail-closed fallback rule prevents `auto` from becoming a policy-bypass mech
 BL-233 delivered K2, the central typed configuration model in the shared Go
 core. See the [runtime configuration reference](../configuration.md) for
 the supported TOML schema, current bootstrap checks, and template.
-BL-101 uses `[files]` and `[files.roots.<id>]` within that same model,
+BL-101 uses `[files]` and `[files.<id>]` within that same model,
 with an explicit default and validation of every root before exposure.
 BL-103 resolves `[profiles]` in the same snapshot. A host must admit the
 effective grants under its own measured catalog and wire bindings. See

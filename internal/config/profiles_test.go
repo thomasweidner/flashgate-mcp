@@ -13,7 +13,7 @@ func TestResolveProfiles(t *testing.T) {
 	root := documentWithRoot(t, t.TempDir())
 	read := []capability.ID{capability.FilesRead}
 	write := []capability.ID{capability.FilesRead, capability.FilesWrite}
-	const extra = "[profiles.definitions.extra]\ngrants = ['files.write']\n"
+	const extra = "[profiles.extra]\ngrants = ['files.write']\n"
 	for _, tc := range []struct {
 		name, options string
 		id            ProfileID
@@ -22,12 +22,12 @@ func TestResolveProfiles(t *testing.T) {
 	}{
 		{"omitted", extra, ProfileRead, read, capability.RiskMutation},
 		{"write", "[profiles]\nactive = 'write'\n" + extra, ProfileWrite, write, capability.RiskMutation},
-		{"custom", "[profiles]\nactive = 'dev'\n[profiles.definitions.dev]\ngrants = ['files.write', 'files.read']\n", "dev", write, capability.RiskMutation},
+		{"custom", "[profiles]\nactive = 'dev'\n[profiles.dev]\ngrants = ['files.write', 'files.read']\n", "dev", write, capability.RiskMutation},
 		{"explicit composition", "[profiles]\nactive = 'read'\ninclude = ['extra']\n" + extra, ProfileRead, write, capability.RiskMutation},
 		{"tight ceiling", "[profiles]\nactive = 'write'\nmax_risk = 'read'\n", ProfileWrite, write, capability.RiskRead},
 		{"high ceiling with default grants", "[profiles]\nmax_risk = 'high'\n", ProfileRead, read, capability.RiskHigh},
-		{"explicit high-risk grant", "[profiles]\nactive = 'ops'\nmax_risk = 'high'\n[profiles.definitions.ops]\ngrants = ['processes.control']\n", "ops", []capability.ID{capability.ProcessesControl}, capability.RiskHigh},
-		{"empty grants", "[profiles]\nactive = 'empty'\n[profiles.definitions.empty]\ngrants = []\n", "empty", nil, capability.RiskMutation},
+		{"explicit high-risk grant", "[profiles]\nactive = 'ops'\nmax_risk = 'high'\n[profiles.ops]\ngrants = ['processes.control']\n", "ops", []capability.ID{capability.ProcessesControl}, capability.RiskHigh},
+		{"empty grants", "[profiles]\nactive = 'empty'\n[profiles.empty]\ngrants = []\n", "empty", nil, capability.RiskMutation},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg, err := Decode([]byte(root+tc.options), Direct)
@@ -62,24 +62,24 @@ func TestRejectInvalidProfiles(t *testing.T) {
 		{"unknown active", "[profiles]\nactive = 'admin'\n", CategoryInvalidProfile},
 		{"empty active", "[profiles]\nactive = ''\n", CategoryInvalidProfile},
 		{"invalid active type", "[profiles]\nactive = 1\n", CategoryInvalidConfig},
-		{"missing grants", "[profiles.definitions.dev]\n", CategoryInvalidProfile},
-		{"invalid grants type", "[profiles.definitions.dev]\ngrants = 'files.read'\n", CategoryInvalidConfig},
-		{"mis-cased name", "[profiles.definitions.Dev]\ngrants = []\n", CategoryInvalidConfig},
-		{"bad name", "[profiles.definitions.1bad]\ngrants = []\n", CategoryInvalidProfile},
-		{"duplicate definition", "[profiles.definitions.dev]\ngrants = []\n[profiles.definitions.dev]\ngrants = []\n", CategoryInvalidConfig},
-		{"builtin override", "[profiles.definitions.read]\ngrants = []\n", CategoryInvalidProfile},
-		{"wildcard", "[profiles.definitions.dev]\ngrants = ['files.*']\n", CategoryInvalidProfile},
-		{"mixed case grant", "[profiles.definitions.dev]\ngrants = ['Files.read']\n", CategoryInvalidProfile},
-		{"duplicate grant", "[profiles.definitions.dev]\ngrants = ['files.read', 'files.read']\n", CategoryInvalidProfile},
-		{"unknown grant", "[profiles.definitions.dev]\ngrants = ['files.own']\n", CategoryInvalidProfile},
+		{"missing grants", "[profiles.dev]\n", CategoryInvalidProfile},
+		{"invalid grants type", "[profiles.dev]\ngrants = 'files.read'\n", CategoryInvalidConfig},
+		{"mis-cased name", "[profiles.Dev]\ngrants = []\n", CategoryInvalidConfig},
+		{"bad name", "[profiles.1bad]\ngrants = []\n", CategoryInvalidProfile},
+		{"duplicate definition", "[profiles.dev]\ngrants = []\n[profiles.dev]\ngrants = []\n", CategoryInvalidConfig},
+		{"builtin override", "[profiles.read]\ngrants = []\n", CategoryInvalidProfile},
+		{"wildcard", "[profiles.dev]\ngrants = ['files.*']\n", CategoryInvalidProfile},
+		{"mixed case grant", "[profiles.dev]\ngrants = ['Files.read']\n", CategoryInvalidProfile},
+		{"duplicate grant", "[profiles.dev]\ngrants = ['files.read', 'files.read']\n", CategoryInvalidProfile},
+		{"unknown grant", "[profiles.dev]\ngrants = ['files.own']\n", CategoryInvalidProfile},
 		{"implicit composition", "[profiles]\ninclude = ['write']\n", CategoryInvalidProfile},
 		{"duplicate component", "[profiles]\nactive = 'read'\ninclude = ['write','write']\n", CategoryInvalidProfile},
 		{"self component", "[profiles]\nactive = 'read'\ninclude = ['read']\n", CategoryInvalidProfile},
 		{"unknown component", "[profiles]\nactive = 'read'\ninclude = ['other']\n", CategoryInvalidProfile},
-		{"nested composition", "[profiles.definitions.dev]\ngrants = []\ninclude = ['read']\n", CategoryInvalidConfig},
+		{"nested composition", "[profiles.dev]\ngrants = []\ninclude = ['read']\n", CategoryInvalidConfig},
 		{"unknown risk ceiling", "[profiles]\nmax_risk = 'critical'\n", CategoryInvalidProfile},
 		{"mis-cased risk ceiling", "[profiles]\nmax_risk = 'High'\n", CategoryInvalidProfile},
-		{"declared risk", "[profiles.definitions.dev]\ngrants = []\nrisk = 'read'\n", CategoryInvalidConfig},
+		{"declared risk", "[profiles.dev]\ngrants = []\nrisk = 'read'\n", CategoryInvalidConfig},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			assertProfileError(t, root+tc.options, tc.category)
@@ -90,7 +90,7 @@ func TestRejectInvalidProfiles(t *testing.T) {
 		"process.manage", "process.control.external", "command.execute",
 	} {
 		t.Run(old, func(t *testing.T) {
-			document := root + fmt.Sprintf("[profiles.definitions.dev]\ngrants = ['files.read', '%s']\n", old)
+			document := root + fmt.Sprintf("[profiles.dev]\ngrants = ['files.read', '%s']\n", old)
 			assertProfileError(t, document, CategoryInvalidProfile)
 		})
 	}

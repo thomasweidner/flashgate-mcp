@@ -17,7 +17,8 @@ BL-103 defines the default `read` profile with `files.read` and the explicit
 `write` profile with `files.read` and `files.write`. Custom profile names
 carry only declared grants. Profile definitions are fully validated even
 when inactive. An explicit base may select additional named grant sets
-without recursive inheritance. BL-108 owns per-root capability mapping.
+without recursive inheritance. BL-108 uses flat `[profiles.<id>]` and
+`[files.<id>]` tables with reserved option and former namespace names.
 
 Each reviewed capability definition carries a risk floor. An operation takes
 the highest floor of its requirements and may declare a higher floor. The
@@ -36,12 +37,16 @@ Server-side checks remain authoritative. MCP tool annotations are not authorizat
 
 The server supports multiple named roots addressed by explicit root ID and
 relative path. BL-104 resolves [named policies](../configuration.md#named-policies)
-and per-root read/write overrides from the typed configuration. The registry
-enforces these rights independently of functional grants, risk and catalog
-exposure. BL-105 limits and BL-106 file-type restrictions use the same immutable
+and per-root overrides from the typed configuration. BL-108 resolves profile
+`grants` and resource `access` against the same catalog snapshot. Code maps
+requirements to operands. The root registry requires both the effective
+profile policy and the applicable access of the exact root ID before backend
+dispatch. An available backend supplies no authority. BL-105 limits and BL-106
+file-type restrictions use the same immutable
 root snapshots and grant no functional rights. BL-107 adds per-root link
 policy to those snapshots and grants no capabilities. Later owners extend
-the model for capability mapping and working-directory policy. Deprecated MCP
+the model for working-directory policy. BL-375's planned path exclusions
+remain an independent restriction even when both capability checks succeed. Deprecated MCP
 Roots may be evaluated as optional legacy-client compatibility.
 
 ### Functional capability contract
@@ -93,7 +98,10 @@ and validated grants share the same catalog snapshot and every required ID
 is explicitly granted. A zero-value requirement or grant denies. An empty
 grant satisfies no operation requirement. For example, if an operation reads
 one resource and writes another, its declaration can require both read and
-write, with BL-159 applying each operand's applicable root policy.
+write. Only the resource-applicable requirements are checked against each
+operand. Current filesystem copy requires the same root ID for both operands
+and therefore checks both rights on that root. The future BL-159 boundary
+uses the same rule alongside caller and execution policy.
 
 Profile and risk policy, root and resource scopes, authenticated principal,
 effective execution identity, backend availability and enforcement strength

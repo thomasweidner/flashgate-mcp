@@ -16,8 +16,9 @@ search and audit integration.
 
 Production filesystem consumers use `internal/fs.FileSystem`. Each operation
 accepts an `fs.Operand` with an exact configured root ID and a relative path.
-The immutable `internal/roots.Registry` implements the interface and checks
-the effective access of each exact ID before dispatch to the bound filesystem.
+The immutable `internal/roots.Registry` implements the interface. It checks
+the [effective profile, risk ceiling and access of each exact root ID](capability-profiles.md)
+before dispatch to the bound filesystem.
 The selected `internal/fs.LocalFileSystem`
 delegates path resolution to `internal/security.PathGuard`.
 
@@ -55,7 +56,8 @@ protection to the entire registry before enabling the router and STDIO server.
 Overlapping roots share effect coordination. They retain separate effective
 access. Public calls carry the ID and path for each operand. Copy and move
 require the source and target IDs to match. The registry checks their combined
-required rights for that ID before dispatch. Capability checks, path
+required rights for that ID before dispatch. The same operation definitions
+drive catalog admission and the registry's profile and access checks. Path
 confinement and selected-source protection remain independent.
 
 ## Current implementation

@@ -16,10 +16,14 @@ const (
 )
 
 type profileFields struct {
-	Active      *ProfileID                            `toml:"active"`
-	Include     []ProfileID                           `toml:"include"`
-	MaxRisk     string                                `toml:"max_risk"`
-	Definitions map[ProfileID]profileDefinitionFields `toml:"definitions"`
+	profileOptions
+	Definitions map[ProfileID]profileDefinitionFields
+}
+
+type profileOptions struct {
+	Active  *ProfileID  `toml:"active"`
+	Include []ProfileID `toml:"include"`
+	MaxRisk string      `toml:"max_risk"`
 }
 
 type profileDefinitionFields struct {

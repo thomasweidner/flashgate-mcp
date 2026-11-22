@@ -130,6 +130,40 @@ The [migration guide](../migration.md#root-access) covers explicit write
 opt-in for existing configurations. Record the change under Unreleased and
 include the intended backlog closure in the independent terminal review.
 
+## BL-108 per-root capability mapping
+
+BL-108 extends the shared functional capability model in SPR-053. Reuse the
+BL-100 catalog, sets and operation requirements; bind the BL-101/102 root IDs
+and operands, BL-103 measured profile and risk policy, and BL-104 named policy
+inheritance. Retrofit the typed TOML loader, bootstrap, root registry,
+filesystem dispatch and all eight current filesystem tools.
+
+Code declares operation requirements and their resource applicability. A
+profile must grant every required capability within its risk ceiling. Each
+applicable operand must also have the required capability in the selected
+resource's access set from the same catalog snapshot. Copy needs source read
+and target write. Move needs write on both operands. Both remain same-root
+only. Backend or adapter availability conveys no authority.
+
+Profile definitions use `[profiles.<id>]` and root definitions use
+`[files.<id>]`. Keep profile selection, named policies and independent field
+overrides. Root access accepts only known, filesystem-applicable capability IDs
+and defaults to `files.read` if absent at both levels. An explicit list replaces
+the inherited list. Reject the old nesting and short access values.
+
+Preserve BL-105 limits, BL-106 file-type checks, BL-107 native identity and
+link checks, and BL-374 configuration protection. BL-375 will add an
+independent exclusion check that also applies with full functional grants.
+Exercise the cutover, exact operands, profile/root intersection, risk,
+pre-effect denial, active and inactive definitions, alias protection and
+native platform gates. Tools, wire schemas, VERSION and dependencies remain
+stable. Record the configuration break under Unreleased and in migration
+guidance. Complete independent review and verify integration before closure.
+
+Future consumers declare reviewed requirements and applicable resource
+operands, reuse the same grants and access sets, and test denial independently
+of technical availability. See the backlog's cross-epic rules.
+
 ## BL-105 resource limits
 
 BL-105 is a shared domain policy foundation, with configuration and MCP result
@@ -208,19 +242,19 @@ engine or adapter-specific allowlist.
 ### TOML and matching contract
 
 The typed bootstrap model supports the following fields under
-`[policy.<name>]` and `[files.roots.<id>]` only:
+`[policy.<name>]` and `[files.<id>]` only:
 
 ```toml
 [policy.documents]
 allowed_extensions = [".txt", ".md", ".tar.gz"]
 allow_extensionless = false
 
-[files.roots.work]
+[files.work]
 path = "/srv/flashgate/work"
 policy = "documents"
 allowed_extensions = [".txt", ".md"]
 
-[files.roots.unrestricted]
+[files.unrestricted]
 path = "/srv/flashgate/unrestricted"
 policy = "documents"
 allowed_extensions = "unrestricted"
@@ -911,7 +945,8 @@ for integration boundaries.
 
 BL-100 originally preserved the `files.read_only` setting and server
 bootstrap. BL-103 replaces that setting and binds the current registry to
-explicit grants. BL-108 owns per-root grant composition, BL-110 owns effective
+explicit grants. BL-108 applies the same capability catalog to per-root
+access, BL-110 owns effective
 registration, and BL-159 owns functional enforcement alongside all other
 checks before dispatch. BL-236 carries the inputs across execution backends,
 and BL-239 applies the effective context to state and handles. BL-100 adds

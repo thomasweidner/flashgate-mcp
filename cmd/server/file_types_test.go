@@ -17,7 +17,7 @@ func TestFileTypesOnMCPWire(t *testing.T) {
 		testconfig.Write(t, filepath.Join(root, name), []byte(data))
 	}
 	source := filepath.Join(t.TempDir(), "config.toml")
-	testconfig.Write(t, source, []byte(configDocument(t, root, "roots.work.access=['read','write']\nroots.work.allowed_extensions=['.txt']\n"+profileSettings(false))))
+	testconfig.Write(t, source, []byte(configDocument(t, root, "work.access=['files.read','files.write']\nwork.allowed_extensions=['.txt']\n"+profileSettings(false))))
 	deps := defaultBootstrapDependencies(source)
 	cfg, err := deps.loadConfig()
 	if err != nil {

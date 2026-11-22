@@ -20,8 +20,8 @@ func TestRootResourceSnapshotsAndEffects(t *testing.T) {
 	}
 	r := loadRegistry(t, filepath.Join(t.TempDir(), "config.toml"),
 		"[files]\ndefault_id='work'\n"+rootTable(t, "work", work)+"policy='small'\n"+
-			rootTable(t, "alias", work)+"access=['read','write']\nmax_temp_size=4\n"+
-			"[policy.small]\naccess=['read','write']\nmax_file_size=4\nmax_write_size=4\nmax_scan_size=4\nmax_temp_size=4\n")
+			rootTable(t, "alias", work)+"access=['files.read','files.write']\nmax_temp_size=4\n"+
+			"[policy.small]\naccess=['files.read','files.write']\nmax_file_size=4\nmax_write_size=4\nmax_scan_size=4\nmax_temp_size=4\n")
 	l, err := r.LimitsForRoot("work")
 	if err != nil {
 		t.Fatal(err)
@@ -112,7 +112,7 @@ func (b *externalResourceFixture) execute(n int64, dimensions ...resource.Dimens
 func TestGoAndSimulatedExternalResourceParity(t *testing.T) {
 	root := t.TempDir()
 	r := loadRegistry(t, filepath.Join(t.TempDir(), "config.toml"), "[files]\ndefault_id='work'\n"+
-		rootTable(t, "work", root)+"access=['read','write']\nmax_file_size=4\nmax_write_size=4\nmax_scan_size=4\n")
+		rootTable(t, "work", root)+"access=['files.read','files.write']\nmax_file_size=4\nmax_write_size=4\nmax_scan_size=4\n")
 	l, _ := r.LimitsForRoot("work")
 	for _, op := range []string{"read", "write", "copy"} {
 		for _, n := range []int{3, 4, 5} {

@@ -12,11 +12,11 @@ max_write_size = '8 MiB'
 max_scan_size = '10 MB'
 max_result_size = '4 MiB'
 max_temp_size = '2 MiB'
-roots.work.policy = 'small'
-roots.work.max_write_size = '2 MiB'
-roots.work.max_temp_size = 1000
-roots.other.path = '/other'
-roots.other.max_file_size = 512
+work.policy = 'small'
+work.max_write_size = '2 MiB'
+work.max_temp_size = 1000
+other.path = '/other'
+other.max_file_size = 512
 [policy.small]
 max_file_size = '1 MiB'
 max_write_size = '1 MiB'
@@ -25,7 +25,7 @@ max_result_size = '512 KiB'
 max_temp_size = '1 KiB'
 `
 	// Use the same native absolute path for the second logical ID.
-	doc = strings.Replace(doc, "path = '/other'", "path = "+strings.TrimSpace(strings.Split(base, "roots.work.path = ")[1]), 1)
+	doc = strings.Replace(doc, "path = '/other'", "path = "+strings.TrimSpace(strings.Split(base, "work.path = ")[1]), 1)
 	cfg, err := Decode([]byte(doc), Direct)
 	if err != nil {
 		t.Fatal(err)
@@ -53,14 +53,14 @@ max_temp_size = '1 KiB'
 func TestSizeFieldsRejectInvalidAndLegacy(t *testing.T) {
 	base := documentWithRoot(t, t.TempDir())
 	for _, field := range []string{"max_file_size", "max_write_size", "max_scan_size", "max_result_size", "max_temp_size"} {
-		for _, prefix := range []string{"", "roots.work.", "[policy.unused]\n"} {
+		for _, prefix := range []string{"", "work.", "[policy.unused]\n"} {
 			for _, value := range []string{"0", "-1", "1.1", "true", "[]", "{}", "'0 B'", "'8,3 GB'", "'9223372036854775808'"} {
 				if _, err := Decode([]byte(base+prefix+field+" = "+value+"\n"), Direct); err == nil {
 					t.Fatalf("accepted %s%s=%s", prefix, field, value)
 				}
 			}
 		}
-		if _, err := Decode([]byte(base+"roots.work."+field+" = '32 MiB'\n"), Direct); err == nil {
+		if _, err := Decode([]byte(base+"work."+field+" = '32 MiB'\n"), Direct); err == nil {
 			t.Fatal("root expanded", field)
 		}
 		if _, err := Decode([]byte(base+"[policy.unused]\n"+field+" = '32 MiB'\n"), Direct); err == nil {

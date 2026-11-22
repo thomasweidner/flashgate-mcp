@@ -736,12 +736,15 @@ these fixtures do not activate productive external processes or new tools.
 ### Named policy and root access acceptance
 
 Run `go test ./internal/config ./internal/roots ./cmd/server` for strict
-named policy decoding, overrides, empty lists, safe defaults, exact IDs and
-pre-dispatch denial across the eight operations. Exercise the native registry
+flat TOML decoding, reserved namespaces, retired syntax rejection, named
+policy overrides, empty lists, safe defaults, exact IDs, snapshot matching
+and pre-dispatch denial across the eight operations. Exercise the native registry
 through overlapping and aliased roots and verify that denied operations leave
 the target unchanged. Run the STDIO profile and named-root regressions for
-both grant layers, redacted denials, and unchanged wire schemas. Positive
-mutation fixtures, smokes, and benchmarks explicitly grant root write access.
+both grant layers, redacted denials, and unchanged wire schemas. Test a root
+with greater declared rights than the effective profile and the independent
+risk ceiling. Positive mutation fixtures, smokes, and benchmarks explicitly
+grant `files.write` in both layers.
 Run the existing Windows and native Linux matrix, including product coverage
 and the configuration-protection cases with applicable root access.
 

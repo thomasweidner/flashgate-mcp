@@ -18,7 +18,7 @@ New-Item -ItemType Directory -Path $buildDir -Force | Out-Null
 
 try {
     $quotedRoot = ConvertTo-Json -InputObject $repoRoot.Path -Compress
-    $document = "[files]`ndefault_id = 'work'`n[files.roots.work]`npath = $quotedRoot`n"
+    $document = "[files]`ndefault_id = 'work'`n[files.work]`npath = $quotedRoot`n"
     New-WindowsConfigFixture -Path $configPath -Document $document
     $requests = @(
         '{"jsonrpc":"2.0","id":1,"method":'

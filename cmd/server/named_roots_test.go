@@ -18,9 +18,9 @@ func TestFilesystemNamedRootWire(t *testing.T) {
 		testconfig.Write(t, filepath.Join(root, "seed.txt"), []byte(value))
 	}
 	source := writeConfig(t, configDocument(t, work,
-		"roots.archive.path = "+quotedConfigPath(t, archive)+"\n"+
-			"roots.archive.access = ['read', 'write']\n"+
-			"roots.alias.path = "+quotedConfigPath(t, archive)+"\n"))
+		"archive.path = "+quotedConfigPath(t, archive)+"\n"+
+			"archive.access = ['files.read', 'files.write']\n"+
+			"alias.path = "+quotedConfigPath(t, archive)+"\n"+profileSettings(false)))
 	cfg, err := config.Load(config.Source{Role: config.Direct, Path: source})
 	if err != nil {
 		t.Fatal(err)

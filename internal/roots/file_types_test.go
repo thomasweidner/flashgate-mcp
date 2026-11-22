@@ -16,9 +16,9 @@ func TestRootFileTypesExactIDAndConfigurationProtection(t *testing.T) {
 	source := filepath.Join(root, "config.toml")
 	r := loadRegistry(t, source, "[files]\ndefault_id='restricted'\n"+
 		rootTable(t, "restricted", root)+"policy='text'\n"+
-		rootTable(t, "unrestricted", root)+"access=['read','write']\n"+
-		rootTable(t, "readonly", root)+"policy='text'\naccess=['read']\n"+
-		"[policy.text]\naccess=['read','write']\nallowed_extensions=['.txt']\n")
+		rootTable(t, "unrestricted", root)+"access=['files.read','files.write']\n"+
+		rootTable(t, "readonly", root)+"policy='text'\naccess=['files.read']\n"+
+		"[policy.text]\naccess=['files.read','files.write']\nallowed_extensions=['.txt']\n")
 	bad := filepath.Join(root, "bad.exe")
 	if err := os.WriteFile(bad, []byte("bad"), 0600); err != nil {
 		t.Fatal(err)

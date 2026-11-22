@@ -23,7 +23,7 @@ func resourceWire(t *testing.T, root, settings, params, id string) ([]byte, json
 
 func resourceWireVersion(t *testing.T, root, settings, params, id, version string) ([]byte, json.RawMessage) {
 	t.Helper()
-	document := configDocument(t, root, "roots.work.access=['read','write']\n"+settings)
+	document := configDocument(t, root, "work.access=['files.read','files.write']\n"+settings)
 	source := writeConfig(t, document)
 	deps := defaultBootstrapDependencies(source)
 	if version == revision.Stateless {
@@ -74,7 +74,7 @@ func TestResourceStatelessCompletionBoundaries(t *testing.T) {
 		t.Fatal(string(result))
 	}
 	for _, delta := range []int{0, -1} {
-		out, r := resourceWireVersion(t, root, fmt.Sprintf("roots.work.max_result_size=%d\n", len(result)+delta), params, id, revision.Stateless)
+		out, r := resourceWireVersion(t, root, fmt.Sprintf("work.max_result_size=%d\n", len(result)+delta), params, id, revision.Stateless)
 		if delta == 0 {
 			if !bytes.Equal(out, baseline) {
 				t.Fatal("exact completed result denied")
@@ -96,7 +96,7 @@ func TestResourceStatelessCompletionBoundaries(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "target")); err != nil {
 		t.Fatal(err)
 	}
-	for _, settings := range []string{fmt.Sprintf("roots.work.max_result_size=%d\n", len(result)-1), fmt.Sprintf("[protocol]\nmax_response_size=%d\n", len(baseline)-1)} {
+	for _, settings := range []string{fmt.Sprintf("work.max_result_size=%d\n", len(result)-1), fmt.Sprintf("[protocol]\nmax_response_size=%d\n", len(baseline)-1)} {
 		out, _ := resourceWireVersion(t, root, settings+"[profiles]\nactive='write'\n", write, id, revision.Stateless)
 		if bytes.Contains(out, []byte(`"written":true`)) {
 			t.Fatal("oversize completed write receipt succeeded")
@@ -120,7 +120,7 @@ func TestResourceResultAndFramedWireBoundaries(t *testing.T) {
 		t.Fatal(string(result))
 	}
 	for _, delta := range []int{0, -1} {
-		out, r := resourceWire(t, root, fmt.Sprintf("roots.work.max_result_size=%d\n", len(result)+delta), params, id)
+		out, r := resourceWire(t, root, fmt.Sprintf("work.max_result_size=%d\n", len(result)+delta), params, id)
 		if delta == 0 {
 			if !bytes.Equal(out, baseline) {
 				t.Fatal("exact result changed wire")
@@ -140,7 +140,7 @@ func TestResourceResultAndFramedWireBoundaries(t *testing.T) {
 }
 
 func TestResourceWireDenialsHaveNoMutationAndNoStartupWrite(t *testing.T) {
-	for _, field := range []string{"roots.work.max_result_size=1\n", "[protocol]\nmax_response_size=80\n"} {
+	for _, field := range []string{"work.max_result_size=1\n", "[protocol]\nmax_response_size=80\n"} {
 		root := t.TempDir()
 		out, _ := resourceWire(t, root, field+"[profiles]\nactive='write'\n", `{"name":"write_file","arguments":{"root_id":"work","path":"denied","content":"abc"}}`, "1")
 		if bytes.Contains(out, []byte(`"written":true`)) {

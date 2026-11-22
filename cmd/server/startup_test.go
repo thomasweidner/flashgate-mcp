@@ -157,8 +157,8 @@ func TestRunMainActualConfigurationFailuresAreSafe(t *testing.T) {
 		{"empty root", writeConfig(t, configDocument(t, "", "")), config.CategoryInvalidRoot},
 		{"missing filesystem root", writeConfig(t, configDocument(t, filepath.Join(root, "missing"), "")), config.CategoryRootNotFound},
 		{"file root", writeConfig(t, configDocument(t, rootFile, "")), config.CategoryRootNotDirectory},
-		{"missing secondary root", writeConfig(t, configDocument(t, root, "roots.archive.path = "+quotedConfigPath(t, filepath.Join(root, "missing"))+"\n")), config.CategoryRootNotFound},
-		{"file secondary root", writeConfig(t, configDocument(t, root, "roots.archive.path = "+quotedConfigPath(t, rootFile)+"\n")), config.CategoryRootNotDirectory},
+		{"missing secondary root", writeConfig(t, configDocument(t, root, "archive.path = "+quotedConfigPath(t, filepath.Join(root, "missing"))+"\n")), config.CategoryRootNotFound},
+		{"file secondary root", writeConfig(t, configDocument(t, root, "archive.path = "+quotedConfigPath(t, rootFile)+"\n")), config.CategoryRootNotDirectory},
 		{"invalid settings", writeConfig(t, configDocument(t, root, "allow_cwd_root = \"raw-secret\"\n")), config.CategoryInvalidConfig},
 		{"unsupported mode", writeConfig(t, configDocument(t, root, "[runtime]\nmode = \"proxy\"\n")), config.CategoryUnsupportedRuntime},
 	}
@@ -190,7 +190,7 @@ func TestRunMainActualConfigurationFailuresAreSafe(t *testing.T) {
 func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 	active := t.TempDir()
 	missing := filepath.Join(active, "missing-secondary")
-	path := writeConfig(t, configDocument(t, active, "roots.zzz.path = "+quotedConfigPath(t, missing)+"\n"))
+	path := writeConfig(t, configDocument(t, active, "zzz.path = "+quotedConfigPath(t, missing)+"\n"))
 	dependencies := defaultBootstrapDependencies(path)
 	registryCalls := 0
 	dependencies.newToolRegistry = func(fs.FileSystem, int64, config.EffectiveProfile) (*tools.Registry, error) {
@@ -365,7 +365,7 @@ func TestStartupBindsOverlappingRootsAndHardlinks(t *testing.T) {
 					t.Logf("native directory symlink unavailable: %v", err)
 					continue
 				}
-				settings = "roots.work.follow_symlinks = true\n" + settings
+				settings = "work.follow_symlinks = true\n" + settings
 			}
 			document := configDocument(t, configuredRoot, settings)
 			testconfig.Write(t, path, []byte(document))
@@ -424,7 +424,7 @@ func TestRunWithIOUsesExplicitNamedRoots(t *testing.T) {
 		testconfig.Write(t, filepath.Join(dir, "input.txt"), []byte(content))
 	}
 	path := writeConfig(t, configDocument(t, work,
-		"roots.archive.path = "+quotedConfigPath(t, archive)+"\nroots.archive.access = ['read', 'write']\n"+profileSettings(false)))
+		"archive.path = "+quotedConfigPath(t, archive)+"\narchive.access = ['files.read', 'files.write']\n"+profileSettings(false)))
 	input := strings.NewReader(
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"test","version":"1"}}}` + "\n" +
 			`{"jsonrpc":"2.0","method":"notifications/initialized"}` + "\n" +
