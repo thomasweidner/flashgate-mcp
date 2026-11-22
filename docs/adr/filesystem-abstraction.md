@@ -32,6 +32,59 @@ The current interface is defined in
 optional result-admission hook runs after domain validation and before the
 first effect; it grants no rights and cannot replace native safeguards.
 
+### Planned BL-375 path exclusions
+
+BL-375 will add one server-side `excluded` list of root-relative patterns to
+named policies and root overrides. Bootstrap validates all definitions,
+including unused policies, and publishes immutable effective lists. An
+omitted root field inherits its policy's list. With neither field set, the
+list is empty. A present root list replaces the inherited list in full,
+including an explicit `[]`.
+
+Match whole paths or any ancestor by component. Within one component,
+`*` matches zero or more characters and `?` matches exactly one character.
+Neither crosses a path separator. Recursive `**`, character classes, brace
+expansion, general glob engines and regular expressions are outside this
+grammar. Patterns use unambiguous root-relative components subject to
+PathGuard. Reject unsupported or ambiguous patterns, absolute paths and
+traversal at bootstrap. A match applies whether the path names a file, directory
+or symlink, or does not yet exist. Filename suffixes, trailing separators
+and current object types supply no rule classification.
+
+Evaluate affected paths relative to every applicable configured root,
+including their verified native names. Each root's effective list applies
+independently of the requested root ID. A nested or aliased root whose path
+lies in an excluded subtree cannot expose that subtree. Native path
+matching follows the actual directory's case semantics.
+Typical Windows directories are case-insensitive and typical Linux ext4
+directories are case-sensitive. Windows directories with case sensitivity
+enabled and other nonstandard filesystems require native verification. Deny
+the affected access when the relevant path interpretation cannot be proved.
+Root-ID and TOML-key syntax remain independent of native matching.
+
+An existing hardlink is evaluated under the name used to access it.
+FlashGate may read or write the shared file content through a name that
+passes all applicable controls, even when another name is excluded.
+Any future hardlink creation must separately authorize its explicit source
+and target. An excluded or out-of-root source cannot be used. The active
+configuration retains BL-374's path and object-identity protection,
+including content and mutation denials through hardlinks.
+
+Evaluate a symlink entry under its own path and also check the resolved
+target path whenever the operation resolves a supported link. Preserve
+BL-107's link, reparse, junction and mount rules. The shared filesystem
+boundary enforces exclusions for all eight operations and their results,
+including recursive effects, before access or mutation. The exclusion list
+can only restrict access. Exact-root access, effective profile and risk
+checks, resource limits and BL-374 protection each remain in force.
+
+Reuse the native root, parent and object bindings, effect coordination and
+pre-effect checks. Operation-specific guarantees against independent OS
+actors remain open. BL-107 and BL-374 retain their own documented limits.
+Before activating any BL-375 route, prove its enforcement or fail-closed
+behavior, or obtain a separately approved architecture and security
+decision for the unresolved boundary.
+
 ## Consequences
 
 Centralized policy and operation semantics keep tools small, support isolated

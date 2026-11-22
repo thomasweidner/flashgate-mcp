@@ -459,26 +459,26 @@ records the same dependencies and retrofit.
 
 1. **Target architecture role.** Add a server-enforced restriction to the
    configuration, named-root and native filesystem policy boundary below MCP.
-   An immutable bootstrap snapshot binds multiple exact root-relative file and
-   directory exclusions to a named root. A file rule protects the designated
-   object. A directory rule protects its whole subtree. Enforce the protection
-   across every route by which FlashGate can resolve, disclose or affect those
-   objects, including through other roots.
+   An immutable bootstrap snapshot binds an effective `excluded` list to each
+   named root. A component pattern match on a whole path or ancestor denies
+   that path regardless of object type or existence. Apply every applicable
+   root's exclusions at the shared resolution and effect boundary.
 2. **Authoritative sources.** Follow the [named-root architecture](../architecture.md#profiles-capabilities-and-named-roots),
    [per-root security policy](../security.md#per-root-policies-and-execution-backend),
    [configuration protection](../security.md#configuration-trust-and-protection),
-   [typed configuration](../configuration.md#named-policies),
-   [ADR-005](../adr/filesystem-abstraction.md),
+   [planned typed configuration](../configuration.md#planned-path-exclusions),
+   [ADR-005 exclusion decision](../adr/filesystem-abstraction.md#planned-bl-375-path-exclusions),
    [ADR-009](../adr/capability-profiles.md),
    [ADR-010](../adr/operations-and-jobs.md) for retained and deferred work, and
    the [adapter policy](tool-adapters.md#bl-220-adapter-selection) as
    applicable to consumer backends.
 3. **Hard prerequisites.** The completed BL-101/102 registry and operands,
    BL-104 named policies and root access, BL-105 resource limits, BL-106 file-type
-   policy, BL-107 native link/effect safeguards, BL-233 typed configuration
-   and BL-374 configuration protection are the required foundations. Approve
-   the unresolved design decisions below before implementation. Later search,
-   jobs, context, authorization, Native Tools and providers are consumers.
+   policy, BL-107 native link/effect safeguards, BL-108 capability intersection,
+   BL-233 typed configuration and BL-374 configuration protection are the
+   required foundations. Later search, jobs, context, authorization, Native
+   Tools and providers are consumers. Resolve the open guarantees below
+   before enabling affected operations.
 4. **Must reuse.** Extend `internal/config`, `cmd/server` bootstrap,
    `internal/roots`, PathGuard and `internal/fs`. Reuse shared cross-root
    effect coordination, native root/parent/object binding and revalidation,
@@ -489,47 +489,58 @@ records the same dependencies and retrofit.
    result boundaries. Cover list, stat, read, write, mkdir, delete, move and
    copy, including parent listings, recursive scans, implicit and projected
    paths, and source, target and replacement effects. A compound mutation
-   that would affect a protected object must deny before modifying an
-   otherwise allowed destination or ancestor. Later filesystem and search
-   routes (including BL-068), Operations and retained state (BL-084/239),
+   that would reach an excluded path must deny before modifying an
+   otherwise allowed destination or ancestor. Check original and projected
+   paths for directory effects, including descendants of allowed parents.
+   Later filesystem and search routes (including BL-068), Operations and
+   retained state (BL-084/239),
    context and authorization (BL-236/159), root discovery (BL-352), Native
    Tools (BL-360), providers (BL-181/188) and authorized configuration
    management (BL-373) must demonstrate the boundary for their own effects
    and results when applicable.
-6. **Public contract delta.** Plan an additive server-side configuration
-   setting and consistent redacted omission/denial on existing operations.
-   The example `excluded_paths = ["Y", "private.txt"]` is illustrative.
-   Resolve the setting's schema, typing, defaults and compatibility in design.
-   Preserve existing tool names, operands, schemas and transport contracts.
-   Registration changes no active configuration, runtime, version or release
-   scope.
+6. **Public contract delta.** On implementation, add the single
+   [server-side `excluded` list](../configuration.md#planned-path-exclusions)
+   to named policies and root overrides. Omission inherits or defaults to
+   empty. An explicit root list replaces the inherited list, including
+   `[]`. Only `*` and `?` have wildcard meaning within a component. Existing
+   operations gain redacted denials and listing omission. Tool names,
+   operands, schemas and transport contracts stay unchanged. The setting
+   remains outside the shipped schema until implementation and activation.
 7. **Security and resource invariants.** Exclusions remain authoritative
    with full root read/write rights, profile and capability grants, and with
-   permissive file-type or link policy. Preserve all existing authorization
+   permissive file-type or link policy. Apply them after admission by both
+   independent BL-108 capability layers. Preserve all existing authorization
    checks and scan, staging and result limits. Apply the same denial below
    every transport to direct, indirect, staged, delegated and job effects,
    including revalidation of deferred work before reuse and publication.
    Hide excluded entries in parent listings and prevent protected metadata,
    names or content from leaking through errors, logs, counts, hashes, search
-   snippets, previews, receipts, caches or retained result delivery. Bind
-   identity and effect checks across overlapping roots and alternate IDs,
-   hardlinks, symlinks, junctions/reparse points, mounts, case aliases and
-   path substitution. Deny when the required identity, alias classification
-   or race-safe effect binding cannot be established. Preserve allowed sibling
-   access within the proven boundary. The scope is FlashGate and its delegated
-   effects. OS ACL isolation and control of independent processes are outside
-   that scope.
+   snippets, previews, receipts, caches or retained result delivery through
+   excluded paths. Apply native path semantics to alternate root IDs,
+   overlap and case aliases. Evaluate each hardlink under its own name.
+   Allowed aliases can read or write shared file contents. Preserve BL-374's
+   object-identity denials through every hardlink to the active configuration.
+   Check symlink entries and supported resolved targets through BL-107 and
+   deny unsupported links, reparse points, mount paths and unproved bindings.
+   Preserve allowed sibling access, native identity and drift checks, and the
+   existing parent and ancestor protections. The scope covers FlashGate and
+   delegated effects.
 8. **Forbidden alternatives.** Reject a second root registry, path
    validator, or adapter-specific policy engine. BL-074 search patterns and
    BL-080 ignore files remain query controls. They cannot supply server-side
-   denial. A lexical-only check, post-effect filtering, or fallback to an
-   unchecked backend cannot satisfy the boundary.
+   denial. Exclusions introduce no glob support in public tool filters.
+   Reject lexical-only checks, post-effect filtering, general glob or regex
+   engines, blanket lowercase normalization, global file-identity exclusion
+   and weaker backend fallback.
 9. **Acceptance and validation.** Prove native Windows and Linux positive
-   and negative cases for multiple files and subtrees, full grants, allowed
-   sibling reads and writes, omission versus direct denial, missing paths
-   and subsequent creation, overlapping roots/IDs, native aliases and case
-   semantics, deterministic parent/object substitution, unsupported bindings,
-   and source/target and recursive effects. Prove denial before side effects,
+   and negative cases for component patterns, forbidden syntax, omitted
+   versus empty and replacement lists, and immutable bootstrap. Cover full
+   grants, allowed siblings, listing omission and direct denial, missing
+   paths and creation, overlapping roots and IDs, native aliases and case
+   modes, rejected symlink targets, allowed ordinary hardlink aliases with
+   shared reads and writes, denied BL-374 hardlink aliases, deterministic
+   substitution and unsupported bindings. Exercise source, target and
+   recursive effects. Prove denial before side effects,
    bounded scans and redacted results through domain and MCP paths. Cover
    staged, deferred and provider paths when present and require each later
    owner to test its own paths before activation. Apply the relevant
@@ -544,15 +555,12 @@ records the same dependencies and retrofit.
     deferred BL-375 deliverable must be accepted by one concrete successor
     and recorded in both backlog items. Completed foundations remain closed.
 
-Before implementation, review the exact relative syntax and normalization,
-file versus directory typing for missing paths, duplicate and overlapping
-root/rule composition, inheritance and overrides, native case and alias
-semantics, object lifetime and replacement, and enforceable race guarantees
-at each native and delegated boundary. Establish how unsafe configurations,
-unavailable primitives and unproved routes fail closed. Existing BL-107 and
-BL-374 residual race statements do not decide BL-375's guarantees. A new
-security or architecture decision requires explicit approval and an ADR
-before implementation.
+Operation-specific guarantees against independent OS actors remain open.
+For each affected native and delegated boundary, demonstrate the required
+effect binding or a concrete fail-closed outcome before activation. Obtain
+an explicitly approved architecture and security decision if neither is
+established. Existing BL-107 and BL-374 residuals apply to their respective
+controls. BL-375 has no approved race exception or absolute race guarantee.
 
 ## BL-220 adapter acceptance binding
 
