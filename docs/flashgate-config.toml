@@ -28,9 +28,13 @@ follow_symlinks = false
 # allow_extensionless = false
 # [] denies suffixed files. "unrestricted" removes an inherited suffix limit.
 # Override allow_extensionless separately to replace an inherited boolean.
+# Optional path exclusions use root-relative components with * and ?.
+# An explicit list replaces inherited exclusions, including an empty list.
+# excluded = ["private", "logs/my*.log"]
 # [policy.workspace]
 # access = ["files.read", "files.write"]
 # follow_symlinks = false
+# excluded = ["private", "logs/my*.log"]
 # max_file_size = "1 MiB"
 # max_write_size = "1 MiB"
 # max_scan_size = "2 MiB"

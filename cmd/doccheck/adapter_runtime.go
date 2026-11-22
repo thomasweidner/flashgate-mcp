@@ -219,6 +219,16 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 						systemDLLCalls[selector] = true
 					}
 				}
+				if fn.Recv == nil && fn.Name.Name == "nativeExclusionDirectory" && selector.Sel.Name == "Syscall" && len(call.Args) == 4 {
+					id, ok := call.Args[0].(*ast.SelectorExpr)
+					request, fixed := call.Args[2].(*ast.BasicLit)
+					if ok && fixed && id.Sel.Name == "SYS_IOCTL" && request.Kind == token.INT && request.Value == "0x80086601" {
+						q, ok := id.X.(*ast.Ident)
+						if ok && imports[q.Name] == "syscall" {
+							systemDLLCalls[selector] = true
+						}
+					}
+				}
 				if fn.Recv != nil && fn.Name.Name == "remove" && selector.Sel.Name == "Syscall" && len(call.Args) == 4 {
 					id, ok := call.Args[0].(*ast.SelectorExpr)
 					if ok {
@@ -264,7 +274,8 @@ func allowedSystemProcedure(name, library, procedure string) bool {
 		return library == `"advapi32.dll"` && procedure == `"GetSecurityInfo"` ||
 			library == `"kernel32.dll"` && (procedure == `"GetFinalPathNameByHandleW"` || procedure == `"GetDriveTypeW"`)
 	case "internal/security/policy_windows.go":
-		return library == `"kernel32.dll"` && procedure == `"GetFileInformationByHandleEx"`
+		return library == `"kernel32.dll"` && (procedure == `"GetFileInformationByHandleEx"` ||
+			procedure == `"GetFinalPathNameByHandleW"` || procedure == `"GetVolumeInformationByHandleW"`)
 	}
 	return false
 }

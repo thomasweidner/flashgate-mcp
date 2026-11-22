@@ -13,7 +13,7 @@ func (f *LocalFileSystem) Stat(path string) (Metadata, error) {
 		return Metadata{}, err
 	}
 
-	safePath, err := f.guard.ResolveExisting(path)
+	safePath, err := f.resolveExisting(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return Metadata{}, ErrNotFound

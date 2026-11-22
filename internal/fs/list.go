@@ -25,7 +25,7 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 
-	safePath, err := f.guard.ResolveExisting(path)
+	safePath, err := f.resolveExisting(path)
 	if err != nil {
 		return nil, err
 	}
@@ -84,6 +84,12 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 				continue
 			}
 			allowed, err := f.guard.AllowListEntry(safePath, name)
+			if len(f.exclusions) != 0 && errors.Is(err, os.ErrNotExist) {
+				_, err = f.resolveExisting(filepath.Join(path, name))
+				if errors.Is(err, ErrPathExcluded) {
+					continue
+				}
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -96,6 +102,9 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 			}
 			entryOperand, err := f.inspectPath(entryPath.String())
 			if err != nil {
+				if errors.Is(err, ErrPathExcluded) {
+					continue
+				}
 				return nil, err
 			}
 			if entryOperand.info == nil {

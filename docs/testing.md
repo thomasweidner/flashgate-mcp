@@ -748,6 +748,24 @@ grant `files.write` in both layers.
 Run the existing Windows and native Linux matrix, including product coverage
 and the configuration-protection cases with applicable root access.
 
+### Path exclusion acceptance
+
+Run `go test ./internal/config ./internal/security ./internal/fs ./internal/roots ./cmd/server -run Exclusion`
+on native Windows NTFS and Linux ext4. Verify omitted, inherited, replacement
+and empty policies, strict pattern and work bounds, ancestor and missing-path
+matching, allowed siblings, overlapping roots and aliases, and both case modes
+when Windows supports a case-sensitive directory fixture. Linux verifies that
+an unproved mount cannot supply an exclusion binding.
+
+Exercise all eight operations with full filesystem grants. Cover link entries,
+chains, dangling targets, ordinary hardlinks with shared contents and hardlinks
+to the active configuration. Require no effects on known-denied copies,
+overwrites, recursive deletions, projected moves or multi-level directory
+creations. Inject native-boundary drift before rename or truncation. Check
+STDIO omission, denials without identifying fields and scan budgets. Run the
+complete CANDIDATE gate, including native Linux race and both coverage and MCP
+conformance, before independent terminal review.
+
 ### Configuration protection acceptance
 
 Exercise the BL-102 operand contract in the native filesystem and wire gates.

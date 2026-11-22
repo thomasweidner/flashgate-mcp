@@ -3,6 +3,7 @@ package security
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -72,6 +73,47 @@ func HasLeafLink(path string, links []LinkIdentity) bool {
 // Callers first resolve the operand through PathGuard. Missing suffixes have
 // no link identities; their existing parents are still inspected.
 func (g *PathGuard) LinkIdentities(path string) ([]LinkIdentity, error) {
+	return g.captureLinks(path, nil)
+}
+
+// ExclusionRoute is a spelling used during a PathGuard traversal. A complete
+// spelling identifies the whole operand. A prefix before a ".." identifies
+// only the traversed directory and cannot be projected as the operand.
+type ExclusionRoute struct {
+	Path     string
+	Complete bool
+}
+
+// ExclusionTraversal records link spellings with their pending names, the
+// resolved target, and directories traversed before a link target's "..".
+// Missing suffixes preserve their names for policy evaluation.
+// Its link identities bind this same traversal. The caller must first
+// admit the operand through this PathGuard.
+func (g *PathGuard) ExclusionTraversal(path string) ([]LinkIdentity, []ExclusionRoute, error) {
+	var visited []ExclusionRoute
+	if len(g.rootLinks) != 0 {
+		// Another root's exclusions may cover directories traversed while
+		// resolving this root, including ones removed by ".." in a link target.
+		relative, err := filepath.Rel(g.root, path)
+		if err != nil || !filepath.IsLocal(relative) {
+			return nil, nil, ErrOutsideRoot
+		}
+		volume := filepath.VolumeName(g.root) + string(filepath.Separator)
+		rootLinks, err := snapshotLinks(volume, g.root, &visited)
+		if err != nil || !SameLinks(g.rootLinks, rootLinks) {
+			return nil, nil, ErrOutsideRoot
+		}
+		for i, route := range visited {
+			if route.Complete {
+				visited[i].Path = filepath.Join(route.Path, relative)
+			}
+		}
+	}
+	links, err := g.captureLinks(path, &visited)
+	return links, visited, err
+}
+
+func (g *PathGuard) captureLinks(path string, visited *[]ExclusionRoute) ([]LinkIdentity, error) {
 	if !isInsideRoot(g.root, path) {
 		return nil, ErrSymlinkDenied
 	}
@@ -79,10 +121,10 @@ func (g *PathGuard) LinkIdentities(path string) ([]LinkIdentity, error) {
 	if err != nil {
 		return nil, ErrOutsideRoot
 	}
-	return walkLinkComponents(g.effectiveRoot, relative, path, nil, 0, true)
+	return walkLinkComponents(g.effectiveRoot, relative, path, nil, 0, true, visited)
 }
 
-func snapshotLinks(base, path string) ([]LinkIdentity, error) {
+func snapshotLinks(base, path string, visited *[]ExclusionRoute) ([]LinkIdentity, error) {
 	if !isInsideRoot(base, path) {
 		return nil, ErrSymlinkDenied
 	}
@@ -90,14 +132,14 @@ func snapshotLinks(base, path string) ([]LinkIdentity, error) {
 	if err != nil {
 		return nil, ErrOutsideRoot
 	}
-	return walkLinkComponents(base, relative, path, nil, 0, true)
+	return walkLinkComponents(base, relative, path, nil, 0, true, visited)
 }
 
 // walkLinkComponents shares the actual component order between policy checks
 // and identity snapshots. A target is spliced before the remaining components;
 // it is never cleaned across an unresolved link. current is therefore always
 // the resolved parent when a relative target or its ".." component is applied.
-func walkLinkComponents(base, relative, selected string, policy *Policy, depth int, capture bool) ([]LinkIdentity, error) {
+func walkLinkComponents(base, relative, selected string, policy *Policy, depth int, capture bool, visited *[]ExclusionRoute) ([]LinkIdentity, error) {
 	var links []LinkIdentity
 	current := base
 	pending := strings.Split(relative, string(filepath.Separator))
@@ -112,6 +154,9 @@ func walkLinkComponents(base, relative, selected string, policy *Policy, depth i
 			continue
 		}
 		if part == ".." {
+			if visited != nil {
+				*visited = append(*visited, ExclusionRoute{Path: current})
+			}
 			current = filepath.Dir(current)
 			if !isInsideRoot(base, current) {
 				return nil, ErrOutsideRoot
@@ -135,12 +180,24 @@ func walkLinkComponents(base, relative, selected string, policy *Policy, depth i
 			info, err = os.Lstat(entry)
 		}
 		if os.IsNotExist(err) && policy == nil {
+			if visited != nil {
+				for _, name := range pending {
+					if name == ".." {
+						return nil, ErrSymlinkDenied
+					}
+					entry = filepath.Join(entry, name)
+				}
+				*visited = append(*visited, ExclusionRoute{Path: entry, Complete: true})
+			}
 			return links, nil
 		}
 		if err != nil {
 			return nil, err
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
+			if visited != nil {
+				*visited = append(*visited, linkExclusionRoute(entry, pending))
+			}
 			target, err := relativeLinkTarget(entry)
 			if err != nil {
 				return nil, err
@@ -168,7 +225,19 @@ func walkLinkComponents(base, relative, selected string, policy *Policy, depth i
 	if depth > 8 {
 		return nil, ErrSymlinkDenied
 	}
+	if visited != nil {
+		*visited = append(*visited, ExclusionRoute{Path: current, Complete: true})
+	}
 	return links, nil
+}
+
+func linkExclusionRoute(entry string, pending []string) ExclusionRoute {
+	// Keep the unconsumed names under the link spelling. Stop before a
+	// parent component, which must be applied after actual link resolution.
+	if parent := slices.Index(pending, ".."); parent >= 0 {
+		return ExclusionRoute{Path: filepath.Join(append([]string{entry}, pending[:parent]...)...)}
+	}
+	return ExclusionRoute{Path: filepath.Join(append([]string{entry}, pending...)...), Complete: true}
 }
 
 // Root ancestors participate in native resolution too. Inspect their reparse
@@ -181,7 +250,7 @@ func validateRootChain(path string, policy Policy, depth int) error {
 	if err != nil {
 		return ErrOutsideRoot
 	}
-	_, err = walkLinkComponents(base, relative, path, &policy, depth, false)
+	_, err = walkLinkComponents(base, relative, path, &policy, depth, false, nil)
 	return err
 }
 

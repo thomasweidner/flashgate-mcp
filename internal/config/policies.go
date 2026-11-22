@@ -17,6 +17,7 @@ type policyFields struct {
 	resourceFields
 	fileTypeFields
 	Access         accessFields `toml:"access"`
+	Excluded       []string     `toml:"excluded"`
 	FollowSymlinks *bool        `toml:"follow_symlinks"`
 }
 
@@ -38,6 +39,7 @@ func (a accessFields) resolve(catalog capability.Catalog) (capability.Set, error
 func (s settings) resolveRootDefinitions(catalog capability.Catalog) ([]RootDefinition, error) {
 	// Validate every definition, including ones that no resource references.
 	policies := make(map[policyID]capability.Set, len(s.Policy))
+	exclusions := make(map[policyID]PathExclusions, len(s.Policy))
 	for id, policy := range s.Policy {
 		if !validConfigID(string(id)) {
 			return nil, NewError(CategoryInvalidConfig, errors.New("invalid policy name"))
@@ -47,6 +49,11 @@ func (s settings) resolveRootDefinitions(catalog capability.Catalog) ([]RootDefi
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
 		policies[id] = access
+		excluded, err := compilePathExclusions(policy.Excluded)
+		if err != nil {
+			return nil, NewError(CategoryInvalidConfig, err)
+		}
+		exclusions[id] = excluded
 		if _, err := policy.fileTypeFields.resolveFileTypes(fileTypeFields{}); err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
@@ -60,6 +67,15 @@ func (s settings) resolveRootDefinitions(catalog capability.Catalog) ([]RootDefi
 		access, err := root.resolveAccess(catalog, policies)
 		if err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
+		}
+		var excluded PathExclusions
+		if root.Excluded != nil {
+			excluded, err = compilePathExclusions(root.Excluded)
+			if err != nil {
+				return nil, NewError(CategoryInvalidConfig, err)
+			}
+		} else if root.Policy != nil {
+			excluded = exclusions[*root.Policy]
 		}
 		limits := s.Files.limits()
 		if root.Policy != nil {
@@ -85,7 +101,7 @@ func (s settings) resolveRootDefinitions(catalog capability.Catalog) ([]RootDefi
 			follow = s.Policy[*root.Policy].FollowSymlinks
 		}
 		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access, Limits: limits, FileTypes: types,
-			FollowSymlinks: follow != nil && *follow})
+			Excluded: excluded, FollowSymlinks: follow != nil && *follow})
 	}
 	slices.SortFunc(roots, func(a, b RootDefinition) int {
 		return strings.Compare(string(a.ID), string(b.ID))

@@ -19,7 +19,7 @@ func (f *LocalFileSystem) Delete(path string, recursive bool, admission ...func(
 		return err
 	}
 
-	safePath, err := f.guard.ResolveExisting(path)
+	safePath, err := f.resolveExisting(path)
 	if err != nil {
 		return err
 	}
@@ -126,10 +126,16 @@ func (f *LocalFileSystem) inspectTreeWithMeter(root effectPath, deleting bool, m
 				}
 			}
 		}
-		if len(projected) != 0 && operand.info != nil && !operand.info.IsDir() {
+		if len(projected) != 0 {
 			relative, err := filepath.Rel(root.path, path)
 			if err != nil {
 				return ErrFileTypeDenied
+			}
+			if err := f.checkProjectedExclusions(root, projected[0], relative); err != nil {
+				return err
+			}
+			if operand.info == nil || operand.info.IsDir() {
+				return nil
 			}
 			projectedPath := effectPath{path: filepath.Join(projected[0], relative), info: operand.info}
 			if symlink {

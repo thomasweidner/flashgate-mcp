@@ -144,6 +144,7 @@ type LocalFileSystem struct {
 	guard      *security.PathGuard
 	limits     Limits
 	protection *security.RootProtection
+	exclusions exclusionRoots
 	effects    *sync.Mutex
 	// Tests in this package inject deterministic namespace drift at the native
 	// boundary. Production constructors leave this unset; it grants no rights.
@@ -207,6 +208,12 @@ func NewProtectedFileSystems(bindings []*security.RootProtection, limits Limits)
 // NewProtectedRootFileSystems binds all immutable limits before publication.
 // Aliased and overlapping roots retain their own caps and share effect locking.
 func NewProtectedRootFileSystems(bindings []*security.RootProtection, limits []Limits, fileTypes ...config.FileTypePolicy) ([]*LocalFileSystem, error) {
+	return NewProtectedRootFileSystemsWithExclusions(bindings, limits, nil, fileTypes...)
+}
+
+// NewProtectedRootFileSystemsWithExclusions binds exclusions for the entire
+// root set so selecting a different backend cannot bypass an applicable rule.
+func NewProtectedRootFileSystemsWithExclusions(bindings []*security.RootProtection, limits []Limits, rules []config.PathExclusions, fileTypes ...config.FileTypePolicy) ([]*LocalFileSystem, error) {
 	if len(fileTypes) != 0 && len(fileTypes) != len(bindings) {
 		return nil, ErrFileTypeDenied
 	}
@@ -233,6 +240,9 @@ func NewProtectedRootFileSystems(bindings []*security.RootProtection, limits []L
 		if err := filesystems[i].validateNativeRoot(); err != nil {
 			return nil, err
 		}
+	}
+	if err := bindExclusionRoots(filesystems, rules); err != nil {
+		return nil, err
 	}
 	return filesystems, nil
 }

@@ -93,6 +93,7 @@ type RootDefinition struct {
 	Access         capability.Set
 	Limits         resource.Limits
 	FileTypes      FileTypePolicy
+	Excluded       PathExclusions
 	FollowSymlinks bool
 }
 
@@ -102,6 +103,7 @@ type rootFields struct {
 	Path           string       `toml:"path"`
 	Policy         *policyID    `toml:"policy"`
 	Access         accessFields `toml:"access"`
+	Excluded       []string     `toml:"excluded"`
 	FollowSymlinks *bool        `toml:"follow_symlinks"`
 }
 

@@ -15,7 +15,7 @@ func (f *LocalFileSystem) Copy(source string, target string, overwrite bool, adm
 		}
 	}
 
-	sourcePath, err := f.guard.ResolveExisting(source)
+	sourcePath, err := f.resolveExisting(source)
 	if err != nil {
 		return err
 	}

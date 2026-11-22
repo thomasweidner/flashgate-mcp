@@ -45,7 +45,7 @@ dispatch. An available backend supplies no authority. BL-105 limits and BL-106
 file-type restrictions use the same immutable
 root snapshots and grant no functional rights. BL-107 adds per-root link
 policy to those snapshots and grants no capabilities. Later owners extend
-the model for working-directory policy. BL-375's planned path exclusions
+the model for working-directory policy. BL-375's path exclusions
 remain an independent restriction even when both capability checks succeed. Deprecated MCP
 Roots may be evaluated as optional legacy-client compatibility.
 
