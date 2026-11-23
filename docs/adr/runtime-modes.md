@@ -25,7 +25,9 @@ The [BL-220 host contract](../planning/tool-adapters.md#bl-220-host-and-transpor
 applies to each shipped role. Host integration uses native APIs, and BL-242
 tests the actual modes and packaged service assets without an interpreter.
 Any separately approved same-binary worker uses the central identity-bound
-launch and supervision path.
+launch and supervision path. Carry the exact CWD and policy binding into that
+path and prove the worker's actual effects under the
+[delegated-effects contract](../security.md#process-working-directory-and-delegated-effects).
 
 Windows system hosting will integrate with the Service Control Manager and use a local Named Pipe. Linux system hosting will integrate with systemd and use a local Unix Domain Socket. Linux `systemd --user` hosting and a Windows per-user background host are accepted post-Version-1.0 options. They are not required for Version 1.0 because direct STDIO already provides the non-administrative path. A Windows per-user host must not be described as a Windows Service unless registered with SCM.
 

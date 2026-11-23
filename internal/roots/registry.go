@@ -21,10 +21,11 @@ type Registry struct {
 }
 
 type entry struct {
-	budget  *resource.Meter
-	limits  resource.Limits
-	access  capability.Set
-	backend *fs.LocalFileSystem
+	budget          *resource.Meter
+	limits          resource.Limits
+	access          capability.Set
+	backend         *fs.LocalFileSystem
+	allowProcessCWD bool
 }
 
 // New validates and binds every root before returning the registry.
@@ -78,7 +79,9 @@ func New(cfg config.Config) (*Registry, error) {
 			return nil, err
 		}
 		registry.ids = append(registry.ids, def.ID)
-		registry.entries[def.ID] = entry{access: def.Access, limits: def.Limits, budget: budget, backend: backends[i]}
+		registry.entries[def.ID] = entry{
+			access: def.Access, limits: def.Limits, budget: budget, backend: backends[i], allowProcessCWD: def.AllowProcessCWD,
+		}
 	}
 	return registry, nil
 }

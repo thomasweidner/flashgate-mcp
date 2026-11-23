@@ -97,6 +97,8 @@ Every backend inherits the [configuration protection contract](../security.md#co
 and [per-root link/native effect boundary](../security.md#symlinks). Backend
 availability or execution identity cannot turn link permission into access;
 delegated effects prove confinement, native classification and object binding.
+Carry the exact working-directory and effective policy binding through
+dispatch under the [process working-directory and delegated-effects contract](../security.md#process-working-directory-and-delegated-effects).
 It also inherits the [effective root file-type policy](../configuration.md#file-types)
 for its applicable file operands and indirect effects. Installation, available
 OS permissions and execution identity cannot turn a suffix match into a grant.

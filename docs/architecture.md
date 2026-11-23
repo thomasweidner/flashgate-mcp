@@ -308,6 +308,13 @@ BL-151 owns productive activation in SPR-057 after BL-163 and the applicable
 execution controls are effective. The unadvertised candidate provides the
 native validation surface before the same reviewed launcher is enabled.
 
+The shared root registry resolves `allow_process_cwd` together with its
+immutable root policy. Its transport-neutral preflight binds an exact root ID
+and relative directory to the checked native identity without adding a
+launcher or exposing a host path. The execution owner applies the
+[working-directory and delegated-effects contract](security.md#process-working-directory-and-delegated-effects)
+through the actual backend.
+
 Managed process handles are the primary identity; PIDs are diagnostic only because of reuse risk.
 
 Process output uses separate bounded stdout/stderr buffers, truncation markers, and cursors. Status, wait, output, and stop operations require the owning execution context.

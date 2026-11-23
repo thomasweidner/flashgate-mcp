@@ -99,6 +99,14 @@ times. Timeout, missing exit state, output limits and unconfirmed cleanup do
 not become PASS. Process ownership remains with the existing Windows and Linux
 controllers. The runner does not increase Go's package timeout or retry gates.
 
+The [process working-directory contract](security.md#process-working-directory-and-delegated-effects)
+uses native Windows and Linux tests for typed policy inheritance, exact root
+selection, directory type and identity, link and mount boundaries, exclusions,
+configuration protection and drift. Test profile grants, risk, operand rights
+and missing enforcement independently. Assert a denied request reaches the
+injected non-executing dispatch sink zero times. Later owners must exercise
+their actual delegated effects before activating a process route.
+
 Retain the printed summary digest separately from the evidence directory.
 `-EvidencePath` plus that digest permits reuse only when the complete required
 plan, current bindings, successful results and every recorded artifact still

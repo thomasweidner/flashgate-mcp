@@ -174,6 +174,11 @@ in the existing runtime source gate; generic loading and syscall function
 values remain denied. The [BL-107 implementation contract](../planning/implementation-contract.md#bl-107-per-root-symlink-and-reparse-policy)
 binds acceptance, unsupported projections and future consumer ownership.
 
+Directory selection for process preflight reuses the guarded existing-path,
+native object and parent identity, exclusion, and configuration protection
+checks. The [delegated-effects contract](../security.md#process-working-directory-and-delegated-effects)
+requires independent enforcement before actual execution.
+
 BL-106 binds the immutable root file-type policy below MCP through this same
 interface. Bootstrap resolves its typed fields once; the native filesystem
 checks lexical and resolved file names, source/target and recursive effects.

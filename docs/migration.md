@@ -5,6 +5,20 @@ FlashGate builds. Follow the current [tool reference](tools.md),
 [protocol reference](protocol.md), and [changelog](../CHANGELOG.md) when
 updating an integration. Internal task renumbering is not a product migration.
 
+## Process working-directory policy
+
+Existing configurations can omit `allow_process_cwd` and retain the effective
+value `false`. No configuration is rewritten at startup. Set a TOML boolean on a
+named policy or individual root where directory selection is intended.
+An explicit root value replaces the inherited value. An older server rejects
+this field, so restore the previous TOML before downgrading.
+
+This setting does not replace the retired `allow_cwd_root` setting. Configure
+an explicit absolute root path as usual. See the
+[working-directory configuration](configuration.md#process-working-directories)
+and [delegated-effects contract](security.md#process-working-directory-and-delegated-effects).
+Existing MCP tools and requests have no process-launch route.
+
 ## Per-root path exclusions
 
 Existing configurations can omit `excluded`. To restrict paths, add it

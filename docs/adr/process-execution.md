@@ -14,7 +14,7 @@ Use a Managed Process Registry. Every server-started process receives an opaque 
 
 Stopping defaults to server-managed processes. External PID control requires the distinct `processes.control` capability plus a high-risk policy classification and is excluded from standard profiles. Process data, command lines, and environments are filtered and redacted.
 
-Command execution uses configured executable IDs resolved server-side to allowed absolute program paths. Arguments are separate arrays. Working directories must be within allowed roots. Environment propagation is allowlisted or explicitly defined. stdout and stderr are separate and bounded. Runtime, output, and concurrency are limited.
+Command execution uses configured executable IDs resolved server-side to allowed absolute program paths. Arguments are separate arrays. Working directories use an exact configured root ID and explicit relative directory under the [process working-directory and delegated-effects contract](../security.md#process-working-directory-and-delegated-effects). Environment propagation is allowlisted or explicitly defined. stdout and stderr are separate and bounded. Runtime, output, and concurrency are limited.
 
 A future `run_command` is a synchronous wrapper over the Managed Process Engine.
 Native Tool adapters use that same central launch and lifecycle boundary under

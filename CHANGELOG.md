@@ -12,6 +12,11 @@ the intended release date. Publication evidence is separate.
 
 ### Added
 
+- Add opt-in `allow_process_cwd` on named policies and roots. The internal
+  preflight binds an exact root and eligible relative working directory to
+  the current policy and directory identity. See the
+  [working-directory contract](docs/security.md#process-working-directory-and-delegated-effects).
+
 - Enforce per-root `excluded` path patterns under named policies or roots.
   All eight filesystem tools apply every applicable root's exclusions.
   Listings omit excluded entries, and mutations check their affected paths

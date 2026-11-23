@@ -129,6 +129,35 @@ See [tool semantics](tools.md#link-and-native-effect-semantics), the
 [security boundary](security.md#symlinks) and the explicit
 [pre-1.0 cutover](migration.md#per-root-link-policy).
 
+## Process working directories
+
+Set `allow_process_cwd` only in a named policy or a root table. It accepts
+the TOML booleans `true` and `false` and defaults to `false`. A root inherits
+the named-policy value when its field is absent. An explicit root boolean
+overrides it independently of link policy, exclusions, access and limits.
+
+```toml
+[policy.execution_workspace]
+allow_process_cwd = true
+
+[files.work]
+path = "/srv/flashgate/work"
+policy = "execution_workspace"
+
+[files.archive]
+path = "/srv/flashgate/archive"
+policy = "execution_workspace"
+allow_process_cwd = false
+```
+
+An internal working-directory operand names the exact root and a relative
+directory. Use `.` for that root, or a path to an existing eligible
+subdirectory. PathGuard, configuration protection, link rules and applicable
+exclusions still apply. The setting grants directory selection only. The
+[security contract](security.md#process-working-directory-and-delegated-effects)
+defines the independent profile, resource and native-effect requirements.
+The current tools have no process-launch route.
+
 ## File types
 
 Set `allowed_extensions` and `allow_extensionless` only in a named policy or
@@ -418,6 +447,7 @@ remain milliseconds.
 | `security.allow_hidden_files` | Boolean, `false` | Allows dot-prefixed data paths subject to other checks. |
 | `security.allow_unc_paths` | Boolean, `false` | Allows a UNC data root subject to other checks. |
 | `policy.<name>.follow_symlinks`, `files.<id>.follow_symlinks` | Boolean, `false` | Root override replaces the named-policy value; supported relative in-root links only. |
+| `policy.<name>.allow_process_cwd`, `files.<id>.allow_process_cwd` | Boolean, `false` | Independently inherited root permission to select an eligible process working directory. |
 | `protocol.max_message_size` | Size, 16777216 | Maximum inbound JSON-RPC message, including newline. |
 | `protocol.max_argument_size` | Size, 12582912 | Maximum tool call params or arguments. |
 | `protocol.max_response_size` | Size, 16777216 | Maximum serialized JSON-RPC response, including newline. |

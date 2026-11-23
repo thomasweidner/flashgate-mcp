@@ -665,6 +665,51 @@ Default control is limited to server-managed processes. External PID control is 
 
 stdout and stderr are separately bounded. Command lines, environments, and output are minimized and redacted.
 
+### Process working-directory and delegated effects
+
+`allow_process_cwd` is a strict boolean on each named policy and root. It
+defaults to `false`. An explicit root value replaces the inherited value
+independently of its other fields. With `true`, the exact selected root ID
+and explicit relative path identify the directory. Use `.` for the root
+itself. Existing subdirectories of any depth are eligible under the effective
+root policy. There is no default-root selection or absolute-path operand.
+
+The transport-neutral root registry checks the caller's declared functional
+operation and effective profile and risk ceiling. It also checks each CWD
+operand's explicit resource requirements against both the profile grants and
+the selected root access from the same capability snapshot. CWD permission
+grants none of `commands.run`, `processes.manage`, `files.read`, or
+`files.write`. Each operation owner declares the applicable functional
+requirements and separately authorizes every explicit, derived, or delegated
+resource access. Selecting an overlapping root cannot borrow a different
+root's grants or bypass any applicable path exclusion.
+
+The directory binding reuses PathGuard, native root, directory and parent
+identity checks, the [path exclusions](#path-exclusion-boundary), and
+[configuration protection](#configuration-trust-and-protection). Invalid,
+missing or non-directory targets, traversal, disallowed hidden or redirected
+paths, ambiguous names, unproved identity and detectable drift deny selection.
+The binding contains the exact effective root context and supports
+revalidation without exposing an absolute path or a native launcher handle.
+
+The current boundary performs a non-executing preflight. Directory selection
+does not enforce a native process's effects. Every process, typed-command,
+Native Tool, worker, or provider owner must carry the binding into the actual
+backend, revalidate it immediately at the effect boundary and prove native
+confinement of all applicable reads, writes and disclosures. This covers
+absolute, relative and implicit accesses, including helpers, plug-ins and
+descendants. Prove protection of the selected runtime configuration and
+exclusions even when the process is otherwise authorized. Deny before dispatch
+when requirements, the effective binding, or actual enforcement cannot be
+proved. A denial cannot fall back to another root, backend, provider or launch
+route.
+
+Each activating owner must test its actual Windows and Linux execution paths
+for rights and risk denial, CWD and identity drift, indirect and delegated
+effects, protection and exclusion bypass attempts, and zero effects or
+fallback on denial. The owner also verifies permitted sibling operations
+through the same route.
+
 ### Typed command execution boundary
 
 The [staged launch boundary](planning/implementation-contract.md#managed-process-activation)
