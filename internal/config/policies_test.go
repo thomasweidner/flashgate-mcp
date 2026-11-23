@@ -96,3 +96,53 @@ func TestNamedPolicyRejectsInvalidConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessWorkingDirectoryPolicy(t *testing.T) {
+	t.Parallel()
+	const definitions = "[policy.allowed]\nallow_process_cwd=true\nfollow_symlinks=true\n" +
+		"[policy.denied]\nallow_process_cwd=false\n"
+	root := documentWithRoot(t, t.TempDir())
+	for _, tc := range []struct {
+		name, settings string
+		want, follow   bool
+	}{
+		{name: "default"},
+		{name: "direct deny", settings: "work.allow_process_cwd=false\n"},
+		{name: "direct allow", settings: "work.allow_process_cwd=true\n", want: true},
+		{name: "inherit allow", settings: "work.policy='allowed'\n", want: true, follow: true},
+		{name: "inherit deny", settings: "work.policy='denied'\n"},
+		{name: "override allow", settings: "work.policy='denied'\nwork.allow_process_cwd=true\n", want: true},
+		{name: "override deny", settings: "work.policy='allowed'\nwork.allow_process_cwd=false\n", follow: true},
+		{name: "independent link override", settings: "work.policy='allowed'\nwork.follow_symlinks=false\n", want: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg, err := Decode([]byte(root+tc.settings+definitions), Direct)
+			if err != nil {
+				t.Fatal(err)
+			}
+			snapshot := cfg.Files().Roots()
+			if snapshot[0].AllowProcessCWD != tc.want || snapshot[0].FollowSymlinks != tc.follow ||
+				!slices.Equal(snapshot[0].Access.IDs(), []capability.ID{capability.FilesRead}) {
+				t.Fatalf("wrong effective CWD, link or access policy: %+v", snapshot[0])
+			}
+			snapshot[0].AllowProcessCWD = !tc.want
+			if cfg.Files().Roots()[0].AllowProcessCWD != tc.want {
+				t.Fatal("caller modified the effective CWD setting")
+			}
+		})
+	}
+	for _, value := range []string{"1", "0.0", "'true'", "[true]", "{ enabled=true }"} {
+		t.Run(value, func(t *testing.T) {
+			for _, prefix := range []string{"work.allow_process_cwd=", "[policy.unused]\nallow_process_cwd=",
+				"work.policy='selected'\nwork.allow_process_cwd=false\n[policy.selected]\nallow_process_cwd="} {
+				_, err := Decode([]byte(root+prefix+value+"\n"), Direct)
+				assertCategory(t, err, CategoryInvalidConfig)
+			}
+		})
+	}
+	for _, invalid := range []string{"work.allow_process_workdir=true\n", "[policy.unused]\nallow_process_workdir=true\n",
+		"work.allow_process_cwd=true\nwork.allow_process_cwd=false\n", "allow_process_cwd=true\n", "[security]\nallow_process_cwd=true\n"} {
+		_, err := Decode([]byte(root+invalid), Direct)
+		assertCategory(t, err, CategoryInvalidConfig)
+	}
+}

@@ -195,6 +195,12 @@ func TestFileTypesNativeWindowsJunction(t *testing.T) {
 	if _, err := f.Read("junction/good.txt", 100); !errors.Is(err, security.ErrReparsePointDenied) {
 		t.Fatal("extension overrode reparse guard", err)
 	}
+	if _, err := f.BindDirectory("junction"); !errors.Is(err, security.ErrReparsePointDenied) {
+		t.Fatal("working-directory selection bypassed the reparse guard", err)
+	}
+	if _, err := f.BindDirectory("target"); err != nil {
+		t.Fatal("ordinary sibling directory was denied", err)
+	}
 	if _, err := os.Stat(filepath.Join(target, "good.txt")); err != nil {
 		t.Fatal(err)
 	}

@@ -46,6 +46,7 @@ func TestLinkPolicyNativeBindMountDenied(t *testing.T) {
 		}
 	}()
 	for _, op := range []func() error{
+		func() error { _, err := f.BindDirectory("mount"); return err },
 		func() error { _, err := f.List("mount"); return err }, func() error { _, err := f.Stat("mount/secret.txt"); return err },
 		func() error { _, err := f.Read("mount/secret.txt", 100); return err }, func() error { return f.Write("mount/new.txt", nil, false) },
 		func() error { _, err := f.Mkdir("mount/new"); return err }, func() error { return f.Delete("mount/secret.txt", false) },
@@ -66,6 +67,10 @@ func TestLinkPolicyNativeBindMountDenied(t *testing.T) {
 	}
 	late := filepath.Join(root, "late")
 	mkdir(t, late)
+	directory, err := f.BindDirectory("late")
+	if err != nil {
+		t.Fatal(err)
+	}
 	mounted := false
 	defer func() {
 		if mounted {
@@ -85,6 +90,9 @@ func TestLinkPolicyNativeBindMountDenied(t *testing.T) {
 	}
 	if err := f.Write("late/new.txt", []byte("changed"), false); err == nil || !mounted {
 		t.Fatal("late bind mount was not denied", mounted, err)
+	}
+	if err := directory.Revalidate(); err == nil {
+		t.Fatal("late bind mount retained its working-directory binding")
 	}
 	if _, err := os.Lstat(filepath.Join(outside, "new.txt")); !os.IsNotExist(err) {
 		t.Fatal("late mount redirected create", err)

@@ -23,6 +23,8 @@ path = ""
 # policy = "workspace"
 # Supported relative links inside this root only; omission defaults to false.
 follow_symlinks = false
+# Optional process working-directory selection. Omission defaults to false.
+# allow_process_cwd = false
 # Optional file restrictions; omitted fields add no extension restriction.
 # allowed_extensions = [".txt", ".md", ".tar.gz"]
 # allow_extensionless = false
@@ -34,6 +36,7 @@ follow_symlinks = false
 # [policy.workspace]
 # access = ["files.read", "files.write"]
 # follow_symlinks = false
+# allow_process_cwd = false
 # excluded = ["private", "logs/my*.log"]
 # max_file_size = "1 MiB"
 # max_write_size = "1 MiB"

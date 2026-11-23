@@ -1126,6 +1126,10 @@ backend availability and cached results independent of authorization. Test the
 affected direct calls, backend parity and context mismatch, including denial
 before dispatch and secret-safe errors and audit.
 
+For process dispatch and retained execution state, carry the exact effective
+root, directory identity and capability snapshot under the
+[working-directory and delegated-effects contract](../security.md#process-working-directory-and-delegated-effects).
+
 <a id="adapter-acceptance-managed-execution"></a>
 <a id="bl-220-managed-execution"></a>
 
@@ -1147,7 +1151,8 @@ limits, cancellation and cleanup on both OSs. No allowlist flag, package-wide
 exemption or second execution engine can substitute for those controls.
 
 Bind local executable, working-directory, input and output operands through
-BL-102. Constrain implicit program, helper and child effects through the actual
+BL-102 and apply the [process working-directory and delegated-effects contract](../security.md#process-working-directory-and-delegated-effects).
+Constrain implicit program, helper and child effects through the actual
 execution identity and native enforcement. Test a permitted executable and
 typed input that would read or mutate it, including reads relayed to
 stdout, stderr, temporary output, helpers or children. Refuse launch if the
@@ -1215,8 +1220,9 @@ before activation. The option matrix, differential tests and performance
 evidence belong to each implementing owner.
 
 Bind implicit native file operations, staging, commit and cleanup to BL-102.
-Check
-even read-only invocations for helpers, optional writes and hostile
+Any adapter using a native process applies the
+[working-directory and delegated-effects contract](../security.md#process-working-directory-and-delegated-effects).
+Check even read-only invocations for helpers, optional writes and hostile
 configuration. Prove content cannot be relayed through output, intermediate
 files or archive members. Reject an unconfined backend before dispatch.
 
@@ -1237,6 +1243,8 @@ boundary. No arbitrary scripts, dynamic plugins or new interpreter dependency
 enter the trusted core through the provider mechanism.
 
 Bind filesystem operands in provider operations and host callbacks to BL-102.
+Apply the [working-directory and delegated-effects contract](../security.md#process-working-directory-and-delegated-effects)
+to provider processes and delegated helpers.
 Prove the protection boundary across provider-owned writes, host callbacks,
 helper processes, returned resources, and shutdown or failure cleanup before
 any dispatch. A provider must not observe or return protected source values.

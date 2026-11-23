@@ -16,9 +16,10 @@ type policyID string
 type policyFields struct {
 	resourceFields
 	fileTypeFields
-	Access         accessFields `toml:"access"`
-	Excluded       []string     `toml:"excluded"`
-	FollowSymlinks *bool        `toml:"follow_symlinks"`
+	Access          accessFields `toml:"access"`
+	Excluded        []string     `toml:"excluded"`
+	FollowSymlinks  *bool        `toml:"follow_symlinks"`
+	AllowProcessCWD *bool        `toml:"allow_process_cwd"`
 }
 
 // A nil list means absent. A present empty list explicitly grants no access.
@@ -96,12 +97,18 @@ func (s settings) resolveRootDefinitions(catalog capability.Catalog) ([]RootDefi
 		if err != nil {
 			return nil, NewError(CategoryInvalidConfig, err)
 		}
-		follow := root.FollowSymlinks
-		if follow == nil && root.Policy != nil {
-			follow = s.Policy[*root.Policy].FollowSymlinks
+		follow, cwd := root.FollowSymlinks, root.AllowProcessCWD
+		if root.Policy != nil {
+			policy := s.Policy[*root.Policy]
+			if follow == nil {
+				follow = policy.FollowSymlinks
+			}
+			if cwd == nil {
+				cwd = policy.AllowProcessCWD
+			}
 		}
 		roots = append(roots, RootDefinition{ID: id, Path: filepath.Clean(root.Path), Access: access, Limits: limits, FileTypes: types,
-			Excluded: excluded, FollowSymlinks: follow != nil && *follow})
+			Excluded: excluded, FollowSymlinks: follow != nil && *follow, AllowProcessCWD: cwd != nil && *cwd})
 	}
 	slices.SortFunc(roots, func(a, b RootDefinition) int {
 		return strings.Compare(string(a.ID), string(b.ID))

@@ -88,23 +88,25 @@ type RootID string
 
 // RootDefinition is a value snapshot of a configured root.
 type RootDefinition struct {
-	ID             RootID
-	Path           string
-	Access         capability.Set
-	Limits         resource.Limits
-	FileTypes      FileTypePolicy
-	Excluded       PathExclusions
-	FollowSymlinks bool
+	ID              RootID
+	Path            string
+	Access          capability.Set
+	Limits          resource.Limits
+	FileTypes       FileTypePolicy
+	Excluded        PathExclusions
+	FollowSymlinks  bool
+	AllowProcessCWD bool
 }
 
 type rootFields struct {
 	resourceFields
 	fileTypeFields
-	Path           string       `toml:"path"`
-	Policy         *policyID    `toml:"policy"`
-	Access         accessFields `toml:"access"`
-	Excluded       []string     `toml:"excluded"`
-	FollowSymlinks *bool        `toml:"follow_symlinks"`
+	Path            string       `toml:"path"`
+	Policy          *policyID    `toml:"policy"`
+	Access          accessFields `toml:"access"`
+	Excluded        []string     `toml:"excluded"`
+	FollowSymlinks  *bool        `toml:"follow_symlinks"`
+	AllowProcessCWD *bool        `toml:"allow_process_cwd"`
 }
 
 type filesFields struct {

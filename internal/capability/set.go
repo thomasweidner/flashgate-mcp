@@ -81,6 +81,9 @@ type Requirement struct {
 	required Set
 }
 
+// Requires reports whether id is part of the declared requirement.
+func (r Requirement) Requires(id ID) bool { return r.required.Contains(id) }
+
 // NewRequirement validates a nonempty list of distinct required rights.
 func (c Catalog) NewRequirement(ids ...ID) (Requirement, error) {
 	if len(ids) == 0 {

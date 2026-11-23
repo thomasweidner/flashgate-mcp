@@ -164,6 +164,25 @@ Future consumers declare reviewed requirements and applicable resource
 operands, reuse the same grants and access sets, and test denial independently
 of technical availability. See the backlog's cross-epic rules.
 
+## BL-109 process working-directory policy
+
+BL-109 supplies a shared non-executing domain policy boundary. It reuses the
+BL-101 exact root registry, BL-102 PathGuard and operand bindings, BL-104
+named policies, BL-107 native identity, BL-108 resource capabilities,
+BL-233 typed configuration, BL-374 protection and BL-375 exclusions.
+Extend the typed TOML loader, immutable root definitions and existing
+registry backends. Preserve independent profile and risk checks. Bind the
+selected directory, root and effective policy without exposing a native path.
+
+Validate strict defaults and overrides, exact root and directory identity,
+protected effects, overlapping roots and exclusions, missing grants and
+enforcement, and denial before the non-executing dispatch boundary on native
+Windows and Linux. Keep MCP schemas, advertised tools, VERSION and dependencies
+stable. BL-139 integrates the operand into typed execution and BL-151 owns
+productive activation. Execution owners apply the durable
+[working-directory and delegated-effects contract](../security.md#process-working-directory-and-delegated-effects)
+at their effect boundary and test the actual enforcement.
+
 ## BL-105 resource limits
 
 BL-105 is a shared domain policy foundation, with configuration and MCP result

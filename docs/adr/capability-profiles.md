@@ -44,8 +44,10 @@ profile policy and the applicable access of the exact root ID before backend
 dispatch. An available backend supplies no authority. BL-105 limits and BL-106
 file-type restrictions use the same immutable
 root snapshots and grant no functional rights. BL-107 adds per-root link
-policy to those snapshots and grants no capabilities. Later owners extend
-the model for working-directory policy. BL-375's path exclusions
+policy to those snapshots and grants no capabilities. The
+[working-directory policy](../security.md#process-working-directory-and-delegated-effects)
+requires the declared process operation and resource requirements from the same
+snapshot. Directory permission grants no capabilities. BL-375's path exclusions
 remain an independent restriction even when both capability checks succeed. Deprecated MCP
 Roots may be evaluated as optional legacy-client compatibility.
 
