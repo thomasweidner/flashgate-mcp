@@ -399,6 +399,32 @@ Candidate tools:
 
 Network probes use explicit policy rather than generic outbound authority. The policy must support bounded host/exact-name or suffix allowlists, port allowlists, and explicit treatment of loopback, private, link-local, multicast, unspecified, and other non-public destination classes. DNS names are resolved under policy and the actual address used for connection is validated again so rebinding or multi-answer resolution cannot bypass destination rules. Timeouts, attempted addresses, returned fields, and diagnostic text stay small and bounded. There is no generic HTTP client in the core. ICMP/ping is not a baseline requirement unless a later native/security decision justifies it.
 
+## Release-unassigned cross-root filesystem operations
+
+Backlog applicability: BL-376, with optional successor variants under BL-058
+and BL-060 and integrated policy tests under BL-161.
+
+The current `copy_path` and `move_path` require matching root IDs. The
+[planned BL-376 contract](implementation-contract.md#bl-376-explicit-cross-root-verified-file-copy)
+extends the existing `copy_path` for a single regular file. The server must
+explicitly allow copy in the requested direction. Require the effective
+caller, profile, risk and functional checks, with `files.read` for the
+source and `files.write` for the destination under their respective roots.
+Both operands retain their native path and policy checks.
+
+Reuse the filesystem copy engine for bounded local byte streaming, staging
+and create-only publication on the destination filesystem, and independent
+destination verification. Return a bounded typed receipt that distinguishes
+source stability, verification and partial or uncertain effects. File
+content stays in the filesystem domain. Extend the applicable BL-205/214/215
+success, failure, authorization and budget evidence before activation.
+
+A separate directed grant is required for a cross-root move. BL-058 owns
+its verified-adoption and source-deletion contract. BL-060 owns traversal
+and partial-result semantics for directory variants. Existing acceptance
+under those owners continues independently. Cloud hydration, user-host
+execution and provider synchronization retain their own adapter boundaries.
+
 <a id="7-cloud-backed-and-placeholder-paths--bl-345"></a>
 
 ## 7. Cloud-backed and placeholder paths
@@ -1012,7 +1038,7 @@ initial enforcement for current mutations. The successor owns its delta.
 
 Backlog applicability: BL-220.
 
-**Applicable owners** BL-036–BL-061, BL-063–BL-067, BL-346
+**Applicable owners** BL-036–BL-061, BL-063–BL-067, BL-346, BL-376
 
 Use the named-root filesystem abstraction and PathGuard for every operand. Keep platform
 identity, reparse and storage details behind that boundary. Test changed
@@ -1027,6 +1053,12 @@ sibling operations remain available. Exercise protected source reads
 through direct, batch, ranged, streamed, copy and compare/verify routes
 where applicable. Test safe metadata and absence of digests or equality
 oracles for the source.
+
+For BL-376 and later cross-root variants, test both directions, each
+operand's independent rights and path checks, safe behavior across volumes,
+concurrent changes and the outcome of publication, verification and cleanup.
+Bind each tested variant to its own server-configured operation grant. Test
+the same-root baseline and retain cross-root denial for inactive variants.
 
 <a id="adapter-acceptance-search"></a>
 <a id="bl-220-search"></a>

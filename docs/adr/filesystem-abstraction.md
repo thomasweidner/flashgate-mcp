@@ -116,11 +116,30 @@ configured root has a stable logical ID and an explicit absolute directory.
 Bootstrap validates every root with PathGuard and binds one selected-source
 protection to the entire registry before enabling the router and STDIO server.
 Overlapping roots share effect coordination. They retain separate effective
-access. Public calls carry the ID and path for each operand. Copy and move
-require the source and target IDs to match. The registry checks their combined
-required rights for that ID before dispatch. The same operation definitions
-drive catalog admission and the registry's profile and access checks. Path
-confinement and selected-source protection remain independent.
+access. Public calls carry the ID and path for each operand. Currently, copy
+and move require the source and target IDs to match. The registry checks
+their combined required rights for that ID before dispatch. The same operation
+definitions drive catalog admission and the registry's profile and access
+checks. Path confinement and selected-source protection remain independent.
+
+### Planned explicit cross-root operations
+
+[BL-376](../planning/implementation-contract.md#bl-376-explicit-cross-root-verified-file-copy)
+adds an explicit, default-deny server policy for a directed root pair and
+operation. The first planned consumer extends the existing `copy_path`
+route for verified single-file copies while preserving the source. The
+registry authorizes the caller, effective profile, risk, and functionality
+and checks `files.read` at the source and `files.write` at the target
+independently. Both paths keep the existing PathGuard, native effect,
+configuration-protection, and exclusion checks, including staging,
+verification, and cleanup.
+
+The planned route uses the common filesystem boundary for bounded local byte
+transfer, create-only publication, and independent target verification.
+Move requires its own permission and verified adoption before source
+deletion under BL-058. Directory traversal and compound copy or move remain
+with BL-060. Until a variant passes its activation gates, distinct root IDs
+continue to be denied for that variant.
 
 ## Current implementation
 

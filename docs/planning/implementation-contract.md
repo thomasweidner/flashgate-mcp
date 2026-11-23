@@ -561,6 +561,112 @@ native namespace and handle semantics. BL-107 and BL-374 retain their
 existing bindings and residuals. BL-375 adds neither snapshot isolation nor
 content-version checks.
 
+## BL-376 explicit cross-root verified file copy
+
+BL-376 is the release-unassigned owner for the directed cross-root policy and
+its first consumer, verified single-file copy through `copy_path`. The current
+registry rejects distinct root IDs for copy and move. The planned variant
+preserves same-root behavior and adds no public tool, second copy engine, or
+release prerequisite.
+
+### Prerequisites and retrofit
+
+The hard predecessors are the immutable typed configuration and named-root
+operand contracts (BL-233/101/102/104), the root-specific controls
+(BL-105/106/107/108/374/375), caller context and central authorization
+(BL-236/159), and the shared content fingerprint, staging, precondition, and
+conflict contracts (BL-048/052/053/059). Reuse their primitives under the
+existing registry, PathGuard, and `internal/fs` native effect coordination.
+BL-161 provides integrated policy validation and consumes the active variant
+only when it is available.
+
+Retrofit the typed configuration loader and immutable registry snapshot,
+the `copy_path` dispatch and result declarations, filesystem copy and native
+effect paths, and the corresponding configuration, security, tool, migration,
+and test guidance. Define the validated configuration fields and the bounded
+success, conflict, failure, and uncertain-outcome contracts before enabling
+the variant. Use the existing exact root IDs and relative operands and the
+central typed MCP result/error adapter. The filesystem core stays independent
+of MCP and the policy supplies no new capability ID or protocol revision.
+
+### Authorization and native effects
+
+- The authoritative server configuration must explicitly allow the operation
+  for the exact ordered pair of distinct root IDs. Omission denies. Reject
+  invalid rules before publishing the immutable configuration. Granting one
+  direction, operation, or pair confers no access to another. Root access,
+  tool visibility, and native OS permissions confer no cross-root grant.
+- Before any content I/O or staging, authorize the caller, effective profile,
+  risk ceiling, effective backend, and every declared functional requirement.
+  Require `files.read` under the exact source root and `files.write` under
+  the exact target root, each with its own profile and root checks. Permissions
+  do not carry across roots, including overlapping or aliased roots. Recheck
+  the applicable policy and native bindings before each observable effect.
+- Confine each path through the existing lexical and effective PathGuard,
+  exact root, parent, and object bindings, shared effect coordination, and
+  native alias, reparse, link, and mount rules. Preserve file-type controls,
+  BL-374 configuration protection, and all applicable BL-375 exclusions for
+  operands, staging, target publication, readback, and cleanup. Reject
+  unsupported objects, effective self-copies, known aliases of protected
+  objects, unproved bindings, and detectable drift. Separate source and
+  target volumes may be supported with confinement within each bound root.
+- Stream a single regular file through bounded Go buffers. Preserve source
+  bytes and namespace and send no file content over MCP. Account for source
+  and target resource limits, including file size, aggregate scanned and
+  written bytes, readback, staging space, buffers, handles, and elapsed time.
+  Enforce the relevant limits through success, cancellation, and cleanup.
+  Copy grants confer no permission to hydrate cloud placeholders, switch to
+  a user host, or synchronize with a provider. Each has a separate policy,
+  support check, and validation contract.
+- Stage within the bound target filesystem, verify the staged bytes, and
+  publish with a native no-clobber operation that binds the destination and
+  preconditions at the effect. Create-only is the safe default for this
+  variant. Overwrite requires a later, separately proved contract. Do not
+  fall back to an unconfined path or weaker publication primitive. Cleanup
+  may touch only staging objects whose identity and ownership are proved.
+
+### Verification and acceptance
+
+- Compute SHA-256 and count the bytes streamed. Prove source stability
+  separately with native source identity and change checks around the stream
+  and before publication. Compare the digest and byte count with an independent
+  read from the bound published destination and verify its identity. Internal
+  verification is confined to the operation's own bytes and grants no general
+  target read or equality oracle. An unproved check cannot support a verified
+  result. Keep receipts, errors, and audit events bounded and redact host paths
+  and native error details.
+- Define bounded, distinguishable outcomes for verified publication,
+  confirmed nonpublication, known partial completion or failed verification,
+  and `UNKNOWN` when actual effect, identity, or cleanup cannot be proved.
+  An exhausted verification budget after publication cannot report success.
+  Specify cancellation boundaries, conflict and cleanup behavior, residual
+  state, and safe reconciliation after a possible effect. No blind retry or
+  deletion of an unverified object. Preserve the source in every outcome.
+  Verification establishes the observed copy outcome under the supported
+  native checks. It supplies no snapshot or crash-durability guarantee.
+- On native Windows and Linux, test allowed and denied root pairs and their
+  reverse directions, partial operand rights, caller/profile/risk denials,
+  alias and protected-configuration cases, exclusions, same-root regressions,
+  supported cross-volume copies, unsupported paths, resource limits,
+  concurrent source/target changes, verification mismatch, cancellation,
+  conflicts, safe publication, and partial or uncertain outcomes. Cover
+  the actual filesystem and MCP routes, including failure and cleanup.
+- Extend BL-205/214/215 for the changed schema, result variants, negative
+  authorization and error fixtures, and response, wire, and catalog budgets
+  before enabling the variant. Reuse existing coverage, conformance, source,
+  native race, and CI gates. Bind the actual Windows/Linux evidence to the
+  candidate and obtain independent terminal review before closure.
+
+BL-058 owns cross-volume move and the separate directed permission and
+source deletion for its cross-root variant. BL-060 owns directory traversal
+and directory copy/move and reuses the verified copy building blocks for
+its cross-root variants. BL-161 owns integrated positive and negative policy
+tests. Existing release-bound acceptance stays independent of the optional
+cross-root variants. At implementation closure, reconcile documentation,
+changelog/version, tests/CI, candidate evidence, release/distribution,
+migration, and security. Any deferred delivery needs a two-sided binding to
+its concrete successor under the shared [closure contract](#closure).
+
 ## BL-220 adapter acceptance binding
 
 Every new or changed consumer inherits the [BL-105 resource contract](#bl-105-resource-limits).
