@@ -143,6 +143,11 @@ continue to be denied for that variant.
 
 ## Current implementation
 
+Direct STDIO binds all eight filesystem operations through BL-236 before
+calling the native root registry. Copy and move use ordered, independently
+checked source and target bindings. Existing native object, path and
+configuration protection still applies at the actual filesystem boundary.
+
 The [Linux openat2 contract](https://man7.org/linux/man-pages/man2/openat2.2.html)
 defines no-cross-mount/no-link resolution and unavailable-interface failure.
 The [Windows reparse data contract](https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/ntifs/ns-ntifs-_reparse_data_buffer)

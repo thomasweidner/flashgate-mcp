@@ -124,7 +124,9 @@ func (noopFileSystem) LimitsForRoot(config.RootID) (resource.Limits, error) {
 
 func requireToolRegistry(t testing.TB, filesystem fs.FileSystem, maxFileSize int64, readOnly bool) *tools.Registry {
 	t.Helper()
-	registry, err := createToolRegistry(filesystem, maxFileSize, testProfile(t, readOnly))
+	registry, err := registerFilesystemTools(maxFileSize, testProfile(t, readOnly), func(registry *tools.Registry, build filesystemTool) error {
+		return registry.Register(build(filesystem))
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

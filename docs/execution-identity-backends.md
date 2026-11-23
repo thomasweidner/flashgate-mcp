@@ -2,7 +2,7 @@
 
 ## Status
 
-**Accepted architecture. Version 1.0 implements Variant A; Variant B is designed but deferred.**
+**Accepted architecture. Direct STDIO uses the current-process backend.**
 
 This document refines the native service architecture. ADR-015 is binding. `BACKLOG.md` remains authoritative for implementation status.
 
@@ -12,7 +12,7 @@ FlashGate uses a hybrid per-root execution-identity architecture:
 
 | Variant | Description | Version 1.0 |
 |---|---|---|
-| A | OS access through a dedicated FlashGate service account and explicitly granted service roots | Implemented |
+| A | OS access through a dedicated FlashGate service account and explicitly granted service roots | Planned under BL-237 |
 | B | Broker-managed worker process under the authenticated user's OS identity | Interface and threat model only |
 | C | In-process impersonation inside the shared service process | Permanently excluded |
 
@@ -25,12 +25,11 @@ Every request carries an immutable server-created execution context:
 ```text
 ExecutionContext
 ├── caller principal ID
-├── caller group/security attributes
-├── effective FlashGate profile
-├── root ID
-├── functional capability
-├── risk classification
-├── execution backend ID
+├── caller origin and group/security attributes
+├── effective policy identity, profile and grants
+├── ordered typed resource operands and per-operand requirements
+├── functional operation requirement and effective risk ceiling
+├── execution backend ID and effective OS identity
 ├── service instance/generation
 ├── request/correlation ID
 ├── protocol/transport context
@@ -60,16 +59,49 @@ The execution backend answers:
 
 ## Runtime-mode matrix
 
-| Runtime path | Caller identity | Effective OS identity | Backend |
-|---|---|---|---|
-| Direct STDIO | Local process owner | Local process owner | `current-process` |
-| Proxy to Version 1.0 system service | Named Pipe/Unix socket peer | Dedicated FlashGate service account | `service-account` |
-| Future service user-worker root | Named Pipe/Unix socket peer | Worker launched under that user's identity | `user-worker` |
-| Future per-user host | Owning user | Owning user | `current-process` |
+| Runtime path | Caller identity | Effective OS identity | Backend | Status |
+|---|---|---|---|---|
+| Direct STDIO | Inherited process credentials | Local process credentials | `current-process` | Active |
+| Proxy to Version 1.0 system service | Named Pipe/Unix socket peer | Dedicated FlashGate service account | `service-account` | Planned |
+| Future service user-worker root | Named Pipe/Unix socket peer | Worker launched under that user's identity | `user-worker` | Planned |
+| Future per-user host | Owning user | Owning user | `current-process` | Planned |
 
 `current-process` is not service Variant C. It is ordinary direct execution under the process's existing identity and performs no impersonation.
 
-## Root configuration model
+## Current direct dispatch
+
+The MCP router passes the accepted revision into the bound filesystem adapter.
+Direct startup derives the caller from the effective Unix IDs and groups or
+the Windows process token. Inherited STDIO relies on the local launch
+boundary. It does not establish a separate peer credential for the MCP client
+or its client metadata. The adapter creates a server correlation ID for each
+invocation.
+
+`internal/fsapp` translates the eight filesystem operations into domain
+commands. `internal/execution` carries caller provenance, the immutable
+effective policy identity, checked requirements, ordered operands, selected
+backend and effective identity, runtime generation, revision and budget.
+Go context carries cancellation and deadline. The dispatcher checks the
+existing functional and resource grants before the registered backend runs.
+Copy binds read on its source and write on its target in addition to the
+complete functional requirement. Move binds write on both operands. Both
+operations still require the same root.
+
+The current-process backend matches the exact operation, operands and policy
+to the native registry. PathGuard and the native filesystem still enforce
+identity, aliases, access, file types, exclusions, budgets and configuration
+protection. The in-process pre-effect receipt check stays separate from the
+typed command. Dispatch accepts only completion bound to that invocation.
+Unknown or unregistered selections fail closed. The production composition
+registers only `current-process`.
+
+BL-159 owns central authorization and BL-239 owns retained state. BL-237 owns
+the dedicated service backend. BL-238 and BL-240 own authenticated typed
+delegation and real native worker execution. Simulated dispatch proves the
+application contract. Native launch still requires the working-directory
+proof and an independently supported native enforcement boundary.
+
+## Planned service root configuration model
 
 Each system-service root has an administratively controlled execution backend.
 
@@ -100,7 +132,9 @@ Version 1.0 behavior:
 
 ## Backend-neutral architecture
 
-The core must not know Windows tokens, Linux UIDs, SCM, systemd, Named Pipes, or Unix sockets.
+The application dispatcher uses opaque identity bindings. OS credential
+acquisition, service managers and peer authentication belong to the platform
+and transport adapters.
 
 Conceptual dependency flow:
 

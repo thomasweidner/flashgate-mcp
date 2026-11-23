@@ -99,6 +99,7 @@ func (r *Router) DispatchRevision(request revision.Request, method string, ctx h
 		}
 		ctx.Context = resource.WithResultOverhead(ctx.Context, r.toolResultOverhead)
 	}
+	ctx.ProtocolVersion = version
 	result, rpcErr := handler.Handle(ctx, request.Params)
 	if rpcErr != nil || version == protocol.ProtocolVersion {
 		return result, rpcErr

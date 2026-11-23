@@ -9,7 +9,8 @@ import (
 
 // Context is passed through the request lifecycle.
 type Context struct {
-	Context context.Context
+	Context         context.Context
+	ProtocolVersion string
 }
 
 // Handler handles a JSON-RPC/MCP method.

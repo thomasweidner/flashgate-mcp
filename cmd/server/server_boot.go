@@ -9,7 +9,6 @@ import (
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/diagnostics"
-	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
@@ -26,7 +25,7 @@ type runnableServer interface {
 type bootstrapDependencies struct {
 	loadConfig      func() (config.Config, error)
 	newRoots        func(config.Config) (*roots.Registry, error)
-	newToolRegistry func(fs.FileSystem, int64, config.EffectiveProfile) (*tools.Registry, error)
+	newToolRegistry func(*roots.Registry, int64, config.EffectiveProfile) (*tools.Registry, error)
 	newRouter       func(string, string, *tools.Registry) *router.Router
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
 }

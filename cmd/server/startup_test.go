@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
-	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
@@ -193,7 +192,7 @@ func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 	path := writeConfig(t, configDocument(t, active, "zzz.path = "+quotedConfigPath(t, missing)+"\n"))
 	dependencies := defaultBootstrapDependencies(path)
 	registryCalls := 0
-	dependencies.newToolRegistry = func(fs.FileSystem, int64, config.EffectiveProfile) (*tools.Registry, error) {
+	dependencies.newToolRegistry = func(*roots.Registry, int64, config.EffectiveProfile) (*tools.Registry, error) {
 		registryCalls++
 		return tools.NewRegistry(), nil
 	}
@@ -223,7 +222,7 @@ func TestRunWithIOPropagatesToolRegistrationFailure(t *testing.T) {
 	path := writeConfig(t, configDocument(t, t.TempDir(), ""))
 	dependencies := defaultBootstrapDependencies(path)
 	var registrationErr error
-	dependencies.newToolRegistry = func(filesystem fs.FileSystem, _ int64, capabilities config.EffectiveProfile) (*tools.Registry, error) {
+	dependencies.newToolRegistry = func(filesystem *roots.Registry, _ int64, capabilities config.EffectiveProfile) (*tools.Registry, error) {
 		registry, err := createToolRegistry(filesystem, 0, capabilities)
 		if registry != nil || err == nil || !strings.Contains(err.Error(), "register read_file") {
 			t.Fatalf("expected read_file contract registration to fail, registry=%v error=%v", registry, err)
@@ -282,7 +281,7 @@ func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) 
 			return dependencies
 		},
 		"nil registry": func(dependencies bootstrapDependencies) bootstrapDependencies {
-			dependencies.newToolRegistry = func(fs.FileSystem, int64, config.EffectiveProfile) (*tools.Registry, error) { return nil, nil }
+			dependencies.newToolRegistry = func(*roots.Registry, int64, config.EffectiveProfile) (*tools.Registry, error) { return nil, nil }
 			return dependencies
 		},
 		"nil router": func(dependencies bootstrapDependencies) bootstrapDependencies {

@@ -46,7 +46,8 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		execCtx = context.Background()
 	}
 
-	result, err := entry.tool.Execute(execCtx, params.Arguments)
+	ctx.Context = execCtx
+	result, err := entry.execute(ctx, params.Arguments)
 	if err == nil {
 		wrapped, wrapErr := entry.contract.wrap(execCtx, result)
 		if wrapErr == nil {

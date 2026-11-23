@@ -56,6 +56,19 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	for _, field := range []string{"caller", "principal", "backend", "policy", "generation"} {
+		params := `{"name":"write_file","arguments":{"root_id":"work","path":"forged.txt","content":"x","` + field + `":"untrusted"}}`
+		response, raw := runCallToolWireRequest(t, registry, params)
+		decoded, err := mcptest.DecodeCallToolResult(response.Result)
+		if err != nil || response.Error != nil || !decoded.IsError || decoded.HasStructuredContent ||
+			decoded.TextContent.(map[string]any)["category"] != "invalid_arguments" {
+			t.Fatalf("unexpected response to forged %s: %s (%v)", field, raw, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, "forged.txt")); !os.IsNotExist(err) {
+		t.Fatalf("forged arguments reached the filesystem: %v", err)
+	}
+
 	call := func(params string, denied bool) string {
 		t.Helper()
 		response, raw := runCallToolWireRequest(t, registry, params)

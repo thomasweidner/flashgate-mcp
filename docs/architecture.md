@@ -54,6 +54,7 @@ The current implementation is a layered Go application using MCP JSON-RPC over S
   with explicit operands and [effective root access](configuration.md#named-policies);
 - a shared capability catalog for profile grants, root access and reviewed
   operation requirements, with a separate risk ceiling and a default `read` catalog;
+- typed filesystem dispatch with a bound caller and current-process backend;
 - central path validation and filesystem abstraction;
 - hard protocol, argument, filesystem, and response limits;
 - redacted diagnostics on stderr;
@@ -80,7 +81,9 @@ STDIO
     |
 JSON-RPC / MCP server -> router -> handlers -> tools
     |
-Filesystem abstraction
+Bound application operation -> current-process backend
+    |
+Named-root registry -> filesystem abstraction
     |
 PathGuard and current policies
     |
@@ -414,9 +417,16 @@ Version 1.0:
 - user-worker backend: interface/threat model only;
 - in-process impersonation: prohibited.
 
-The backend-neutral boundary is implemented before the service so Variant B can be added later without changing domains or MCP tools.
+Direct STDIO uses the [backend-neutral boundary](execution-identity-backends.md#current-direct-dispatch)
+for all eight filesystem operations. Trusted startup derives the caller from
+the process credentials of the inherited STDIO session and selects
+`current-process`. The application binds the effective policy, operation,
+ordered resource operands, backend and generation before native effects. BL-159
+will supply the central authorization decision at the same transition.
 
-All authorization-sensitive handles, cursors, caches, resources, temporary data, and cancellation rights are bound to principal, profile, root, backend, and service generation.
+BL-239 will bind retained handles, cursors, caches, resources, temporary data
+and cancellation rights to the full principal, policy, resource, backend,
+generation and protocol context.
 
 See [Execution Identity Backends](execution-identity-backends.md) and ADR-015.
 

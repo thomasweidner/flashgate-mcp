@@ -54,8 +54,8 @@ Service installation may require administrative rights; using a correctly instal
 
 The architecture is hybrid per root:
 
-- `current-process`: direct mode executes under the process identity;
-- `service-account`: Version 1.0 system-service backend for administratively ACL-granted roots;
+- `current-process`: active for direct STDIO filesystem dispatch under the inherited process credentials;
+- `service-account`: planned Version 1.0 system-service backend for administratively ACL-granted roots;
 - `user-worker`: reserved backend contract, rejected safely in Version 1.0, implemented post-Version-1.0;
 - in-process impersonation: prohibited.
 

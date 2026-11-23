@@ -1112,6 +1112,12 @@ OS enforcement, and future owners implement their own additional consumers.
 
 **Applicable owners** BL-100–BL-111, BL-159–BL-161, BL-165–BL-168, BL-170, BL-217, BL-236, BL-239, BL-256, BL-352, BL-373
 
+The [BL-236 execution contract](implementation-contract.md#bl-236-execution-identity)
+is the shared application entry point. Each owner supplies the typed operation,
+the exact effective authority necessary for its operands and the tests that
+exercise the actual backend effect and result release. Refer to the owning
+Backlog item for its operation, resource, lifecycle and activation acceptance.
+
 Use the [BL-100 functional contract](../adr/capability-profiles.md#functional-capability-contract)
 for definitions, explicit grants and operation requirements. BL-100 tests
 the primitives independently of runtime activation. Integrating owners

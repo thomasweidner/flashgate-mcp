@@ -60,6 +60,49 @@ delta is absent and measures its own affected cost under its existing contract.
 
 `SPR-048` defines release/protocol/payload/native policy contracts that can be built before profiles and Jobs. `SPR-053` establishes configuration and named-root/profile contracts, then BL-236 context, BL-159 authorization, BL-110 effective catalog, BL-166 audit/correlation, and BL-239 state binding; it completes BL-216/219/256 against those contracts. `SPR-049` builds BL-084–BL-089 lifecycle, then BL-090 storage, then dependent Operations, BL-210 Tasks mapping, BL-218 MCP resource handoff, and BL-258 payload/resource CI. Later domains consume these foundations. BL-213 single-transmission work does not require BL-090; BL-218 does. BL-220 defines early native/no-interpreter policy; BL-163 and typed-execution owners implement it later. Exact hard edges and validation/retrofit owners are maintained in [architecture traceability](architecture-traceability.md).
 
+## BL-236 execution identity
+
+BL-236 supplies a transport-neutral application boundary after BL-100–BL-109,
+BL-233 and BL-374/375. It replaces the direct MCP-to-root-registry execution
+path of the eight filesystem tools. The existing catalog, effective profile,
+explicit grants, risk classifications, resource limits, root registry,
+PathGuard and protected native filesystems remain authoritative at their
+respective boundaries.
+
+Bind the OS-derived direct caller to the inherited STDIO session. Carry its
+principal, permitted security attributes, trusted origin, server-generated
+request and correlation ID, accepted protocol binding, cancellation, deadline
+and response budget. Bind the full immutable effective policy snapshot and
+runtime generation separately from the selected backend and effective OS
+identity. The caller and public tool arguments cannot select the backend.
+
+Dispatch typed operations and results through one application boundary. A
+reviewed declaration binds the functional operation, risk and independently
+ordered resource operands, including their roles, access requirements and
+limits. Check the effective profile and each resource grant before backend
+execution. Validate the same binding at the effect and result boundaries.
+Carry the BL-109 working-directory proof when applicable and deny a process
+effect without native enforcement. Preserve BL-374 protection and BL-375
+exclusions on actual resources, aliases, indirect effects and content-derived
+results. Keep the existing pre-effect mutation receipt budget.
+
+Each successor consumes the shared context and its task-specific Backlog
+acceptance. The owner declares the operation and resource rights and validates
+the actual effect, result release or delegation under the selected OS identity.
+Include an allowed case and a denied or stale binding case that demonstrates no
+effect or useful result. Retained state uses BL-239. New transports must supply
+trusted ingress identity and use the same dispatch. Capability discovery,
+installed adapters, transport metadata and caller claims confer no authority.
+There is no automatic backend fallback. Activation is gated by each successor's
+native enforcement and security acceptance.
+
+BL-159 owns the later common central policy decision. BL-237 implements the
+dedicated service-account backend. BL-238 specifies the worker protocol and
+BL-240 implements the isolated native workers. BL-236 activates the direct route
+only. It has no public config, tool, schema or wire delta. Verify the existing
+wire, result budget and catalog fixtures, native Windows and Linux protection,
+race safety, and typed backend and operation extension with test fixtures.
+
 ## BL-102 filesystem resource contract
 
 BL-102 owns transport-neutral local filesystem addressing in SPR-053. Reuse

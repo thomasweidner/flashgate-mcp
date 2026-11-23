@@ -22,7 +22,9 @@ Domain ownership and inward dependency direction reduce duplication, keep policy
 
 ## Consequences
 
-- Existing code remains valid current state; restructuring is planned, not performed here.
+- BL-236 places the eight current filesystem operations behind a typed
+  application dispatcher. The MCP adapter maps wire input and results at its
+  edge, and the current-process backend calls the protected native registry.
 - Go components in the same codebase call the core directly.
 - Future MCPs do not chain MCP calls internally.
 - The core remains extractable without promising a stable public Go API prematurely.
