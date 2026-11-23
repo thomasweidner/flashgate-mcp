@@ -41,6 +41,10 @@ Dependency injection supports:
 
 For example, MCP tools should depend on the `FileSystem` interface rather than directly constructing a local filesystem implementation.
 
+For BL-236, direct startup injects the current-process filesystem
+application service. The MCP adapter binds each invocation before creating
+its filesystem view. Tool unit tests can still inject a file-system double.
+
 ## Consequences
 
 ### Positive

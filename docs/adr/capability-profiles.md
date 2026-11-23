@@ -147,6 +147,10 @@ out of caller-facing responses.
 
 ## Current STDIO profiles
 
+BL-236 makes runtime dispatch check the same reviewed operation definitions
+used for current catalog exposure. It binds the immutable effective profile
+and every applicable root grant separately from caller and backend identity.
+
 The default `read` profile exposes `list_directory`, `read_file`, and
 `get_path_info`. The five mutation names return generic Invalid params in
 that profile. See the [configuration reference](../configuration.md#profiles)

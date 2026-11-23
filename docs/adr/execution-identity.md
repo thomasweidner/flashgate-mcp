@@ -24,7 +24,11 @@ FlashGate adopts a hybrid per-root execution-identity architecture.
 
 ### Version 1.0
 
-Version 1.0 implements **Variant A: service-account roots**.
+Direct STDIO uses the current-process dispatcher with an inherited
+process-credential caller and separate effective backend binding. BL-236
+introduces this boundary for the eight existing filesystem tools.
+
+Version 1.0 targets **Variant A: service-account roots** under BL-237.
 
 - The system service runs under a dedicated least-privilege service identity.
 - Administrators explicitly grant that identity access to configured roots.
@@ -124,7 +128,9 @@ and object binding or prevent protected content from escaping.
 
 1. Define immutable caller and execution context types below the transport adapters.
 2. Add a backend registry/selector controlled by root policy.
-3. Implement `current-process` for direct mode and `service-account` for Version 1.0 service mode.
+3. Use BL-236's typed `current-process` dispatch for direct mode. BL-237
+   owns the actual dedicated `service-account` backend, BL-238 the typed
+   worker wire contract, and BL-240 isolated native worker execution.
 4. Bind all stateful identifiers and caches to the execution context.
 5. Add per-principal scheduling and quotas before multi-client service release.
 6. Document administrator ACL and native-audit implications.

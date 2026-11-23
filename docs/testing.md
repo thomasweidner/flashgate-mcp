@@ -888,6 +888,14 @@ results alone cannot establish native enforcement or cleanup.
 
 ### System service and execution-identity tests
 
+Current direct dispatch has focused `internal/execution` and `internal/fsapp`
+tests for caller and policy snapshots, backend selection, risk and operand
+denials, stale completions, native effects and configuration protection.
+Windows and Linux exercise the same current-process product route. The
+simulated worker fixture tests the typed contract and result binding.
+BL-237 and BL-240 require their own real native identity and delegated
+enforcement evidence before activation.
+
 Version 1.0 tests Variant A only:
 
 - Windows SCM and Linux systemd lifecycle;

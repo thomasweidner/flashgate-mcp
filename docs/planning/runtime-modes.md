@@ -342,7 +342,8 @@ Rules:
 
 ### Version 1.0 decision
 
-- Variant A service-account backend: implemented;
+- Direct STDIO: uses the active `current-process` application backend;
+- Variant A service-account backend: implementation and native activation under BL-237;
 - Variant B user-worker backend: interface and threat model only;
 - Variant C in-process impersonation: excluded.
 

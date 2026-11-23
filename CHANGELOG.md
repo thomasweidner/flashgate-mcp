@@ -24,6 +24,11 @@ the intended release date. Publication evidence is separate.
 
 ### Changed
 
+- Route all eight direct STDIO filesystem tools through the same
+  execution-identity boundary. Bind the process-derived caller, policy,
+  ordered operands and native backend while preserving the current MCP wire
+  contract.
+
 - Add a local validation entry point that composes existing gates, records timed
   results and verifies bound evidence for unchanged candidates. Reuse real wire
   captures within byte/budget mutation tests to avoid repeated fixture execution.

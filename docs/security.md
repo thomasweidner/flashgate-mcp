@@ -749,12 +749,21 @@ enforcement and negative tests.
 
 ### Hybrid service execution identity
 
+A direct filesystem request uses process-derived caller attributes from the
+inherited STDIO boundary. Startup binds that session separately from the
+current-process backend identity. The dispatcher checks the effective policy,
+risk and each ordered resource before native dispatch. Protected content
+remains denied at the native read and copy-source boundaries. Mutating tools
+retain result admission before the effect, and completion is checked against
+the originating invocation before disclosure. See
+[current direct dispatch](execution-identity-backends.md#current-direct-dispatch).
+
 A multi-client system service is a local privilege boundary. Every request has:
 
 - an authenticated caller principal;
 - an effective execution backend.
 
-Version 1.0 implements Variant A service-account roots:
+Version 1.0 plans Variant A service-account roots:
 
 - dedicated restricted Windows/Linux service identity;
 - explicit ACLs for configured service roots;

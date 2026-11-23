@@ -96,6 +96,20 @@ func (r *Registry) LimitsForRoot(id config.RootID) (resource.Limits, error) {
 	return root.limits, nil
 }
 
+// AccessForRoot returns immutable resource grants for pre-dispatch admission.
+// Native effects still pass through this registry and its confined filesystem.
+func (r *Registry) AccessForRoot(id config.RootID) (capability.Set, resource.Limits, error) {
+	root, ok := r.entries[id]
+	if !ok {
+		return capability.Set{}, resource.Limits{}, fs.ErrUnknownRoot
+	}
+	return root.access, root.limits, nil
+}
+
+func (r *Registry) MatchesProfile(policy capability.Policy) bool {
+	return r.profile.Ceiling() == policy.Ceiling() && r.profile.Grants().Equal(policy.Grants())
+}
+
 // ReserveTemp enforces the aggregate live scratch ceiling for this exact root
 // across concurrent operations. It grants no filesystem or backend access.
 // Consumers also enforce any tighter operation/request allowance and defer
