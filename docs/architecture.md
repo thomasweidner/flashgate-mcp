@@ -421,12 +421,16 @@ Direct STDIO uses the [backend-neutral boundary](execution-identity-backends.md#
 for all eight filesystem operations. Trusted startup derives the caller from
 the process credentials of the inherited STDIO session and selects
 `current-process`. The application binds the effective policy, operation,
-ordered resource operands, backend and generation before native effects. BL-159
-will supply the central authorization decision at the same transition.
+ordered resource operands, backend and generation before native effects.
+The [BL-159 Authorizer](planning/implementation-contract.md#bl-159-central-authorization)
+evaluates all eight production operations at that transition. Each future
+owner uses the same decision for its operation variants, including effects and
+result delivery without a public tool name.
 
 BL-239 will bind retained handles, cursors, caches, resources, temporary data
 and cancellation rights to the full principal, policy, resource, backend,
-generation and protocol context.
+generation and protocol context and recheck current authorization before
+later effects and release.
 
 See [Execution Identity Backends](execution-identity-backends.md) and ADR-015.
 
@@ -518,7 +522,13 @@ The server must avoid unnecessary parse/serialize/copy cycles across proxy/servi
 
 Efficiency mechanisms include pagination, filtering, sorting, field selection, ranges, batching, bounded trees, targeted edits, dry-run, atomic/conditional writes, output cursors, and compact profile-specific server instructions.
 
-Version 1.0 fingerprints/content identities are compact integrity/change evidence, not authorization tokens. `verify_paths` accepts one or more expected-state records and normally returns compact checked/mismatch/indeterminate counts plus bounded requested deltas. When a caller explicitly requires a fresh/strong proof, the filesystem domain re-evaluates the current required metadata/content evidence rather than satisfying that proof solely from a reusable cached result.
+Version 1.0 fingerprints and content identities provide compact integrity and
+change evidence. Authorization remains independent. By default, `verify_paths`
+returns compact item results in input order, summary counts and the
+[aggregate verification outcome](planning/implementation-contract.md#authorization-units-and-verification-outcomes).
+Additional mismatch details are bounded and optional. When a caller requires
+a fresh or strong proof, the filesystem domain re-evaluates the current
+metadata or content evidence required for that proof.
 
 Conditional read/not-modified contracts remain post-Version 1.0 under `BL-217`. They may accept a prior content identity/snapshot and omit unchanged payload, but every call still repeats current principal/profile/root/capability/path checks. An internal identity/content cache is an optional bounded implementation optimization: it is scoped to the relevant execution context, safely invalidated, semantically transparent when disabled, and never turns knowledge of a hash into access.
 

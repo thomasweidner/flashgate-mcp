@@ -39,8 +39,12 @@ func NewDirect(registry *roots.Registry, profile config.EffectiveProfile) (*Serv
 	if err != nil {
 		return nil, err
 	}
+	routes, err := bindRoutes(registry, operations)
+	if err != nil {
+		return nil, err
+	}
 	backend := currentProcess{roots: registry, operations: operations, identity: identity, generation: generation}
-	dispatcher, err := execution.NewDispatcher(runtime, profile, execution.CurrentProcess, authorize(registry, operations),
+	dispatcher, err := execution.NewDispatcher(runtime, profile, execution.CurrentProcess, routes,
 		execution.Registration[command, result]{ID: execution.CurrentProcess, Identity: identity, Backend: backend})
 	if err != nil {
 		return nil, err
@@ -48,27 +52,54 @@ func NewDirect(registry *roots.Registry, profile config.EffectiveProfile) (*Serv
 	return &Service{roots: registry, session: session, dispatcher: dispatcher}, nil
 }
 
-func authorize(registry *roots.Registry, operations fs.Operations) execution.Authorizer[command] {
-	return func(_ context.Context, _ execution.Request, command command) (execution.Plan, error) {
-		action, requested, err := command.declaration()
+func bindRoutes(registry *roots.Registry, operations fs.Operations) (execution.Routes[command], error) {
+	variants := [...]command{
+		{name: listDirectory}, {name: readFile}, {name: pathInfo},
+		{name: writeFile}, {name: writeFile, overwrite: true}, {name: makeDirectory},
+		{name: deletePath}, {name: deletePath, recursive: true},
+		{name: copyPath}, {name: copyPath, overwrite: true},
+		{name: movePath}, {name: movePath, overwrite: true},
+	}
+	declarations := make([]execution.Declaration, 0, len(variants))
+	for _, variant := range variants {
+		action, requested, err := variant.declaration()
 		if err != nil {
-			return execution.Plan{}, err
+			return execution.Routes[command]{}, err
+		}
+		operands := make([]execution.OperandRequirement, 0, len(requested))
+		for _, operand := range requested {
+			operands = append(operands, execution.OperandRequirement{
+				Kind: execution.Filesystem, Role: operand.role, Requirement: operations[operand.action].Requirement(),
+			})
+		}
+		declarations = append(declarations, execution.Declaration{
+			Key: variant.key(), Operation: operations[action], Operands: operands,
+		})
+	}
+	return execution.Routes[command]{Declarations: declarations, Key: command.key, Resolve: registryResources(registry)}, nil
+}
+
+func registryResources(registry *roots.Registry) func(context.Context, command) ([]execution.Resource, error) {
+	return func(_ context.Context, c command) ([]execution.Resource, error) {
+		_, requested, err := c.declaration()
+		if err != nil {
+			return nil, err
 		}
 		resources := make([]execution.Resource, 0, len(requested))
 		for _, operand := range requested {
 			access, limits, err := registry.AccessForRoot(operand.root)
 			if err != nil {
-				return execution.Plan{}, err
+				return nil, err
 			}
 			resources = append(resources, execution.Resource{
 				Kind: execution.Filesystem, Role: operand.role, ID: string(operand.root), Relative: operand.path,
-				Requirement: operations[operand.action].Requirement(), Access: access, Limits: limits,
+				Access: access, Limits: limits,
 			})
 		}
 		if len(resources) == 2 && resources[0].ID != resources[1].ID {
-			return execution.Plan{}, fs.ErrCrossRootOperation
+			return nil, fs.ErrCrossRootOperation
 		}
-		return execution.Plan{Operation: command.name, Requirement: operations[action], Resources: resources}, nil
+		return resources, nil
 	}
 }
 

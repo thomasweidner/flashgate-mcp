@@ -45,7 +45,7 @@ func (b currentProcess) Execute(ctx context.Context, invocation execution.Invoca
 func (b currentProcess) matches(binding *execution.Binding, c command) bool {
 	action, requested, err := c.declaration()
 	bound := binding.Resources()
-	if err != nil || binding.Name() != c.name || len(bound) != len(requested) {
+	if err != nil || binding.Key() != c.key() || len(bound) != len(requested) {
 		return false
 	}
 	operation := b.operations[action]

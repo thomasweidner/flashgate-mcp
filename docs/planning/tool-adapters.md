@@ -334,7 +334,14 @@ The implementation uses the cheapest safe equality proof first and reuses the ca
 - entry count;
 - selected metadata expectations.
 
-The input may contain one or many expected-state records so a caller can verify a manifest-like path set in one bounded request. This is generic path verification, not a chat/task/handoff-specific API. Default results remain compact (`verified`, checked count, mismatch count, indeterminate count). Mismatch details are bounded and returned only as needed/requested. A statement that something "changed" requires a supplied or server-owned baseline; absence of a baseline is not inferred as change.
+The input may contain one or many expected-state records so a caller can
+verify a manifest-like path set in one bounded request. All consumers use
+the same path-verification API. The default response
+contains one compact item result per submitted record in input order, the
+[four-state aggregate status](implementation-contract.md#authorization-units-and-verification-outcomes),
+the `verified` boolean and compact checked, mismatch and indeterminate
+counts. Additional bounded mismatch details are optional. A statement that
+something changed requires a supplied or server-owned baseline.
 
 An explicit fresh/strong verification mode re-evaluates the current metadata and, where required by the requested proof, current content/hash evidence instead of accepting a reusable cached result as the proof. Ordinary `auto` verification may reuse safe lower-cost evidence when the semantics remain equivalent. Content identities never authorize access.
 
@@ -824,6 +831,9 @@ Each row assigns the first public implementation owner. Later retrofit owners
 inherit the same [catalog acceptance](implementation-contract.md#bl-215-catalog-and-entry-budget-binding)
 for the existing names they change. For example, BL-043 changes path metadata,
 BL-037–040/049 change directory listing, and BL-052/053/055/063 change file writes.
+First implementation, first productive activation and material changes each
+carry the [BL-159 authorization acceptance](implementation-contract.md#bl-159-central-authorization)
+for their actual operation variants, effects and delivery routes.
 
 `IMPLEMENTED` means present in the current registry where authorized.
 `PLANNED` means an accepted name with no executable measurement.
@@ -908,6 +918,9 @@ desktop automation, cloud APIs and databases have no approved public names.
 BL-181–188 must resolve provider contracts before any registration. A provider
 that later proposes public tools supplies the same owner, milestone, platform,
 capability and budget bindings as a built-in family.
+Apply the same authorization acceptance to internal job dispatch, result
+retrieval, alternate backends and callback-only paths. Record the owning BL
+and operation or variant even when the public inventory gains no new name.
 
 ## 21. Internal adapter inventory
 
@@ -1257,7 +1270,19 @@ any dispatch. A provider must not observe or return protected source values.
 
 <!-- /adapter-acceptance-contract -->
 
-## 22. Implementation gate for every new public tool
+<a id="22-implementation-gate-for-every-new-public-tool"></a>
+
+## 22. Implementation and activation gate for productive routes
+
+Apply this gate at first productive activation and after a material change
+to any operation, effect or delivery route. This includes variants under an
+existing name, independently dispatched routes without a public name and
+alternate backends. Bind the owner, typed operation and variant, authorization
+unit, actual backend, effect checks and result release to the
+[BL-159 contract](implementation-contract.md#bl-159-central-authorization).
+Require allowed and denied evidence at the actual entry and delivery points.
+Keep unproved routes disabled or fail them safely. Apply the public wire and
+catalog criteria below where the route affects those contracts.
 
 Use the shared [BL-213 result contract](implementation-contract.md#bl-213-tool-result-contract).
 Each registered variant needs an executable wire fixture and a matching
@@ -1272,7 +1297,7 @@ variants, profiles, revisions, transports and delivery mechanisms. Each owning
 BL extends its own tests, fixtures, hard budgets and documentation before
 activation. Accepted work leaves BL-205 closed.
 
-Before a future tool is advertised, its owner must provide:
+Before advertising a future tool, document and validate these items.
 
 - final name/schema/result contract;
 - a validated BL-100 requirement for each operation or variant, including

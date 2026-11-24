@@ -102,7 +102,7 @@ grant satisfies no operation requirement. For example, if an operation reads
 one resource and writes another, its declaration can require both read and
 write. Only the resource-applicable requirements are checked against each
 operand. Current filesystem copy requires the same root ID for both operands
-and therefore checks both rights on that root. The future BL-159 boundary
+and therefore checks both rights on that root. The BL-159 boundary
 uses the same rule alongside caller and execution policy.
 
 Profile and risk policy, root and resource scopes, authenticated principal,

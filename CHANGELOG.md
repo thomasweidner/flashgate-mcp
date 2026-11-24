@@ -24,6 +24,11 @@ the intended release date. Publication evidence is separate.
 
 ### Changed
 
+- Authorize all eight direct STDIO filesystem tools through the central
+  BL-159 Authorizer. Bind each operation variant and ordered operand to one
+  policy snapshot before native dispatch. Keep the production registry
+  request-bound and preserve separate native confinement and result admission.
+
 - Route all eight direct STDIO filesystem tools through the same
   execution-identity boundary. Bind the process-derived caller, policy,
   ordered operands and native backend while preserving the current MCP wire

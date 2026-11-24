@@ -103,6 +103,113 @@ only. It has no public config, tool, schema or wire delta. Verify the existing
 wire, result budget and catalog fixtures, native Windows and Linux protection,
 race safety, and typed backend and operation extension with test fixtures.
 
+## BL-159 central authorization
+
+BL-159 owns the shared policy decision at `internal/execution.Dispatcher.Dispatch`.
+BL-236 already routes all eight production STDIO filesystem operations through
+this typed transition. BL-159 supplies the common Authorizer there. Trusted
+composition registers immutable operation and variant declarations. The
+Authorizer checks the selected declaration, effective grants and derived risk
+before resolving operands, then proves each ordered operand's access from the
+same snapshot. The production MCP registry is sealed after request-bound
+registration. Native object, identity and PathGuard checks, result-budget
+admission before mutation, and bound completion and result release remain
+independent checks. BL-160 owns the broader denial matrix and BL-263 checks every
+shipped route against its owner's evidence.
+
+Every current or newly activated productive tool operation uses this transition.
+This includes resource-free operations, changed variants under an existing
+name, and independently dispatched effects and delivery actions without a
+public tool name. The domain supplies a trusted declaration of the operation,
+variant, required rights, risk and ordered resources with their roles. The
+Authorizer uses the trusted caller, effective profile, risk ceiling and operand
+rights from one validated policy snapshot. Reject missing, unknown or
+incompatible declarations. Catalog visibility, annotations and technical
+support confer no grants. A denied operation reaches neither a backend nor
+its fallback.
+
+The direct STDIO implementation preserves these declarations and access
+requirements. Overwrite and recursive deletion select reviewed variants.
+The same Dispatcher supports a resource-free declaration, covered at BL-159
+acceptance by a test-only operation.
+
+| Current operations | Required access |
+|---|---|
+| `list_directory`, `read_file`, `get_path_info` | `files.read` on the selected operand |
+| `write_file`, `create_directory`, `delete_path` | `files.write` on the selected operand |
+| `copy_path` | `files.read` on the source and `files.write` on the target |
+| `move_path` | `files.write` on both operands |
+
+Current copy and move require the same root ID for both operands. The separate
+[BL-376 cross-root contract](#bl-376-explicit-cross-root-verified-file-copy)
+governs directed cross-root copy and the grants reused by later directed variants.
+
+### Authorization units and verification outcomes
+
+- **Action and independent items.** Check the general action requirement before
+  domain execution. If it is denied, reject the entire call. For admitted
+  `read_files`, `get_paths_info`, `hash_paths` and `verify_paths` calls, authorize
+  each input independently. Preserve its input position, return a safe per-item
+  failure on denial and deliver allowed siblings within the shared response
+  budget. Denied items produce no protected reads, hashes, cache entries or
+  content-derived results.
+- **Composite assertions.** Authorize all contributing operands before dispatch
+  or release of a shared assertion such as `compare_paths(A, B)`. Apply this
+  rule when a cached hash or other retained evidence is available. Suppress
+  equality, difference and derived evidence when a contributing operand is
+  denied.
+- **Multi-step effects.** Require all determinable rights before the first
+  effect. Revalidate applicable rights and bindings at each relevant effect
+  boundary, including derived operands as they become known. On late denial,
+  stop dependent effects and report only proven partial state visible to the
+  caller. Before source deletion in a move, verify source identity, current
+  deletion authority and verified destination adoption. A partial copy confers
+  no authority to remove the source.
+
+The planned `verify_paths` contract accepts one or more independent
+expected-state records. A checked record has a confirmed match or mismatch.
+Denied and otherwise unresolved records contribute neither a match nor a
+mismatch. The aggregate follows the complete submitted set.
+
+| Aggregate | Required outcome |
+|---|---|
+| `verified` | Every submitted record was checked and matched. |
+| `mismatch` | Every submitted record was checked and at least one differed. |
+| `partially_verified` | At least one record has a confirmed outcome and at least one remains unresolved. Keep confirmed mismatches visible in their corresponding item results. |
+| `unverified` | No record has a confirmed outcome. |
+
+The aggregate boolean `verified` is true only for the `verified` outcome. When
+the caller lacks authority to check a name's existence, return the same safe
+per-item `access_denied` whether the object exists or is absent, including for
+an expected absence. Authorized, reliably established absence can confirm that
+expectation. The BL-160 and BL-346 acceptance uses a match, a mismatch and a
+denied item to require `partially_verified`, `verified: false`, and a visible
+mismatch at its original position. Repeat with the denied name present and
+absent and compare the full semantic client result.
+
+### Protected fields and later actions
+
+Apply field requirements before protected acquisition and at result projection.
+Preserve them in predicates, counts, inferred statements, retained data,
+alternate result representations, errors, diagnostics and audit. A denied
+field contributes no caller-visible derived information.
+
+In resolved FlashGate tool calls, a malformed opaque handle argument yields
+`invalid_arguments`. A valid argument with a missing general action right
+yields `access_denied` before lookup. With that right, a syntactically valid
+unknown, foreign, expired, stale or currently invisible handle yields the same
+safe `not_found`. Independent MCP protocol methods use the error contract of
+their negotiated revision.
+
+Under BL-239, match the originating binding and authorize the current action
+before a job runs, a later status or control action takes effect, or a result,
+page, resumed stream or buffered notification is released. A scheduled run
+checks the rights of its bound identity at execution time. Server-owned cleanup
+is restricted to resources with proven ownership. A provider callback that
+adds rights, resources or effects requires a fresh BL-159 decision before the
+effect. Even within the original scope, enforce the native effect and bound
+result checks of the selected backend.
+
 ## BL-102 filesystem resource contract
 
 BL-102 owns transport-neutral local filesystem addressing in SPR-053. Reuse
@@ -992,7 +1099,7 @@ the hard wire ceilings and runtime safety limits separate. Reject missing or
 stale fixtures and budgets through the shared coverage gate. Preserve
 single transmission and explicit authorization checks.
 
-Every owning BL applies the [tool and delivery acceptance gate](tool-adapters.md#22-implementation-gate-for-every-new-public-tool)
+Every owning BL applies the [operation and delivery acceptance gate](tool-adapters.md#22-implementation-and-activation-gate-for-productive-routes)
 to its executable revisions, effective profiles, platforms, capabilities and
 transports before activation. Bind applicable errors and explicit exclusions
 to the actual operation. Unresolved behavior and reserved categories remain

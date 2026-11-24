@@ -16,14 +16,14 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/testconfig"
 )
 
-func directFixture(t *testing.T) (*roots.Registry, config.EffectiveProfile, string) {
+func directFixture(t *testing.T, profileName string) (*roots.Registry, config.EffectiveProfile, string) {
 	t.Helper()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "settings.toml")
 	document := "[files]\ndefault_id='work'\nwork.path=" + strconv.Quote(dir) +
 		"\nwork.access=['files.read','files.write']\n" +
 		"reader.path=" + strconv.Quote(dir) + "\n" +
-		"[profiles]\nactive='write'\n"
+		"[profiles]\nactive=" + strconv.Quote(profileName) + "\n"
 	testconfig.Write(t, path, []byte(document))
 	cfg, err := config.Load(config.Source{Role: config.Direct, Path: path})
 	if err != nil {
@@ -37,7 +37,7 @@ func directFixture(t *testing.T) (*roots.Registry, config.EffectiveProfile, stri
 }
 
 func TestDirectFilesystemEffectsAndDeniedSources(t *testing.T) {
-	r, profile, dir := directFixture(t)
+	r, profile, dir := directFixture(t, "write")
 	service, err := NewDirect(r, profile)
 	if err != nil {
 		t.Fatal(err)
@@ -126,7 +126,7 @@ func TestDirectFilesystemEffectsAndDeniedSources(t *testing.T) {
 }
 
 func TestDeniedReceiptAndCanceledRequestHaveNoEffect(t *testing.T) {
-	r, profile, dir := directFixture(t)
+	r, profile, dir := directFixture(t, "write")
 	service, err := NewDirect(r, profile)
 	if err != nil {
 		t.Fatal(err)
@@ -160,7 +160,7 @@ func (f simulatedBackend) Execute(ctx context.Context, call execution.Invocation
 }
 
 func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
-	r, profile, dir := directFixture(t)
+	r, profile, dir := directFixture(t, "write")
 	testconfig.Write(t, filepath.Join(dir, "ordinary.txt"), []byte("ordinary"))
 	const generation = "test-generation"
 	runtime, err := execution.NewRuntime(generation)
@@ -179,7 +179,10 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	binder := authorize(r, operations)
+	routes, err := bindRoutes(r, operations)
+	if err != nil {
+		t.Fatal(err)
+	}
 	local := currentProcess{roots: r, operations: operations, identity: native, generation: generation}
 	direct := execution.Registration[command, result]{ID: execution.CurrentProcess, Identity: native, Backend: local}
 	identity := execution.Identity{Account: "test-account", Binding: "fake-worker"}
@@ -196,7 +199,7 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 	})}
 	read := command{name: readFile, path: operand{"work", "ordinary.txt"}, maxBytes: 4096}
 	for _, reg := range []execution.Registration[command, result]{direct, delegate} {
-		d, err := execution.NewDispatcher(runtime, profile, reg.ID, binder, reg)
+		d, err := execution.NewDispatcher(runtime, profile, reg.ID, routes, reg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -212,7 +215,7 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 	}
 	forged := local
 	forged.identity.Binding = "unrelated-process"
-	wrongNative, err := execution.NewDispatcher(runtime, profile, direct.ID, binder,
+	wrongNative, err := execution.NewDispatcher(runtime, profile, direct.ID, routes,
 		execution.Registration[command, result]{ID: direct.ID, Identity: forged.identity, Backend: forged})
 	if err != nil {
 		t.Fatal(err)
@@ -220,33 +223,42 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 	if value, err := wrongNative.Dispatch(t.Context(), req, read, nil); len(value.content) != 0 || !errors.Is(err, execution.ErrMismatch) {
 		t.Fatalf("native identity mismatch disclosed data: %v", err)
 	}
-	if value, err := wrongNative.Dispatch(t.Context(), req, command{name: "fixture.unknown"}, nil); len(value.content) != 0 || !errors.Is(err, execution.ErrUnsupported) {
+	if value, err := wrongNative.Dispatch(t.Context(), req, command{name: "fixture.unknown"}, nil); len(value.content) != 0 || !errors.Is(err, execution.ErrDenied) {
 		t.Fatalf("undeclared typed operation reached execution: %v", err)
 	}
-	for _, invalid := range []string{"role", "root", "path", "operation"} {
-		d, err := execution.NewDispatcher(runtime, profile, direct.ID, func(ctx context.Context, req execution.Request, cmd command) (execution.Plan, error) {
-			plan, err := binder(ctx, req, cmd)
+	for _, invalid := range []string{"role", "root", "path", "variant"} {
+		misbound := routes
+		want := execution.ErrMismatch
+		if invalid == "role" {
+			want = execution.ErrDenied
+		}
+		if invalid == "variant" {
+			misbound.Key = func(cmd command) execution.OperationKey {
+				return execution.OperationKey{Name: cmd.name, Variant: execution.DefaultVariant}
+			}
+		}
+		misbound.Resolve = func(ctx context.Context, cmd command) ([]execution.Resource, error) {
+			resources, err := routes.Resolve(ctx, cmd)
 			if err != nil {
-				return plan, err
+				return nil, err
 			}
 			switch invalid {
 			case "role":
-				plan.Resources[0], plan.Resources[1] = plan.Resources[1], plan.Resources[0]
+				resources[0], resources[1] = resources[1], resources[0]
 			case "root":
-				plan.Resources[0].ID = "reader"
+				resources[0].ID = "reader"
 			case "path":
-				plan.Resources[1].Relative = "different.txt"
-			case "operation":
-				plan.Requirement = operations[fs.ReadOperation]
+				resources[1].Relative = "different.txt"
 			}
-			return plan, nil
-		}, direct)
+			return resources, nil
+		}
+		d, err := execution.NewDispatcher(runtime, profile, direct.ID, misbound, direct)
 		if err != nil {
 			t.Fatal(err)
 		}
-		copy := command{name: copyPath, path: read.path, target: operand{"work", "copy.txt"}}
+		copy := command{name: copyPath, path: read.path, target: operand{"work", "copy.txt"}, overwrite: true}
 		value, err := d.Dispatch(t.Context(), req, copy, nil)
-		if len(value.content) != 0 || !errors.Is(err, execution.ErrMismatch) || strings.Contains(err.Error(), dir) {
+		if len(value.content) != 0 || !errors.Is(err, want) || strings.Contains(err.Error(), dir) {
 			t.Fatalf("%s: %v", invalid, err)
 		}
 	}

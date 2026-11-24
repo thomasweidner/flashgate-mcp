@@ -11,19 +11,6 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/resource"
 )
 
-func validatePairLimits(filesystem fs.FileSystem, source, target fs.Operand) error {
-	if _, err := filesystem.LimitsForRoot(source.RootID); err != nil {
-		return mapFilesystemError(err)
-	}
-	if _, err := filesystem.LimitsForRoot(target.RootID); err != nil {
-		return mapFilesystemError(err)
-	}
-	if source.RootID != target.RootID {
-		return mapFilesystemError(fs.ErrCrossRootOperation)
-	}
-	return nil
-}
-
 // Effect admission is lazy: static domain denials never serialize a success
 // receipt. The domain invokes it after validation and before its first effect.
 func mutationResult(ctx context.Context, filesystem fs.FileSystem, id config.RootID, result ToolResult, contract ResultContract) (*ToolResult, func() error) {

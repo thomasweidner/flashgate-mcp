@@ -171,6 +171,12 @@ New tools prefer one bounded call over repeated scalar calls when this lowers to
 
 Range, page, field-selection, and cursor arguments are explicit and closed. Default values are conservative and server caps always win.
 
+Use the [BL-159 authorization units](planning/implementation-contract.md#authorization-units-and-verification-outcomes)
+for independent items, composite assertions and multi-step effects, including
+the planned `verify_paths` aggregate. Apply the
+[protected-field and handle rules](planning/implementation-contract.md#protected-fields-and-later-actions)
+to later delivery and control actions.
+
 ### Typed command tools
 
 Command execution never accepts a shell command string. A command tool selects a server-defined `command_id` and supplies a closed typed argument object. Each definition fixes or constrains:

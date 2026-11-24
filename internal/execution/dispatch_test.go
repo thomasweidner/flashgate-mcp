@@ -46,13 +46,21 @@ func sessionFixture(t *testing.T, groups []GroupID) (*Runtime, Session, Request)
 	return runtime, session, request
 }
 
-func fixturePlan(t *testing.T, profile config.EffectiveProfile, floor capability.Risk, ids ...capability.ID) Plan {
+func fixtureDeclaration(t *testing.T, profile config.EffectiveProfile, floor capability.Risk, ids ...capability.ID) Declaration {
 	t.Helper()
 	op, err := profile.Catalog().NewOperation(floor, ids...)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Plan{Operation: "fixture.inspect", Requirement: op}
+	return Declaration{Key: OperationKey{Name: "fixture.inspect", Variant: DefaultVariant}, Operation: op}
+}
+
+func fixtureRoutes(declaration Declaration, resources ...Resource) Routes[probe] {
+	return Routes[probe]{
+		Declarations: []Declaration{declaration},
+		Key:          func(probe) OperationKey { return declaration.Key },
+		Resolve:      func(context.Context, probe) ([]Resource, error) { return resources, nil },
+	}
 }
 
 func TestCallerSnapshotAndRequestBinding(t *testing.T) {
@@ -102,7 +110,7 @@ func TestCallerSnapshotAndRequestBinding(t *testing.T) {
 func TestDispatcherRejectsMissingBackends(t *testing.T) {
 	runtime, _, _ := sessionFixture(t, nil)
 	profile := profileFixture(t, "")
-	authorize := func(context.Context, Request, probe) (Plan, error) { return Plan{}, ErrDenied }
+	routes := fixtureRoutes(fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead))
 	identity := Identity{Account: "effective", Binding: "process"}
 	var absent probeBackend
 	noop := probeBackend(func(context.Context, Invocation[probe]) (Completion[string], error) {
@@ -125,7 +133,7 @@ func TestDispatcherRejectsMissingBackends(t *testing.T) {
 		{"no identity", CurrentProcess, []Registration[probe, string]{{ID: CurrentProcess, Backend: noop}}, ErrMismatch},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if d, err := NewDispatcher(runtime, profile, tc.selected, authorize, tc.entries...); d != nil || !errors.Is(err, tc.want) {
+			if d, err := NewDispatcher(runtime, profile, tc.selected, routes, tc.entries...); d != nil || !errors.Is(err, tc.want) {
 				t.Fatalf("dispatcher = %v, err = %v", d, err)
 			}
 		})
@@ -138,11 +146,22 @@ func TestAuthorizationAndUnprovedEffectsDenyBeforeBackend(t *testing.T) {
 	read := profileFixture(t, "")
 	write := profileFixture(t, "active='write'\n")
 	readOnlyRisk := profileFixture(t, "active='write'\nmax_risk='read'\n")
-	readPlan := fixturePlan(t, read, capability.RiskRead, capability.FilesRead)
-	readResource := Resource{Kind: Filesystem, Role: Source, ID: "work", Relative: "some-file",
-		Requirement: readPlan.Requirement.Requirement(), Access: read.Policy().Grants()}
+	readDeclaration := fixtureDeclaration(t, read, capability.RiskRead, capability.FilesRead)
+	readRoutes := fixtureRoutes(readDeclaration)
+	unknown := readRoutes
+	unknown.Key = func(probe) OperationKey { return OperationKey{Name: "fixture.unknown", Variant: DefaultVariant} }
+	noVariant := readRoutes
+	noVariant.Key = func(probe) OperationKey { return OperationKey{Name: readDeclaration.Key.Name} }
+	readResource := Resource{Kind: Filesystem, Role: Source, ID: "work", Relative: "some-file", Access: write.Policy().Grants()}
+	withOperand := readDeclaration
+	withOperand.Operands = []OperandRequirement{{Kind: Filesystem, Role: Source, Requirement: readDeclaration.Operation.Requirement()}}
 	cwd := readResource
 	cwd.Kind = WorkingDirectory
+	cwd.Access = read.Policy().Grants()
+	withCWD := readDeclaration
+	withCWD.Operands = []OperandRequirement{{Kind: WorkingDirectory, Role: Source, Requirement: readDeclaration.Operation.Requirement()}}
+	provenCWD := cwd
+	provenCWD.Proof = testProof{}
 	identity := Identity{Account: "effective", Binding: "process"}
 	reg := Registration[probe, string]{ID: CurrentProcess, Identity: identity, Backend: probeBackend(func(context.Context, Invocation[probe]) (Completion[string], error) {
 		t.Fatal("denied request reached the backend")
@@ -157,26 +176,24 @@ func TestAuthorizationAndUnprovedEffectsDenyBeforeBackend(t *testing.T) {
 		ctx     context.Context
 		request Request
 		profile config.EffectiveProfile
-		plan    Plan
+		routes  Routes[probe]
 		want    error
 	}{
-		{"zero request", t.Context(), Request{}, read, readPlan, ErrMismatch},
-		{"foreign generation", t.Context(), foreignRequest, read, readPlan, ErrMismatch},
-		{"canceled", canceled, request, read, readPlan, context.Canceled},
-		{"elapsed", elapsed, request, read, readPlan, context.DeadlineExceeded},
-		{"undeclared operation", t.Context(), request, read, Plan{}, ErrDenied},
-		{"partial copy grants", t.Context(), request, read, fixturePlan(t, read, capability.RiskRead, capability.FilesRead, capability.FilesWrite), ErrDenied},
-		{"risk floor", t.Context(), request, readOnlyRisk, fixturePlan(t, readOnlyRisk, capability.RiskMutation, capability.FilesRead), ErrDenied},
-		{"foreign catalog", t.Context(), request, write, readPlan, ErrDenied},
-		{"foreign operand grants", t.Context(), request, read, Plan{Operation: readPlan.Operation, Requirement: readPlan.Requirement,
-			Resources: []Resource{{Kind: Filesystem, Role: Source, ID: "work", Requirement: readResource.Requirement, Access: write.Policy().Grants()}}}, ErrDenied},
-		{"missing CWD proof", t.Context(), request, read, Plan{Operation: readPlan.Operation, Requirement: readPlan.Requirement, Resources: []Resource{cwd}}, ErrUnsupported},
-		{"missing CWD enforcement", t.Context(), request, read, Plan{Operation: readPlan.Operation, Requirement: readPlan.Requirement,
-			Resources: []Resource{{Kind: WorkingDirectory, Role: Single, ID: "work", Requirement: readResource.Requirement, Access: readResource.Access, Proof: testProof{}}}},
-			ErrUnsupported},
+		{"zero request", t.Context(), Request{}, read, readRoutes, ErrMismatch},
+		{"foreign generation", t.Context(), foreignRequest, read, readRoutes, ErrMismatch},
+		{"canceled", canceled, request, read, readRoutes, context.Canceled},
+		{"elapsed", elapsed, request, read, readRoutes, context.DeadlineExceeded},
+		{"undeclared operation", t.Context(), request, read, unknown, ErrDenied},
+		{"undeclared variant", t.Context(), request, read, noVariant, ErrDenied},
+		{"partial copy grants", t.Context(), request, read, fixtureRoutes(fixtureDeclaration(t, read, capability.RiskRead, capability.FilesRead, capability.FilesWrite)), ErrDenied},
+		{"risk floor", t.Context(), request, readOnlyRisk, fixtureRoutes(fixtureDeclaration(t, readOnlyRisk, capability.RiskMutation, capability.FilesRead)), ErrDenied},
+		{"omitted operand", t.Context(), request, read, fixtureRoutes(withOperand), ErrDenied},
+		{"foreign operand grants", t.Context(), request, read, fixtureRoutes(withOperand, readResource), ErrDenied},
+		{"missing CWD proof", t.Context(), request, read, fixtureRoutes(withCWD, cwd), ErrUnsupported},
+		{"missing CWD enforcement", t.Context(), request, read, fixtureRoutes(withCWD, provenCWD), ErrUnsupported},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := NewDispatcher(runtime, tc.profile, CurrentProcess, func(context.Context, Request, probe) (Plan, error) { return tc.plan, nil }, reg)
+			d, err := NewDispatcher(runtime, tc.profile, CurrentProcess, tc.routes, reg)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -205,16 +222,17 @@ func TestBoundCWDRevalidatedBeforeEffectAndResult(t *testing.T) {
 	runtime, _, request := sessionFixture(t, nil)
 	profile := profileFixture(t, "")
 	identity := Identity{Account: "effective", Binding: "fixture-pid"}
-	plan := fixturePlan(t, profile, capability.RiskRead, capability.FilesRead)
+	declaration := fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead)
+	declaration.Operands = []OperandRequirement{{Kind: WorkingDirectory, Role: Single, Requirement: declaration.Operation.Requirement()}}
 	drifted := false
-	plan.Resources = []Resource{{Kind: WorkingDirectory, Role: Single, ID: "work", Relative: "cwd",
-		Requirement: plan.Requirement.Requirement(), Access: profile.Policy().Grants(),
+	resource := Resource{Kind: WorkingDirectory, Role: Single, ID: "work", Relative: "cwd",
+		Access: profile.Policy().Grants(),
 		Proof: directoryProof(func() error {
 			if drifted {
 				return ErrMismatch
 			}
 			return nil
-		})}}
+		})}
 	backend := cwdBackend{func(ctx context.Context, invocation Invocation[probe]) (Completion[string], error) {
 		deadline, _ := ctx.Deadline()
 		binding := invocation.Binding()
@@ -229,7 +247,7 @@ func TestBoundCWDRevalidatedBeforeEffectAndResult(t *testing.T) {
 		}
 		return Complete(invocation.Binding(), "bound-value"), nil
 	}}
-	d, err := NewDispatcher(runtime, profile, CurrentProcess, func(context.Context, Request, probe) (Plan, error) { return plan, nil },
+	d, err := NewDispatcher(runtime, profile, CurrentProcess, fixtureRoutes(declaration, resource),
 		Registration[probe, string]{ID: CurrentProcess, Identity: identity, Backend: backend})
 	if err != nil {
 		t.Fatal(err)
@@ -250,7 +268,7 @@ func TestBoundCWDRevalidatedBeforeEffectAndResult(t *testing.T) {
 func TestTypedDelegationCompletionAndNoFallback(t *testing.T) {
 	runtime, _, request := sessionFixture(t, []GroupID{"reader"})
 	profile := profileFixture(t, "")
-	plan := fixturePlan(t, profile, capability.RiskRead, capability.FilesRead)
+	declaration := fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead)
 	identity := Identity{Account: "isolated-account", Binding: "test-worker"}
 	var old *Binding
 	worker := probeBackend(func(ctx context.Context, call Invocation[probe]) (Completion[string], error) {
@@ -272,7 +290,7 @@ func TestTypedDelegationCompletionAndNoFallback(t *testing.T) {
 			old = bind
 			return Complete(bind, "typed-value"), nil
 		case "describe":
-			if bind.Name() != "fixture.describe" || bind.Operation().Risk() != capability.RiskRead {
+			if bind.Key().Name != "fixture.describe" || bind.Operation().Risk() != capability.RiskRead {
 				t.Fatal("new operation lost its own declaration")
 			}
 			return Complete(bind, "typed-description"), nil
@@ -288,14 +306,17 @@ func TestTypedDelegationCompletionAndNoFallback(t *testing.T) {
 		t.Fatal("automatic fallback executed")
 		return Completion[string]{}, nil
 	})
-	describe := plan
-	describe.Operation = "fixture.describe"
-	d, err := NewDispatcher(runtime, profile, UserWorker, func(_ context.Context, _ Request, command probe) (Plan, error) {
+	describe := declaration
+	describe.Key.Name = "fixture.describe"
+	routes := fixtureRoutes(declaration)
+	routes.Declarations = append(routes.Declarations, describe)
+	routes.Key = func(command probe) OperationKey {
 		if command.selection == "describe" {
-			return describe, nil
+			return describe.Key
 		}
-		return plan, nil
-	},
+		return declaration.Key
+	}
+	d, err := NewDispatcher(runtime, profile, UserWorker, routes,
 		Registration[probe, string]{ID: UserWorker, Identity: identity, Backend: worker},
 		Registration[probe, string]{ID: CurrentProcess, Identity: Identity{Account: "local", Binding: "pid"}, Backend: fallback})
 	if err != nil {

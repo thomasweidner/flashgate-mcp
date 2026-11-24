@@ -372,7 +372,11 @@ the [benchmark workspace gate](../testing.md#authoritative-benchmark-workspace-g
 
 Version 1.0 `BL-048` supplies reusable content identities/fingerprints and `BL-346` consumes them for compact batch expected-state verification. A fingerprint identifies observed content/state for equality/change reasoning; it is never an access token and never bypasses current root/profile/capability/principal/path checks.
 
-`verify_paths` can verify one or more expected-state records in one bounded call. The default response reports compact checked/mismatch/indeterminate counts and only the requested bounded mismatch details. This is the portable primitive for any consumer that already holds a manifest-like set of path+identity expectations; FlashGate does not add chat-, handoff-, task-, or workflow-specific verification APIs.
+`verify_paths` can verify one or more expected-state records in one bounded
+call. The default response includes compact item results in input order,
+summary counts and the [aggregate outcome](implementation-contract.md#authorization-units-and-verification-outcomes).
+Additional mismatch details are bounded and optional. The same primitive
+serves callers with a manifest-like set of path and identity expectations.
 
 A caller-requested fresh/strong verification re-evaluates the current metadata/content evidence required by the request. Reusable identity evidence or an internal cache may accelerate ordinary work, but a cached proof must not silently satisfy a request whose contract requires current bytes/state to be rechecked.
 
