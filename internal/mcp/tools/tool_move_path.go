@@ -100,9 +100,6 @@ func (t *MovePathTool) Execute(ctx context.Context, rawArguments json.RawMessage
 		return ToolResult{}, err
 	}
 
-	if err := validatePairLimits(t.filesystem, source, target); err != nil {
-		return ToolResult{}, err
-	}
 	result, admit := mutationResult(ctx, t.filesystem, target.RootID, NewToolResult(defaultVariant, movePathResult{Source: source.Path, Target: target.Path, Moved: true}), t.ResultContract())
 	target.AdmitEffect = admit
 	if err := t.filesystem.Move(source, target, overwrite); err != nil {

@@ -35,6 +35,11 @@ A common lifecycle engine prevents every domain from implementing cancellation, 
 
 The server, not an untrusted worker, controls deadlines. Handles are opaque. Results, errors, queues, temporary data, and concurrency are bounded and auditable.
 
+The [BL-159 and BL-239 authorization rules](../planning/implementation-contract.md#protected-fields-and-later-actions)
+bind work to its originating operation. Recheck current authority before
+deferred dispatch, later control actions and result or event delivery.
+Server-owned cleanup is scoped to proven owned resources.
+
 ## Implementation Guidance
 
 Build registry and lifecycle semantics without moving domain logic into the manager. Add race, cancellation, timeout, shutdown, Windows, Linux, and security tests. Keep MCP mapping in the adapter and follow ADR-013.

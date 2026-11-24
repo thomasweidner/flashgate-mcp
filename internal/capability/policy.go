@@ -42,6 +42,29 @@ func (o Operation) Risk() Risk { return o.risk }
 
 func (o Operation) Requirement() Requirement { return o.requirement }
 
+// CombineOperation binds a global declaration and its operand requirements
+// to this snapshot, including the highest risk floor of any applicable right.
+func (c Catalog) CombineOperation(operation Operation, operands ...Requirement) (Operation, error) {
+	required := operation.requirement.required
+	if !operation.risk.valid() || len(required.ids) == 0 || c.snapshot == nil || required.snapshot != c.snapshot {
+		return Operation{}, ErrIncompatibleSets
+	}
+	if len(operands) == 0 {
+		return operation, nil
+	}
+	for _, operand := range operands {
+		if len(operand.required.ids) == 0 {
+			return Operation{}, ErrEmptyRequirement
+		}
+		var err error
+		required, err = required.Union(operand.required)
+		if err != nil {
+			return Operation{}, err
+		}
+	}
+	return c.NewOperation(operation.risk, required.ids...)
+}
+
 // Policy is the immutable functional and risk input for an effective profile.
 // Passing it establishes those inputs only. Resource and execution policies
 // are applied separately by the relevant domain and host.

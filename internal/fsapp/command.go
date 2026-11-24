@@ -15,6 +15,9 @@ const (
 	deletePath    execution.OperationID = "filesystem.delete"
 	copyPath      execution.OperationID = "filesystem.copy"
 	movePath      execution.OperationID = "filesystem.move"
+
+	overwriteVariant execution.VariantID = "overwrite"
+	recursiveVariant execution.VariantID = "recursive"
 )
 
 // operand contains only domain data. In-process result admission is separate
@@ -47,6 +50,21 @@ type requestedResource struct {
 	operand
 	role   execution.OperandRole
 	action fs.Operation
+}
+
+func (c command) key() execution.OperationKey {
+	variant := execution.DefaultVariant
+	switch c.name {
+	case writeFile, copyPath, movePath:
+		if c.overwrite {
+			variant = overwriteVariant
+		}
+	case deletePath:
+		if c.recursive {
+			variant = recursiveVariant
+		}
+	}
+	return execution.OperationKey{Name: c.name, Variant: variant}
 }
 
 func (c command) declaration() (fs.Operation, []requestedResource, error) {

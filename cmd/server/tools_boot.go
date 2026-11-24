@@ -18,7 +18,7 @@ func createToolRegistry(registry *roots.Registry, maxFileSize int64, profile con
 	if err != nil {
 		return nil, err
 	}
-	return registerFilesystemTools(maxFileSize, profile, func(registry *tools.Registry, build filesystemTool) error {
+	toolRegistry, err := registerFilesystemTools(maxFileSize, profile, func(registry *tools.Registry, build filesystemTool) error {
 		return registry.RegisterBound(build(nil), func(ctx handlers.Context, arguments json.RawMessage) (tools.ToolResult, error) {
 			filesystem, err := application.ForRequest(ctx.Context, execution.Protocol(ctx.ProtocolVersion))
 			if err != nil {
@@ -27,6 +27,11 @@ func createToolRegistry(registry *roots.Registry, maxFileSize int64, profile con
 			return build(filesystem).Execute(ctx.Context, arguments)
 		})
 	})
+	if err != nil {
+		return nil, err
+	}
+	toolRegistry.Seal()
+	return toolRegistry, nil
 }
 
 type filesystemTool func(fs.FileSystem) tools.Tool

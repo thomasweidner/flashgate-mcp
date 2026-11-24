@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"reflect"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/capability"
@@ -31,28 +30,20 @@ const (
 type Proof interface{ Revalidate() error }
 
 type Resource struct {
-	Kind        ResourceKind
-	Role        OperandRole
-	ID          string
-	Relative    string
+	Kind     ResourceKind
+	Role     OperandRole
+	ID       string
+	Relative string
+	Access   capability.Set
+	Limits   resource.Limits
+	Proof    Proof
+}
+
+// BoundResource holds the centrally approved operand and its declared right.
+type BoundResource struct {
+	Resource
 	Requirement capability.Requirement
-	Access      capability.Set
-	Limits      resource.Limits
-	Proof       Proof
 }
-
-// Plan is derived from the typed command by its trusted declaration. The
-// application cannot take a capability declaration from the wire.
-type Plan struct {
-	Operation   OperationID
-	Requirement capability.Operation
-	Resources   []Resource
-}
-
-// Authorizer is the single pre-dispatch transition. The domain resolves
-// declarations and operand grants from this runtime's effective snapshots.
-// BL-159 supplies the shared central policy decision at this boundary.
-type Authorizer[C any] func(context.Context, Request, C) (Plan, error)
 
 // Backend is registered at trusted composition. Its command and result are
 // domain types. A future transport must authenticate the returned binding.
@@ -73,16 +64,15 @@ type Registration[C, R any] struct {
 }
 
 type Dispatcher[C, R any] struct {
-	runtime   *Runtime
-	profile   config.EffectiveProfile
-	policyID  PolicyID
-	selected  Registration[C, R]
-	authorize Authorizer[C]
+	authorizer authorizer[C]
+	policyID   PolicyID
+	selected   Registration[C, R]
 }
 
-func NewDispatcher[C, R any](runtime *Runtime, profile config.EffectiveProfile, selected BackendID, authorize Authorizer[C], registrations ...Registration[C, R]) (*Dispatcher[C, R], error) {
-	if runtime == nil || runtime.generation == "" || profile.ID() == "" || authorize == nil {
-		return nil, ErrMismatch
+func NewDispatcher[C, R any](runtime *Runtime, profile config.EffectiveProfile, selected BackendID, routes Routes[C], registrations ...Registration[C, R]) (*Dispatcher[C, R], error) {
+	authorizer, err := newAuthorizer(runtime, profile, routes)
+	if err != nil {
+		return nil, err
 	}
 	registered := make(map[BackendID]Registration[C, R], len(registrations))
 	for _, registration := range registrations {
@@ -100,7 +90,7 @@ func NewDispatcher[C, R any](runtime *Runtime, profile config.EffectiveProfile, 
 	if !found {
 		return nil, ErrUnsupported
 	}
-	return &Dispatcher[C, R]{runtime: runtime, profile: profile, policyID: PolicyID(rand.Text()), selected: backend, authorize: authorize}, nil
+	return &Dispatcher[C, R]{authorizer: authorizer, policyID: PolicyID(rand.Text()), selected: backend}, nil
 }
 
 func nilBackend(value any) bool {
@@ -123,7 +113,9 @@ type Binding struct {
 	request   Request
 	profile   config.EffectiveProfile
 	policyID  PolicyID
-	plan      Plan
+	key       OperationKey
+	operation capability.Operation
+	resources []BoundResource
 	backend   BackendID
 	effective Identity
 	deadline  time.Time
@@ -131,9 +123,9 @@ type Binding struct {
 
 func (b *Binding) Request() Request                 { return b.request }
 func (b *Binding) Profile() config.EffectiveProfile { return b.profile }
-func (b *Binding) Operation() capability.Operation  { return b.plan.Requirement }
-func (b *Binding) Name() OperationID                { return b.plan.Operation }
-func (b *Binding) Resources() []Resource            { return slices.Clone(b.plan.Resources) }
+func (b *Binding) Operation() capability.Operation  { return b.operation }
+func (b *Binding) Key() OperationKey                { return b.key }
+func (b *Binding) Resources() []BoundResource       { return slices.Clone(b.resources) }
 func (b *Binding) Backend() BackendID               { return b.backend }
 func (b *Binding) EffectiveIdentity() Identity      { return b.effective }
 func (b *Binding) Generation() string               { return b.request.session.runtime.generation }
@@ -153,7 +145,7 @@ func (b *Binding) Verify(ctx context.Context, backend BackendID, identity Identi
 	if !b.deadline.IsZero() && !time.Now().Before(b.deadline) {
 		return context.DeadlineExceeded
 	}
-	for _, operand := range b.plan.Resources {
+	for _, operand := range b.resources {
 		if operand.Kind == WorkingDirectory && operand.Proof == nil {
 			return ErrUnsupported
 		}
@@ -203,36 +195,28 @@ func Complete[R any](binding *Binding, value R) Completion[R] {
 
 func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, command C, admission func() error) (R, error) {
 	var zero R
-	if d == nil || ctx == nil || request.session.runtime != d.runtime || request.correlation == 0 {
+	if d == nil {
 		return zero, ErrMismatch
 	}
-	if err := ctx.Err(); err != nil {
-		return zero, err
-	}
-	plan, err := d.authorize(ctx, request, command)
+	declaration, resources, err := d.authorizer.authorize(ctx, request, command)
 	if err != nil {
 		return zero, err
 	}
-	policy := d.profile.Policy()
-	if strings.TrimSpace(string(plan.Operation)) == "" || !policy.Allows(plan.Requirement) {
-		return zero, ErrDenied
-	}
 	var requiresCWD bool
-	for _, operand := range plan.Resources {
-		if operand.Kind == "" || operand.Role == "" || operand.ID == "" ||
-			!operand.Requirement.SatisfiedBy(policy.Grants()) || !operand.Requirement.SatisfiedBy(operand.Access) {
-			return zero, ErrDenied
-		}
+	for _, operand := range resources {
 		requiresCWD = requiresCWD || operand.Kind == WorkingDirectory
 	}
 	backend := d.selected
 	if admission != nil && backend.ID != CurrentProcess {
 		return zero, ErrUnsupported
 	}
-	plan.Resources = slices.Clone(plan.Resources)
 	deadline, _ := ctx.Deadline()
-	binding := &Binding{request: request, profile: d.profile, policyID: d.policyID, plan: plan, backend: backend.ID, effective: backend.Identity, deadline: deadline}
-	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.runtime.generation); err != nil {
+	binding := &Binding{
+		request: request, profile: d.authorizer.profile, policyID: d.policyID,
+		key: declaration.Key, operation: declaration.Operation, resources: resources,
+		backend: backend.ID, effective: backend.Identity, deadline: deadline,
+	}
+	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.authorizer.runtime.generation); err != nil {
 		return zero, err
 	}
 	if requiresCWD {
@@ -251,7 +235,7 @@ func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, comman
 	if completion.binding != binding {
 		return zero, ErrMismatch
 	}
-	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.runtime.generation); err != nil {
+	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.authorizer.runtime.generation); err != nil {
 		return zero, err
 	}
 	return completion.value, nil

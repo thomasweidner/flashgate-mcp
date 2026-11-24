@@ -18,9 +18,10 @@ type registeredTool struct {
 
 // Registry stores MCP tools.
 type Registry struct {
-	tools map[string]registeredTool
-	order []string
-	mu    sync.RWMutex
+	tools  map[string]registeredTool
+	order  []string
+	mu     sync.RWMutex
+	sealed bool
 }
 
 // NewRegistry creates a new tool registry.
@@ -53,6 +54,14 @@ func (boundMetadata) Execute(context.Context, json.RawMessage) (ToolResult, erro
 	return ToolResult{}, execution.ErrMismatch
 }
 
+// Seal fixes a composed registry for production use. A later registration
+// cannot change which handler executes a catalog entry.
+func (r *Registry) Seal() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.sealed = true
+}
+
 func (r *Registry) register(tool Tool, execute func(handlers.Context, json.RawMessage) (ToolResult, error)) error {
 	contract, err := tool.ResultContract().validatedCopy()
 	if err != nil {
@@ -60,6 +69,9 @@ func (r *Registry) register(tool Tool, execute func(handlers.Context, json.RawMe
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.sealed {
+		return execution.ErrMismatch
+	}
 
 	name := tool.Name()
 

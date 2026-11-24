@@ -519,6 +519,19 @@ provider trust, protocol negotiation and profile names confer no functional
 rights. BL-159 combines functional satisfaction with the applicable principal,
 root, resource, risk, and execution controls before dispatch.
 
+The [BL-159 central decision](planning/implementation-contract.md#bl-159-central-authorization)
+uses the typed BL-236 transition for every productive operation. Direct STDIO
+registers its eight tools with the request-bound service and seals the
+registry. The Authorizer rejects missing declarations, grants and risk
+authority before operand resolution and denies invalid operand scopes before
+backend dispatch. Future owners apply this contract to their variants,
+resource-free operations and routes without a public tool name.
+Authorize independent batch items separately and require all operands for a
+shared assertion. Revalidate multi-step effects at the relevant boundaries.
+Native guards and bound completion checks remain separate. Apply field
+requirements to acquisition and projection, including filters, counts,
+derived statements, diagnostics and retained results.
+
 ### Safe default profiles and capability enforcement
 
 Current STDIO startup resolves and validates the entire profile configuration.
@@ -640,6 +653,13 @@ Resource control combines:
 - slow-reader/backpressure handling.
 
 A service restart changes the generation and invalidates stale state.
+
+BL-239 binds later actions to the originating operation and rechecks current
+authorization before any control effect or disclosure, including buffered
+delivery. Use the [BL-159 handle error contract](planning/implementation-contract.md#protected-fields-and-later-actions)
+for resolved FlashGate tool calls. A scheduled run checks its bound identity's
+current grants at execution. Server-owned cleanup may touch only proven owned
+resources.
 
 ### Payload and resource boundary
 

@@ -582,7 +582,7 @@ exercise malformed requests, invalid outer parameters, unknown and removed
 names, hidden tools, unsupported methods and revisions, and generic internal
 errors. The production and candidate-policy paths each run with both
 current profiles. Synthetic deliveries remain measurement fixtures.
-Future changes follow the [owner acceptance gate](planning/tool-adapters.md#22-implementation-gate-for-every-new-public-tool).
+Future changes follow the [owner acceptance gate](planning/tool-adapters.md#22-implementation-and-activation-gate-for-productive-routes).
 
 ### MCP Compatibility Testing
 
@@ -858,6 +858,51 @@ restart tests for its later dedicated path.
 - deterministic tool ordering and catalog fingerprint;
 - profile-specific `tools/list`, schema, description, and initialization-instruction budgets;
 - safe read-only catalog when roots exist and no explicit profile is selected.
+
+### BL-160 central authorization matrix
+
+The [BL-159 authorization contract](planning/implementation-contract.md#bl-159-central-authorization)
+requires a positive and denied case for each of the eight current
+registrations and every newly activated or materially changed productive
+operation or variant. Include unnamed effects and delivery routes. Exercise
+the typed application transition with the selected backend available and
+assert no prohibited effect, fallback or useful disclosure on denial.
+
+For initial BL-159 acceptance, declare a test-only operation with no resource
+operands. Through the common dispatcher, prove a call with its required
+global right reaches the designated test backend. With that right absent,
+the same operation fails before backend dispatch or fallback and returns
+no domain data. This fixture requires no public tool name or productive
+non-filesystem adapter.
+
+The BL-159 implementation covers this fixture in `internal/execution` and
+exercises the real production registrations in `cmd/server`. The wire cases
+cover all eight tools, including overwrite, recursive deletion and denial when
+only one copy operand lacks its required right. The native protection and
+pre-mutation result admission tests remain separate checks.
+
+The bound Copy and Move handler regression checks that a missing global right
+denies before any root lookup. For a caller with the global rights, test that
+unknown roots and distinct configured roots produce their existing public
+errors before backend dispatch.
+
+Exercise a whole-call action denial, a mixed independent batch with an allowed
+sibling, a composite assertion with a denied operand and cached evidence,
+and multi-step admission denial separately from late denial. Test protected
+fields on otherwise authorized calls and current authorization at deferred
+dispatch, handle redemption, page and stream continuation, and buffered
+notification delivery. Under an allowed general action right, compare the
+safe `not_found` outcomes for unknown, foreign, expired, stale and currently
+invisible valid handles. Cover malformed handles and missing action rights
+separately.
+
+For BL-346, submit a match, a mismatch and a denied `verify_paths` item
+without a detail option. Require three compact item results in input order,
+`partially_verified` and `verified: false`, with the confirmed mismatch
+visible at its original position. Repeat with the denied name
+present and absent, expecting the same semantic client response and
+`access_denied` in the denied slot, including an expected absence. Separately
+prove that authorized, reliably established absence can satisfy that expectation.
 
 ### Operations and multi-principal tests
 

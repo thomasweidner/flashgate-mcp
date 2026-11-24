@@ -100,9 +100,6 @@ func (t *CopyPathTool) Execute(ctx context.Context, rawArguments json.RawMessage
 		return ToolResult{}, err
 	}
 
-	if err := validatePairLimits(t.filesystem, source, target); err != nil {
-		return ToolResult{}, err
-	}
 	result, admit := mutationResult(ctx, t.filesystem, target.RootID, NewToolResult(defaultVariant, copyPathResult{Source: source.Path, Target: target.Path, Copied: true}), t.ResultContract())
 	target.AdmitEffect = admit
 	if err := t.filesystem.Copy(source, target, overwrite); err != nil {
