@@ -136,8 +136,14 @@ Capabilities, profiles, and roots form a server-enforced gate. Hidden tools and 
 
 ## Implementation Guidance
 
-BL-110 uses the shared functional contract to derive effective catalog
-visibility. BL-159 evaluates the same operation requirements during execution.
+The immutable master catalog binds public definitions to validated execution
+variants. The trusted ingress assigns the authenticated principal to the
+effective policy used by the dispatcher. Admission checks compositions
+against exact revision, policy, technical support and executable operation
+evidence. Discovery and direct call resolution use the composition selected
+by each trusted request.
+BL-159 evaluates the same operation requirements during execution and
+enforces the concrete operand requirements before effects.
 Preserve generic unresolved-tool errors and keep internal validation detail
 out of caller-facing responses.
 

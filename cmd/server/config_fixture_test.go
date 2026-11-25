@@ -26,7 +26,7 @@ func quotedConfigPath(t testing.TB, root string) string {
 	return string(encoded)
 }
 
-func writeConfig(t *testing.T, document string) string {
+func writeConfig(t testing.TB, document string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "flashgate_config.toml")
 	testconfig.Write(t, path, []byte(document))
@@ -49,15 +49,16 @@ func profileSettings(readOnly bool) string {
 	return "[profiles]\nactive = 'write'\n"
 }
 
-func testProfile(t testing.TB, readOnly bool) config.EffectiveProfile {
-	t.Helper()
-	return decodeTestConfig(t, profileSettings(readOnly)).Profile()
-}
-
 func testRootRegistry(t *testing.T, root string, limits fs.Limits) *roots.Registry {
 	t.Helper()
+	registry, _ := testRootProfile(t, root, limits, false)
+	return registry
+}
+
+func testRootProfile(t testing.TB, root string, limits fs.Limits, readOnly bool) (*roots.Registry, config.EffectiveProfile) {
+	t.Helper()
 	settings := fmt.Sprintf("work.access = ['files.read', 'files.write']\nmax_file_size = %d\nmax_write_size = %d\nmax_scan_size = %d\nmax_result_size = %d\nmax_temp_size = %d\nmax_list_entries = %d\nmax_delete_entries = %d\n", limits.MaxFileSize, limits.MaxWriteSize, limits.MaxScanSize, limits.MaxResultSize, limits.MaxTempSize, limits.MaxListEntries, limits.MaxDeleteEntries)
-	path := writeConfig(t, configDocument(t, root, settings+profileSettings(false)))
+	path := writeConfig(t, configDocument(t, root, settings+profileSettings(readOnly)))
 	cfg, err := config.Load(config.Source{Role: config.Direct, Path: path})
 	if err != nil {
 		t.Fatal(err)
@@ -66,5 +67,5 @@ func testRootRegistry(t *testing.T, root string, limits fs.Limits) *roots.Regist
 	if err != nil {
 		t.Fatal(err)
 	}
-	return registry
+	return registry, cfg.Profile()
 }

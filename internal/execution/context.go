@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
+
+	"github.com/thomasweidner/flashgate-mcp/internal/config"
 )
 
 var (
@@ -71,6 +73,29 @@ func NewRuntime(generation string) (*Runtime, error) {
 type Session struct {
 	runtime *Runtime
 	caller  Caller
+	policy  *PolicyBinding
+}
+
+// PolicyBinding is an immutable policy selection in one runtime. The trusted
+// ingress assigns it after authentication. Equal grants do not identify a binding.
+type PolicyBinding struct {
+	runtime *Runtime
+	profile config.EffectiveProfile
+}
+
+func NewPolicyBinding(runtime *Runtime, profile config.EffectiveProfile) (*PolicyBinding, error) {
+	if runtime == nil || runtime.generation == "" || profile.ID() == "" {
+		return nil, ErrMismatch
+	}
+	return &PolicyBinding{runtime: runtime, profile: profile}, nil
+}
+
+func (s Session) WithPolicy(policy *PolicyBinding) (Session, error) {
+	if policy == nil || policy.runtime == nil || policy.runtime != s.runtime || s.policy != nil || s.caller.ID() == "" {
+		return Session{}, ErrMismatch
+	}
+	s.policy = policy
+	return s, nil
 }
 
 func newSession(runtime *Runtime, id PrincipalID, origin Origin, groups []GroupID) (Session, error) {
@@ -114,6 +139,7 @@ type Request struct {
 	correlation uint64
 	protocol    Protocol
 	resultBytes int64
+	invocation  *catalogInvocationBinding
 }
 
 func (s Session) Request(protocol Protocol, resultBytes int64) (Request, error) {

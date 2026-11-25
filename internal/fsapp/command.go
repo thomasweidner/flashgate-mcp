@@ -7,14 +7,23 @@ import (
 )
 
 const (
-	listDirectory execution.OperationID = "filesystem.list"
-	readFile      execution.OperationID = "filesystem.read"
-	pathInfo      execution.OperationID = "filesystem.stat"
-	writeFile     execution.OperationID = "filesystem.write"
-	makeDirectory execution.OperationID = "filesystem.mkdir"
-	deletePath    execution.OperationID = "filesystem.delete"
-	copyPath      execution.OperationID = "filesystem.copy"
-	movePath      execution.OperationID = "filesystem.move"
+	ListOperation   execution.OperationID = "filesystem.list"
+	ReadOperation   execution.OperationID = "filesystem.read"
+	StatOperation   execution.OperationID = "filesystem.stat"
+	WriteOperation  execution.OperationID = "filesystem.write"
+	MkdirOperation  execution.OperationID = "filesystem.mkdir"
+	DeleteOperation execution.OperationID = "filesystem.delete"
+	CopyOperation   execution.OperationID = "filesystem.copy"
+	MoveOperation   execution.OperationID = "filesystem.move"
+
+	listDirectory = ListOperation
+	readFile      = ReadOperation
+	pathInfo      = StatOperation
+	writeFile     = WriteOperation
+	makeDirectory = MkdirOperation
+	deletePath    = DeleteOperation
+	copyPath      = CopyOperation
+	movePath      = MoveOperation
 
 	overwriteVariant execution.VariantID = "overwrite"
 	recursiveVariant execution.VariantID = "recursive"

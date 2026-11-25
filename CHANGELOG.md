@@ -24,6 +24,11 @@ the intended release date. Publication evidence is separate.
 
 ### Changed
 
+- Build the direct STDIO catalog from an immutable set of tools and the
+  validated execution variants used by authorization. Discovery, direct calls
+  and startup admission use the effective context. Existing read and write
+  profiles retain their MCP names, schemas and results.
+
 - Authorize all eight direct STDIO filesystem tools through the central
   BL-159 Authorizer. Bind each operation variant and ordered operand to one
   policy snapshot before native dispatch. Keep the production registry

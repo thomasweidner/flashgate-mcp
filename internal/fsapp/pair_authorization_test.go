@@ -37,6 +37,14 @@ func TestPairToolAuthorizationPrecedesRootLookup(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			policy, err := execution.NewPolicyBinding(runtime, profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			session, err = session.WithPolicy(policy)
+			if err != nil {
+				t.Fatal(err)
+			}
 			operations, err := fs.BindOperations(profile.Catalog())
 			if err != nil {
 				t.Fatal(err)
@@ -59,8 +67,8 @@ func TestPairToolAuthorizationPrecedesRootLookup(t *testing.T) {
 				fallbackCalls++
 				return execution.Completion[result]{}, nil
 			})
-			dispatcher, err := execution.NewDispatcher(runtime, profile, execution.CurrentProcess, routes,
-				execution.Registration[command, result]{ID: execution.CurrentProcess, Identity: identity, Backend: backend},
+			dispatcher, err := execution.NewDispatcher(policy, execution.CurrentProcess, routes,
+				execution.Registration[command, result]{ID: execution.CurrentProcess, Identity: identity, Backend: backend, Operations: routes.OperationKeys()},
 				execution.Registration[command, result]{ID: execution.UserWorker, Identity: identity, Backend: fallback})
 			if err != nil {
 				t.Fatal(err)

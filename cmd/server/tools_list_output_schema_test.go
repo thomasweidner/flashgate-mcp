@@ -134,7 +134,7 @@ func BenchmarkToolsListWireSerialization(b *testing.B) {
 	for _, tc := range tests {
 		tc := tc
 		b.Run(tc.name, func(b *testing.B) {
-			registry := requireToolRegistry(b, noopFileSystem{}, 1024, tc.readOnly)
+			registry, _ := effectiveFixtureCatalog(b, tc.readOnly, wireFileLimit, protocol.ProtocolVersion)
 			sampleOutput := &bytes.Buffer{}
 			sampleServer := mcpserver.New(
 				bytes.NewBufferString("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}\n"),

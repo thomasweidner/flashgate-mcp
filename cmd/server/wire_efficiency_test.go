@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/benchmark"
+	"github.com/thomasweidner/flashgate-mcp/internal/execution"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
@@ -22,6 +23,7 @@ import (
 
 type serverWireCase struct {
 	id           benchmark.WireIdentity
+	operation    execution.OperationKey
 	args         string
 	body         string
 	want         json.RawMessage
@@ -35,11 +37,11 @@ type serverWireCase struct {
 	responseID   string
 	tightLimits  bool
 	backendError error
-	registry     func(*tools.Registry) error
+	registry     func(*tools.Registry) (*tools.Registry, error)
 }
 
 type wireGateMutation struct {
-	registry func(*tools.Registry) error
+	registry func(*tools.Registry) (*tools.Registry, error)
 	cases    func([]serverWireCase) []serverWireCase
 	frame    func(benchmark.WireIdentity, []byte) []byte
 	// Only a single mutation test owns this cache. Registry and case-plan
@@ -89,13 +91,19 @@ func runServerWireGate(t *testing.T, budgets benchmark.WireBudgets, mutation wir
 				return fmt.Errorf("missing or duplicate wire path %s", path)
 			}
 			usedPaths[path] = true
-			registry, _ := mcpRegistryWithLimit(t, profile == "read", wireFileLimit)
+			var catalog wireCatalog
 			if mutation.registry != nil {
-				if err := mutation.registry(registry); err != nil {
+				registry, _ := mcpRegistryWithLimit(t, profile == "read", wireFileLimit)
+				mutated, err := mutation.registry(registry)
+				if err != nil {
 					return err
 				}
+				catalog = mutated
+			} else {
+				_, view, _ := mcpEffectiveRegistry(t, profile == "read", wireFileLimit, fs.DefaultLimits(), version)
+				catalog = view
 			}
-			scope, err := serverWireCases(base, registry)
+			scope, err := serverWireCases(base, catalog)
 			if err != nil {
 				return fmt.Errorf("%s: %w", path, err)
 			}
@@ -191,7 +199,12 @@ func wireMeasurementJSON(m benchmark.WireMeasurement) string {
 	return string(encoded)
 }
 
-func serverWireCases(base benchmark.WireIdentity, registry *tools.Registry) ([]serverWireCase, error) {
+type wireCatalog interface {
+	List() []tools.Tool
+	ResultContract(string) tools.ResultContract
+}
+
+func serverWireCases(base benchmark.WireIdentity, registry wireCatalog) ([]serverWireCase, error) {
 	var snapshot wireSnapshot
 	path := filepath.Join("testdata", "mcp", base.Revision+"-"+base.Profile+".json")
 	raw, err := os.ReadFile(path)
@@ -227,40 +240,57 @@ func serverWireCases(base benchmark.WireIdentity, registry *tools.Registry) ([]s
 		name := registered.Name()
 		test := testCases[name]
 		contract := registry.ResultContract(name)
-		if err := mcpVariantCoverage(contract, test.success); err != nil {
+		var required []tools.CatalogOutcome
+		if view, ok := registry.(*tools.CatalogView); ok {
+			required = view.Outcomes(name)
+		}
+		if err := mcpFixtureCoverage(contract, test.operations, required); err != nil {
 			return nil, fmt.Errorf("%s: %w", name, err)
 		}
 		outcomes := snapshot.Calls[name]
-		if len(outcomes) != len(contract)+1 || len(outcomes["denied"]) == 0 {
-			return nil, fmt.Errorf("stale or missing wire fixture for %s", name)
+		operationCases := snapshot.OperationCases[name]
+		if len(operationCases) != len(test.operations) || len(outcomes["denied"]) == 0 {
+			return nil, fmt.Errorf("missing executable wire operation fixture for %s", name)
 		}
-		for index, variant := range contract {
-			outcome := "success_" + variant.Name
-			if index == 0 {
-				outcome = "success"
+		for _, fixture := range test.operations {
+			bindingIndex := slices.IndexFunc(operationCases, func(row wireOperationCase) bool {
+				return row.Operation == wireOperationKey(fixture.key) && row.Variant == fixture.variant && row.Fixture == fixture.fixture
+			})
+			if bindingIndex < 0 {
+				return nil, fmt.Errorf("missing matching wire operation fixture for %+v", fixture.key)
 			}
-			fixture := test.success[variant.Name]
+			variantIndex := slices.IndexFunc(contract, func(variant tools.ResultVariant) bool { return variant.Name == fixture.variant })
+			variant := contract[variantIndex]
+			binding := operationCases[bindingIndex]
+			response := binding.Response
+			if fixture.fixture == "reference" {
+				response = outcomes[wireResultOutcome(variantIndex, variant.Name)]
+			}
 			id := base
-			id.Route, id.Tool, id.Variant, id.Fixture = "tools/call", name, variant.Name, "reference"
-			id.Transfer, id.State = string(variant.Mode), string(variant.State)
-			id.Contract = wireVariantBinding(variant)
-			row, err := wireToolCase(id, variant, fixture, outcomes[outcome])
+			id.Route, id.Tool, id.Variant, id.Fixture = "tools/call", name, variant.Name, fixture.fixture
+			id.Transfer, id.State, id.Contract = string(variant.Mode), string(variant.State), wireVariantBinding(variant)
+			row, err := wireToolCase(id, variant, fixture.success, response)
 			if err != nil {
 				return nil, fmt.Errorf("%s/%s: %w", name, variant.Name, err)
 			}
+			row.operation, row.setup = fixture.key, fixture.setup
 			plan = append(plan, row)
-			if name == "read_file" && variant.Name == "complete" {
-				extras, err := readFileWireCases(id, variant, outcomes[outcome])
+			if name == "read_file" && fixture.fixture == "reference" && variant.Name == "complete" {
+				extras, err := readFileWireCases(id, variant, response)
 				if err != nil {
 					return nil, err
+				}
+				for i := range extras {
+					extras[i].operation = fixture.key
 				}
 				plan = append(plan, extras...)
 			}
-			if name == "list_directory" && variant.Name == "complete" {
-				extra, err := collectionWireCase(id, variant, outcomes[outcome])
+			if name == "list_directory" && fixture.fixture == "reference" && variant.Name == "complete" {
+				extra, err := collectionWireCase(id, variant, response)
 				if err != nil {
 					return nil, err
 				}
+				extra.operation = fixture.key
 				plan = append(plan, extra)
 			}
 		}
@@ -479,32 +509,42 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 			return wireFailingFilesystem{fmt.Errorf("%s: %w", wirePrivateMarker, fixture.backendError)}
 		}
 	}
-	registry, root := mcpWireRegistry(t, id.Profile == "read", wireFileLimit, limits, wrap)
+	var registry *tools.Registry
+	var view *tools.CatalogView
+	var root string
+	// Injected causes and instrumentation mutations stay in isolated fixtures.
+	if wrap != nil || mutation.registry != nil || fixture.registry != nil {
+		registry, root = mcpWireRegistry(t, id.Profile == "read", wireFileLimit, limits, wrap)
+	} else {
+		registry, view, root = mcpEffectiveRegistry(t, id.Profile == "read", wireFileLimit, limits, id.Revision)
+	}
 	if fixture.setup != nil {
 		if err := fixture.setup(root); err != nil {
 			return benchmark.WireFixture{}, err
 		}
 	}
 	if mutation.registry != nil {
-		if err := mutation.registry(registry); err != nil {
+		mutated, err := mutation.registry(registry)
+		if err != nil {
 			return benchmark.WireFixture{}, err
 		}
+		registry = mutated
 	}
 	if fixture.registry != nil {
-		if err := fixture.registry(registry); err != nil {
+		fixtureRegistry, err := fixture.registry(registry)
+		if err != nil {
 			return benchmark.WireFixture{}, err
 		}
+		registry = fixtureRegistry
 	}
-	var observed *mcpObservedTool
 	args := fixture.args
 	if id.Tool != "" {
-		registered, ok := registry.Get(id.Tool)
-		if !ok {
-			return benchmark.WireFixture{}, fmt.Errorf("tool disappeared from effective registry")
+		var catalog wireCatalog = registry
+		if view != nil {
+			catalog = view
 		}
-		observed = &mcpObservedTool{Tool: registered}
-		if err := registry.Register(observed); err != nil {
-			return benchmark.WireFixture{}, err
+		if len(catalog.ResultContract(id.Tool)) == 0 {
+			return benchmark.WireFixture{}, fmt.Errorf("tool disappeared from effective registry")
 		}
 		args = `{"name":"` + id.Tool + `","arguments":` + args + `}`
 	}
@@ -533,12 +573,15 @@ func captureServerWire(t *testing.T, fixture serverWireCase, mutation wireGateMu
 	if request == "" {
 		request = mcpRequest(id.Route, args, id.Revision)
 	}
-	wire, err := mcpStdout(ctx, mcpRouter(registry, id.Source == benchmark.WireCandidate), request)
+	var observed mcpObservedExecution
+	wire, err := mcpStdout(observed.context(ctx), mcpRouter(registry, id.Source == benchmark.WireCandidate), request)
 	if err != nil {
 		return benchmark.WireFixture{}, err
 	}
-	if observed != nil && id.Outcome == "success" && observed.variant != id.Variant {
-		return benchmark.WireFixture{}, fmt.Errorf("executed variant %q, want %q", observed.variant, id.Variant)
+	if id.Tool != "" && id.Outcome == "success" {
+		if err := observed.check(fixture.operation, id.Variant, registry.IsCatalog()); err != nil {
+			return benchmark.WireFixture{}, err
+		}
 	}
 	encode, decode := fixture.encode, uint64(0)
 	if id.Revision == revision.Stateless && body == "result" {
@@ -632,22 +675,25 @@ func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 		budget     func(*benchmark.WireBudgets)
 		mutation   wireGateMutation
 	}{
-		{"new tool", "uncovered", nil, wireGateMutation{registry: func(r *tools.Registry) error {
-			return r.Register(mcpFutureTool{Tool: r.List()[0]})
+		{"new tool", "uncovered", nil, wireGateMutation{registry: func(r *tools.Registry) (*tools.Registry, error) {
+			return r, r.Register(mcpFutureTool{Tool: r.List()[0]})
 		}}},
-		{"new variant", "declared variants", nil, wireGateMutation{registry: func(r *tools.Registry) error {
+		{"new variant", "declared variants", nil, wireGateMutation{registry: func(r *tools.Registry) (*tools.Registry, error) {
 			tool, _ := r.Get("get_path_info")
-			return r.Register(wireExtraVariant{tool})
+			return registryWithFixtureTool(r, wireExtraVariant{tool})
 		}}},
-		{"changed variant contract", "registered variant contract", nil, wireGateMutation{registry: func(r *tools.Registry) error {
+		{"changed variant contract", "registered variant contract", nil, wireGateMutation{registry: func(r *tools.Registry) (*tools.Registry, error) {
 			tool, _ := r.Get("get_path_info")
-			return r.Register(wireChangedLimit{tool})
+			return registryWithFixtureTool(r, wireChangedLimit{tool})
 		}}},
 		{"missing semantic fixture", "missing fixture", nil, wireGateMutation{cases: func(rows []serverWireCase) []serverWireCase {
 			return removeWireCase(rows, "read_file", "escaped")
 		}}},
 		{"missing error wire fixture", "missing fixture", nil, wireGateMutation{cases: func(rows []serverWireCase) []serverWireCase {
 			return removeWireCase(rows, "read_file", "invalid_text_encoding")
+		}}},
+		{"missing overwrite fixture", "missing fixture", nil, wireGateMutation{cases: func(rows []serverWireCase) []serverWireCase {
+			return removeWireCase(rows, "copy_path", "overwrite")
 		}}},
 		{"missing budget", "missing wire budget", func(b *benchmark.WireBudgets) {
 			delete(b.Cases, "tools/call/read_file/complete/reference")
@@ -671,9 +717,9 @@ func TestMCPConformanceWireEfficiencyGateMutations(t *testing.T) {
 		{"candidate metadata on zero-revision budget", "revision bytes", func(b *benchmark.WireBudgets) {
 			b.Paths["candidate/2026-07-28/write/stdio-lf"] = benchmark.WirePathBudget{}
 		}, wireGateMutation{}},
-		{"extra heavy copy", "payload copy trace changed", nil, wireGateMutation{registry: func(r *tools.Registry) error {
+		{"extra heavy copy", "payload copy trace changed", nil, wireGateMutation{registry: func(r *tools.Registry) (*tools.Registry, error) {
 			tool, _ := r.Get("read_file")
-			return r.Register(wireHeavyCopy{tool})
+			return registryWithFixtureTool(r, wireHeavyCopy{tool})
 		}}},
 		{"relocated payload", "payload placement", nil, wireGateMutation{frame: mutateReadReference(`"text":"seed"`, `"data":"seed"`)}},
 		{"duplicated payload", "payload placement", nil, wireGateMutation{frame: mutateReadReference(`"size":4`, `"size":4,"text":"seed"`)}},
@@ -751,12 +797,35 @@ func TestWireCaptureReuseIsolation(t *testing.T) {
 	}
 	// Registry and executable-case changes must bypass the capture cache.
 	called := false
-	mutation.registry = func(*tools.Registry) error {
+	mutation.registry = func(*tools.Registry) (*tools.Registry, error) {
 		called = true
-		return fmt.Errorf("fresh registry mutation")
+		return nil, fmt.Errorf("fresh registry mutation")
 	}
 	if _, err := captureServerWire(t, row, mutation); err == nil || !called {
 		t.Fatal("registry mutation reused an unmodified capture")
+	}
+}
+
+func TestWireCaptureRejectsWrongOperationWithMatchingResult(t *testing.T) {
+	registry, _ := mcpRegistryWithLimit(t, false, wireFileLimit)
+	base := benchmark.WireIdentity{
+		Source: benchmark.WireProduction, Revision: protocol.ProtocolVersion, Profile: "write", Transport: "stdio-lf",
+		Transfer: string(tools.InlineTransfer), State: string(tools.CompleteResult), Outcome: "success",
+	}
+	rows, err := serverWireCases(base, registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	index := slices.IndexFunc(rows, func(row serverWireCase) bool {
+		return row.id.Tool == "copy_path" && row.id.Fixture == "overwrite"
+	})
+	if index < 0 {
+		t.Fatal("missing overwrite fixture")
+	}
+	row := rows[index]
+	row.operation.Variant = execution.DefaultVariant
+	if _, err := captureServerWire(t, row, wireGateMutation{}); err == nil || !strings.Contains(err.Error(), "executed operation keys") {
+		t.Fatalf("fixture with the right result and wrong operation was accepted: %v", err)
 	}
 }
 

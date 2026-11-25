@@ -171,6 +171,14 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	policy, err := execution.NewPolicyBinding(runtime, profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err = session.WithPolicy(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
 	req, err := session.Request(execution.MCP20251125, 4096)
 	if err != nil {
 		t.Fatal(err)
@@ -184,9 +192,9 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 		t.Fatal(err)
 	}
 	local := currentProcess{roots: r, operations: operations, identity: native, generation: generation}
-	direct := execution.Registration[command, result]{ID: execution.CurrentProcess, Identity: native, Backend: local}
+	direct := execution.Registration[command, result]{ID: execution.CurrentProcess, Identity: native, Backend: local, Operations: routes.OperationKeys()}
 	identity := execution.Identity{Account: "test-account", Binding: "fake-worker"}
-	delegate := execution.Registration[command, result]{ID: execution.UserWorker, Identity: identity, Backend: simulatedBackend(func(ctx context.Context, call execution.Invocation[command]) (execution.Completion[result], error) {
+	delegate := execution.Registration[command, result]{ID: execution.UserWorker, Identity: identity, Operations: routes.OperationKeys(), Backend: simulatedBackend(func(ctx context.Context, call execution.Invocation[command]) (execution.Completion[result], error) {
 		bind := call.Binding()
 		if err := bind.Verify(ctx, execution.UserWorker, identity, generation); err != nil {
 			return execution.Completion[result]{}, err
@@ -199,7 +207,7 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 	})}
 	read := command{name: readFile, path: operand{"work", "ordinary.txt"}, maxBytes: 4096}
 	for _, reg := range []execution.Registration[command, result]{direct, delegate} {
-		d, err := execution.NewDispatcher(runtime, profile, reg.ID, routes, reg)
+		d, err := execution.NewDispatcher(policy, reg.ID, routes, reg)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,8 +223,8 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 	}
 	forged := local
 	forged.identity.Binding = "unrelated-process"
-	wrongNative, err := execution.NewDispatcher(runtime, profile, direct.ID, routes,
-		execution.Registration[command, result]{ID: direct.ID, Identity: forged.identity, Backend: forged})
+	wrongNative, err := execution.NewDispatcher(policy, direct.ID, routes,
+		execution.Registration[command, result]{ID: direct.ID, Identity: forged.identity, Backend: forged, Operations: routes.OperationKeys()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +260,7 @@ func TestTypedReadParityAndMismatchedOperands(t *testing.T) {
 			}
 			return resources, nil
 		}
-		d, err := execution.NewDispatcher(runtime, profile, direct.ID, misbound, direct)
+		d, err := execution.NewDispatcher(policy, direct.ID, misbound, direct)
 		if err != nil {
 			t.Fatal(err)
 		}

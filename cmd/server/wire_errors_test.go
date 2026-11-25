@@ -161,12 +161,12 @@ func wireRPCErrors(base benchmark.WireIdentity, cases map[string]mcpToolCase) []
 	ioFailure := wireRPCError(base, "tools/call", "internal-io", `{"name":"read_file","arguments":{"root_id":"work","path":"seed.txt"}}`, wireInternalError)
 	ioFailure.backendError = io.ErrUnexpectedEOF
 	badResult := wireRPCError(base, "tools/call", "internal-serialization", `{"name":"read_file","arguments":{"root_id":"work","path":"seed.txt"}}`, wireInternalError)
-	badResult.registry = func(registry *tools.Registry) error {
+	badResult.registry = func(registry *tools.Registry) (*tools.Registry, error) {
 		tool, ok := registry.Get("read_file")
 		if !ok {
-			return fmt.Errorf("missing read_file serialization fixture")
+			return nil, fmt.Errorf("missing read_file serialization fixture")
 		}
-		return registry.Register(wireInvalidResultTool{tool})
+		return registryWithFixtureTool(registry, wireInvalidResultTool{tool})
 	}
 	invalidParams := wireRPCError(base, "tools/call", "invalid-outer-params", `{"name":"read_file","arguments":[]}`, wireInvalidParams)
 	missingName := wireRPCError(base, "tools/call", "missing-tool-name", `{"arguments":{}}`, wireInvalidParams)

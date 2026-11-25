@@ -14,7 +14,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/execution"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
+	"github.com/thomasweidner/flashgate-mcp/internal/fsapp"
+	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/initialize"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/ping"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
@@ -50,10 +53,10 @@ func mcpMatrixCoverage(versions, profiles []string) error {
 // Each entry is executable functional coverage, independent of snapshot updates.
 // A new registration requires an explicit success and security case here.
 type mcpToolCase struct {
-	success  map[string]mcpSuccessCase
-	denied   string
-	readOnly bool
-	errors   map[string]mcpErrorCase
+	operations []mcpOperationCase
+	denied     string
+	readOnly   bool
+	errors     map[string]mcpErrorCase
 }
 
 type mcpSuccessCase struct {
@@ -63,22 +66,54 @@ type mcpSuccessCase struct {
 	content   []protocol.ContentBlock
 }
 
-func mcpCompleteCase(arguments, denied, field string, errors map[string]mcpErrorCase) mcpToolCase {
-	return mcpToolCase{success: map[string]mcpSuccessCase{"complete": {arguments: arguments, field: field, want: true}}, denied: denied, errors: errors}
+type mcpOperationCase struct {
+	key     execution.OperationKey
+	fixture string
+	variant string
+	success mcpSuccessCase
+	setup   func(string) error
+}
+
+func mcpReferenceOperation(operation execution.OperationID, variant string, fixture mcpSuccessCase) mcpOperationCase {
+	return mcpOperationCase{
+		key:     execution.OperationKey{Name: operation, Variant: execution.DefaultVariant},
+		fixture: "reference", variant: variant, success: fixture,
+	}
+}
+
+func (c mcpOperationCase) binding() wireOperationCase {
+	return wireOperationCase{Operation: wireOperationKey(c.key), Variant: c.variant, Fixture: c.fixture}
+}
+
+func mcpAdditionalOperation(name execution.OperationID, variant execution.VariantID, arguments, field string, setup func(string) error) mcpOperationCase {
+	return mcpOperationCase{
+		key: execution.OperationKey{Name: name, Variant: variant}, fixture: string(variant), variant: "complete",
+		success: mcpSuccessCase{arguments: arguments, field: field, want: true}, setup: setup,
+	}
+}
+
+func mcpExistingTarget(name string) func(string) error {
+	return func(root string) error {
+		return os.WriteFile(filepath.Join(root, name), []byte("previous"), 0o600)
+	}
+}
+
+func mcpCompleteCase(operation execution.OperationID, arguments, denied, field string, errors map[string]mcpErrorCase) mcpToolCase {
+	return mcpToolCase{operations: []mcpOperationCase{mcpReferenceOperation(operation, "complete", mcpSuccessCase{arguments: arguments, field: field, want: true})}, denied: denied, errors: errors}
 }
 
 func mcpToolCases() map[string]mcpToolCase {
-	return map[string]mcpToolCase{
-		"list_directory": {success: map[string]mcpSuccessCase{
-			"complete": {`{"root_id":"work","path":"."}`, "entries", []any{map[string]any{"name": "seed.txt", "isDir": false, "size": json.Number("4")}}, []protocol.ContentBlock{protocol.NewTextContent("See structuredContent for the result.")}},
+	cases := map[string]mcpToolCase{
+		"list_directory": {operations: []mcpOperationCase{
+			mcpReferenceOperation(fsapp.ListOperation, "complete", mcpSuccessCase{`{"root_id":"work","path":"."}`, "entries", []any{map[string]any{"name": "seed.txt", "isDir": false, "size": json.Number("4")}}, []protocol.ContentBlock{protocol.NewTextContent("See structuredContent for the result.")}}),
 		}, denied: `{"root_id":"work","path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"root_id":"work","path":"."}`, map[string]mcpErrorCase{
 			"not_found":             {arguments: `{"root_id":"work","path":"missing.txt"}`},
 			"already_exists":        {reason: "Listing does not create or replace a path."},
 			"unsupported_path_type": {reason: "Listing uses native directory enumeration. A non-directory enumeration error has no portable BL-203 path-type mapping here."},
 			"limit_exceeded":        {arguments: `{"root_id":"work","path":"."}`, setup: wireSecondFile, tightLimits: true},
 		})},
-		"read_file": {success: map[string]mcpSuccessCase{
-			"complete": {`{"root_id":"work","path":"seed.txt"}`, "size", json.Number("4"), []protocol.ContentBlock{protocol.NewTextContent("seed")}},
+		"read_file": {operations: []mcpOperationCase{
+			mcpReferenceOperation(fsapp.ReadOperation, "complete", mcpSuccessCase{`{"root_id":"work","path":"seed.txt"}`, "size", json.Number("4"), []protocol.ContentBlock{protocol.NewTextContent("seed")}}),
 		}, denied: `{"root_id":"work","path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"root_id":"work","path":"seed.txt"}`, map[string]mcpErrorCase{
 			"not_found":             {arguments: `{"root_id":"work","path":"missing.txt"}`},
 			"already_exists":        {reason: "Reading does not create or replace a path."},
@@ -86,44 +121,44 @@ func mcpToolCases() map[string]mcpToolCase {
 			"invalid_text_encoding": {arguments: `{"root_id":"work","path":"invalid.txt"}`, setup: wireInvalidText, copiedBytes: uint64(len(wireInvalidTextBytes))},
 			"limit_exceeded":        {arguments: `{"root_id":"work","path":"seed.txt","maxBytes":3}`},
 		})},
-		"get_path_info": {success: map[string]mcpSuccessCase{
-			"existing": {arguments: `{"root_id":"work","path":"seed.txt"}`, field: "exists", want: true},
-			"missing":  {arguments: `{"root_id":"work","path":"missing.txt"}`, field: "exists", want: false},
+		"get_path_info": {operations: []mcpOperationCase{
+			mcpReferenceOperation(fsapp.StatOperation, "existing", mcpSuccessCase{arguments: `{"root_id":"work","path":"seed.txt"}`, field: "exists", want: true}),
+			mcpReferenceOperation(fsapp.StatOperation, "missing", mcpSuccessCase{arguments: `{"root_id":"work","path":"missing.txt"}`, field: "exists", want: false}),
 		}, denied: `{"root_id":"work","path":"../outside"}`, readOnly: true, errors: mcpFilesystemErrors(`{"root_id":"work","path":"seed.txt"}`, map[string]mcpErrorCase{
 			"not_found":             {reason: "A missing path is the existing successful missing variant."},
 			"already_exists":        {reason: "Stat does not create or replace a path."},
 			"unsupported_path_type": {reason: "Stat supports files and directories. PathGuard denials use invalid_path."},
 			"limit_exceeded":        {reason: "Stat does not read content, traverse a collection or accept a variable-size result projection."},
 		})},
-		"write_file": mcpCompleteCase(`{"root_id":"work","path":"written.txt","content":"new"}`, `{"root_id":"work","path":"../outside","content":"new"}`, "written",
+		"write_file": mcpCompleteCase(fsapp.WriteOperation, `{"root_id":"work","path":"written.txt","content":"new"}`, `{"root_id":"work","path":"../outside","content":"new"}`, "written",
 			mcpFilesystemErrors(`{"root_id":"work","path":"written.txt","content":"new"}`, map[string]mcpErrorCase{
 				"not_found":             {arguments: `{"root_id":"work","path":"missing/file.txt"}`},
 				"already_exists":        {arguments: `{"root_id":"work","path":"seed.txt"}`},
 				"unsupported_path_type": {arguments: `{"root_id":"work","path":"directory"}`, setup: wireDirectory},
 				"limit_exceeded":        {arguments: `{"root_id":"work","path":"written.txt","content":"too large"}`, tightLimits: true},
 			})),
-		"create_directory": mcpCompleteCase(`{"root_id":"work","path":"new-directory"}`, `{"root_id":"work","path":"../outside"}`, "created",
+		"create_directory": mcpCompleteCase(fsapp.MkdirOperation, `{"root_id":"work","path":"new-directory"}`, `{"root_id":"work","path":"../outside"}`, "created",
 			mcpFilesystemErrors(`{"root_id":"work","path":"new-directory"}`, map[string]mcpErrorCase{
 				"not_found":             {reason: "Mkdir creates missing ancestors and leaf."},
 				"already_exists":        {reason: "An existing directory returns created:false; an existing file is a path-type error."},
 				"unsupported_path_type": {arguments: `{"root_id":"work","path":"seed.txt"}`},
 				"limit_exceeded":        {reason: "Mkdir has no filesystem traversal, content or collection quota for its receipt."},
 			})),
-		"delete_path": mcpCompleteCase(`{"root_id":"work","path":"seed.txt"}`, `{"root_id":"work","path":"../outside"}`, "deleted",
+		"delete_path": mcpCompleteCase(fsapp.DeleteOperation, `{"root_id":"work","path":"seed.txt"}`, `{"root_id":"work","path":"../outside"}`, "deleted",
 			mcpFilesystemErrors(`{"root_id":"work","path":"seed.txt"}`, map[string]mcpErrorCase{
 				"not_found":             {arguments: `{"root_id":"work","path":"missing.txt"}`},
 				"already_exists":        {reason: "Deletion requires an existing source and creates no destination."},
 				"unsupported_path_type": {arguments: `{"root_id":"work","path":"directory"}`, setup: wireNonemptyDirectory},
 				"limit_exceeded":        {arguments: `{"root_id":"work","path":"directory","recursive":true}`, setup: wireNonemptyDirectory, tightLimits: true},
 			})),
-		"copy_path": mcpCompleteCase(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt"}`, `{"source_root_id":"work","target_root_id":"work","source":"../outside","target":"copied.txt"}`, "copied",
+		"copy_path": mcpCompleteCase(fsapp.CopyOperation, `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt"}`, `{"source_root_id":"work","target_root_id":"work","source":"../outside","target":"copied.txt"}`, "copied",
 			mcpFilesystemErrors(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt"}`, map[string]mcpErrorCase{
 				"not_found":             {arguments: `{"source_root_id":"work","target_root_id":"work","source":"missing.txt","target":"copied.txt"}`},
 				"already_exists":        {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
 				"unsupported_path_type": {arguments: `{"source_root_id":"work","target_root_id":"work","source":"directory","target":"copied.txt"}`, setup: wireDirectory},
 				"limit_exceeded":        {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt"}`, tightLimits: true},
 			})),
-		"move_path": mcpCompleteCase(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"moved.txt"}`, `{"source_root_id":"work","target_root_id":"work","source":"../outside","target":"moved.txt"}`, "moved",
+		"move_path": mcpCompleteCase(fsapp.MoveOperation, `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"moved.txt"}`, `{"source_root_id":"work","target_root_id":"work","source":"../outside","target":"moved.txt"}`, "moved",
 			mcpFilesystemErrors(`{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"moved.txt"}`, map[string]mcpErrorCase{
 				"not_found":             {arguments: `{"source_root_id":"work","target_root_id":"work","source":"missing.txt","target":"moved.txt"}`},
 				"already_exists":        {arguments: `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"second.txt"}`, setup: wireSecondFile},
@@ -132,33 +167,64 @@ func mcpToolCases() map[string]mcpToolCase {
 				"limit_exceeded":        {reason: "Same-volume rename does not traverse or transfer content and has no operation quota."},
 			})),
 	}
+	for name, additional := range map[string]mcpOperationCase{
+		"write_file":  mcpAdditionalOperation(fsapp.WriteOperation, "overwrite", `{"root_id":"work","path":"written.txt","content":"new","overwrite":true}`, "written", mcpExistingTarget("written.txt")),
+		"delete_path": mcpAdditionalOperation(fsapp.DeleteOperation, "recursive", `{"root_id":"work","path":"directory","recursive":true}`, "deleted", wireNonemptyDirectory),
+		"copy_path":   mcpAdditionalOperation(fsapp.CopyOperation, "overwrite", `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"copied.txt","overwrite":true}`, "copied", mcpExistingTarget("copied.txt")),
+		"move_path":   mcpAdditionalOperation(fsapp.MoveOperation, "overwrite", `{"source_root_id":"work","target_root_id":"work","source":"seed.txt","target":"moved.txt","overwrite":true}`, "moved", mcpExistingTarget("moved.txt")),
+	} {
+		entry := cases[name]
+		entry.operations = append(entry.operations, additional)
+		cases[name] = entry
+	}
+	return cases
 }
 
-func mcpVariantCoverage(contract tools.ResultContract, cases map[string]mcpSuccessCase) error {
-	if len(contract) != len(cases) {
-		return fmt.Errorf("declared variants %d differ from executable fixtures %d", len(contract), len(cases))
-	}
-	for _, variant := range contract {
-		fixture, ok := cases[variant.Name]
-		if !ok || fixture.arguments == "" || fixture.field == "" {
-			return fmt.Errorf("missing executable fixture for variant %q", variant.Name)
+func mcpFixtureCoverage(contract tools.ResultContract, cases []mcpOperationCase, required []tools.CatalogOutcome) error {
+	seen := make(map[string]bool, len(contract))
+	bindings := make([]wireOperationCase, 0, len(cases))
+	for _, row := range cases {
+		index := slices.IndexFunc(contract, func(variant tools.ResultVariant) bool { return variant.Name == row.variant })
+		fixture := row.success
+		if index < 0 || fixture.arguments == "" || fixture.field == "" {
+			return fmt.Errorf("missing executable fixture for variant %q", row.variant)
 		}
+		variant := contract[index]
 		if (variant.ObjectKind != tools.MetadataPayload || len(variant.Parts) > 0) && len(fixture.content) == 0 {
 			return fmt.Errorf("missing exact payload block assertions for variant %q", variant.Name)
 		}
+		seen[variant.Name] = true
+		bindings = append(bindings, row.binding())
+	}
+	if required != nil {
+		return checkOperationCases(required, bindings, func(wireOperationCase) error { return nil })
+	}
+	if len(seen) != len(contract) {
+		return fmt.Errorf("declared variants %d differ from executable fixtures %d", len(contract), len(seen))
 	}
 	return nil
 }
 
-type mcpObservedTool struct {
-	tools.Tool
-	variant string
+type mcpObservedExecution struct {
+	operations []execution.OperationKey
+	results    []string
 }
 
-func (tool *mcpObservedTool) Execute(ctx context.Context, arguments json.RawMessage) (tools.ToolResult, error) {
-	result, err := tool.Tool.Execute(ctx, arguments)
-	tool.variant = result.Variant()
-	return result, err
+func (observed *mcpObservedExecution) context(ctx context.Context) context.Context {
+	ctx = execution.ObserveOperations(ctx, func(key execution.OperationKey) {
+		observed.operations = append(observed.operations, key)
+	})
+	return tools.ObserveResults(ctx, func(variant string) { observed.results = append(observed.results, variant) })
+}
+
+func (observed mcpObservedExecution) check(key execution.OperationKey, variant string, catalog bool) error {
+	if !slices.Equal(observed.results, []string{variant}) {
+		return fmt.Errorf("executed result variants %v, want %q", observed.results, variant)
+	}
+	if catalog && !slices.Equal(observed.operations, []execution.OperationKey{key}) {
+		return fmt.Errorf("executed operation keys %v, want %+v", observed.operations, key)
+	}
+	return nil
 }
 
 func mcpRegistry(t *testing.T, readOnly bool) (*tools.Registry, string) {
@@ -185,6 +251,31 @@ func mcpWireRegistry(t *testing.T, readOnly bool, maxFileBytes int64, limits fs.
 	return requireToolRegistry(t, filesystem, maxFileBytes, readOnly), root
 }
 
+func mcpEffectiveRegistry(t testing.TB, readOnly bool, maxFileBytes int64, limits fs.Limits, version string) (*tools.Registry, *tools.CatalogView, string) {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "seed.txt"), []byte("seed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	local, profile := testRootProfile(t, root, limits, readOnly)
+	registry, err := createToolRegistry(local, maxFileBytes, profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := revision.ProductionPolicy()
+	if version == revision.Stateless {
+		policy = mcpCandidatePolicy()
+	}
+	if err := admitProfileForRevisions(registry, policy); err != nil {
+		t.Fatal(err)
+	}
+	view, err := registry.PrepareView(handlers.Context{Context: t.Context(), ProtocolVersion: version})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return registry, view, root
+}
+
 func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
 	if !candidate {
 		return createRouter("flashgate", "conformance-fixture", registry)
@@ -201,7 +292,12 @@ func mcpRouter(registry *tools.Registry, candidate bool) *router.Router {
 // Notifications are deliberately counted separately from request responses.
 func mcpWire(t *testing.T, r *router.Router, input string, count int) []map[string]json.RawMessage {
 	t.Helper()
-	stdout, err := mcpStdout(context.Background(), r, input)
+	return mcpWireContext(t, t.Context(), r, input, count)
+}
+
+func mcpWireContext(t *testing.T, ctx context.Context, r *router.Router, input string, count int) []map[string]json.RawMessage {
+	t.Helper()
+	stdout, err := mcpStdout(ctx, r, input)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +349,12 @@ func mcpRequest(method, params, version string) string {
 
 func mcpResult(t *testing.T, r *router.Router, method, params, version string) map[string]json.RawMessage {
 	t.Helper()
-	response := mcpWire(t, r, mcpRequest(method, params, version), 1)[0]
+	return mcpResultContext(t, t.Context(), r, method, params, version)
+}
+
+func mcpResultContext(t *testing.T, ctx context.Context, r *router.Router, method, params, version string) map[string]json.RawMessage {
+	t.Helper()
+	response := mcpWireContext(t, ctx, r, mcpRequest(method, params, version), 1)[0]
 	if response["error"] != nil {
 		t.Fatalf("%s: unexpected RPC error: %s", method, response["error"])
 	}
@@ -294,7 +395,7 @@ func mcpInventory(definitions []protocol.Tool, cases map[string]mcpToolCase, rea
 		}
 		delete(expected, definition.Name)
 		test := cases[definition.Name]
-		if len(test.success) == 0 || test.denied == "" {
+		if len(test.operations) == 0 || test.denied == "" {
 			return fmt.Errorf("missing executable contract case for %q", definition.Name)
 		}
 		if err := mcpErrorCoverage(test.errors); err != nil {
@@ -352,7 +453,7 @@ func mcpSnapshotDrift(accepted, current []byte) error {
 	return nil
 }
 
-func mcpDefinitions(registry *tools.Registry) []protocol.Tool {
+func mcpDefinitions(registry interface{ List() []tools.Tool }) []protocol.Tool {
 	var definitions []protocol.Tool
 	for _, tool := range registry.List() {
 		definitions = append(definitions, tool.Definition())
@@ -369,9 +470,9 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 		for _, profile := range mcpConformanceProfiles {
 			t.Run(version+"/"+profile, func(t *testing.T) {
 				readOnly := profile == "read"
-				registry, root := mcpRegistry(t, readOnly)
+				registry, view, root := mcpEffectiveRegistry(t, readOnly, wireFileLimit, fs.DefaultLimits(), version)
 				r := mcpRouter(registry, version == revision.Stateless)
-				definitions := mcpDefinitions(registry)
+				definitions := mcpDefinitions(view)
 				schemas, err := mcpCompileSchemas(definitions)
 				if err != nil {
 					t.Fatal(err)
@@ -422,31 +523,36 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 					t.Fatal("wire catalog differs from sorted runtime definitions")
 				}
 				results := make(map[string]any)
+				operationCases := make(map[string][]wireOperationCase)
 				for _, definition := range definitions {
 					test := cases[definition.Name]
 					schema := schemas[definition.Name]
-					registered, ok := registry.Get(definition.Name)
-					if !ok {
+					contract := view.ResultContract(definition.Name)
+					if len(contract) == 0 {
 						t.Fatalf("missing registered tool %q", definition.Name)
 					}
-					contract := registered.ResultContract()
-					if err := mcpVariantCoverage(contract, test.success); err != nil {
+					if err := mcpFixtureCoverage(contract, test.operations, view.Outcomes(definition.Name)); err != nil {
 						t.Fatalf("%s: %v", definition.Name, err)
 					}
 					outcomes := make(map[string]any)
-					for variant, fixture := range test.success {
-						fresh, _ := mcpRegistry(t, readOnly)
-						original, _ := fresh.Get(definition.Name)
-						observed := &mcpObservedTool{Tool: original}
-						if err := fresh.Register(observed); err != nil {
-							t.Fatal(err)
+					run := func(operation mcpOperationCase) map[string]json.RawMessage {
+						fresh, freshView, fixtureRoot := mcpEffectiveRegistry(t, readOnly, wireFileLimit, fs.DefaultLimits(), version)
+						if !slices.Contains(freshView.OperationKeys(definition.Name), operation.key) {
+							t.Fatalf("%s: operation %+v outside fixture composition", definition.Name, operation.key)
 						}
-						label := definition.Name + "/" + variant
+						if operation.setup != nil {
+							if err := operation.setup(fixtureRoot); err != nil {
+								t.Fatal(err)
+							}
+						}
+						fixture := operation.success
+						label := definition.Name + "/" + operation.variant + "/" + operation.fixture
 						mcpRequireSchemaInstance(t, label+"/inputSchema", schema.input, []byte(fixture.arguments))
-						result := mcpResult(t, mcpRouter(fresh, version == revision.Stateless), "tools/call", `{"name":"`+definition.Name+`","arguments":`+fixture.arguments+`}`, version)
+						var observed mcpObservedExecution
+						result := mcpResultContext(t, observed.context(t.Context()), mcpRouter(fresh, version == revision.Stateless), "tools/call", `{"name":"`+definition.Name+`","arguments":`+fixture.arguments+`}`, version)
 						mcpCheckRevisionResult(t, result, version, false)
-						if observed.variant != variant {
-							t.Fatalf("%s: executed variant %q", label, observed.variant)
+						if err := observed.check(operation.key, operation.variant, true); err != nil {
+							t.Fatalf("%s: %v", label, err)
 						}
 						mcpRequireSchemaInstance(t, label+"/outputSchema", schema.output, result["structuredContent"])
 						base := mcpResultEnvelope(t, result)
@@ -458,13 +564,25 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 						if !reflect.DeepEqual(value[fixture.field], fixture.want) {
 							t.Fatalf("%s: functional assertion failed: %s", label, base)
 						}
-						outcome := "success_" + variant
-						if variant == contract[0].Name {
-							outcome = "success"
-						}
-						outcomes[outcome] = result
+						return result
 					}
-					fresh, _ := mcpRegistry(t, readOnly)
+					var measured []wireOperationCase
+					for _, operation := range test.operations {
+						binding := operation.binding()
+						result := run(operation)
+						if operation.fixture == "reference" {
+							index := slices.IndexFunc(contract, func(variant tools.ResultVariant) bool { return variant.Name == operation.variant })
+							outcomes[wireResultOutcome(index, operation.variant)] = result
+						} else {
+							binding.Response = canonicalMCP(t, result)
+						}
+						measured = append(measured, binding)
+					}
+					if err := checkOperationCases(view.Outcomes(definition.Name), measured, func(wireOperationCase) error { return nil }); err != nil {
+						t.Fatalf("%s: %v", definition.Name, err)
+					}
+					operationCases[definition.Name] = measured
+					fresh, _, _ := mcpEffectiveRegistry(t, readOnly, wireFileLimit, fs.DefaultLimits(), version)
 					mcpRequireSchemaInstance(t, definition.Name+"/denied/inputSchema", schema.input, []byte(test.denied))
 					denied := mcpResult(t, mcpRouter(fresh, version == revision.Stateless), "tools/call", `{"name":"`+definition.Name+`","arguments":`+test.denied+`}`, version)
 					mcpCheckRevisionResult(t, denied, version, false)
@@ -480,6 +598,7 @@ func TestMCPConformanceSnapshots(t *testing.T) {
 					"format": "flashgate-mcp-contract/v1", "revision": version, "profile": profile,
 					"productionRevisions": revision.ProductionPolicy().Supported(),
 					"definitions":         definitions, "toolsList": list, "entry": discovery, "calls": results,
+					"operationCases": operationCases,
 				})
 				if bytes.Contains(snapshot, []byte(root)) {
 					t.Fatal("host root leaked into snapshot")
@@ -586,9 +705,9 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 	})
 	t.Run("missing-variant-fixture", func(t *testing.T) {
 		tool, _ := registry.Get("get_path_info")
-		cases := mcpToolCases()["get_path_info"].success
-		delete(cases, "missing")
-		if mcpVariantCoverage(tool.ResultContract(), cases) == nil {
+		cases := mcpToolCases()["get_path_info"].operations
+		cases = slices.DeleteFunc(cases, func(row mcpOperationCase) bool { return row.variant == "missing" })
+		if mcpFixtureCoverage(tool.ResultContract(), cases, nil) == nil {
 			t.Fatal("untested result variant escaped the conformance gate")
 		}
 	})
@@ -607,7 +726,7 @@ func TestMCPConformanceCompletenessMutations(t *testing.T) {
 		}
 	})
 	t.Run("duplicated-payload", func(t *testing.T) {
-		fixture := mcpToolCases()["read_file"].success["complete"]
+		fixture := mcpToolCases()["read_file"].operations[0].success
 		raw := json.RawMessage(`{"content":[{"type":"text","text":"seed"},{"type":"text","text":"seed"}],"structuredContent":{"size":4}}`)
 		if _, err := mcpDecodeSuccess(t, raw, fixture); err == nil {
 			t.Fatal("duplicate payload escaped the conformance gate")

@@ -10,7 +10,7 @@ import (
 )
 
 func TestResourceFreeAuthorization(t *testing.T) {
-	runtime, _, request := sessionFixture(t, nil)
+	_, session, _ := sessionFixture(t, nil)
 	inspector := profileFixture(t, "active='inspector'\n[profiles.inspector]\ngrants=['system.read']\n")
 	reader := profileFixture(t, "")
 	for _, tc := range []struct {
@@ -22,6 +22,7 @@ func TestResourceFreeAuthorization(t *testing.T) {
 		{"missing global right", reader, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			policy, request := fixturePolicy(t, session, tc.profile)
 			decl := fixtureDeclaration(t, tc.profile, capability.RiskRead, capability.SystemRead)
 			routes := fixtureRoutes(decl)
 			resolutions, calls, fallbacks := 0, 0, 0
@@ -44,8 +45,8 @@ func TestResourceFreeAuthorization(t *testing.T) {
 				return Completion[string]{}, nil
 			})
 			identity := Identity{Account: "effective", Binding: "process"}
-			dispatcher, err := NewDispatcher(runtime, tc.profile, CurrentProcess, routes,
-				Registration[probe, string]{ID: CurrentProcess, Identity: identity, Backend: backend},
+			dispatcher, err := NewDispatcher(policy, CurrentProcess, routes,
+				Registration[probe, string]{ID: CurrentProcess, Identity: identity, Backend: backend, Operations: routes.OperationKeys()},
 				Registration[probe, string]{ID: UserWorker, Identity: identity, Backend: fallback})
 			if err != nil {
 				t.Fatal(err)
@@ -66,7 +67,7 @@ func TestResourceFreeAuthorization(t *testing.T) {
 }
 
 func TestAuthorizerBindsOrderedOperandsAndDerivedRisk(t *testing.T) {
-	runtime, _, request := sessionFixture(t, nil)
+	_, session, _ := sessionFixture(t, nil)
 	for _, tc := range []struct {
 		name     string
 		settings string
@@ -81,6 +82,7 @@ func TestAuthorizerBindsOrderedOperandsAndDerivedRisk(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			profile := profileFixture(t, tc.settings)
+			policy, request := fixturePolicy(t, session, profile)
 			decl := fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead)
 			catalog := profile.Catalog()
 			write, err := catalog.NewRequirement(capability.FilesWrite)
@@ -114,8 +116,8 @@ func TestAuthorizerBindsOrderedOperandsAndDerivedRisk(t *testing.T) {
 				}
 				return Complete(binding, "ok"), nil
 			})
-			dispatcher, err := NewDispatcher(runtime, profile, CurrentProcess, routes,
-				Registration[probe, string]{ID: CurrentProcess, Identity: Identity{Account: "effective", Binding: "pid"}, Backend: backend})
+			dispatcher, err := NewDispatcher(policy, CurrentProcess, routes,
+				Registration[probe, string]{ID: CurrentProcess, Identity: Identity{Account: "effective", Binding: "pid"}, Backend: backend, Operations: routes.OperationKeys()})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -132,8 +134,9 @@ func TestAuthorizerBindsOrderedOperandsAndDerivedRisk(t *testing.T) {
 }
 
 func TestAuthorizerRejectsInvalidDeclarations(t *testing.T) {
-	runtime, _, _ := sessionFixture(t, nil)
+	_, session, _ := sessionFixture(t, nil)
 	profile := profileFixture(t, "")
+	policy, _ := fixturePolicy(t, session, profile)
 	foreign := profileFixture(t, "")
 	local := fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead)
 	foreignDeclaration := fixtureDeclaration(t, foreign, capability.RiskRead, capability.FilesRead)
@@ -152,7 +155,7 @@ func TestAuthorizerRejectsInvalidDeclarations(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			routes := fixtureRoutes(local)
 			routes.Declarations = declarations
-			if _, err := newAuthorizer(runtime, profile, routes); !errors.Is(err, ErrMismatch) {
+			if _, err := newAuthorizer(policy, routes); !errors.Is(err, ErrMismatch) {
 				t.Fatalf("err = %v, want binding mismatch", err)
 			}
 		})

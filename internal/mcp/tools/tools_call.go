@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/execution"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/handlers"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -36,21 +37,38 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		return nil, rpcErr
 	}
 
-	entry, ok := h.registry.lookup(params.Name)
-	if !ok {
-		return nil, invalidParamsError()
-	}
-
 	execCtx := ctx.Context
 	if execCtx == nil {
+		if h.registry.IsCatalog() {
+			return nil, invalidParamsError()
+		}
 		execCtx = context.Background()
 	}
 
 	ctx.Context = execCtx
-	result, err := entry.execute(ctx, params.Arguments)
+	var entry registeredTool
+	var binding execution.CatalogContext
+	var ok bool
+	if h.registry.IsCatalog() {
+		view, scope, err := h.registry.activeView(ctx)
+		if err != nil {
+			return nil, invalidParamsError()
+		}
+		binding = scope
+		entry, ok = view.entries[params.Name]
+	} else {
+		entry, ok = h.registry.lookup(params.Name)
+	}
+	if !ok {
+		return nil, invalidParamsError()
+	}
+	result, err := entry.invoke(ctx, binding, params.Arguments)
 	if err == nil {
 		wrapped, wrapErr := entry.contract.wrap(execCtx, result)
 		if wrapErr == nil {
+			if observe, _ := execCtx.Value(resultObserverKey{}).(func(string)); observe != nil {
+				observe(result.Variant())
+			}
 			return wrapped, nil
 		}
 		err = wrapErr
@@ -66,6 +84,25 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		}
 	}
 	return nil, internalToolResultError()
+}
+
+type resultObserverKey struct{}
+
+// ObserveResults attaches an in-process observer for validated tool results.
+func ObserveResults(ctx context.Context, observe func(string)) context.Context {
+	return context.WithValue(ctx, resultObserverKey{}, observe)
+}
+
+func (tool registeredTool) invoke(ctx handlers.Context, binding execution.CatalogContext, arguments json.RawMessage) (ToolResult, error) {
+	if tool.bound != nil {
+		invocation, err := binding.BindInvocation(tool.route, tool.variants)
+		if err != nil {
+			return ToolResult{}, err
+		}
+		ctx.Context = invocation.Context(ctx.Context)
+		return tool.bound(ctx, invocation, arguments)
+	}
+	return tool.execute(ctx, arguments)
 }
 
 func internalToolResultError() *protocol.Error {

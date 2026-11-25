@@ -35,6 +35,14 @@ func NewDirect(registry *roots.Registry, profile config.EffectiveProfile) (*Serv
 	if err != nil {
 		return nil, err
 	}
+	policy, err := execution.NewPolicyBinding(runtime, profile)
+	if err != nil {
+		return nil, err
+	}
+	session, err = session.WithPolicy(policy)
+	if err != nil {
+		return nil, err
+	}
 	operations, err := fs.BindOperations(profile.Catalog())
 	if err != nil {
 		return nil, err
@@ -44,8 +52,10 @@ func NewDirect(registry *roots.Registry, profile config.EffectiveProfile) (*Serv
 		return nil, err
 	}
 	backend := currentProcess{roots: registry, operations: operations, identity: identity, generation: generation}
-	dispatcher, err := execution.NewDispatcher(runtime, profile, execution.CurrentProcess, routes,
-		execution.Registration[command, result]{ID: execution.CurrentProcess, Identity: identity, Backend: backend})
+	dispatcher, err := execution.NewDispatcher(policy, execution.CurrentProcess, routes,
+		execution.Registration[command, result]{
+			ID: execution.CurrentProcess, Identity: identity, Backend: backend, Operations: routes.OperationKeys(),
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -106,14 +116,39 @@ func registryResources(registry *roots.Registry) func(context.Context, command) 
 // ForRequest binds the accepted ingress protocol and response allowance once.
 // The returned interface runs every operation through the bound dispatcher.
 func (s *Service) ForRequest(ctx context.Context, protocol execution.Protocol) (fs.FileSystem, error) {
-	if ctx == nil {
-		return nil, execution.ErrMismatch
-	}
-	request, err := s.session.Request(protocol, resource.ResultLimit(ctx, math.MaxInt64))
+	request, err := s.request(ctx, protocol)
 	if err != nil {
 		return nil, err
 	}
 	return filesystem{service: s, ctx: ctx, request: request}, nil
+}
+
+func (s *Service) request(ctx context.Context, protocol execution.Protocol) (execution.Request, error) {
+	if ctx == nil {
+		return execution.Request{}, execution.ErrMismatch
+	}
+	return s.session.Request(protocol, resource.ResultLimit(ctx, math.MaxInt64))
+}
+
+func (s *Service) CatalogContext(ctx context.Context, protocol execution.Protocol) (execution.CatalogContext, error) {
+	request, err := s.request(ctx, protocol)
+	if err != nil {
+		return execution.CatalogContext{}, err
+	}
+	return s.dispatcher.CatalogContext(request)
+}
+
+func (s *Service) OperationKeys(operation execution.OperationID) []execution.OperationKey {
+	return s.dispatcher.OperationKeys(operation)
+}
+
+// ForTool confines this handler to the variants admitted for its catalog entry.
+// Every concrete operation still crosses Dispatch and the native guards.
+func (s *Service) ForTool(ctx context.Context, invocation execution.CatalogInvocation) (fs.FileSystem, error) {
+	if ctx == nil || !invocation.Matches(s.dispatcher.CatalogRoute()) {
+		return nil, execution.ErrMismatch
+	}
+	return filesystem{service: s, ctx: ctx, request: invocation.Request()}, nil
 }
 
 type filesystem struct {

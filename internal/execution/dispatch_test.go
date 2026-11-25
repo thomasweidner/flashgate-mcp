@@ -46,6 +46,23 @@ func sessionFixture(t *testing.T, groups []GroupID) (*Runtime, Session, Request)
 	return runtime, session, request
 }
 
+func fixturePolicy(t *testing.T, session Session, profile config.EffectiveProfile) (*PolicyBinding, Request) {
+	t.Helper()
+	policy, err := NewPolicyBinding(session.runtime, profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err = session.WithPolicy(policy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request, err := session.Request(MCP20251125, 4096)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy, request
+}
+
 func fixtureDeclaration(t *testing.T, profile config.EffectiveProfile, floor capability.Risk, ids ...capability.ID) Declaration {
 	t.Helper()
 	op, err := profile.Catalog().NewOperation(floor, ids...)
@@ -108,8 +125,9 @@ func TestCallerSnapshotAndRequestBinding(t *testing.T) {
 }
 
 func TestDispatcherRejectsMissingBackends(t *testing.T) {
-	runtime, _, _ := sessionFixture(t, nil)
+	_, session, _ := sessionFixture(t, nil)
 	profile := profileFixture(t, "")
+	policy, _ := fixturePolicy(t, session, profile)
 	routes := fixtureRoutes(fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead))
 	identity := Identity{Account: "effective", Binding: "process"}
 	var absent probeBackend
@@ -133,7 +151,7 @@ func TestDispatcherRejectsMissingBackends(t *testing.T) {
 		{"no identity", CurrentProcess, []Registration[probe, string]{{ID: CurrentProcess, Backend: noop}}, ErrMismatch},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if d, err := NewDispatcher(runtime, profile, tc.selected, routes, tc.entries...); d != nil || !errors.Is(err, tc.want) {
+			if d, err := NewDispatcher(policy, tc.selected, routes, tc.entries...); d != nil || !errors.Is(err, tc.want) {
 				t.Fatalf("dispatcher = %v, err = %v", d, err)
 			}
 		})
@@ -141,7 +159,7 @@ func TestDispatcherRejectsMissingBackends(t *testing.T) {
 }
 
 func TestAuthorizationAndUnprovedEffectsDenyBeforeBackend(t *testing.T) {
-	runtime, _, request := sessionFixture(t, nil)
+	runtime, session, request := sessionFixture(t, nil)
 	_, _, foreignRequest := sessionFixture(t, nil)
 	read := profileFixture(t, "")
 	write := profileFixture(t, "active='write'\n")
@@ -193,11 +211,18 @@ func TestAuthorizationAndUnprovedEffectsDenyBeforeBackend(t *testing.T) {
 		{"missing CWD enforcement", t.Context(), request, read, fixtureRoutes(withCWD, provenCWD), ErrUnsupported},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			d, err := NewDispatcher(runtime, tc.profile, CurrentProcess, tc.routes, reg)
+			policy, bound := fixturePolicy(t, session, tc.profile)
+			request := tc.request
+			if request.session.runtime == runtime {
+				request = bound
+			}
+			registration := reg
+			registration.Operations = tc.routes.OperationKeys()
+			d, err := NewDispatcher(policy, CurrentProcess, tc.routes, registration)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if value, err := d.Dispatch(tc.ctx, tc.request, probe{}, nil); value != "" || !errors.Is(err, tc.want) {
+			if value, err := d.Dispatch(tc.ctx, request, probe{}, nil); value != "" || !errors.Is(err, tc.want) {
 				t.Fatalf("value = %q, err = %v", value, err)
 			}
 		})
@@ -219,8 +244,9 @@ func (cwdBackend) ProveWorkingDirectory(ctx context.Context, binding *Binding) e
 }
 
 func TestBoundCWDRevalidatedBeforeEffectAndResult(t *testing.T) {
-	runtime, _, request := sessionFixture(t, nil)
+	_, session, _ := sessionFixture(t, nil)
 	profile := profileFixture(t, "")
+	policy, request := fixturePolicy(t, session, profile)
 	identity := Identity{Account: "effective", Binding: "fixture-pid"}
 	declaration := fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead)
 	declaration.Operands = []OperandRequirement{{Kind: WorkingDirectory, Role: Single, Requirement: declaration.Operation.Requirement()}}
@@ -247,8 +273,8 @@ func TestBoundCWDRevalidatedBeforeEffectAndResult(t *testing.T) {
 		}
 		return Complete(invocation.Binding(), "bound-value"), nil
 	}}
-	d, err := NewDispatcher(runtime, profile, CurrentProcess, fixtureRoutes(declaration, resource),
-		Registration[probe, string]{ID: CurrentProcess, Identity: identity, Backend: backend})
+	d, err := NewDispatcher(policy, CurrentProcess, fixtureRoutes(declaration, resource),
+		Registration[probe, string]{ID: CurrentProcess, Identity: identity, Backend: backend, Operations: []OperationKey{declaration.Key}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -266,8 +292,9 @@ func TestBoundCWDRevalidatedBeforeEffectAndResult(t *testing.T) {
 }
 
 func TestTypedDelegationCompletionAndNoFallback(t *testing.T) {
-	runtime, _, request := sessionFixture(t, []GroupID{"reader"})
+	_, session, _ := sessionFixture(t, []GroupID{"reader"})
 	profile := profileFixture(t, "")
+	policy, request := fixturePolicy(t, session, profile)
 	declaration := fixtureDeclaration(t, profile, capability.RiskRead, capability.FilesRead)
 	identity := Identity{Account: "isolated-account", Binding: "test-worker"}
 	var old *Binding
@@ -316,8 +343,8 @@ func TestTypedDelegationCompletionAndNoFallback(t *testing.T) {
 		}
 		return declaration.Key
 	}
-	d, err := NewDispatcher(runtime, profile, UserWorker, routes,
-		Registration[probe, string]{ID: UserWorker, Identity: identity, Backend: worker},
+	d, err := NewDispatcher(policy, UserWorker, routes,
+		Registration[probe, string]{ID: UserWorker, Identity: identity, Backend: worker, Operations: routes.OperationKeys()},
 		Registration[probe, string]{ID: CurrentProcess, Identity: Identity{Account: "local", Binding: "pid"}, Backend: fallback})
 	if err != nil {
 		t.Fatal(err)

@@ -35,6 +35,9 @@ func TestProductionToolAuthorization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := admitProfile(registry); err != nil {
+		t.Fatal(err)
+	}
 	if len(registry.List()) != 8 {
 		t.Fatal("missing production registrations")
 	}

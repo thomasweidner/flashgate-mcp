@@ -548,8 +548,11 @@ The [MCP conformance gate](mcp-conformance.md) compiles both schemas for every
 registered tool and checks functional inputs and successful wire results in
 each revision/profile. The same run compares the full registry to the catalog,
 including complete input/output schemas and explicit boolean annotations.
-The gate verifies executable coverage for every registered variant and tests
-the declared wire locations separately from `outputSchema`. Tests cover
+The gate observes dispatched operation keys and validated result
+variants on the effective catalog path. It binds each declared operation and
+result pair to executable revision/profile fixtures and budgets. Operations
+can share results, and a pair can have more than one fixture. The gate tests the declared wire locations
+separately from `outputSchema`. Tests cover
 rejected mixed object/part results, multipart byte counts, pre-serialization
 limits, and lossless UTF-8 or explicit encoding failure in both profiles.
 
@@ -858,6 +861,16 @@ restart tests for its later dedicated path.
 - deterministic tool ordering and catalog fingerprint;
 - profile-specific `tools/list`, schema, description, and initialization-instruction budgets;
 - safe read-only catalog when roots exist and no explicit profile is selected.
+
+Check the actual admitted views against exact profile and revision fixtures.
+Observe each operation at the backend dispatch boundary and each accepted result
+at the handler. Check direct hidden-tool denial, conflicting registrations,
+immutable metadata, and independent root and effect denials. Synthetic caller
+and backend cases cover a single catalog with independent typed routes,
+policy and route mismatch, unsupported variants and a later authenticated
+principal using an already measured composition. Isolated
+injected errors and wire mutations cannot count as executed operations.
+Native adapter support requires its own evidence.
 
 ### BL-160 central authorization matrix
 

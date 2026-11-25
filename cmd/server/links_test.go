@@ -54,7 +54,7 @@ func TestLinkPolicyOnMCPWire(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := admitProfile(registry, cfg.Profile().Policy()); err != nil {
+				if err := admitProfile(registry); err != nil {
 					t.Fatal(err)
 				}
 				response, raw := runCallToolWireRequest(t, registry, `{"name":"`+tc.name+`","arguments":{`+tc.args+`}}`)

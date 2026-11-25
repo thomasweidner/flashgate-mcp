@@ -31,7 +31,7 @@ func TestFileTypesOnMCPWire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := admitProfile(registry, cfg.Profile().Policy()); err != nil {
+	if err := admitProfile(registry); err != nil {
 		t.Fatal(err)
 	}
 	for _, params := range []string{

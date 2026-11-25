@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/revision"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcptest"
 	"github.com/thomasweidner/flashgate-mcp/internal/protocol"
@@ -20,12 +21,12 @@ import (
 func TestMCPConformanceWireNegatives(t *testing.T) {
 	t.Run("read-file-encoding", verifyReadFileEncoding)
 	for _, candidate := range []bool{false, true} {
-		registry, _ := mcpRegistry(t, false)
-		r := mcpRouter(registry, candidate)
 		version := protocol.ProtocolVersion
 		if candidate {
 			version = revision.Stateless
 		}
+		registry, _, _ := mcpEffectiveRegistry(t, false, wireFileLimit, fs.DefaultLimits(), version)
+		r := mcpRouter(registry, candidate)
 		for _, test := range []struct {
 			method string
 			params string
@@ -67,7 +68,7 @@ func TestMCPConformanceWireNegatives(t *testing.T) {
 func verifyReadFileEncoding(t *testing.T) {
 	for _, version := range mcpConformanceVersions {
 		for _, readOnly := range []bool{false, true} {
-			registry, root := mcpRegistry(t, readOnly)
+			registry, _, root := mcpEffectiveRegistry(t, readOnly, wireFileLimit, fs.DefaultLimits(), version)
 			r := mcpRouter(registry, version == revision.Stateless)
 			valid := []byte("\ufeffGruß 💾\r\n<&>\x00\u2028")
 			invalid := append([]byte("private-body-marker"), 0xff)
@@ -108,7 +109,7 @@ func verifyReadFileEncoding(t *testing.T) {
 }
 
 func TestMCPConformanceLegacyNegotiation(t *testing.T) {
-	registry, _ := mcpRegistry(t, false)
+	registry, _, _ := mcpEffectiveRegistry(t, false, wireFileLimit, fs.DefaultLimits(), protocol.ProtocolVersion)
 	r := mcpRouter(registry, false)
 	for _, proposed := range []string{protocol.ProtocolVersion, revision.Stateless, "2030-01-01"} {
 		result := mcpResult(t, r, "initialize", `{"protocolVersion":"`+proposed+`","capabilities":{},"clientInfo":{"name":"contract","version":"1"}}`, protocol.ProtocolVersion)
@@ -120,7 +121,7 @@ func TestMCPConformanceLegacyNegotiation(t *testing.T) {
 }
 
 func TestMCPConformanceCrossRevisionStateless(t *testing.T) {
-	registry, _ := mcpRegistry(t, true)
+	registry, _, _ := mcpEffectiveRegistry(t, true, wireFileLimit, fs.DefaultLimits(), revision.Stateless)
 	r := mcpRouter(registry, true)
 	// Ordinary requests succeed before discovery; an intervening legacy request
 	// cannot enable, disable or supply metadata for the following request.

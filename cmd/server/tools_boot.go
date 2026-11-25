@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/execution"
@@ -18,50 +19,59 @@ func createToolRegistry(registry *roots.Registry, maxFileSize int64, profile con
 	if err != nil {
 		return nil, err
 	}
-	toolRegistry, err := registerFilesystemTools(maxFileSize, profile, func(registry *tools.Registry, build filesystemTool) error {
-		return registry.RegisterBound(build(nil), func(ctx handlers.Context, arguments json.RawMessage) (tools.ToolResult, error) {
-			filesystem, err := application.ForRequest(ctx.Context, execution.Protocol(ctx.ProtocolVersion))
-			if err != nil {
-				return tools.ToolResult{}, err
-			}
-			return build(filesystem).Execute(ctx.Context, arguments)
-		})
-	})
-	if err != nil {
-		return nil, err
+	bind := func(ctx handlers.Context) (execution.CatalogContext, error) {
+		return application.CatalogContext(ctx.Context, execution.Protocol(ctx.ProtocolVersion))
 	}
-	toolRegistry.Seal()
-	return toolRegistry, nil
+	var definitions []*tools.CatalogTool
+	for _, route := range filesystemTools(maxFileSize) {
+		metadata := route.build(nil)
+		operationKeys := application.OperationKeys(route.route)
+		if len(operationKeys) == 0 {
+			return nil, fmt.Errorf("unbound filesystem route %s: %w", route.route, execution.ErrMismatch)
+		}
+		var outcomes []tools.CatalogOutcome
+		for _, operation := range operationKeys {
+			for _, result := range route.results {
+				outcomes = append(outcomes, tools.CatalogOutcome{Operation: operation, Result: result})
+			}
+		}
+		definition := &tools.CatalogTool{
+			Handle: func(ctx handlers.Context, invocation execution.CatalogInvocation, arguments json.RawMessage) (tools.ToolResult, error) {
+				filesystem, err := application.ForTool(ctx.Context, invocation)
+				if err != nil {
+					return tools.ToolResult{}, err
+				}
+				return route.build(filesystem).Execute(ctx.Context, arguments)
+			},
+		}
+		for _, revision := range []execution.Protocol{execution.MCP20251125, execution.MCP20260728} {
+			definition.Representations = append(definition.Representations, tools.CatalogRepresentation{
+				Support:  tools.CatalogSupport{Revision: revision, Backend: execution.CurrentProcess, Origin: execution.InheritedSTDIO, Platform: runtime.GOOS},
+				Metadata: metadata, Variants: operationKeys, Outcomes: outcomes,
+			})
+		}
+		definitions = append(definitions, definition)
+	}
+	return tools.NewCatalog(bind, validateProfileView, definitions...)
 }
 
 type filesystemTool func(fs.FileSystem) tools.Tool
 
-func registerFilesystemTools(maxFileSize int64, profile config.EffectiveProfile, register func(*tools.Registry, filesystemTool) error) (*tools.Registry, error) {
-	toolRegistry := tools.NewRegistry()
-	operations, err := fs.BindOperations(profile.Catalog())
-	if err != nil {
-		return nil, fmt.Errorf("declare filesystem operations: %w", err)
+type filesystemRegistration struct {
+	build   filesystemTool
+	route   execution.OperationID
+	results []string
+}
+
+func filesystemTools(maxFileSize int64) []filesystemRegistration {
+	return []filesystemRegistration{
+		{func(f fs.FileSystem) tools.Tool { return tools.NewListDirectoryTool(f) }, fsapp.ListOperation, []string{"complete"}},
+		{func(f fs.FileSystem) tools.Tool { return tools.NewReadFileTool(f, maxFileSize) }, fsapp.ReadOperation, []string{"complete"}},
+		{func(f fs.FileSystem) tools.Tool { return tools.NewGetPathInfoTool(f) }, fsapp.StatOperation, []string{"existing", "missing"}},
+		{func(f fs.FileSystem) tools.Tool { return tools.NewWriteFileTool(f) }, fsapp.WriteOperation, []string{"complete"}},
+		{func(f fs.FileSystem) tools.Tool { return tools.NewCreateDirectoryTool(f) }, fsapp.MkdirOperation, []string{"complete"}},
+		{func(f fs.FileSystem) tools.Tool { return tools.NewDeletePathTool(f) }, fsapp.DeleteOperation, []string{"complete"}},
+		{func(f fs.FileSystem) tools.Tool { return tools.NewCopyPathTool(f) }, fsapp.CopyOperation, []string{"complete"}},
+		{func(f fs.FileSystem) tools.Tool { return tools.NewMovePathTool(f) }, fsapp.MoveOperation, []string{"complete"}},
 	}
-	declarations := []struct {
-		build     filesystemTool
-		operation fs.Operation
-	}{
-		{func(f fs.FileSystem) tools.Tool { return tools.NewListDirectoryTool(f) }, fs.ReadOperation},
-		{func(f fs.FileSystem) tools.Tool { return tools.NewReadFileTool(f, maxFileSize) }, fs.ReadOperation},
-		{func(f fs.FileSystem) tools.Tool { return tools.NewGetPathInfoTool(f) }, fs.ReadOperation},
-		{func(f fs.FileSystem) tools.Tool { return tools.NewWriteFileTool(f) }, fs.WriteOperation},
-		{func(f fs.FileSystem) tools.Tool { return tools.NewCreateDirectoryTool(f) }, fs.WriteOperation},
-		{func(f fs.FileSystem) tools.Tool { return tools.NewDeletePathTool(f) }, fs.WriteOperation},
-		{func(f fs.FileSystem) tools.Tool { return tools.NewCopyPathTool(f) }, fs.CopyOperation},
-		{func(f fs.FileSystem) tools.Tool { return tools.NewMovePathTool(f) }, fs.WriteOperation},
-	}
-	for _, declaration := range declarations {
-		if !profile.Policy().Allows(operations[declaration.operation]) {
-			continue
-		}
-		if err := register(toolRegistry, declaration.build); err != nil {
-			return nil, fmt.Errorf("register %s: %w", declaration.build(nil).Name(), err)
-		}
-	}
-	return toolRegistry, nil
 }

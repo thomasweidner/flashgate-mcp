@@ -25,11 +25,18 @@ func (h *ListHandler) Method() string {
 }
 
 // Handle handles the tools/list request.
-func (h *ListHandler) Handle(_ handlers.Context, rawParams json.RawMessage) (any, *protocol.Error) {
+func (h *ListHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (any, *protocol.Error) {
 	if !isMissingNullOrObject(rawParams) {
 		return nil, invalidParamsError()
 	}
 
+	if h.registry.IsCatalog() {
+		view, _, err := h.registry.activeView(ctx)
+		if err != nil {
+			return nil, invalidParamsError()
+		}
+		return map[string]any{"tools": view.wireDefinitions()}, nil
+	}
 	registeredTools := h.registry.List()
 
 	result := make([]protocol.Tool, 0, len(registeredTools))
