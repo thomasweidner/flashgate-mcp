@@ -49,8 +49,9 @@ The automated rules cover:
 - stable lower-kebab-case topic filenames and the explicit conventional names;
 - no dated, PR-, sprint-, mobile-, or execution-review filenames;
 - suspicious non-English prose and comments in fenced examples;
-- relative inline and reference links, target path spelling and case, and
-  Markdown heading or explicit HTML-anchor destinations;
+- relative inline and reference links, including destinations and labels
+  continued on subsequent lines, target path spelling and case, and Markdown
+  heading or explicit HTML-anchor destinations;
 - complete public-document coverage, stable backlog and sprint IDs, the six canonical semantic human-status values, exact Markdown status-cell rendering (bold for non-terminal values and plain for terminal values), and separate Post-1.0 placement parity;
 - current versus planned product/protocol behavior and release boundaries;
 - existing Windows/Linux build, coverage, lint, metadata, shell, documentation,
@@ -60,8 +61,12 @@ The automated rules cover:
 
 Link validation is local: it does not contact external sites or claim that an
 external URL is live. Repository-root escapes and absolute local links fail.
-Code examples are not rendered links. Heading fragments are checked against
-ATX/setext headings, duplicate-heading suffixes, and explicit HTML anchors.
+Code examples are not rendered links. The checker follows paragraph
+continuations in list items and block quotes, including continuations with
+omitted indentation or quote markers. Multiline findings report the opening
+line of the link or reference definition. Heading fragments are checked
+against ATX/setext headings, duplicate-heading suffixes, and explicit HTML
+anchors.
 
 ## Editorial review
 

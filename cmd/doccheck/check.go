@@ -41,7 +41,10 @@ var topicName = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.md$`)
 var datedName = regexp.MustCompile(`(?:^|-)\d{4}-\d{2}-\d{2}(?:-|\.)`)
 var taskName = regexp.MustCompile(`^(?:\d{3}-|pr-\d|spr-\d|sprint-\d|mobile-|classic-independent-review-|backlog-id-migration|sprint-id-migration)`)
 var headingLine = regexp.MustCompile(`^ {0,3}#{1,6}\s+(.+?)(?:\s+#+)?\s*$`)
-var referenceDefinition = regexp.MustCompile(`^ {0,3}\[([^\]]+)\]:\s*(.*)$`)
+var referenceDefinition = regexp.MustCompile(`(?m)^ {0,3}\[([^\[\]]+)\]:[ \t]*(?:\n[ \t]*)?`)
+var linkBlockStart = regexp.MustCompile(`^ {0,3}(?:#{1,6}(?:[ \t]|$)|(?:[-*_][ \t]*){3,}$|=+[ \t]*$|\||<!--)`)
+var linkListStart = regexp.MustCompile(`^ {0,3}([-+*]|[0-9]{1,9}[.)])(?: {1,4}|$)`)
+var linkQuotePrefix = regexp.MustCompile(`^ {0,3}> ?`)
 var explicitAnchor = regexp.MustCompile(`(?i)<a\s+(?:id|name)=["']([^"']+)["'][^>]*>`)
 var htmlTag = regexp.MustCompile(`<[^>]*>`)
 var words = regexp.MustCompile(`[\p{L}]+`)
@@ -223,14 +226,8 @@ func checkDocuments(documents map[string]string, inventory map[string]bool) (r r
 		}
 		lines := documentLines(text, false)
 		languageLines := documentLines(text, true)
-		references := map[string]string{}
-		for _, l := range lines {
-			if m := referenceDefinition.FindStringSubmatch(l); m != nil {
-				target, _ := readDestination(m[2])
-				references[strings.ToLower(strings.Join(strings.Fields(m[1]), " "))] = target
-			}
-		}
-		for i, l := range lines {
+		links := documentLinks(lines)
+		for i := range lines {
 			visible := stripInlineCode(languageLines[i])
 			for _, word := range words.FindAllString(visible, -1) {
 				if germanWords[strings.ToLower(word)] {
@@ -238,21 +235,12 @@ func checkDocuments(documents map[string]string, inventory map[string]bool) (r r
 					break
 				}
 			}
-			linkLine := stripInlineCode(l)
-			targets := inlineDestinations(linkLine)
-			if m := referenceDefinition.FindStringSubmatch(l); m != nil {
-				target, ok := readDestination(m[2])
-				if ok {
-					targets = append(targets, target)
+			for _, link := range links[i] {
+				if link.missingLabel {
+					r.Findings = append(r.Findings, finding{Path: name, Line: i + 1, Rule: "LINK", Detail: "Undefined reference label: " + link.value})
+					continue
 				}
-			} else {
-				refTargets, missing := referenceTargets(linkLine, references)
-				targets = append(targets, refTargets...)
-				for _, label := range missing {
-					r.Findings = append(r.Findings, finding{Path: name, Line: i + 1, Rule: "LINK", Detail: "Undefined reference label: " + label})
-				}
-			}
-			for _, target := range targets {
+				target := link.value
 				local, detail := validateLink(name, target, inventory, anchors)
 				if local {
 					r.LocalLinkCount++
@@ -284,9 +272,29 @@ func validName(name string) bool {
 // remain visible for the prose scan; literal test payloads and identifiers do not.
 func documentLines(text string, keepComments bool) []string {
 	lines := strings.Split(text, "\n")
+	maskFencedLines(lines, keepComments, nil)
+	return lines
+}
+
+func maskFencedLines(lines []string, keepComments bool, quoteDepth []int) {
 	fence := byte(0)
 	width := 0
+	fenceDepth := 0
 	for i, l := range lines {
+		depth := 0
+		if quoteDepth != nil {
+			depth = quoteDepth[i]
+			if depth < fenceDepth {
+				fence = 0
+			}
+			if depth == 0 {
+				continue
+			}
+			if fence != 0 && depth > fenceDepth {
+				lines[i] = ""
+				continue
+			}
+		}
 		trimmed := strings.TrimSpace(l)
 		if len(trimmed) >= 3 && (trimmed[0] == '`' || trimmed[0] == '~') {
 			ch := trimmed[0]
@@ -298,6 +306,7 @@ func documentLines(text string, keepComments bool) []string {
 				if fence == 0 {
 					fence = ch
 					width = count
+					fenceDepth = depth
 					lines[i] = ""
 					continue
 				}
@@ -316,7 +325,6 @@ func documentLines(text string, keepComments bool) []string {
 			}
 		}
 	}
-	return lines
 }
 
 func stripInlineCode(line string) string {
@@ -381,91 +389,383 @@ func headingAnchors(text string) map[string]bool {
 	return ids
 }
 
-func readDestination(s string) (string, bool) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return "", false
-	}
-	if s[0] == '<' {
-		i := strings.IndexByte(s, '>')
-		if i < 0 {
-			return "", false
-		}
-		return s[1:i], true
-	}
-	depth := 0
-	for i, c := range s {
-		if c == '(' {
-			depth++
-		}
-		if c == ')' {
-			if depth == 0 {
-				return s[:i], i > 0
-			}
-			depth--
-		}
-		if unicode.IsSpace(c) && depth == 0 {
-			return s[:i], i > 0
-		}
-	}
-	return s, true
+type destinationIndex struct {
+	source string
+	ends   []int32
 }
 
+func isBackslashEscaped(source string, offset int) bool {
+	start := offset
+	for start > 0 && source[start-1] == '\\' {
+		start--
+	}
+	return (offset-start)%2 != 0
+}
+
+// Work from right to left within the bounded block. Each closing parenthesis
+// saves the outcome after the pair, so a matching opener skips the entire pair.
+// An unmatched opener makes the rest of that bare destination invalid.
+func destinationEnds(source string) []int32 {
+	ends := make([]int32, len(source))
+	bareEnd := int32(len(source))
+	angleStop := len(source)
+	var afterClose []int32
+	for i := len(source); i > 0; {
+		r, width := utf8.DecodeLastRuneInString(source[:i])
+		i -= width
+		switch {
+		case unicode.IsSpace(r):
+			bareEnd = int32(i)
+			afterClose = afterClose[:0]
+		case r == ')' && !isBackslashEscaped(source, i):
+			afterClose = append(afterClose, bareEnd)
+			bareEnd = int32(i)
+		case r == '(' && !isBackslashEscaped(source, i):
+			bareEnd = -1
+			if n := len(afterClose); n > 0 {
+				bareEnd = afterClose[n-1]
+				afterClose = afterClose[:n-1]
+			}
+		}
+		ends[i] = bareEnd
+		if r == '<' {
+			ends[i] = -1
+			if angleStop < len(source) && source[angleStop] == '>' {
+				ends[i] = int32(angleStop + 1)
+			}
+		}
+		if r == '<' || r == '>' || r == '\n' {
+			angleStop = i
+		}
+	}
+	return ends
+}
+
+// Build the index only when the block yields a candidate destination. Every
+// subsequent lookup uses one precomputed endpoint, even for malformed input.
+// Keep the destination bytes intact for the path validator.
+func (d *destinationIndex) at(start int) (string, int, bool) {
+	if start == len(d.source) {
+		return "", 0, false
+	}
+	if d.ends == nil {
+		d.ends = destinationEnds(d.source)
+	}
+	end := int(d.ends[start])
+	if end <= start {
+		return "", 0, false
+	}
+	if d.source[start] == '<' {
+		return d.source[start+1 : end-1], end, true
+	}
+	return d.source[start:end], end, true
+}
+
+// The adapter binding checks extract links from individual table cells.
 func inlineDestinations(line string) []string {
 	result := []string{}
+	destinations := destinationIndex{source: line}
 	for start := 0; start < len(line); {
 		at := strings.Index(line[start:], "](")
 		if at < 0 {
 			break
 		}
-		at += start + 2
-		if value, ok := readDestination(line[at:]); ok {
-			result = append(result, value)
+		start += at + 2
+		tail := strings.TrimLeftFunc(line[start:], unicode.IsSpace)
+		if target, _, ok := destinations.at(len(line) - len(tail)); ok {
+			result = append(result, target)
 		}
-		start = at
 	}
 	return result
 }
 
-func referenceTargets(line string, refs map[string]string) ([]string, []string) {
-	result := []string{}
-	missing := []string{}
-	for i := 0; i < len(line); i++ {
-		if line[i] != '[' {
+// linkEnd checks the suffix after a destination. A definition ends on the
+// destination line or after its title. An inline link needs a closing ')'.
+func linkEnd(s string, definition bool) (int, bool) {
+	rest := strings.TrimLeft(s, " \t\n")
+	start := len(s) - len(rest)
+	if start > 0 && rest != "" {
+		close := rest[0]
+		switch close {
+		case '(':
+			close = ')'
+		case '"', '\'':
+		default:
+			close = 0
+		}
+		if close != 0 {
+			for i := 1; i < len(rest); i++ {
+				if rest[i] == '\\' && i+1 < len(rest) {
+					i++
+					continue
+				}
+				if close == ')' && rest[i] == '(' {
+					break
+				}
+				if rest[i] == close {
+					tail := rest[i+1:]
+					if definition {
+						tail = strings.TrimLeft(tail, " \t")
+						if tail == "" || tail[0] == '\n' {
+							return start + i + 1, true
+						}
+					} else {
+						tail = strings.TrimLeft(tail, " \t\n")
+						if tail != "" && tail[0] == ')' {
+							return len(s) - len(tail) + 1, true
+						}
+					}
+					break
+				}
+			}
+		}
+	}
+	if definition {
+		line := strings.TrimLeft(s, " \t")
+		return 0, line == "" || line[0] == '\n'
+	}
+	return start + 1, rest != "" && rest[0] == ')'
+}
+
+type linkCheck struct {
+	value        string
+	missingLabel bool
+}
+
+type linkReference struct {
+	line     int
+	label    string
+	explicit bool
+}
+
+func referenceKey(label string) string {
+	return strings.ToLower(strings.Join(strings.Fields(label), " "))
+}
+
+// Code spans may cross lines. Match entire backtick runs and preserve offsets
+// while masking their contents, including any link-shaped literal text.
+func maskLinkCode(block string) string {
+	const backtick = 0x60
+	if !strings.ContainsRune(block, backtick) {
+		return block
+	}
+	type run struct{ start, end, next int }
+	var runs []run
+	for i := 0; i < len(block); i++ {
+		if block[i] == backtick {
+			start := i
+			for i+1 < len(block) && block[i+1] == backtick {
+				i++
+			}
+			runs = append(runs, run{start: start, end: i + 1})
+		}
+	}
+	next := map[int]int{}
+	for i := len(runs) - 1; i >= 0; i-- {
+		width := runs[i].end - runs[i].start
+		runs[i].next = next[width]
+		next[width] = i + 1
+	}
+	var masked []byte
+	for i := 0; i < len(runs); i++ {
+		start := runs[i].start
+		if runs[i].next == 0 || isBackslashEscaped(block, start) {
 			continue
 		}
-		end := strings.IndexByte(line[i+1:], ']')
-		if end < 0 {
-			break
+		if masked == nil {
+			masked = []byte(block)
 		}
-		end += i + 1
-		label := line[i+1 : end]
-		explicit := false
-		if end+1 < len(line) && line[end+1] == '(' {
-			i = end
-			continue
-		}
-		if end+1 < len(line) && line[end+1] == '[' {
-			explicit = true
-			last := strings.IndexByte(line[end+2:], ']')
-			if last < 0 {
-				continue
+		end := runs[i].next - 1
+		for j := start; j < runs[end].end; j++ {
+			if masked[j] != '\n' {
+				masked[j] = 0
 			}
-			last += end + 2
-			if last > end+2 {
-				label = line[end+2 : last]
-			}
-			end = last
-		}
-		key := strings.ToLower(strings.Join(strings.Fields(label), " "))
-		if target, ok := refs[key]; ok {
-			result = append(result, target)
-		} else if explicit {
-			missing = append(missing, label)
 		}
 		i = end
 	}
-	return result, missing
+	if masked == nil {
+		return block
+	}
+	return string(masked)
+}
+
+func listInterruptsLinkParagraph(line string, outsideItem bool) bool {
+	marker := linkListStart.FindStringSubmatch(line)
+	if marker == nil {
+		return false
+	}
+	// A marker at the current list's level ends the item. Inside an item or
+	// outside a list, starting a new list requires content and, if ordered, 1.
+	if outsideItem {
+		return true
+	}
+	if strings.TrimSpace(line[len(marker[0]):]) == "" {
+		return false
+	}
+	number := marker[1][:len(marker[1])-1]
+	return number == "" || strings.TrimLeft(number, "0") == "1"
+}
+
+func documentLinks(lines []string) map[int][]linkCheck {
+	checks := map[int][]linkCheck{}
+	definitions := map[string]string{}
+	var references []linkReference
+	quoteDepth := make([]int, len(lines))
+	for i := range lines {
+		line := strings.TrimSuffix(lines[i], "\r")
+		for prefix := linkQuotePrefix.FindStringIndex(line); prefix != nil; prefix = linkQuotePrefix.FindStringIndex(line) {
+			quoteDepth[i]++
+			line = line[prefix[1]:]
+		}
+		lines[i] = line
+	}
+	maskFencedLines(lines, false, quoteDepth)
+	for first := 0; first < len(lines); {
+		if strings.TrimSpace(lines[first]) == "" {
+			first++
+			continue
+		}
+		end := first + 1
+		if !linkBlockStart.MatchString(lines[first]) {
+			var indent string
+			if prefix := linkListStart.FindStringIndex(lines[first]); prefix != nil {
+				indent = strings.Repeat(" ", prefix[1])
+				lines[first] = lines[first][prefix[1]:]
+			}
+			// Paragraph text can continue with omitted quote markers or list
+			// indentation. Blank lines and block markers still end the block.
+			for end < len(lines) && quoteDepth[end] <= quoteDepth[first] {
+				line, insideItem := strings.CutPrefix(lines[end], indent)
+				outsideItem := !insideItem && quoteDepth[end] == quoteDepth[first]
+				if strings.TrimSpace(line) == "" || linkBlockStart.MatchString(line) || listInterruptsLinkParagraph(line, outsideItem) {
+					break
+				}
+				lines[end] = line
+				end++
+			}
+		}
+		block := strings.Join(lines[first:end], "\n")
+		if strings.ContainsRune(block, '[') {
+			references = scanLinkBlock(block, lines[first:end], first, checks, definitions, references)
+		}
+		first = end
+	}
+	for _, ref := range references {
+		if target, ok := definitions[referenceKey(ref.label)]; ok {
+			checks[ref.line] = append(checks[ref.line], linkCheck{value: target})
+		} else if ref.explicit {
+			checks[ref.line] = append(checks[ref.line], linkCheck{value: ref.label, missingLabel: true})
+		}
+	}
+	return checks
+}
+
+func scanLinkBlock(raw string, lines []string, first int, checks map[int][]linkCheck, definitions map[string]string, references []linkReference) []linkReference {
+	block := maskLinkCode(raw)
+	destinations := destinationIndex{source: raw}
+	starts := make([]int, len(lines))
+	for i := 1; i < len(lines); i++ {
+		starts[i] = starts[i-1] + len(lines[i-1]) + 1
+	}
+	sourceLine := func(offset int) int { return first + sort.SearchInts(starts, offset+1) - 1 }
+	addLink := func(offset int, target string) {
+		line := sourceLine(offset)
+		checks[line] = append(checks[line], linkCheck{value: target})
+	}
+
+	// Collect definition targets and skip their syntax during inline scanning.
+	definitionEnds := map[int]int{}
+	previousEnd := 0
+	for _, m := range referenceDefinition.FindAllStringSubmatchIndex(block, -1) {
+		if m[0] < previousEnd {
+			continue
+		}
+		target, targetEnd, ok := destinations.at(m[1])
+		if !ok {
+			continue
+		}
+		suffix, ok := linkEnd(raw[targetEnd:], true)
+		if !ok {
+			continue
+		}
+		definitions[referenceKey(raw[m[2]:m[3]])] = target
+		previousEnd = targetEnd + suffix
+		definitionEnds[m[0]] = previousEnd
+		addLink(m[2]-1, target)
+	}
+
+	type bracket struct {
+		offset    int
+		hasNested bool
+		image     bool
+	}
+	var opens []bracket
+	inactive := 0
+	for i := 0; i < len(block); i++ {
+		if end, ok := definitionEnds[i]; ok {
+			i = end - 1
+			opens = opens[:0]
+			inactive = 0
+			continue
+		}
+		switch block[i] {
+		case '\\':
+			if i+1 < len(block) && strings.ContainsRune("\\[]", rune(block[i+1])) {
+				i++
+			}
+		case '[':
+			if len(opens) != 0 {
+				opens[len(opens)-1].hasNested = true
+			}
+			opens = append(opens, bracket{offset: i, image: i > 0 && block[i-1] == '!'})
+		case ']':
+			depth := len(opens)
+			if depth == 0 {
+				continue
+			}
+			open := opens[depth-1]
+			opens = opens[:depth-1]
+			if depth <= inactive {
+				inactive = depth - 1
+				if !open.image {
+					continue
+				}
+			}
+			tail := block[i+1:]
+			if strings.HasPrefix(tail, "(") {
+				dest := strings.TrimLeft(raw[i+2:], " \t\n")
+				target, targetEnd, ok := destinations.at(len(raw) - len(dest))
+				if ok {
+					if suffix, closed := linkEnd(raw[targetEnd:], false); closed {
+						addLink(open.offset, target)
+						i = targetEnd + suffix - 1
+						// A link can contain an image but not another link.
+						if !open.image {
+							inactive = len(opens)
+						}
+					}
+				}
+				continue
+			}
+			label := raw[open.offset+1 : i]
+			explicit := false
+			if strings.HasPrefix(tail, "[") {
+				last := strings.IndexAny(tail[1:], "[]")
+				if last >= 0 && tail[last+1] == ']' {
+					explicit = true
+					if last > 0 {
+						label = raw[i+2 : i+2+last]
+						open.hasNested = false
+					}
+					i += last + 2
+				}
+			}
+			if !open.hasNested {
+				references = append(references, linkReference{line: sourceLine(open.offset), label: label, explicit: explicit})
+			}
+		}
+	}
+	return references
 }
 
 func validateLink(source, target string, inventory map[string]bool, anchors map[string]map[string]bool) (bool, string) {

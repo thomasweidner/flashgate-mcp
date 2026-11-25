@@ -168,6 +168,128 @@ func TestFencedLinksAreNotRendered(t *testing.T) {
 	}
 }
 
+func TestMultilineLinks(t *testing.T) {
+	const target = "docs/guide.md"
+	cases := []struct {
+		name, body string
+		count      int
+		findings   []finding
+	}{
+		{name: "destination and title", body: "[Guide](\n    <" + target + "#details>\n    \"Guide title\"\n)\n", count: 1},
+		{name: "missing target", body: "[Guide](\n    docs/nonexistent.md\n)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: docs/nonexistent.md"}}},
+		{name: "missing anchor", body: "[Guide](\n" + target + "#missing)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing heading/anchor: docs/guide.md#missing"}}},
+		{name: "outside repository", body: "[Guide](\n../outside.md\n)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Link escapes the repository: ../outside.md"}}},
+		{name: "wrong path case", body: "[Guide](docs/Guide.md\n)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: docs/Guide.md"}}},
+		{name: "reference definition and link text", body: "[Read the\n guide][ref]\n\n[ref]:\n    " + target + "#details\n", count: 2},
+		{name: "reference label continuation", body: "[Read][guide\n reference]\n\n[guide\n reference]:\n    " + target + "\n", count: 2},
+		{name: "bad definition and use", body: "[Read][ref]\n\n[ref]:\n    absent.md\n", count: 2,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: absent.md"},
+				{Line: 5, Detail: "Missing target or wrong path case: absent.md"}}},
+		{name: "bad multiline link text", body: "[Read the\n guide](absent.md)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: absent.md"}}},
+		{name: "fenced code", body: "```md\n[Guide](\nabsent.md\n)\n```\n"},
+		{name: "inline code", body: "`[Guide](absent.md)` and ``[Guide](\nabsent.md\n)``\n"},
+		{name: "blank line", body: "[Guide](\n\nabsent.md)\n\n[Read\n\n guide](absent.md)\n"},
+		{name: "fence boundary", body: "[Guide](\n```md\nignored\n```\nabsent.md)\n"},
+		{name: "heading boundary", body: "[Guide](\n## Next section\nabsent.md)\n"},
+		{name: "list item", body: "- [Guide](\n    " + target + ")\n", count: 1},
+		{name: "list item boundary", body: "- [Guide](\n- absent.md)\n"},
+		{name: "ordered marker in prose", body: "[Read the\n2. chapter](absent.md)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: absent.md"}}},
+		{name: "ordered marker inside list paragraph", body: "- [Read the\n  2. chapter](absent.md)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: absent.md"}}},
+		{name: "ordered list starts with one", body: "[Read the\n01. chapter](absent.md)\n"},
+		{name: "nested ordered list interrupts item paragraph", body: "- [Read the\n  1. chapter](absent.md)\n"},
+		{name: "ordered list sibling", body: "1. [Read the\n2. chapter](absent.md)\n"},
+		{name: "new ordered list after delimiter change", body: "1. [Read the\n3) chapter](absent.md)\n"},
+		{name: "block quote", body: "> [Guide](\n> " + target + ")\n", count: 1},
+		{name: "lazy block quote continuation", body: "> [Guide](\nabsent.md)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: absent.md"}}},
+		{name: "lazy list continuation", body: "- [Guide](\nabsent.md)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: absent.md"}}},
+		{name: "nested lazy continuation", body: "> > - [Guide](\n> " + target + ")\n", count: 1},
+		{name: "lazy text in list and quote", body: "> - [Read the\n guide](" + target + ")\n", count: 1},
+		{name: "quote paragraph boundary", body: "> [Guide](\n>\nabsent.md)\n"},
+		{name: "list paragraph boundary", body: "- [Guide](\n\nabsent.md)\n"},
+		{name: "quote heading boundary", body: "> [Guide](\n## Heading\nabsent.md)\n"},
+		{name: "list fence boundary", body: "- [Guide](\n  ~~~\n  absent.md)\n  ~~~\n"},
+		{name: "new quote boundary", body: "[Guide](\n> absent.md)\n"},
+		{name: "single-line links in containers", body: "> [Guide](" + target + ")\n\n- [Guide](" + target + ")\n", count: 2},
+		{name: "fenced quote", body: "> ~~~md\n> [Guide](\n> absent.md)\n> ~~~\n"},
+		{name: "nested quote marks in fenced quote", body: "> ~~~md\n> > [Guide](\n> > absent.md)\n> ~~~\n"},
+		{name: "nested bracket text", body: "[Guide [part\n one]](" + target + ")\n", count: 1},
+		{name: "nested inline link", body: "[Read [the guide](" + target + ")](\nabsent.md)\n", count: 1},
+		{name: "nested image", body: "[![Guide](" + target + ")](\n" + target + ")\n", count: 2},
+		{name: "deep bracket literals", body: strings.Repeat("[", 10_000) + "\n" + strings.Repeat("]", 10_000)},
+		{name: "single and multiline", body: "[Guide](" + target + ") and [More](\n" + target + ")\n", count: 2},
+		{name: "escaped opening parenthesis", body: "[Guide](absent\\(file.md)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Use a repository-relative link: absent\\(file.md"}}},
+		{name: "escaped closing parenthesis", body: "[Guide](\nabsent\\)file.md\n)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Use a repository-relative link: absent\\)file.md"}}},
+		{name: "escaped closing parenthesis does not end the link", body: "[Guide](absent.md\\)\n"},
+		{name: "even backslashes keep a balanced pair structural", body: "[Guide](absent\\\\(file.md))\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Use a repository-relative link: absent\\\\(file.md)"}}},
+		{name: "even backslashes keep an unclosed pair structural", body: "[Guide](absent\\\\(file.md)\n"},
+		{name: "unescaped balanced destination", body: "[Guide](absent(file).md)\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Missing target or wrong path case: absent(file).md"}}},
+		{name: "escaped parenthesis in reference destination", body: "[ref]: absent\\(file.md\n", count: 1,
+			findings: []finding{{Line: 3, Detail: "Use a repository-relative link: absent\\(file.md"}}},
+		{name: "external URL", body: "[Website](\nhttps://example.invalid/guide#heading\n)\n"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, newline := range []string{"\n", "\r\n"} {
+				docs, files := testSet(map[string]string{
+					"README.md": strings.ReplaceAll("# Start\n\n"+tc.body, "\n", newline),
+					target:      strings.ReplaceAll("# Guide\n## Details\n", "\n", newline),
+				})
+				got := checkDocuments(docs, files)
+				want := append([]finding{}, tc.findings...)
+				for i := range want {
+					want[i].Path = "README.md"
+					want[i].Rule = "LINK"
+				}
+				if got.LocalLinkCount != tc.count || !reflect.DeepEqual(got.Findings, want) {
+					t.Errorf("newline %q: got %d links and %+v, want %d links and %+v", newline, got.LocalLinkCount, got.Findings, tc.count, want)
+				}
+			}
+		})
+	}
+}
+
+func TestMalformedLinkDestinationsKeepLaterLink(t *testing.T) {
+	const valid = "[Guide](docs/guide.md)"
+	const unclosed = "[x]("
+	const maxSize = 4 << 20
+	line := strings.Repeat(unclosed, (maxSize-len(valid))/len(unclosed)) + valid
+	got := documentLinks([]string{line})
+	want := map[int][]linkCheck{0: {{value: "docs/guide.md"}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("malformed destinations interfered with the final link: %v", got)
+	}
+}
+
+func BenchmarkUnclosedLinkDestinations(b *testing.B) {
+	for _, size := range []struct {
+		name string
+		kib  int
+	}{{"4KiB", 4}, {"8KiB", 8}, {"16KiB", 16}, {"32KiB", 32}} {
+		b.Run(size.name, func(b *testing.B) {
+			line := strings.Repeat("[x](", size.kib*1024/4)
+			b.SetBytes(int64(len(line)))
+			for b.Loop() {
+				if links := documentLinks([]string{line}); len(links) != 0 {
+					b.Fatalf("found links in an unterminated sequence: %v", links)
+				}
+			}
+		})
+	}
+}
+
 func TestEmptyInventoryAndDeterminism(t *testing.T) {
 	empty := checkDocuments(map[string]string{}, map[string]bool{})
 	if ruleCount(empty, "INVENTORY") != 1 {

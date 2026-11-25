@@ -108,7 +108,7 @@ try {
 
     $modulePath = $moduleOutput[0].ToString().Trim()
     if ([string]::IsNullOrWhiteSpace($modulePath)) {
-        throw 'go list -m lieferte einen leeren Modulpfad.'
+        throw 'go list -m returned an empty module path.'
     }
 
     $dependencyOutput = @(& go list -deps -f '{{if .Module}}{{.ImportPath}}|{{.Module.Path}}{{end}}' $productRoot 2>&1)
@@ -127,13 +127,13 @@ try {
 
         $parts = $line.Split('|')
         if ($parts.Count -ne 2 -or -not $parts[0] -or -not $parts[1]) {
-            throw "Unerwarteter go-list-Dependency-Eintrag: $line"
+            throw "Unexpected go list dependency entry: $line"
         }
 
         if ($parts[1] -eq $modulePath) {
             if ($parts[0] -ne $modulePath -and
                 -not $parts[0].StartsWith("$modulePath/", [StringComparison]::Ordinal)) {
-                throw "Fremdes Package im Produktmodul: $line"
+                throw "Unexpected package in the product module: $line"
             }
             [void]$productPackages.Add($parts[0])
         }
@@ -236,13 +236,13 @@ try {
             '^(?<file>.+/[^/]+\.go):(?<range>\d+\.\d+,\d+\.\d+)\s+(?<statements>\d+)\s+(?<count>\d+)$'
         )
         if (-not $blockMatch.Success) {
-            throw "Unerwarteter Coverage-Profil-Eintrag: $line"
+            throw "Unexpected coverage profile entry: $line"
         }
 
         $file = $blockMatch.Groups['file'].Value
         $package = $file.Substring(0, $file.LastIndexOf('/'))
         if (-not $productPackages.Contains($package)) {
-            throw "Fremdes Package im Coverage-Profil: $package"
+            throw "Unexpected package in the coverage profile: $package"
         }
 
         $key = "$file`:$($blockMatch.Groups['range'].Value)"
@@ -294,7 +294,7 @@ try {
 
 | Metric | Value |
 |---|---:|
-| Gesamt-Coverage | $($totalCoverage.ToString('0.0', [Globalization.CultureInfo]::InvariantCulture)) % |
+| Total coverage | $($totalCoverage.ToString('0.0', [Globalization.CultureInfo]::InvariantCulture)) % |
 | Minimum | $($MinimumCoverage.ToString('0.0', [Globalization.CultureInfo]::InvariantCulture)) % |
 "@
 
