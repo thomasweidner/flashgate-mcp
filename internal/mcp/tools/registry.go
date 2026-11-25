@@ -14,14 +14,21 @@ type registeredTool struct {
 	tool     Tool
 	contract ResultContract
 	execute  func(handlers.Context, json.RawMessage) (ToolResult, error)
+	bound    CatalogHandler
+	route    execution.CatalogRouteID
+	variants []execution.OperationKey
+	outcomes []CatalogOutcome
 }
 
 // Registry stores MCP tools.
 type Registry struct {
-	tools  map[string]registeredTool
-	order  []string
-	mu     sync.RWMutex
-	sealed bool
+	tools     map[string]registeredTool
+	order     []string
+	mu        sync.RWMutex
+	sealed    bool
+	master    *masterCatalog
+	admitted  map[execution.CatalogComposition]*CatalogView
+	firstView *CatalogView
 }
 
 // NewRegistry creates a new tool registry.
@@ -32,7 +39,7 @@ func NewRegistry() *Registry {
 	}
 }
 
-// Register registers or replaces a tool.
+// Register adds a standalone tool during composition.
 func (r *Registry) Register(tool Tool) error {
 	return r.register(tool, func(ctx handlers.Context, arguments json.RawMessage) (ToolResult, error) {
 		return tool.Execute(ctx.Context, arguments)
@@ -63,6 +70,9 @@ func (r *Registry) Seal() {
 }
 
 func (r *Registry) register(tool Tool, execute func(handlers.Context, json.RawMessage) (ToolResult, error)) error {
+	if missingTool(tool) {
+		return execution.ErrMismatch
+	}
 	contract, err := tool.ResultContract().validatedCopy()
 	if err != nil {
 		return err
@@ -75,9 +85,10 @@ func (r *Registry) register(tool Tool, execute func(handlers.Context, json.RawMe
 
 	name := tool.Name()
 
-	if _, exists := r.tools[name]; !exists {
-		r.order = append(r.order, name)
+	if _, exists := r.tools[name]; exists || name == "" {
+		return execution.ErrMismatch
 	}
+	r.order = append(r.order, name)
 
 	r.tools[name] = registeredTool{tool: tool, contract: contract, execute: execute}
 	return nil
@@ -93,7 +104,11 @@ func (r *Registry) Get(name string) (Tool, bool) {
 // captured at registration and used by the call adapter.
 func (r *Registry) ResultContract(name string) ResultContract {
 	entry, _ := r.lookup(name)
-	contract := slices.Clone(entry.contract)
+	return copyResultContract(entry.contract)
+}
+
+func copyResultContract(source ResultContract) ResultContract {
+	contract := slices.Clone(source)
 	for index := range contract {
 		contract[index].Parts = slices.Clone(contract[index].Parts)
 	}
@@ -103,6 +118,13 @@ func (r *Registry) ResultContract(name string) ResultContract {
 func (r *Registry) lookup(name string) (registeredTool, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	if r.master != nil {
+		if r.firstView == nil {
+			return registeredTool{}, false
+		}
+		tool, ok := r.firstView.entries[name]
+		return tool, ok
+	}
 
 	tool, ok := r.tools[name]
 	return tool, ok
@@ -112,6 +134,12 @@ func (r *Registry) lookup(name string) (registeredTool, bool) {
 func (r *Registry) List() []Tool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	if r.master != nil {
+		if r.firstView == nil {
+			return nil
+		}
+		return r.firstView.List()
+	}
 
 	result := make([]Tool, 0, len(r.order))
 

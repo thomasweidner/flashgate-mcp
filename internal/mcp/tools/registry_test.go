@@ -71,7 +71,7 @@ func TestRegistryListReturnsToolsInRegistrationOrder(t *testing.T) {
 	}
 }
 
-func TestRegistryRegisterOverridesExistingToolWithoutChangingOrder(t *testing.T) {
+func TestRegistryRejectsExistingToolWithoutChangingOrder(t *testing.T) {
 	t.Parallel()
 
 	registry := NewRegistry()
@@ -93,15 +93,17 @@ func TestRegistryRegisterOverridesExistingToolWithoutChangingOrder(t *testing.T)
 
 	requireRegistration(t, registry, first)
 	requireRegistration(t, registry, other)
-	requireRegistration(t, registry, second)
+	if err := registry.Register(second); err == nil {
+		t.Fatal("expected conflicting registration to fail")
+	}
 
 	got, ok := registry.Get("test_tool")
 	if !ok {
 		t.Fatal("expected tool to exist")
 	}
 
-	if got != second {
-		t.Fatalf("expected second tool, got %#v", got)
+	if got != first {
+		t.Fatalf("expected first tool, got %#v", got)
 	}
 
 	list := registry.List()
@@ -110,8 +112,8 @@ func TestRegistryRegisterOverridesExistingToolWithoutChangingOrder(t *testing.T)
 		t.Fatalf("expected 2 tools, got %d", len(list))
 	}
 
-	if list[0] != second {
-		t.Fatalf("expected replacement to keep first position, got %#v", list[0])
+	if list[0] != first {
+		t.Fatalf("expected original tool to keep first position, got %#v", list[0])
 	}
 
 	if list[1] != other {

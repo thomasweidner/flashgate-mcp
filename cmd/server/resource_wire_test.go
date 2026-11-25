@@ -27,6 +27,9 @@ func resourceWireVersion(t *testing.T, root, settings, params, id, version strin
 	source := writeConfig(t, document)
 	deps := defaultBootstrapDependencies(source)
 	if version == revision.Stateless {
+		deps.admitTools = func(registry *tools.Registry) error {
+			return admitProfileForRevisions(registry, mcpCandidatePolicy())
+		}
 		deps.newRouter = func(name, version string, registry *tools.Registry) *router.Router {
 			r := router.NewWithPolicy(name, version, revision.NewPolicy(protocol.ProtocolVersion, revision.Stateless))
 			r.Register(tools.NewListHandler(registry))

@@ -41,6 +41,24 @@ func (p EffectiveProfile) ID() ProfileID               { return p.id }
 func (p EffectiveProfile) Catalog() capability.Catalog { return p.catalog }
 func (p EffectiveProfile) Policy() capability.Policy   { return p.policy }
 
+// BindEffectiveProfile admits grants against the trusted definition snapshot.
+// It is also usable by a future trusted runtime owner composing a profile
+// without reading the direct STDIO configuration.
+func BindEffectiveProfile(id ProfileID, catalog capability.Catalog, ceiling capability.Risk, ids ...capability.ID) (EffectiveProfile, error) {
+	if !validConfigID(string(id)) {
+		return EffectiveProfile{}, errors.New("invalid effective profile ID")
+	}
+	grants, err := catalog.NewSet(ids...)
+	if err != nil {
+		return EffectiveProfile{}, err
+	}
+	policy, err := capability.NewPolicy(grants, ceiling)
+	if err != nil {
+		return EffectiveProfile{}, err
+	}
+	return EffectiveProfile{id: id, catalog: catalog, policy: policy}, nil
+}
+
 func (p profileFields) resolve() (EffectiveProfile, error) {
 	catalog, err := capability.NewCatalog(capability.BaseDefinitions()...)
 	if err != nil {
@@ -104,9 +122,5 @@ func (p profileFields) resolve() (EffectiveProfile, error) {
 	default:
 		return EffectiveProfile{}, capability.ErrInvalidRisk
 	}
-	policy, err := capability.NewPolicy(grants, ceiling)
-	if err != nil {
-		return EffectiveProfile{}, err
-	}
-	return EffectiveProfile{id: active, catalog: catalog, policy: policy}, nil
+	return BindEffectiveProfile(active, catalog, ceiling, grants.IDs()...)
 }

@@ -213,6 +213,9 @@ func checkDocuments(documents map[string]string, inventory map[string]bool) (r r
 	if plan, present := documents[adapterPlan]; present {
 		r.Findings = append(r.Findings, checkAdapterBindings(plan, documents["BACKLOG.md"])...)
 	}
+	if backlog, present := documents["BACKLOG.md"]; present {
+		r.Findings = append(r.Findings, checkCatalogDispositions(backlog)...)
+	}
 	for _, name := range r.DocumentPaths {
 		text := documents[name]
 		if !validName(name) {

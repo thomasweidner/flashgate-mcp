@@ -330,6 +330,9 @@ declare aggregate effects and hard backend enforcement before activation.
 `write` explicitly to grant `files.read` and `files.write` and expose all
 eight filesystem tools. Root rights govern each call independently of the
 profile's tool exposure. Path and configuration-protection checks also apply.
+The server admits a profile only when its exact effective tool and variant
+inventory has matching wire, schema and result evidence for the enabled
+revision. A granted capability alone cannot expose a new tool.
 
 ```toml
 [profiles]

@@ -397,6 +397,11 @@
       "group": "write",
       "contract": "metadata/inline/complete/262144/0"
     },
+    "tools/call/write_file/complete/overwrite": {
+      "class": "metadata",
+      "group": "write",
+      "contract": "metadata/inline/complete/262144/0"
+    },
     "tools/call/write_file/error/denied": {
       "class": "error",
       "group": "write",
@@ -417,6 +422,11 @@
       "group": "write",
       "contract": "metadata/inline/complete/262144/0"
     },
+    "tools/call/delete_path/complete/recursive": {
+      "class": "metadata",
+      "group": "write",
+      "contract": "metadata/inline/complete/262144/0"
+    },
     "tools/call/delete_path/error/denied": {
       "class": "error",
       "group": "write",
@@ -427,12 +437,22 @@
       "group": "write",
       "contract": "metadata/inline/complete/262144/0"
     },
+    "tools/call/copy_path/complete/overwrite": {
+      "class": "metadata",
+      "group": "write",
+      "contract": "metadata/inline/complete/262144/0"
+    },
     "tools/call/copy_path/error/denied": {
       "class": "error",
       "group": "write",
       "contract": "result/invalid_path"
     },
     "tools/call/move_path/complete/reference": {
+      "class": "metadata",
+      "group": "write",
+      "contract": "metadata/inline/complete/262144/0"
+    },
+    "tools/call/move_path/complete/overwrite": {
       "class": "metadata",
       "group": "write",
       "contract": "metadata/inline/complete/262144/0"

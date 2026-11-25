@@ -343,10 +343,19 @@ defines the basis rights and the rules for extending them. The Go core
 validates definitions, explicit grants, and per-operation requirements in
 immutable catalog snapshots. A functional decision checks all required IDs
 independently of transport, backend, and technical support. BL-159 composes
-that decision with the other authorization controls, and BL-110 owns the
-effective catalog. The current STDIO registry uses the immutable effective
-profile. The [current STDIO rules](configuration.md#profiles)
-admit only measured grant combinations and keep root checks independent.
+that decision with the other authorization controls. The
+[effective catalog](planning/implementation-contract.md#bl-110-effective-tool-catalog)
+binds the same operation and variant declarations to immutable MCP definitions.
+The trusted ingress assigns an immutable policy binding to the authenticated
+principal. One catalog composition can combine separately typed dispatchers.
+Each tool names its route with its resource resolver, selected backend,
+confirmed operation variants and wire representation. Startup validates
+the exact composition and revision against the executable wire fixtures. A
+fresh request can use that admitted composition after its own principal and
+policy binding succeeds. Discovery and direct invocation share the resulting
+view. Dispatch checks the exact route and allowed variant from the tool
+invocation before resolving operands. The [current STDIO rules](configuration.md#profiles) admit measured grant
+combinations and keep root checks independent.
 
 Version 1.0 safe default:
 

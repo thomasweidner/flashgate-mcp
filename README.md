@@ -12,6 +12,10 @@ or a Go installation. FlashGate enforces configured path and operation boundarie
 on the server, with limits on requests, file operations, and responses. Its
 vendor-neutral core has no proprietary client or infrastructure dependency.
 
+Tool discovery follows the instance's admitted effective profile and the
+request's security context. Direct calls use the same available tool set and
+still require authorization for the paths and effects in the request.
+
 **Start with the [public prerelease downloads](https://github.com/thomasweidner/flashgate-mcp/releases).**
 [Version 0.3.0](https://github.com/thomasweidner/flashgate-mcp/releases/tag/v0.3.0)
 is an available prerelease. The download and extraction examples below use

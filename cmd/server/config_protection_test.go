@@ -45,7 +45,7 @@ func TestConfigurationProtectionOnMCPWire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := admitProfile(registry, cfg.Profile().Policy()); err != nil {
+	if err := admitProfile(registry); err != nil {
 		t.Fatal(err)
 	}
 	output := filepath.Join(dir, "output.txt")

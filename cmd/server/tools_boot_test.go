@@ -124,13 +124,38 @@ func (noopFileSystem) LimitsForRoot(config.RootID) (resource.Limits, error) {
 
 func requireToolRegistry(t testing.TB, filesystem fs.FileSystem, maxFileSize int64, readOnly bool) *tools.Registry {
 	t.Helper()
-	registry, err := registerFilesystemTools(maxFileSize, testProfile(t, readOnly), func(registry *tools.Registry, build filesystemTool) error {
-		return registry.Register(build(filesystem))
-	})
-	if err != nil {
-		t.Fatal(err)
+	registry := tools.NewRegistry()
+	registrations := filesystemTools(maxFileSize)
+	if readOnly {
+		registrations = registrations[:3]
+	}
+	for _, registration := range registrations {
+		if err := registry.Register(registration.build(filesystem)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	return registry
+}
+
+// Construct a separate fixture registry to inject result observations or
+// intentionally incompatible definitions without changing the live registry.
+func registryWithFixtureTool(original *tools.Registry, replacement tools.Tool) (*tools.Registry, error) {
+	fixture := tools.NewRegistry()
+	for _, tool := range original.List() {
+		if tool.Name() == replacement.Name() {
+			tool = replacement
+		}
+		if err := fixture.Register(tool); err != nil {
+			return nil, err
+		}
+	}
+	return fixture, nil
+}
+
+func effectiveFixtureCatalog(t testing.TB, readOnly bool, maxFileSize int64, version string) (*tools.Registry, *tools.CatalogView) {
+	t.Helper()
+	registry, view, _ := mcpEffectiveRegistry(t, readOnly, maxFileSize, fs.DefaultLimits(), version)
+	return registry, view
 }
 
 func (noopFileSystem) List(fs.Operand) ([]fs.Entry, error) {

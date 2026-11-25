@@ -819,6 +819,168 @@
     "ttlMs": 0
   },
   "format": "flashgate-mcp-contract/v1",
+  "operationCases": {
+    "copy_path": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.copy/default",
+        "resultVariant": "complete"
+      },
+      {
+        "fixture": "overwrite",
+        "operation": "filesystem.copy/overwrite",
+        "response": {
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "flashgate",
+              "version": "conformance-fixture"
+            }
+          },
+          "content": [
+            {
+              "text": "{\"source\":\"seed.txt\",\"target\":\"copied.txt\",\"copied\":true}",
+              "type": "text"
+            }
+          ],
+          "resultType": "complete",
+          "structuredContent": {
+            "copied": true,
+            "source": "seed.txt",
+            "target": "copied.txt"
+          }
+        },
+        "resultVariant": "complete"
+      }
+    ],
+    "create_directory": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.mkdir/default",
+        "resultVariant": "complete"
+      }
+    ],
+    "delete_path": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.delete/default",
+        "resultVariant": "complete"
+      },
+      {
+        "fixture": "recursive",
+        "operation": "filesystem.delete/recursive",
+        "response": {
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "flashgate",
+              "version": "conformance-fixture"
+            }
+          },
+          "content": [
+            {
+              "text": "{\"path\":\"directory\",\"deleted\":true}",
+              "type": "text"
+            }
+          ],
+          "resultType": "complete",
+          "structuredContent": {
+            "deleted": true,
+            "path": "directory"
+          }
+        },
+        "resultVariant": "complete"
+      }
+    ],
+    "get_path_info": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.stat/default",
+        "resultVariant": "existing"
+      },
+      {
+        "fixture": "reference",
+        "operation": "filesystem.stat/default",
+        "resultVariant": "missing"
+      }
+    ],
+    "list_directory": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.list/default",
+        "resultVariant": "complete"
+      }
+    ],
+    "move_path": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.move/default",
+        "resultVariant": "complete"
+      },
+      {
+        "fixture": "overwrite",
+        "operation": "filesystem.move/overwrite",
+        "response": {
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "flashgate",
+              "version": "conformance-fixture"
+            }
+          },
+          "content": [
+            {
+              "text": "{\"source\":\"seed.txt\",\"target\":\"moved.txt\",\"moved\":true}",
+              "type": "text"
+            }
+          ],
+          "resultType": "complete",
+          "structuredContent": {
+            "moved": true,
+            "source": "seed.txt",
+            "target": "moved.txt"
+          }
+        },
+        "resultVariant": "complete"
+      }
+    ],
+    "read_file": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.read/default",
+        "resultVariant": "complete"
+      }
+    ],
+    "write_file": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.write/default",
+        "resultVariant": "complete"
+      },
+      {
+        "fixture": "overwrite",
+        "operation": "filesystem.write/overwrite",
+        "response": {
+          "_meta": {
+            "io.modelcontextprotocol/serverInfo": {
+              "name": "flashgate",
+              "version": "conformance-fixture"
+            }
+          },
+          "content": [
+            {
+              "text": "{\"path\":\"written.txt\",\"size\":3,\"written\":true}",
+              "type": "text"
+            }
+          ],
+          "resultType": "complete",
+          "structuredContent": {
+            "path": "written.txt",
+            "size": 3,
+            "written": true
+          }
+        },
+        "resultVariant": "complete"
+      }
+    ]
+  },
   "productionRevisions": [
     "2025-11-25"
   ],

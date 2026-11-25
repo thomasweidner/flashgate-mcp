@@ -1203,6 +1203,67 @@ separate authorization. The published v0.3.0 identity is retained.
 
 <a id="bl-100-functional-capability-model"></a>
 
+## BL-110 effective tool catalog
+
+**Role and prerequisites.** Apply ADR-009 at the MCP composition boundary.
+Reuse the BL-100 capability catalog, BL-103 immutable effective profile,
+BL-108 ordered resource requirements, BL-236 trusted request and backend
+binding, and BL-159 validated operation declarations. Reuse the current
+configuration, native guards, result contracts, and BL-205/212/214/215/220
+activation evidence under their existing owners.
+
+**Retrofit.** Bind all eight filesystem tools and all twelve execution
+variants in the server bootstrap. `internal/fsapp` supplies references to the
+same validated declarations that `internal/execution` enforces. The MCP
+registry owns the immutable public definitions and their trusted handlers.
+Bootstrap/profile admission, discovery and direct calls consume effective
+views of that catalog. Typed domain dispatchers may share the same validated
+declaration set while retaining their own command and result types. Domain
+and execution packages remain transport-neutral.
+
+**Effective view.** The trusted ingress assigns the authenticated principal
+to an immutable effective policy for its runtime. One composition can bind
+several typed domain dispatchers with that policy. Each route retains its
+resource resolver, selected backend and confirmed operation support. The
+tool invocation carries the exact route and admitted operations to dispatch.
+For each declared variant, apply the complete functional
+requirement and derived risk before support. Validate the exact composition,
+including its platform and protocol representation, against activation
+evidence. Derive each request's view from its assigned composition, including
+for a principal authenticated after activation. A tool can expose its
+authorized and supported variants under the bound representation. BL-159,
+native policy and confinement, configuration protection, pre-effect result
+admission and bound release govern concrete operands. Invalid and stale
+bindings fail closed. Direct calls need no prior discovery.
+
+**Public contracts.** Preserve current tool names, order, schemas, results,
+generic unresolved-tool errors and the exact production revision. Preserve
+the three-tool read and eight-tool write views for their measured profiles.
+Deduplicate references to the same canonical registration and reject distinct
+definitions sharing a public name. Catalog readers cannot alter definitions
+or replace handlers. No root-grant aggregation, global profile switch, second
+authorization table, dynamic loader, cache activation or new protocol grant.
+
+**Validation and closure.** Prove the actual bootstrap, discovery, direct
+invocation and dispatcher paths on Windows and native Linux. Bind each
+exposed operation key and observed result variant to its executable fixture,
+revision-specific schema and exact budget. Cover stale or misassigned policy,
+partial grants, missing support, a late principal, independent native
+denials, conflicting definitions, concurrency and isolated synthetic future
+extensions. Complete the existing
+candidate, coverage, wire, security and independent review gates. Record
+documentation, version, migration, security, CI, release and candidate
+dispositions in the BL-110 closure. Confirm completed status on `main`.
+
+**Consumer acceptance.** Every new or materially changed technical owner
+states its own BL-110 disposition in the backlog. For applicable work, name
+the concrete declaration, exposure, activation, invocation or evidence it
+adds. Explain non-applicability for independent work. BL-111 owns the wider
+negative catalog matrix, BL-216 uses the effective view for instructions,
+BL-219 owns fingerprints and caching, BL-239 owns retained state, and BL-256
+owns the expanded CI policy. New tool and adapter families extend the common
+contract without reopening the foundation.
+
 ## Functional capability model
 
 Backlog applicability: BL-100.

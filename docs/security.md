@@ -522,9 +522,16 @@ root, resource, risk, and execution controls before dispatch.
 The [BL-159 central decision](planning/implementation-contract.md#bl-159-central-authorization)
 uses the typed BL-236 transition for every productive operation. Direct STDIO
 registers its eight tools with the request-bound service and seals the
-registry. The Authorizer rejects missing declarations, grants and risk
-authority before operand resolution and denies invalid operand scopes before
-backend dispatch. Future owners apply this contract to their variants,
+master catalog. A trusted ingress assigns the authenticated principal to an
+immutable effective policy. The dispatcher requires that exact assignment for
+catalog binding and execution. Discovery and direct invocation use the
+validated composition for the request's typed routes and protocol revision.
+The invocation binds the selected route, resolver, backend and operation set.
+Dispatch rejects a substituted route or request before operand resolution.
+The Authorizer rejects wrong policy assignments,
+missing grants, excessive risk and unsupported variants before operand
+resolution. It denies invalid operand scopes before backend dispatch.
+Future owners apply this contract to their variants,
 resource-free operations and routes without a public tool name.
 Authorize independent batch items separately and require all operands for a
 shared assertion. Revalidate multi-step effects at the relevant boundaries.

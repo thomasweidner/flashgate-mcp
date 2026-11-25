@@ -26,6 +26,7 @@ type bootstrapDependencies struct {
 	loadConfig      func() (config.Config, error)
 	newRoots        func(config.Config) (*roots.Registry, error)
 	newToolRegistry func(*roots.Registry, int64, config.EffectiveProfile) (*tools.Registry, error)
+	admitTools      func(*tools.Registry) error
 	newRouter       func(string, string, *tools.Registry) *router.Router
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
 }
@@ -41,6 +42,7 @@ func defaultBootstrapDependencies(configPath string) bootstrapDependencies {
 		},
 		newRoots:        roots.New,
 		newToolRegistry: createToolRegistry,
+		admitTools:      admitProfile,
 		newRouter:       createRouter,
 		newServer: func(in io.Reader, out io.Writer, mcpRouter *router.Router, options server.Options) runnableServer {
 			return server.NewWithOptions(in, out, mcpRouter, options)
@@ -82,7 +84,7 @@ func runWithIO(
 	if toolRegistry == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
-	if err := admitProfile(toolRegistry, cfg.Profile().Policy()); err != nil {
+	if err := dependencies.admitTools(toolRegistry); err != nil {
 		return config.NewError(config.CategoryInvalidProfile, err)
 	}
 	mcpRouter := dependencies.newRouter(cfg.Server().Name(), cfg.Server().Version(), toolRegistry)
@@ -101,6 +103,7 @@ func validateBootstrapDependencies(dependencies bootstrapDependencies) error {
 	if dependencies.loadConfig == nil ||
 		dependencies.newRoots == nil ||
 		dependencies.newToolRegistry == nil ||
+		dependencies.admitTools == nil ||
 		dependencies.newRouter == nil ||
 		dependencies.newServer == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)

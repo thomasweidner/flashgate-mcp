@@ -347,6 +347,34 @@
     "ttlMs": 0
   },
   "format": "flashgate-mcp-contract/v1",
+  "operationCases": {
+    "get_path_info": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.stat/default",
+        "resultVariant": "existing"
+      },
+      {
+        "fixture": "reference",
+        "operation": "filesystem.stat/default",
+        "resultVariant": "missing"
+      }
+    ],
+    "list_directory": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.list/default",
+        "resultVariant": "complete"
+      }
+    ],
+    "read_file": [
+      {
+        "fixture": "reference",
+        "operation": "filesystem.read/default",
+        "resultVariant": "complete"
+      }
+    ]
+  },
   "productionRevisions": [
     "2025-11-25"
   ],

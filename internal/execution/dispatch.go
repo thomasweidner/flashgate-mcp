@@ -14,6 +14,7 @@ import (
 
 type OperationID string
 type PolicyID string
+type RepresentationID string
 type ResourceKind string
 type OperandRole string
 
@@ -58,19 +59,33 @@ type WorkingDirectoryBackend interface {
 }
 
 type Registration[C, R any] struct {
-	ID       BackendID
-	Identity Identity
-	Backend  Backend[C, R]
+	ID             BackendID
+	Identity       Identity
+	Backend        Backend[C, R]
+	Representation RepresentationID
+	Operations     []OperationKey
 }
 
 type Dispatcher[C, R any] struct {
 	authorizer authorizer[C]
-	policyID   PolicyID
 	selected   Registration[C, R]
+	binding    *dispatchBinding
+	catalog    CatalogRoutes
 }
 
-func NewDispatcher[C, R any](runtime *Runtime, profile config.EffectiveProfile, selected BackendID, routes Routes[C], registrations ...Registration[C, R]) (*Dispatcher[C, R], error) {
-	authorizer, err := newAuthorizer(runtime, profile, routes)
+// Each dispatcher owns one resource resolver and selected execution route.
+// Its identity distinguishes resource/support bindings with identical grants.
+type dispatchBinding struct {
+	id             PolicyID
+	policy         *PolicyBinding
+	declarations   *Declarations
+	backend        BackendID
+	representation RepresentationID
+	operations     map[OperationKey]struct{}
+}
+
+func NewDispatcher[C, R any](policy *PolicyBinding, selected BackendID, routes Routes[C], registrations ...Registration[C, R]) (*Dispatcher[C, R], error) {
+	authorizer, err := newAuthorizer(policy, routes)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +105,23 @@ func NewDispatcher[C, R any](runtime *Runtime, profile config.EffectiveProfile, 
 	if !found {
 		return nil, ErrUnsupported
 	}
-	return &Dispatcher[C, R]{authorizer: authorizer, policyID: PolicyID(rand.Text()), selected: backend}, nil
+	operations := make(map[OperationKey]struct{}, len(backend.Operations))
+	for _, key := range backend.Operations {
+		_, declared := authorizer.declarations.byKey[key]
+		if _, duplicate := operations[key]; !declared || duplicate {
+			return nil, ErrMismatch
+		}
+		operations[key] = struct{}{}
+	}
+	backend.Operations = nil
+	binding := &dispatchBinding{
+		id: PolicyID(rand.Text()), policy: policy, declarations: authorizer.declarations,
+		backend: backend.ID, representation: backend.Representation, operations: operations,
+	}
+	return &Dispatcher[C, R]{
+		authorizer: authorizer, selected: backend, binding: binding,
+		catalog: CatalogRoutes{policy: policy, routes: map[CatalogRouteID]CatalogRoute{"": {binding}}},
+	}, nil
 }
 
 func nilBackend(value any) bool {
@@ -195,10 +226,10 @@ func Complete[R any](binding *Binding, value R) Completion[R] {
 
 func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, command C, admission func() error) (R, error) {
 	var zero R
-	if d == nil {
+	if d == nil || d.binding == nil || !d.acceptsInvocation(ctx, request) {
 		return zero, ErrMismatch
 	}
-	declaration, resources, err := d.authorizer.authorize(ctx, request, command)
+	declaration, resources, err := d.authorizer.authorize(ctx, request, command, d.binding.operations)
 	if err != nil {
 		return zero, err
 	}
@@ -212,11 +243,11 @@ func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, comman
 	}
 	deadline, _ := ctx.Deadline()
 	binding := &Binding{
-		request: request, profile: d.authorizer.profile, policyID: d.policyID,
+		request: request, profile: d.binding.policy.profile, policyID: d.binding.id,
 		key: declaration.Key, operation: declaration.Operation, resources: resources,
 		backend: backend.ID, effective: backend.Identity, deadline: deadline,
 	}
-	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.authorizer.runtime.generation); err != nil {
+	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.binding.policy.runtime.generation); err != nil {
 		return zero, err
 	}
 	if requiresCWD {
@@ -229,13 +260,16 @@ func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, comman
 		}
 	}
 	completion, err := backend.Backend.Execute(ctx, Invocation[C]{binding: binding, command: command, admission: admission})
+	if observe, _ := ctx.Value(operationObserverKey{}).(func(OperationKey)); observe != nil {
+		observe(binding.Key())
+	}
 	if err != nil {
 		return zero, err
 	}
 	if completion.binding != binding {
 		return zero, ErrMismatch
 	}
-	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.authorizer.runtime.generation); err != nil {
+	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.binding.policy.runtime.generation); err != nil {
 		return zero, err
 	}
 	return completion.value, nil

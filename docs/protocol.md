@@ -153,16 +153,20 @@ discover fixtures omit instructions. BL-216 owns future guidance using the
 
 ## Tool discovery
 
-`tools/list` is deterministic for a fixed tuple of:
+Direct STDIO serves `tools/list` from the same admitted view used to resolve
+`tools/call`. An allowed direct call does not depend on prior discovery.
+Activation validates a composition independently of the individual principal.
+Each request derives its view from the trusted ingress assignment to that
+composition. Discovery is deterministic for a fixed tuple of:
 
 ```text
 protocol revision
 extension set
-profile
-capabilities
-risk policy
-schema version
-relevant configuration
+principal and relevant attributes
+effective profile, grants, and risk ceiling
+policy, resource binding and runtime generation
+backend, platform, confirmed operation support and wire representation
+schema and declared operation variants
 ```
 
 The catalog fingerprint changes whenever that tuple changes. On the `2026-07-28` path, cacheable list/read results carry the revision-required `ttlMs` and `cacheScope`; this includes `resources/read` for any exposed FlashGate resource. FlashGate plans non-shared/private caching unless the complete result is proven independent of principal/profile-sensitive state. Change notifications can invalidate cacheable state through the negotiated `subscriptions/listen` stream, but cache hints, notifications, annotations, and client cache contents aid efficiency only and never authorize operations.

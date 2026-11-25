@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/capability"
-	"github.com/thomasweidner/flashgate-mcp/internal/config"
 )
 
 type VariantID string
@@ -36,62 +35,119 @@ type Declaration struct {
 // Key is a pure selection. Resolve may consult the trusted policy snapshot.
 type Routes[C any] struct {
 	Declarations []Declaration
+	Shared       *Declarations
 	Key          func(C) OperationKey
 	Resolve      func(context.Context, C) ([]Resource, error)
 }
 
+// OperationKeys returns the declarations known to this composition. Backend
+// composition selects the operations it has established it can implement.
+func (r Routes[C]) OperationKeys() []OperationKey {
+	if r.Shared != nil {
+		return slices.Clone(r.Shared.keys)
+	}
+	keys := make([]OperationKey, 0, len(r.Declarations))
+	for _, declaration := range r.Declarations {
+		keys = append(keys, declaration.Key)
+	}
+	return keys
+}
+
 type authorizer[C any] struct {
-	runtime      *Runtime
-	profile      config.EffectiveProfile
-	declarations map[OperationKey]Declaration
+	policy       *PolicyBinding
+	declarations *Declarations
 	key          func(C) OperationKey
 	resolve      func(context.Context, C) ([]Resource, error)
 }
 
-func newAuthorizer[C any](runtime *Runtime, profile config.EffectiveProfile, routes Routes[C]) (authorizer[C], error) {
-	if runtime == nil || runtime.generation == "" || profile.ID() == "" ||
-		routes.Key == nil || routes.Resolve == nil || len(routes.Declarations) == 0 {
-		return authorizer[C]{}, ErrMismatch
+// Declarations holds validated operations independently of any command type.
+// Multiple domain dispatchers can use the same trusted declaration source.
+type Declarations struct {
+	catalog capability.Catalog
+	byKey   map[OperationKey]Declaration
+	keys    []OperationKey
+}
+
+func BindDeclarations(catalog capability.Catalog, definitions ...Declaration) (*Declarations, error) {
+	if len(definitions) == 0 {
+		return nil, ErrMismatch
 	}
-	declarations := make(map[OperationKey]Declaration, len(routes.Declarations))
-	for _, declaration := range routes.Declarations {
-		if _, duplicate := declarations[declaration.Key]; duplicate ||
+	declarations := &Declarations{
+		catalog: catalog,
+		byKey:   make(map[OperationKey]Declaration, len(definitions)),
+		keys:    make([]OperationKey, 0, len(definitions)),
+	}
+	for _, declaration := range definitions {
+		if _, duplicate := declarations.byKey[declaration.Key]; duplicate ||
 			strings.TrimSpace(string(declaration.Key.Name)) == "" ||
 			strings.TrimSpace(string(declaration.Key.Variant)) == "" {
-			return authorizer[C]{}, ErrMismatch
+			return nil, ErrMismatch
 		}
 		operands := make([]capability.Requirement, len(declaration.Operands))
 		for i, operand := range declaration.Operands {
 			if operand.Kind == "" || operand.Role == "" {
-				return authorizer[C]{}, ErrMismatch
+				return nil, ErrMismatch
 			}
 			operands[i] = operand.Requirement
 		}
-		operation, err := profile.Catalog().CombineOperation(declaration.Operation, operands...)
+		operation, err := catalog.CombineOperation(declaration.Operation, operands...)
 		if err != nil {
-			return authorizer[C]{}, ErrMismatch
+			return nil, ErrMismatch
 		}
 		declaration.Operation = operation
 		declaration.Operands = slices.Clone(declaration.Operands)
-		declarations[declaration.Key] = declaration
+		declarations.byKey[declaration.Key] = declaration
+		declarations.keys = append(declarations.keys, declaration.Key)
+	}
+	return declarations, nil
+}
+
+func newAuthorizer[C any](policy *PolicyBinding, routes Routes[C]) (authorizer[C], error) {
+	if policy == nil || policy.runtime == nil ||
+		routes.Key == nil || routes.Resolve == nil {
+		return authorizer[C]{}, ErrMismatch
+	}
+	declarations := routes.Shared
+	if declarations == nil {
+		var err error
+		declarations, err = BindDeclarations(policy.profile.Catalog(), routes.Declarations...)
+		if err != nil {
+			return authorizer[C]{}, err
+		}
+	} else if len(routes.Declarations) != 0 || len(declarations.keys) == 0 || declarations.catalog != policy.profile.Catalog() {
+		return authorizer[C]{}, ErrMismatch
 	}
 	return authorizer[C]{
-		runtime: runtime, profile: profile, declarations: declarations,
+		policy: policy, declarations: declarations,
 		key: routes.Key, resolve: routes.Resolve,
 	}, nil
 }
 
-func (a authorizer[C]) authorize(ctx context.Context, request Request, command C) (Declaration, []BoundResource, error) {
-	if ctx == nil || request.session.runtime != a.runtime || request.correlation == 0 ||
-		request.Caller().ID() == "" || request.Caller().Origin() == "" {
+func (a authorizer[C]) accepts(request Request) bool {
+	return a.policy.accepts(request)
+}
+
+func (p *PolicyBinding) accepts(request Request) bool {
+	return p != nil && request.session.runtime == p.runtime && request.session.policy == p &&
+		request.correlation != 0 && request.Caller().ID() != "" && request.Caller().Origin() != ""
+}
+
+func (a authorizer[C]) authorize(ctx context.Context, request Request, command C, support map[OperationKey]struct{}) (Declaration, []BoundResource, error) {
+	if ctx == nil || !a.accepts(request) {
 		return Declaration{}, nil, ErrMismatch
 	}
 	if err := ctx.Err(); err != nil {
 		return Declaration{}, nil, err
 	}
-	declaration, known := a.declarations[a.key(command)]
-	if !known || !a.profile.Policy().Allows(declaration.Operation) {
+	declaration, known := a.declarations.byKey[a.key(command)]
+	if !known || !a.policy.profile.Policy().Allows(declaration.Operation) {
 		return Declaration{}, nil, ErrDenied
+	}
+	if request.invocation != nil && !(CatalogInvocation{request}).Allows(declaration.Key) {
+		return Declaration{}, nil, ErrDenied
+	}
+	if _, supported := support[declaration.Key]; !supported {
+		return Declaration{}, nil, ErrUnsupported
 	}
 	resources, err := a.resolve(ctx, command)
 	if err != nil {
