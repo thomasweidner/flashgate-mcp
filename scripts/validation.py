@@ -38,6 +38,10 @@ def identity(value):
 
 
 def load(path):
+    return parse_json_object(Path(path).read_text(encoding='utf-8'))
+
+
+def parse_json_object(text):
     def unique(pairs):
         result = {}
         for key, value in pairs:
@@ -45,7 +49,7 @@ def load(path):
                 raise Hold('Duplicate JSON property')
             result[key] = value
         return result
-    value = json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=unique)
+    value = json.loads(text, object_pairs_hook=unique)
     if not isinstance(value, dict):
         raise Hold('JSON object required')
     return value
@@ -545,6 +549,11 @@ def changed_paths(root):
     return sorted(set(changed) - {''})
 
 
+def require_fast_selection(changed):
+    if not changed or '' in changed:
+        raise Hold('FAST needs a changed source or an explicit --changed path')
+
+
 def plan(mode, changed, root, work, tools):
     go, pwsh, lint = (tools[name]['path'] for name in ('go', 'pwsh', 'golangci-lint'))
     ps = [pwsh, '-NoProfile', '-NonInteractive', '-File']
@@ -555,9 +564,10 @@ def plan(mode, changed, root, work, tools):
     docs = mode == 'CANDIDATE' or any(p.endswith('.md') for p in changed)
     shell = mode == 'CANDIDATE' or any(p.startswith(('scripts/', '.github/')) for p in changed)
     if docs:
-        add('documentation', [go, 'run', './cmd/doccheck'])
         if os.name == 'nt':
             add('documentation-wrapper', ps + ['scripts/Test-DocumentationConsistency.ps1'])
+        else:
+            add('documentation', [go, 'run', './cmd/doccheck'])
     if shell:
         add('runner-regressions', [sys.executable, '-B', 'scripts/test-validation.py'])
         if os.name == 'nt':
@@ -569,12 +579,11 @@ def plan(mode, changed, root, work, tools):
     if os.name == 'nt' and mode == 'CANDIDATE':
         add('snapshot-fixtures', ps + ['scripts/Test-GitSnapshotSecurity.ps1', '-WorkingPath', str(work)])
     if mode == 'FAST':
+        require_fast_selection(changed)
         # File changes with unknown dependency reach select the full suite.
         go_changes = [p for p in changed if p.endswith('.go')]
         safe = go_changes and all(p.endswith('_test.go') for p in go_changes) and len(go_changes) == len(changed)
         packages = sorted({'./' + str(Path(p).parent).replace('\\', '/') for p in go_changes}) if safe else ['./...']
-        if not changed:
-            raise Hold('FAST needs a changed source or an explicit --changed path')
         add('focused-tests', [go, 'test', '-json', *packages], True)
         return steps
     add('format', [lint, 'fmt', '--diff'])
@@ -600,14 +609,29 @@ def plan(mode, changed, root, work, tools):
 
 
 def verify_evidence(path, expected, current, steps, *, root):
-    if not expected or digest(path) != expected.lower():
+    if not expected:
         raise Hold('Evidence requires an independently retained matching SHA-256')
-    proof = load(path)
+    path = Path(path).absolute()
+    base = path.parent
+    with source_boundary(base) as root_fd:
+        with evidence_file(base, root_fd, path.name) as stream:
+            summary_bytes = stream.read()
+        summary_digest = hashlib.sha256(summary_bytes).hexdigest()
+        if summary_digest != expected.lower():
+            raise Hold('Evidence requires an independently retained matching SHA-256')
+        proof = parse_json_object(summary_bytes.decode('utf-8'))
+        verify_evidence_results(proof, current, steps)
+        if evidence_inventory(base, root_fd) != proof['artifacts']:
+            raise Hold('Evidence artifact missing or manipulated, or inventory changed')
+    verify_source_postimage(root, current, proof)
+    return summary_digest, len(summary_bytes)
+
+
+def verify_evidence_results(proof, current, steps):
     if proof.get('schema') != 1 or proof.get('status') != 'PASS' or proof.get('binding') != current:
         raise Hold('Evidence failed, incomplete or invalidated')
     if proof.get('plan') != steps:
         raise Hold('Evidence gate/argument scope differs')
-    base = Path(path).parent
     results = proof.get('results', [])
     if not isinstance(results, list) or not all(isinstance(row, dict) for row in results):
         raise Hold('Invalid result matrix')
@@ -616,22 +640,57 @@ def verify_evidence(path, expected, current, steps, *, root):
     for result in results:
         if result.get('status') != 'PASS' or result.get('exit_code') != 0 or result.get('timed_out'):
             raise Hold('Unsuccessful evidence cannot be reused')
-    for name, sha in proof.get('artifacts', []):
-        item = Path(name)
-        if item.is_absolute() or '..' in item.parts or not (base / item).is_file() or (base / item).is_symlink() or digest(base / item) != sha:
-            raise Hold('Evidence artifact missing or manipulated')
-        safe_directory((base / item).parent)
     if not proof.get('artifacts'):
         raise Hold('Evidence has no artifacts')
-    if artifact_inventory(base) != proof['artifacts']:
-        raise Hold('Evidence inventory changed')
-    verify_source_postimage(root, current, proof)
-    return proof
+
+
+@contextlib.contextmanager
+def evidence_file(base, root_fd, name):
+    with source_file(base, root_fd, name) as (stream, _):
+        before = os.fstat(stream.fileno())
+        yield stream
+        readback = os.fstat(stream.fileno())
+        parts = source_parts(name)
+        with source_parent(base, root_fd, parts[:-1]) as parent:
+            after = source_stat(parent, parts[-1])
+        if (not os.path.samestat(before, after) or not stat.S_ISREG(after.st_mode)
+                or getattr(after, 'st_file_attributes', 0) & 0x400
+                or (before.st_size, before.st_mtime_ns, before.st_ctime_ns)
+                != (readback.st_size, readback.st_mtime_ns, readback.st_ctime_ns)
+                or (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns)):
+            raise Hold('Evidence changed while reading: ' + name)
+
+
+def evidence_inventory(base, root_fd):
+    directories = [()]
+    artifacts = []
+    while directories:
+        parts = directories.pop()
+        with source_parent(base, root_fd, parts) as parent:
+            for leaf in os.listdir(parent):
+                if not parts and leaf == 'summary.json':
+                    continue
+                name = '/'.join((*parts, leaf))
+                meta = source_stat(parent, leaf)
+                if getattr(meta, 'st_file_attributes', 0) & 0x400:
+                    raise Hold('Evidence contains a reparse point: ' + name)
+                if stat.S_ISDIR(meta.st_mode):
+                    directories.append((*parts, leaf))
+                elif stat.S_ISREG(meta.st_mode):
+                    artifacts.append(Path(*parts, leaf))
+                else:
+                    raise Hold('Evidence contains a nonregular artifact: ' + name)
+    inventory = []
+    for artifact in sorted(artifacts):
+        name = artifact.as_posix()
+        with evidence_file(base, root_fd, name) as stream:
+            inventory.append([name, hashlib.file_digest(stream, 'sha256').hexdigest()])
+    return inventory
 
 
 def artifact_inventory(work):
-    return [[p.relative_to(work).as_posix(), digest(p)] for p in sorted(work.rglob('*'))
-            if p.is_file() and p != work / 'summary.json']
+    with source_boundary(work) as root_fd:
+        return evidence_inventory(work, root_fd)
 
 
 def wsl_path(path):
@@ -656,14 +715,14 @@ def reviewed_candidate_identity(manifest):
     return hashlib.sha256(json.dumps(subject, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
 
 
-def verify_classic_review(path, expected, manifest_path, root, current, evidence):
+def verify_classic_review(path, expected, manifest_path, root, current, summary_identity):
     if not path or not isinstance(expected, str) or not manifest_path or digest(path) != expected.lower():
         raise Hold('Independent Classic decision, matching digest and reviewed manifest required')
     review, manifest = load(path), load(manifest_path)
-    validate_classic_outcome(review, manifest, root, current, evidence)
+    validate_classic_outcome(review, manifest, root, current, summary_identity)
 
 
-def validate_classic_outcome(review, manifest, root, current, evidence):
+def validate_classic_outcome(review, manifest, root, current, summary_identity):
     fields = {'ContractVersion', 'EvidenceClass', 'TaskId', 'ArtifactClass', 'TransitionType',
               'HandoffSHA256', 'ReviewActorClass', 'SelfApproval', 'ReviewOutcome',
               'ClassicFocusedDeltaReviewOutcome', 'ReviewedPostimageIdentity', 'ReviewedCommitIdentity'}
@@ -724,8 +783,9 @@ def validate_classic_outcome(review, manifest, root, current, evidence):
                          (technical['PayloadBindings'], {'Path', 'SHA256', 'Length'})):
         if any(not isinstance(row, dict) or set(row) != fields for row in rows):
             raise Hold('Unexpected reviewed base or payload fields')
-    if not any(isinstance(row, dict) and row.get('SHA256') == digest(evidence)
-               and row.get('Length') == Path(evidence).stat().st_size for row in technical['PayloadBindings']):
+    summary_digest, summary_length = summary_identity
+    if not any(row['SHA256'] == summary_digest and row['Length'] == summary_length
+               for row in technical['PayloadBindings']):
         raise Hold('Actual validation evidence is absent from the reviewed payload')
     try:
         candidate = reviewed_candidate_identity(manifest)
@@ -896,7 +956,7 @@ def native_verify(context_path, summary_path):
 
 
 def check_native_reuse(root, summary, config, env):
-    base = Path(summary).resolve().parent / 'native-evidence'
+    base = Path(summary).absolute().parent / 'native-evidence'
     command = ['C:/Windows/System32/wsl.exe', '--distribution', config['distribution'], '--user', config['user'],
                '--cd', config['task_root'], '--exec', '/usr/bin/python3', '-B',
                wsl_path(root / 'scripts/validation.py'), '--native-verify',
@@ -931,6 +991,9 @@ def main(argv=None):
     if work == root or root in work.parents:
         raise Hold('Work root must be outside source')
     resource = safe_directory(args.resource_root or work)
+    changes = args.changed if args.changed is not None else changed_paths(root)
+    if args.mode == 'FAST':
+        require_fast_selection(changes)
     env = environment(work, create=args.mode != 'PUBLISH')
     hygiene = source_hygiene(root)
     check_ignored = args.mode != 'FAST'
@@ -941,7 +1004,6 @@ def main(argv=None):
     if config:
         current['native_config'] = config
     mode = 'CANDIDATE' if args.mode == 'PUBLISH' else args.mode
-    changes = args.changed if args.changed is not None else changed_paths(root)
     run = work / ('validation-' + uuid.uuid4().hex[:12])
     # Bind stable artifact paths to the original run for evidence verification.
     plan_work = Path(args.evidence).resolve().parent if args.evidence else run
@@ -952,11 +1014,11 @@ def main(argv=None):
         print(json.dumps({'mode': args.mode, 'binding_sha256': identity(current), 'plan': steps}, indent=2))
         return 0
     if args.evidence:
-        verify_evidence(args.evidence, args.evidence_sha256, current, steps, root=root)
+        summary_identity = verify_evidence(args.evidence, args.evidence_sha256, current, steps, root=root)
         if config:
             check_native_reuse(root, args.evidence, config, env)
         if args.mode == 'PUBLISH':
-            verify_classic_review(args.review, args.review_sha256, args.review_manifest, root, current, args.evidence)
+            verify_classic_review(args.review, args.review_sha256, args.review_manifest, root, current, summary_identity)
         print(json.dumps({'status': 'PASS', 'reused': True, 'quality_processes_started': 0,
                           'binding_sha256': identity(current), 'external_operations_authorized': False}))
         return 0
