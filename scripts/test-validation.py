@@ -47,8 +47,9 @@ class ValidationTests(unittest.TestCase):
 
     def test_unchanged_candidate_reuses_without_process(self):
         path, _, current, steps = self.proof()
+        expected = v.digest(path), path.stat().st_size
         with patch.object(v, 'run_process', side_effect=AssertionError('must not run')):
-            self.assertEqual(self.verify_synthetic_evidence(path, v.digest(path), current, steps)['status'], 'PASS')
+            self.assertEqual(self.verify_synthetic_evidence(path, expected[0], current, steps), expected)
 
     def test_missing_and_modified_evidence_rejected(self):
         path, data, current, steps = self.proof()
@@ -88,7 +89,8 @@ class ValidationTests(unittest.TestCase):
                 with self.subTest(name=name), self.assertRaisesRegex(v.Hold, 'invalidated'):
                     self.verify_synthetic_evidence(path, anchor, v.binding(self.work, {**baseline, name: value}), steps)
             with patch.object(v, 'run_process', side_effect=AssertionError('must not run')):
-                self.assertEqual(self.verify_synthetic_evidence(path, anchor, v.binding(self.work, baseline), steps)['status'], 'PASS')
+                self.assertEqual(self.verify_synthetic_evidence(path, anchor, v.binding(self.work, baseline), steps),
+                                 (anchor, path.stat().st_size))
 
     def test_reusable_evidence_rejects_ignored_checkout_inputs(self):
         root = self.work / 'checkout'
@@ -210,7 +212,8 @@ class ValidationTests(unittest.TestCase):
 
                 data['binding'] = staged
                 path.write_text(json.dumps(data), encoding='utf-8')
-                self.assertEqual(v.verify_evidence(path, v.digest(path), committed, steps, root=root)['status'], 'PASS')
+                anchor = v.digest(path)
+                self.assertEqual(v.verify_evidence(path, anchor, committed, steps, root=root), (anchor, path.stat().st_size))
 
     @unittest.skipUnless(os.name == 'posix', 'Native tracked executable-mode contract')
     def test_tracked_chmod_reuses_across_stage_and_commit(self):
@@ -241,9 +244,9 @@ class ValidationTests(unittest.TestCase):
                 path.write_text(json.dumps(data), encoding='utf-8')
                 anchor = v.digest(path)
                 git('add', '--', file.name)
-                self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root)['status'], 'PASS')
+                self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root), (anchor, path.stat().st_size))
                 git(*commit, 'record tested mode')
-                self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root)['status'], 'PASS')
+                self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root), (anchor, path.stat().st_size))
                 git('update-index', '--chmod=' + alternate, file.name)
                 with self.assertRaises(v.Hold):
                     v.verify_evidence(path, anchor, binding(), steps, root=root)
@@ -281,7 +284,7 @@ class ValidationTests(unittest.TestCase):
         with self.subTest(state='committed with index restored'), self.assertRaisesRegex(v.Hold, 'Git commit'):
             v.verify_evidence(path, anchor, binding(), steps, root=root)
         git(*commit, 'commit tested content')
-        self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root)['status'], 'PASS')
+        self.assertEqual(v.verify_evidence(path, anchor, binding(), steps, root=root), (anchor, path.stat().st_size))
 
     def test_unchanged_git_postimage_reuses_across_stage_commit_and_line_normalization(self):
         path, data, _, steps = self.proof()
@@ -318,7 +321,7 @@ class ValidationTests(unittest.TestCase):
                 elif state == 'committed':
                     git(*commit, 'commit tested postimage')
                 self.assertEqual(binding(), current)
-                self.assertEqual(v.verify_evidence(path, anchor, current, steps, root=root)['status'], 'PASS')
+                self.assertEqual(v.verify_evidence(path, anchor, current, steps, root=root), (anchor, path.stat().st_size))
         self.assertEqual(git('show', 'HEAD:' + existing.name), b'new content\n')
         self.assertEqual(git('show', 'HEAD:new name.txt'), b'new file\n')
 
@@ -419,6 +422,72 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaises(v.Hold):
             self.verify_synthetic_evidence(path, v.digest(path), current, steps)
 
+    def test_admission_reads_each_evidence_file_once(self):
+        path, data, current, steps = self.proof()
+        nested = path.parent / 'native-evidence'
+        nested.mkdir()
+        (nested / 'candidate.log').write_bytes(b'native output')
+        data['artifacts'] = v.artifact_inventory(path.parent)
+        path.write_text(json.dumps(data), encoding='utf-8')
+        expected = v.digest(path), path.stat().st_size
+        with patch.object(v, 'source_file', wraps=v.source_file) as opened, \
+                patch.object(v.hashlib, 'file_digest', wraps=v.hashlib.file_digest) as hashed, \
+                patch.object(v, 'load', side_effect=AssertionError('must use the admitted summary bytes')):
+            self.assertEqual(self.verify_synthetic_evidence(path, expected[0], current, steps), expected)
+        self.assertEqual([call.args[-1] for call in opened.call_args_list],
+                         ['summary.json', 'actual.log', 'native-evidence/candidate.log'])
+        self.assertEqual(hashed.call_count, 2)
+        path.write_bytes(b'new summary after the admission')
+        with self.assertRaises(v.Hold):
+            self.verify_synthetic_evidence(path, expected[0], current, steps)
+
+    def test_evidence_rejects_unbound_paths_and_link_artifacts(self):
+        path, data, current, steps = self.proof()
+        artifact = path.parent / 'actual.log'
+        outside = self.work / artifact.name
+        outside.write_bytes(artifact.read_bytes())
+        for unbound in (str(outside), '../actual.log'):
+            with self.subTest(path=unbound):
+                data['artifacts'] = [[unbound, v.digest(outside)]]
+                path.write_text(json.dumps(data), encoding='utf-8')
+                with self.assertRaises(v.Hold):
+                    self.verify_synthetic_evidence(path, v.digest(path), current, steps)
+        data['artifacts'] = [['actual.log', v.digest(outside)]]
+        path.write_text(json.dumps(data), encoding='utf-8')
+        artifact.unlink()
+        try:
+            artifact.symlink_to(outside)
+        except OSError:
+            if os.name != 'nt':
+                raise
+            real_stat = v.source_stat
+
+            def reparse_stat(parent, leaf):
+                if leaf == 'actual.log':
+                    return type('ReparseMetadata', (), {'st_file_attributes': 0x400})()
+                return real_stat(parent, leaf)
+
+            with patch.object(v, 'source_stat', side_effect=reparse_stat), self.assertRaises(v.Hold):
+                self.verify_synthetic_evidence(path, v.digest(path), current, steps)
+        else:
+            with self.assertRaises(v.Hold):
+                self.verify_synthetic_evidence(path, v.digest(path), current, steps)
+
+    def test_evidence_drift_during_artifact_read_is_rejected(self):
+        path, _, current, steps = self.proof()
+        expected = v.digest(path)
+        file_digest = v.hashlib.file_digest
+
+        def hash_then_change(stream, algorithm):
+            result = file_digest(stream, algorithm)
+            with (path.parent / 'actual.log').open('ab') as output:
+                output.write(b'changed after hashing')
+            return result
+
+        with patch.object(v.hashlib, 'file_digest', side_effect=hash_then_change), \
+                self.assertRaisesRegex(v.Hold, 'Evidence changed while reading'):
+            self.verify_synthetic_evidence(path, expected, current, steps)
+
     def test_failed_timeout_or_incomplete_matrix_rejected(self):
         path, data, current, steps = self.proof()
         for result in ([], [{'name': 'tests', 'status': 'FAIL', 'exit_code': 1}],
@@ -449,7 +518,12 @@ class ValidationTests(unittest.TestCase):
         names = {s['name'] for s in steps}
         self.assertTrue({'coverage', 'mcp', 'vet', 'lint', 'format', 'build', 'smoke-read', 'startup-negative', 'shell-fixtures'} <= names)
         self.assertEqual('race' in names, os.name != 'nt')
-        self.assertFalse(next(s for s in steps if s['name'] == 'documentation')['heavy'])
+        self.assertEqual([s for s in steps if s['name'].startswith('documentation')], [{
+            'name': 'documentation-wrapper' if os.name == 'nt' else 'documentation',
+            'argv': (['pwsh', '-NoProfile', '-NonInteractive', '-File', 'scripts/Test-DocumentationConsistency.ps1']
+                     if os.name == 'nt' else ['go', 'run', './cmd/doccheck']),
+            'heavy': False,
+        }])
         self.assertEqual('snapshot-fixtures' in names, os.name == 'nt')
 
     def test_native_configuration_rejects_escaping_reuse_source(self):
@@ -488,6 +562,24 @@ class ValidationTests(unittest.TestCase):
                                      '--changed', 'internal/fs/read_test.go', '--native-config', str(config)]), 0)
             self.assertEqual(process.call_count, 1)
             self.assertEqual(process.call_args.args[2], 'focused-tests')
+            process.reset_mock()
+            with patch.object(v, 'changed_paths', return_value=['internal/fs/read_test.go']):
+                self.assertEqual(v.main(['--mode', 'FAST', '--work-root', str(self.work)]), 0)
+            self.assertEqual(process.call_args.args[3], ['go', 'test', '-json', './internal/fs'])
+
+    def test_empty_fast_selection_stops_before_binding(self):
+        args = ['--mode', 'FAST', '--work-root', str(self.work)]
+        with patch.object(v, 'changed_paths', return_value=[]) as discovered, \
+                patch.object(v, 'binding') as bound, patch.object(v, 'environment') as setup:
+            with self.assertRaisesRegex(v.Hold, 'FAST needs a changed source'):
+                v.main(args)
+            discovered.assert_called_once()
+            discovered.reset_mock()
+            with self.assertRaisesRegex(v.Hold, 'FAST needs a changed source'):
+                v.main(args + ['--changed', ''])
+            discovered.assert_not_called()
+            bound.assert_not_called()
+            setup.assert_not_called()
 
     def test_publish_interface_rejects_synthetic_and_missing_review(self):
         path, data, current, steps = self.proof()
@@ -524,9 +616,11 @@ class ValidationTests(unittest.TestCase):
             with patch.object(v, 'verify_classic_review') as decision_boundary:
                 self.assertEqual(v.main(args), 0)
                 self.assertEqual(decision_boundary.call_args.args[0], str(review_path))
+                self.assertEqual(decision_boundary.call_args.args[-1], (v.digest(path), path.stat().st_size))
 
     def test_external_classic_contract_binds_complete_source_scope_and_evidence(self):
         path, _, _, _ = self.proof()
+        summary_identity = v.digest(path), path.stat().st_size
         source = self.work / 'source.go'
         source.write_text('package fixture\n', encoding='utf-8')
         with patch.object(v, 'git', side_effect=[b'source.go\0obsolete.go\0', b'']):
@@ -534,8 +628,9 @@ class ValidationTests(unittest.TestCase):
         manifest = dict(ContractVersion='1.0.0', TaskId='VALIDATION-123', Entries=[dict(
             Path=str(source), SHA256=v.digest(source), FileType='REGULAR_FILE', Mode=source.stat().st_mode & 0o777,
             PackagePath='source/current/source.go')], TechnicalCandidate=dict(Scope='FULL_WORK_ITEM:VALIDATION-123',
-            BaseBindings=[], DependencyBindings=[], PayloadBindings=[dict(Path='evidence/summary.json',
-            SHA256=v.digest(path), Length=path.stat().st_size)]))
+            BaseBindings=[], DependencyBindings=[], PayloadBindings=[
+                dict(Path='evidence/other.json', SHA256='0' * 64, Length=summary_identity[1]),
+                dict(Path='evidence/summary.json', SHA256=summary_identity[0], Length=summary_identity[1])]))
         # In-memory nominal contract double only. No decision file, PUBLISH
         # success receipt or independently approved candidate is manufactured.
         review = dict(ContractVersion='1.0.0', EvidenceClass='CLASSIC_REVIEW_OUTCOME', TaskId='VALIDATION-123',
@@ -543,15 +638,16 @@ class ValidationTests(unittest.TestCase):
             HandoffSHA256='a' * 64, ReviewActorClass='CHATGPT_CLASSIC', SelfApproval=False, ReviewOutcome='PASS',
             ClassicFocusedDeltaReviewOutcome='NOT_APPLICABLE', ReviewedPostimageIdentity=v.reviewed_candidate_identity(manifest),
             ReviewedCommitIdentity=None)
-        self.assertIsNone(v.validate_classic_outcome(review, manifest, self.work, current, path))
+        with patch.object(v, 'digest', side_effect=AssertionError('must use the admitted summary identity')):
+            self.assertIsNone(v.validate_classic_outcome(review, manifest, self.work, current, summary_identity))
         for field, value in [('TEST_ONLY', True), ('synthetic', True), ('fixture', True), ('self_review', True),
                              ('SelfApproval', True), ('ReviewActorClass', 'CODEX'), ('ReviewOutcome', 'CHANGES_REQUIRED'),
                              ('TaskId', 'OTHER-123'), ('ReviewedPostimageIdentity', '0' * 64),
                              ('ClassicFocusedDeltaReviewOutcome', 'PASS')]:
             altered = {**review, field: value}
             with self.subTest(field=field), self.assertRaises(v.Hold):
-                v.validate_classic_outcome(altered, manifest, self.work, current, path)
-        for change in ('scope', 'source', 'mode', 'evidence', 'omitted'):
+                v.validate_classic_outcome(altered, manifest, self.work, current, summary_identity)
+        for change in ('scope', 'source', 'mode', 'evidence', 'evidence_length', 'omitted'):
             altered = copy.deepcopy(manifest)
             if change == 'scope':
                 altered['TechnicalCandidate']['Scope'] = 'PARTIAL:VALIDATION-123'
@@ -561,11 +657,13 @@ class ValidationTests(unittest.TestCase):
                 altered['Entries'][0]['Mode'] ^= 0o100
             elif change == 'evidence':
                 altered['TechnicalCandidate']['PayloadBindings'] = []
+            elif change == 'evidence_length':
+                altered['TechnicalCandidate']['PayloadBindings'][-1]['Length'] += 1
             else:
                 altered['Entries'] = []
             rebound = {**review, 'ReviewedPostimageIdentity': v.reviewed_candidate_identity(altered)}
             with self.subTest(change=change), self.assertRaises(v.Hold):
-                v.validate_classic_outcome(rebound, altered, self.work, current, path)
+                v.validate_classic_outcome(rebound, altered, self.work, current, summary_identity)
 
     def test_extra_evidence_and_foreign_process_are_rejected(self):
         path, _, current, steps = self.proof()
