@@ -23,6 +23,9 @@ param(
     [string]$ReviewSHA256,
     [string]$ReviewManifestPath,
     [string]$NativeConfig,
+    [ValidateSet('local', 'native')][string]$PlatformPhase,
+    [string]$ResumePath,
+    [string]$ResumeSHA256,
     [switch]$PlanOnly
 )
 
@@ -46,7 +49,8 @@ try {
         @('--resource-root', $ResourceRoot), @('--evidence', $EvidencePath),
         @('--evidence-sha256', $EvidenceSHA256), @('--review', $ReviewPath),
         @('--review-sha256', $ReviewSHA256), @('--native-config', $NativeConfig),
-        @('--review-manifest', $ReviewManifestPath)
+        @('--review-manifest', $ReviewManifestPath), @('--platform-phase', $PlatformPhase),
+        @('--resume', $ResumePath), @('--resume-sha256', $ResumeSHA256)
     )) {
         if (-not [string]::IsNullOrWhiteSpace($pair[1])) {
             $start.ArgumentList.Add($pair[0])
