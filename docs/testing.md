@@ -51,7 +51,12 @@ smoke build outputs may exist as regular files on link-free paths.
 CANDIDATE runs documentation, runner regressions, shell checks and their negative
 fixtures, formatting, vet, lint, full repository tests through product coverage,
 MCP conformance, build and all existing smoke variants. Native Linux also runs
-the complete race suite. Coverage and MCP remain distinct gates.
+the complete race suite. Coverage and MCP remain distinct gates. Local MCP
+consumes the successful Coverage gate's original Go JSONL in the same run. It
+does not launch a second Go test process. The validation runner supplies the
+`-coverage-evidence`, `-coverage-sha256`, `-coverage-bytes` and
+`-coverage-origin` arguments to `mcpcheck`. See [MCP conformance validation](mcp-conformance.md)
+for the native contract checks and evidence scope.
 
 On Windows, CANDIDATE requires a caller-owned native configuration JSON with
 the required `distribution`, `user`, `task_root`, `go`, `lint`, and `pwsh` strings.
@@ -114,7 +119,11 @@ current tested Git projection, platform bindings, ordered gate arguments,
 and the complete admitted artifact inventory. Each retained gate keeps its
 original result, duration, gate-specific artifact hashes and digest-bound
 origin even when an earlier gate encounters another resource hold. MCP resume
-requires both the report and its original `.tests.jsonl` sidecar. The native
+requires the report, its `.tests.jsonl` sidecar and the matching Coverage
+producer origin and log identity. A valid restored Coverage gate can feed a
+fresh MCP evaluation. A newly executed or invalidated Coverage gate cannot
+carry over an older MCP result. Evidence from one platform cannot satisfy
+the other platform's dependency. The native
 export must match the artifact inventory in the original native summary. Build and
 smoke gates are reused together and must agree on the original smoke binary
 digest. The shell parser gate can retain its result across content-only edits

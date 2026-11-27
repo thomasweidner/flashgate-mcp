@@ -770,7 +770,8 @@ def plan(mode, changed, root, work, tools):
                          '-MinimumCoverage', '90', '-OutputRoot', str(work / 'coverage')], True)
     if os.name != 'nt':
         add('race', [go, 'test', '-race', '-json', './...'], True)
-    add('mcp', [go, 'run', '-mod=vendor', './cmd/mcpcheck', '-report', str(work / 'mcp.md')], True)
+    add('mcp', [go, 'run', '-mod=vendor', './cmd/mcpcheck', '-report', str(work / 'mcp.md'),
+                '-coverage-evidence', str(work / coverage_log(host))], True)
     binary = root / (SMOKE_BUILD_WINDOWS if os.name == 'nt' else SMOKE_BUILD_LINUX)
     # Existing smoke entry points consume this established ignored build path.
     add('build', [go, 'build', '-o', str(binary), './cmd/server'], True)
@@ -854,16 +855,94 @@ def phase_binding(binding, gate):
 
 
 def resume_step(step, run):
-    # Normalize only declared output or disposable fixture scratch paths.
-    # Input paths and every other argument still require exact parity.
+    # Normalize only declared run-local paths. The MCP input has its own
+    # independently checked producer binding.
     output_args = {'coverage': ('-OutputRoot', 'coverage'), 'mcp': ('-report', 'mcp.md'),
                    'shell-fixtures': ('-WorkingPath', ''), 'snapshot-fixtures': ('-WorkingPath', '')}
     argv = list(step['argv'])
-    if output := output_args.get(step['name']):
-        option, relative = output
-        if argv[-2:] == [option, str(run / relative)]:
-            argv[-1] = '<run>/' + relative
+    paths = [output_args[step['name']]] if step['name'] in output_args else []
+    if step['name'] == 'mcp':
+        paths.append(('-coverage-evidence', coverage_log(platform.system())))
+    for option, relative in paths:
+        if argv.count(option) == 1:
+            index = argv.index(option)
+            if argv[index:index + 2] == [option, str(run / relative)]:
+                argv[index + 1] = '<run>/' + relative
     return {**step, 'argv': argv}
+
+
+def coverage_log(system):
+    return 'coverage/' + system.lower() + '/test.log'
+
+
+def uses_coverage(steps):
+    return any(row['name'] == 'mcp' and '-coverage-evidence' in row['argv'] for row in steps)
+
+
+def capture_coverage_input(run, result, system):
+    name = coverage_log(system)
+    files = dict(result['artifacts'])
+    with source_boundary(run) as root_fd:
+        summary = 'coverage/' + system.lower() + '/summary.json'
+        with evidence_file(run, root_fd, summary) as stream:
+            raw = stream.read()
+        data = parse_json_object(raw.decode('utf-8'))
+        if (hashlib.sha256(raw).hexdigest() != files[summary]
+                or data.get('status') != 'PASS' or data.get('platform') != system.lower()
+                or data.get('test_log_format') != 'go-test-json'
+                or Path(data.get('test_log', '')) != run / name):
+            raise Hold('Coverage producer summary does not admit its Go test log')
+        with evidence_file(run, root_fd, name) as stream:
+            size = os.fstat(stream.fileno()).st_size
+    return {'path': name, 'sha256': files[name], 'bytes': size, 'origin': run.name}
+
+
+def coverage_input(result, system):
+    if result is None or not successful_result(result) or result.get('name') != 'coverage':
+        raise Hold('Successful Coverage producer required for MCP')
+    row = result.get('coverage_input')
+    name = coverage_log(system)
+    if (not isinstance(row, dict) or set(row) != {'path', 'sha256', 'bytes', 'origin'}
+            or row['path'] != name or not isinstance(row['sha256'], str)
+            or re.fullmatch('[0-9a-f]{64}', row['sha256']) is None
+            or dict(result.get('artifacts', [])).get(name) != row['sha256']
+            or type(row['bytes']) is not int or row['bytes'] <= 0
+            or not isinstance(row['origin'], str)
+            or re.fullmatch('validation-[0-9a-f]{12}', row['origin']) is None):
+        raise Hold('Coverage input does not match its gate artifact binding')
+    return row
+
+
+def coverage_arguments(row):
+    return ['-coverage-sha256', row['sha256'], '-coverage-bytes', str(row['bytes']),
+            '-coverage-origin', row['origin']]
+
+
+def admit_coverage(run, result, system):
+    row = coverage_input(result, system)
+    with source_boundary(run) as root_fd, evidence_file(run, root_fd, row['path']) as stream:
+        if (os.fstat(stream.fileno()).st_size != row['bytes']
+                or hashlib.file_digest(stream, 'sha256').hexdigest() != row['sha256']):
+            raise Hold('Coverage evidence drifted before MCP consumption')
+    return row
+
+
+def verify_coverage_link(proof, base, root_fd):
+    if not uses_coverage(proof['plan']):
+        return
+    rows = {row['name']: row for row in proof['results'] if successful_result(row)}
+    if 'coverage' not in rows and 'mcp' not in rows:
+        return
+    coverage = rows.get('coverage')
+    system = proof['platform']
+    row = coverage_input(coverage, system)
+    if coverage.get('reused_from') is None and row['origin'] != base.name:
+        raise Hold('Fresh Coverage producer origin differs')
+    with evidence_file(base, root_fd, row['path']) as stream:
+        if os.fstat(stream.fileno()).st_size != row['bytes']:
+            raise Hold('Coverage artifact length differs')
+    if 'mcp' in rows and rows['mcp'].get('coverage_input') != row:
+        raise Hold('MCP evidence is detached from its Coverage producer')
 
 
 def required_gate_files(gate, system):
@@ -961,6 +1040,11 @@ def verify_resume_origins(proof, base, root_fd):
         if terminal not in original['results']:
             raise Hold('Original result differs from reused gate')
         verify_gate_artifacts(terminal, original)
+        if terminal['name'] == 'coverage' and uses_coverage(proof['plan']):
+            row = coverage_input(terminal, proof['platform'])
+            if original.get('run') != row['origin']:
+                raise Hold('Resumed Coverage origin does not match its original summary')
+    verify_coverage_link(proof, base, root_fd)
 
 
 def copy_evidence_artifact(base, root_fd, run, name, expected):
@@ -1048,6 +1132,9 @@ def resume_results(path, expected, root, work, run, current, steps, base_commit,
             if old_steps[name] != resume_step(step, run):
                 invalidated[name] = 'gate arguments changed'
                 continue
+            if name == 'coverage' and uses_coverage(steps) and 'coverage_input' not in row:
+                invalidated[name] = 'Coverage producer provenance unavailable'
+                continue
             if name == 'native-linux':
                 if not allow_native:
                     continue
@@ -1063,6 +1150,9 @@ def resume_results(path, expected, root, work, run, current, steps, base_commit,
                 if name in reused:
                     del reused[name]
                     invalidated[name] = 'build and smoke must be reused together'
+        if uses_coverage(steps) and 'mcp' in reused and 'coverage' not in reused:
+            del reused['mcp']
+            invalidated['mcp'] = 'MCP needs a valid Coverage producer'
         origins = {row['reused_from'] for row in reused.values()}
         reused_artifacts = {name for row in reused.values() for name, _ in row['artifacts']}
         for name, artifact_hash in proof['artifacts']:
@@ -1624,8 +1714,14 @@ def main(argv=None):
                     raise Hold('Smoke input differs from the completed build')
                 command = (prepare_native(root, run, config, env, current, source_base, deletions, native_checkpoint)
                            if step['name'] == 'native-linux' else step['argv'])
+                if name == 'mcp':
+                    coverage = next((row for row in results if row['name'] == 'coverage'), None)
+                    admitted = admit_coverage(run, coverage, platform.system())
+                    command = [*command, *coverage_arguments(admitted)]
                 result = run_process(root, run, step['name'], command, env,
                                      timeout=10800 if step['name'] == 'native-linux' else 1800)
+                if name == 'mcp':
+                    result['coverage_input'] = admitted
                 if step['name'] == 'native-linux' and result.get('timed_out'):
                     result['status'] = 'HOLD'  # Killing wsl.exe proves no Linux descendant termination.
                 if step['name'] == 'native-linux':
@@ -1642,6 +1738,8 @@ def main(argv=None):
             result['name'] = step['name']
             if args.mode == 'CANDIDATE' and successful_result(result):
                 result['artifacts'] = capture_gate_artifacts(run, result, platform.system())
+                if name == 'coverage':
+                    result['coverage_input'] = capture_coverage_input(run, result, platform.system())
             results.append(result)
             if result['status'] != 'PASS':
                 status = result['status']
@@ -1679,13 +1777,15 @@ def main(argv=None):
                 for row in results:
                     if successful_result(row):
                         verify_gate_artifacts(row, {'platform': system, 'artifacts': inventory})
+                with source_boundary(run) as root_fd:
+                    verify_coverage_link({'results': results, 'plan': steps, 'platform': system}, run, root_fd)
             except Hold as error:
                 status, resumable = 'HOLD', False
                 results.append({'name': 'coordinator', 'status': status, 'error': str(error)})
         ordering = {step['name']: index for index, step in enumerate(steps)}
         results.sort(key=lambda row: ordering.get(row['name'], len(steps)))
         summary = run / 'summary.json'
-        write(summary, {'schema': 1, 'status': status, 'mode': args.mode, 'platform': system,
+        write(summary, {'schema': 1, 'status': status, 'mode': args.mode, 'platform': system, 'run': run.name,
                         'binding': current, 'plan': steps, 'results': results,
                         'artifacts': inventory, 'binding_sha256': identity(current),
                          'checkout': str(root), 'resumable': resumable, 'invalidated': invalidated,
