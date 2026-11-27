@@ -27,6 +27,18 @@ class ValidationTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.work = Path(self.temp.name)
 
+    def gate_fixture(self, run, name):
+        system = v.platform.system()
+        for filename in v.required_gate_files(name, system):
+            path = run / filename
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if filename == 'native-evidence/summary.json':
+                v.write(path, {'status': 'PASS', 'resumable': True, 'artifacts': []})
+            else:
+                path.write_bytes(b'original output')
+        return {'name': name, 'status': 'PASS', 'exit_code': 0, 'timed_out': False,
+                'artifacts': v.gate_artifact_binding(name, system, v.artifact_inventory(run)), 'seconds': 1}
+
     def proof(self):
         directory = self.work / 'candidate'
         directory.mkdir()
@@ -34,9 +46,9 @@ class ValidationTests(unittest.TestCase):
         output.write_text('real output', encoding='utf-8')
         steps = [{'name': 'tests', 'argv': ['go', 'test', './...'], 'heavy': True}]
         current = {'source': 'original', 'environment': 'original'}
+        row = self.gate_fixture(directory, 'tests')
         data = {'schema': 1, 'status': 'PASS', 'binding': current, 'plan': steps,
-                'results': [{'name': 'tests', 'status': 'PASS', 'exit_code': 0, 'timed_out': False}],
-                'artifacts': [['actual.log', v.digest(output)]]}
+                'platform': v.platform.system(), 'results': [row], 'artifacts': v.artifact_inventory(directory)}
         path = directory / 'summary.json'
         v.write(path, data)
         return path, data, current, steps
@@ -44,6 +56,306 @@ class ValidationTests(unittest.TestCase):
     def verify_synthetic_evidence(self, path, expected, current, steps):
         with patch.object(v, 'verify_source_postimage'):
             return v.verify_evidence(path, expected, current, steps, root=self.work)
+
+    def resume_fixture(self, names=('shell', 'vet', 'native-linux'), completed=('shell',), status='HOLD'):
+        run = self.work / 'validation-0123456789ab'
+        run.mkdir()
+        target = self.work / 'validation-abcdef012345'
+        target.mkdir()
+        steps = [{'name': name, 'argv': [name], 'heavy': False} for name in names]
+        binding = {'sources': [['README.md', 'old', 420], ['script.sh', 'script', 493]],
+                   'git_modes': [['README.md', '100644'], ['script.sh', '100755']],
+                   'git_blobs': [['README.md', 'old-blob'], ['script.sh', 'script-blob']],
+                   'environment': {'PATH': 'original'}, 'native_config': {}, 'shell_markdown': ['README.md']}
+        rows = [self.gate_fixture(run, name) for name in completed]
+        if status == 'HOLD':
+            rows.append({'name': 'coordinator', 'status': 'HOLD', 'error': 'busy'})
+        proof = {'schema': 1, 'mode': 'CANDIDATE', 'status': status, 'platform': v.platform.system(),
+                 'checkout': str(self.work), 'source_base': 'a' * 40, 'deleted_sources': [],
+                 'resumable': True, 'binding': binding, 'binding_sha256': v.identity(binding),
+                 'plan': steps, 'results': rows, 'artifacts': v.artifact_inventory(run)}
+        summary = run / 'summary.json'
+        v.write(summary, proof)
+        return summary, target, binding, steps, proof
+
+    def consume_resume(self, summary, target, binding, steps, **kwargs):
+        expected = kwargs.pop('expected', v.digest(summary))
+        return v.resume_results(
+            summary, expected, self.work, self.work, target, binding, steps,
+            kwargs.pop('base', 'a' * 40), [], allow_native=True,
+            native_probe=kwargs.pop('native_probe', lambda path, proof: True))
+
+    def test_resume_window_pass_keeps_bound_prefix_when_native_was_busy(self):
+        summary, target, binding, plan, proof = self.resume_fixture(completed=('shell', 'vet'))
+        reused, invalidated, native = self.consume_resume(summary, target, binding, plan)
+        self.assertEqual(list(reused), ['shell', 'vet'])
+        self.assertEqual(reused['vet']['seconds'], proof['results'][1]['seconds'])
+        self.assertEqual((target / 'vet.stdout').read_bytes(), b'original output')
+        self.assertEqual(reused['vet']['reused_from'], v.digest(summary))
+        self.assertEqual(invalidated, {})
+        self.assertIsNone(native)
+        with v.source_boundary(target) as fd:
+            v.verify_resume_origins({'results': list(reused.values()), 'platform': v.platform.system(),
+                                     'artifacts': v.artifact_inventory(target)}, target, fd)
+        with self.assertRaises(v.Hold):
+            v.verify_evidence_results(proof, binding, plan)
+
+    def test_resume_native_first_survives_windows_environment_change(self):
+        summary, target, binding, plan, _ = self.resume_fixture(completed=('native-linux',), status='PARTIAL')
+        current = {**binding, 'environment': {'PATH': 'changed'}}
+        with patch.object(v, 'confirmed_native_hold', side_effect=AssertionError('must not launch native')):
+            reused, invalidated, _ = self.consume_resume(summary, target, current, plan)
+        self.assertEqual(list(reused), ['native-linux'])
+        self.assertEqual(invalidated, {})
+
+    def test_resume_source_drift_invalidates_vet_but_not_bound_shell_parse(self):
+        summary, target, current, plan, proof = self.resume_fixture(completed=('shell', 'vet'))
+        current = copy.deepcopy(current)
+        current['sources'][0][1] = 'new-markdown'
+        current['git_blobs'][0][1] = 'new-blob'
+        reused, invalidated, _ = self.consume_resume(summary, target, current, plan)
+        self.assertEqual(list(reused), ['shell'])
+        self.assertEqual(invalidated, {'vet': 'platform binding changed'})
+        self.assertNotEqual(proof['binding_sha256'], v.identity(current))
+
+    def test_resume_markdown_shebang_invalidates_shell_discovery(self):
+        summary, target, current, plan, _ = self.resume_fixture()
+        current = {**current, 'shell_markdown': []}
+        reused, invalidated, _ = self.consume_resume(summary, target, current, plan)
+        self.assertEqual(reused, {})
+        self.assertEqual(invalidated, {'shell': 'platform binding changed'})
+
+    def test_shell_discovery_marks_headings_from_the_hashed_source_bytes(self):
+        readme, changelog = self.work / 'README.md', self.work / 'CHANGELOG.md'
+        readme.write_bytes(b'# Heading\nEdited content\n')
+        changelog.write_bytes(b'#!/usr/bin/env bash\n')
+        eligible = []
+        with patch.object(v, 'git', side_effect=[b'CHANGELOG.md\0README.md\0', b'']):
+            hashes = {name: digest for name, digest, _ in v.sources(self.work, shell_markdown=eligible)}
+        self.assertEqual(eligible, ['README.md'])
+        self.assertEqual(hashes, {'README.md': v.digest(readme), 'CHANGELOG.md': v.digest(changelog)})
+
+    def test_resume_rejects_ambiguous_ownership_base_and_corrupt_artifacts(self):
+        summary, target, binding, plan, proof = self.resume_fixture()
+        original_hash = v.digest(summary)
+        with self.assertRaisesRegex(v.Hold, 'base'):
+            self.consume_resume(summary, target, binding, plan, base='b' * 40)
+        with self.assertRaisesRegex(v.Hold, 'work root'):
+            v.resume_results(summary, original_hash, self.work, target, target, binding, plan,
+                             'a' * 40, [], allow_native=True, native_probe=None)
+        proof['resumable'] = False
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        with self.assertRaisesRegex(v.Hold, 'completion'):
+            self.consume_resume(summary, target, binding, plan)
+        with self.assertRaisesRegex(v.Hold, 'retained matching'):
+            self.consume_resume(summary, target, binding, plan, expected=original_hash)
+        (summary.parent / 'foreign.txt').write_bytes(b'extra output')
+        with self.assertRaisesRegex(v.Hold, 'inventory'):
+            self.consume_resume(summary, target, binding, plan)
+
+    def test_resume_native_reuse_requires_live_native_probe(self):
+        summary, target, binding, plan, _ = self.resume_fixture(completed=('native-linux',), status='PARTIAL')
+        reused, invalidated, _ = self.consume_resume(summary, target, binding, plan,
+                                                       native_probe=lambda path, proof: False)
+        self.assertEqual(reused, {})
+        self.assertEqual(invalidated, {'native-linux': 'native evidence binding changed'})
+
+    def test_mcp_sidecar_survives_two_resumes(self):
+        first, target, binding, plan, proof = self.resume_fixture(names=('mcp',), completed=('mcp',), status='PARTIAL')
+        reused, _, _ = self.consume_resume(first, target, binding, plan)
+        self.assertEqual((target / 'mcp.md.tests.jsonl').read_bytes(), b'original output')
+        next_summary = target / 'summary.json'
+        v.write(next_summary, {**proof, 'results': list(reused.values()), 'artifacts': v.artifact_inventory(target)})
+        later = self.work / 'validation-deadbeef0123'
+        later.mkdir()
+        repeated, _, _ = self.consume_resume(next_summary, later, binding, plan)
+        self.assertEqual(repeated['mcp']['reused_from'], v.digest(first))
+        self.assertEqual((later / 'mcp.md.tests.jsonl').read_bytes(), b'original output')
+
+    def test_mcp_sidecar_rejects_missing_or_changed_original_binding(self):
+        summary, target, binding, plan, proof = self.resume_fixture(names=('mcp',), completed=('mcp',), status='PARTIAL')
+        sidecar = summary.parent / 'mcp.md.tests.jsonl'
+        # Refreshing a run's top-level inventory cannot replace the gate binding.
+        sidecar.write_bytes(b'different bytes')
+        for missing in (False, True):
+            with self.subTest(missing=missing):
+                if missing:
+                    sidecar.unlink()
+                proof['artifacts'] = v.artifact_inventory(summary.parent)
+                summary.write_text(json.dumps(proof), encoding='utf-8')
+                with self.assertRaisesRegex(v.Hold, 'gate artifacts|Gate artifact binding'):
+                    self.consume_resume(summary, target, binding, plan)
+
+    def test_native_export_must_match_original_inventory(self):
+        export = self.work / 'native-evidence'
+        export.mkdir()
+        sidecar = export / 'mcp.md.tests.jsonl'
+        sidecar.write_bytes(b'actual native evidence')
+        v.write(export / 'summary.json', {'artifacts': [[sidecar.name, v.digest(sidecar)]]})
+        v.write(export / 'native-context.json', {'context': 'fixture'})
+        with v.source_boundary(self.work) as fd:
+            v.verify_native_projection(self.work, fd, v.artifact_inventory(self.work))
+            sidecar.write_bytes(b'different export bytes')
+            with self.assertRaisesRegex(v.Hold, 'original summary inventory'):
+                v.verify_native_projection(self.work, fd, v.artifact_inventory(self.work))
+
+    def test_fixed_shell_helper_change_and_absence_invalidate_same_path(self):
+        summary, target, binding, plan, proof = self.resume_fixture(names=('shell',), status='PARTIAL')
+        helper = self.work / 'grep'
+        helper.write_bytes(b'first tool')
+        helper.chmod(0o700)
+        key = 'shell:fixed:grep'
+        with patch.object(v, 'NATIVE_SHELL_BIN', self.work):
+            selected = v.native_shell_paths('unchanged PATH')[key]
+            binding['helpers'] = {key: [selected, v.digest(selected)]}
+            proof['binding_sha256'] = v.identity(binding)
+            summary.write_text(json.dumps(proof), encoding='utf-8')
+            helper.write_bytes(b'changed tool')
+            for missing in (False, True):
+                with self.subTest(missing=missing):
+                    if missing:
+                        helper.unlink()
+                    path = v.native_shell_paths('unchanged PATH')[key]
+                    current = {**binding, 'helpers': {key: [path, v.digest(path)] if path else None}}
+                    reused, invalidated, _ = self.consume_resume(summary, target, current, plan)
+                    self.assertEqual(reused, {})
+                    self.assertEqual(invalidated, {'shell': 'platform binding changed'})
+
+    @unittest.skipUnless(sys.platform == 'linux', 'native PATH resolution')
+    def test_searched_fixture_and_smoke_helpers_change_or_disappear_at_same_path(self):
+        env = {'PATH': str(self.work)}
+        for name in ('awk', 'cat', 'date', 'rmdir', 'python3'):
+            with self.subTest(name=name):
+                helper = self.work / name
+                helper.write_bytes(b'original helper')
+                helper.chmod(0o700)
+                key = 'shell:PATH:' + name
+                original = v.validation_helpers(self.work, env, {})[key]
+                self.assertEqual(original, [str(helper), v.digest(helper)])
+                helper.write_bytes(b'updated helper')
+                self.assertNotEqual(v.validation_helpers(self.work, env, {})[key], original)
+                helper.unlink()
+                self.assertIsNone(v.validation_helpers(self.work, env, {})[key])
+
+    @unittest.skipUnless(sys.platform == 'linux', 'native glibc loader paths')
+    def test_native_shell_loader_uses_architecture_path_and_rejects_missing_loader(self):
+        resolved = self.work / 'loader'
+        resolved.write_bytes(b'loader')
+        resolved.chmod(0o700)
+        for machine, expected in (
+                ('x86_64', '/lib64/ld-linux-x86-64.so.2'),
+                ('aarch64', '/lib/ld-linux-aarch64.so.1')):
+            with self.subTest(machine=machine), patch.object(v.platform, 'machine', return_value=machine):
+                with patch.object(v, 'native_runtime_file', return_value=resolved) as resolve:
+                    self.assertEqual(v.native_shell_loader(), Path(expected))
+                    resolve.assert_called_once_with(Path(expected))
+                with patch.object(v, 'native_runtime_file', return_value=self.work / 'missing'):
+                    self.assertIsNone(v.native_shell_loader())
+        with patch.object(v.platform, 'machine', return_value='unsupported'):
+            with patch.object(v, 'native_runtime_file') as resolve:
+                self.assertIsNone(v.native_shell_loader())
+                resolve.assert_not_called()
+
+    def test_unresolved_shell_runtime_blocks_reuse_with_identical_binding(self):
+        summary, target, binding, plan, proof = self.resume_fixture(names=('shell',), status='PARTIAL')
+        binding['native_shell_reusable'] = False
+        proof['binding_sha256'] = v.identity(binding)
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        reused, invalidated, _ = self.consume_resume(summary, target, binding, plan)
+        self.assertEqual(reused, {})
+        self.assertEqual(invalidated, {'shell': 'native shell helper/runtime binding incomplete'})
+
+    def test_resume_recognizes_only_declared_run_local_outputs(self):
+        prior, next_run = self.work / 'prior', self.work / 'next'
+        fixtures = [('shell-fixtures', '-WorkingPath', ''), ('snapshot-fixtures', '-WorkingPath', ''),
+                    ('coverage', '-OutputRoot', 'coverage'), ('mcp', '-report', 'mcp.md')]
+        for name, option, relative in fixtures:
+            with self.subTest(gate=name):
+                original = {'name': name, 'argv': ['tool', option, str(prior / relative)]}
+                current = {'name': name, 'argv': ['tool', option, str(next_run / relative)]}
+                self.assertEqual(v.resume_step(original, prior), v.resume_step(current, next_run))
+                drift = {'name': name, 'argv': ['tool', option, str(next_run / 'different')]}
+                self.assertNotEqual(v.resume_step(original, prior), v.resume_step(drift, next_run))
+
+    def test_native_partial_checkpoint_survives_another_windows_hold(self):
+        summary, target, binding, plan, proof = self.resume_fixture()
+        native = summary.parent / 'native-evidence'
+        native.mkdir()
+        v.write(native / 'native-context.json', {'source': '/home/test/source', 'run': '/home/test/current-run'})
+        v.write(native / 'summary.json', {'status': 'HOLD', 'resumable': True})
+        proof['artifacts'] = v.artifact_inventory(summary.parent)
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        _, _, native_seed = self.consume_resume(summary, target, binding, plan)
+        self.assertEqual(native_seed['sha256'], v.digest(native / 'summary.json'))
+        for name in ('summary.json', 'native-context.json'):
+            self.assertEqual((target / 'native-checkpoint' / name).read_bytes(), (native / name).read_bytes())
+        # The second Windows HOLD never made a fresh native dispatch.
+        next_summary = target / 'summary.json'
+        proof['artifacts'] = v.artifact_inventory(target)
+        proof['results'] = [row for row in proof['results'] if row['name'] == 'coordinator']
+        v.write(next_summary, proof)
+        later = self.work / 'validation-deadbeef0123'
+        later.mkdir()
+        _, _, retained = self.consume_resume(next_summary, later, binding, plan)
+        self.assertEqual(retained, native_seed)
+
+    def test_coordinator_retains_later_gates_over_two_resource_holds(self):
+        summary, _, binding, plan, proof = self.resume_fixture(
+            names=('vet', 'lint', 'native-linux'), completed=('lint', 'native-linux'), status='PARTIAL')
+        fixture_root = self.work / 'checkout'
+        fixture_root.mkdir()
+        config = {'task_root': '/home/user/task'}
+        binding.update(native_config=config, tools={})
+        plan[0]['heavy'] = True
+        plan[-1].update(argv=['native-config', v.identity(config)], heavy=True)
+        proof.update(checkout=str(fixture_root), binding_sha256=v.identity(binding))
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        origin = v.digest(summary)
+
+        def execute(root, run, name, *args, **kwargs):
+            self.assertEqual(name, 'vet')
+            return self.gate_fixture(run, name)
+
+        with contextlib.ExitStack() as stack:
+            for name, value in {
+                '__file__': str(fixture_root / 'scripts/validation.py'), 'environment': lambda *a, **k: {},
+                'binding': lambda *a, **k: binding, 'plan': lambda *a: plan[:-1],
+                'native_config': lambda *a: config, 'source_hygiene': lambda *a: {},
+                'git': lambda *a: b'a' * 40, 'deleted_sources': lambda *a: [],
+                'verify_absent': lambda *a: None, 'verify_git_postimage': lambda *a: None,
+                'heavy_lock': lambda *a: contextlib.nullcontext(),
+            }.items():
+                stack.enter_context(patch.object(v, name, value))
+            stack.enter_context(patch.object(v, 'assert_no_competing_go', side_effect=[
+                v.ResourceHold('busy'), v.ResourceHold('still busy'), None]))
+            native = stack.enter_context(patch.object(v, 'check_native_reuse'))
+            process = stack.enter_context(patch.object(v, 'run_process', side_effect=execute))
+            for status, names in [('HOLD', ['lint', 'native-linux', 'coordinator']),
+                                  ('HOLD', ['lint', 'native-linux', 'coordinator']),
+                                  ('PASS', ['vet', 'lint', 'native-linux'])]:
+                output = io.StringIO()
+                with contextlib.redirect_stdout(output):
+                    code = v.main(['--mode', 'CANDIDATE', '--work-root', str(self.work),
+                                   '--changed', 'README.md', '--native-config', 'fixture',
+                                   '--resume', str(summary), '--resume-sha256', v.digest(summary)])
+                terminal = json.loads(output.getvalue().splitlines()[-1])
+                self.assertEqual((code, terminal['status']), (0 if status == 'PASS' else 2, status))
+                summary = Path(terminal['report_path'])
+                rows = v.load(summary)['results']
+                self.assertEqual([row['name'] for row in rows], names)
+                for row in rows:
+                    if row['name'] in ('lint', 'native-linux'):
+                        self.assertEqual(row['reused_from'], origin)
+            self.assertEqual(native.call_count, 3)
+            process.assert_called_once()
+
+    def test_native_hold_requires_confirmed_exit_and_explicit_preflight_result(self):
+        completed = {'exit_code': 2, 'timed_out': False, 'status': 'HOLD', 'failure_reason': 'NonZeroExit'}
+        out = self.work / 'native-linux.stdout'
+        out.write_text(json.dumps({'status': 'HOLD', 'resumable': True, 'stage': 'preflight'}), encoding='utf-8')
+        self.assertTrue(v.confirmed_native_hold(self.work, completed))
+        self.assertFalse(v.confirmed_native_hold(self.work, {**completed, 'timed_out': True}))
+        self.assertFalse(v.confirmed_native_hold(self.work, {**completed, 'failure_reason': 'CleanupUnconfirmed'}))
 
     def test_unchanged_candidate_reuses_without_process(self):
         path, _, current, steps = self.proof()
@@ -435,8 +747,8 @@ class ValidationTests(unittest.TestCase):
                 patch.object(v, 'load', side_effect=AssertionError('must use the admitted summary bytes')):
             self.assertEqual(self.verify_synthetic_evidence(path, expected[0], current, steps), expected)
         self.assertEqual([call.args[-1] for call in opened.call_args_list],
-                         ['summary.json', 'actual.log', 'native-evidence/candidate.log'])
-        self.assertEqual(hashed.call_count, 2)
+                         ['summary.json'] + [name for name, _ in data['artifacts']])
+        self.assertEqual(hashed.call_count, len(data['artifacts']))
         path.write_bytes(b'new summary after the admission')
         with self.assertRaises(v.Hold):
             self.verify_synthetic_evidence(path, expected[0], current, steps)
@@ -588,7 +900,7 @@ class ValidationTests(unittest.TestCase):
         current.update(tools={}, native_config=config)
         native = {'name': 'native-linux', 'argv': ['native-config', v.identity(config)], 'heavy': True}
         data['plan'] = steps + [native]
-        data['results'].append({'name': 'native-linux', 'status': 'PASS', 'exit_code': 0, 'timed_out': False})
+        data['results'].append(self.gate_fixture(path.parent, 'native-linux'))
         config_path, review_path = self.work / 'native.json', self.work / 'test-only-review.json'
         manifest_path = self.work / 'manifest.json'
         v.write(config_path, config)

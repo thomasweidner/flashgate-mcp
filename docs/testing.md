@@ -88,6 +88,52 @@ does not select the lock domain. An unavailable filesystem lock or changed
 directory binding produces HOLD. A busy resource produces HOLD rather than
 an uncontrolled retry. Never stop another developer's process to obtain a lock.
 
+### Candidate continuation
+
+Keep the same isolated checkout and external work root. Retain the printed
+summary SHA-256 separately from that run's directory. For a Windows candidate,
+`-PlatformPhase local` selects the Windows gates and `-PlatformPhase native`
+selects the native Linux phase. The default still selects both. A phase-only
+run without the other phase's evidence returns PARTIAL and exit code 2. An
+exclusivity hold before a gate starts can also leave completed gates to resume.
+
+```powershell
+./scripts/test.ps1 -Mode CANDIDATE -WorkingPath $workRoot -NativeConfig $nativeConfig `
+    -ResumePath $previousSummary -ResumeSHA256 $previousSummarySHA256
+```
+
+The Python entry point accepts `--resume`, `--resume-sha256`, and, on Windows,
+`--platform-phase local|native`. Native candidate runs can resume an anchored
+summary in their own task work root. The Windows coordinator can continue a
+bound native checkpoint in its original native checkout. Starting a new
+phase still requires the existing resource and process guards. An unknown
+child-process state cannot seed another attempt.
+
+Resume checks the provenance, exact original base and deletion inventory,
+current tested Git projection, platform bindings, ordered gate arguments,
+and the complete admitted artifact inventory. Each retained gate keeps its
+original result, duration, gate-specific artifact hashes and digest-bound
+origin even when an earlier gate encounters another resource hold. MCP resume
+requires both the report and its original `.tests.jsonl` sidecar. The native
+export must match the artifact inventory in the original native summary. Build and
+smoke gates are reused together and must agree on the original smoke binary
+digest. The shell parser gate can retain its result across content-only edits
+to the root README or changelog when both versions start with `# ` and all
+other inputs, including those files' names and modes, remain unchanged. The
+other local gates retain the whole-checkout binding.
+A changed host environment on one platform does not by itself invalidate
+the other platform's evidence. Native reuse requires the live native readback
+of the complete native gate plan and its source and Git projection. Native
+shell, fixture and smoke evidence also binds the external helpers and their
+resolved loader objects. This includes the PATH-selected `python3` used by
+the smoke scripts, its loaded modules and startup inputs. Unresolved or
+overridden runtime bindings prevent reuse.
+
+Only the runner-generated full combined PASS is eligible for Windows
+PUBLISH. Review the exact consolidated summary. A new summary may require
+new independent review applicability even when some original gates were
+reused. PUBLISH itself starts no quality processes.
+
 Each fresh run prints its summary path and SHA-256. The summary binds the gate
 plan, source/test/vendor bytes and modes, executable hashes, Python identity,
 OS, relevant environment hashes, process results and output artifacts.

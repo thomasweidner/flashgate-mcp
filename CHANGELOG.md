@@ -12,6 +12,9 @@ the intended release date. Publication evidence is separate.
 
 ### Added
 
+- Resume local validation from independently retained platform evidence. The
+  runner checks the original proof and runs the missing or invalidated gates.
+
 - Add opt-in `allow_process_cwd` on named policies and roots. The internal
   preflight binds an exact root and eligible relative working directory to
   the current policy and directory identity. See the
