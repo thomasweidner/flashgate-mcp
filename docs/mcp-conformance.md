@@ -11,7 +11,7 @@ their existing activation gates.
 From the repository root:
 
 ```bash
-go test -mod=vendor ./cmd/server ./cmd/mcpcheck -run 'Test(MCPConformance|Report|Stateless|ProtocolRevision|Filesystem.*Wire|ToolsListWire)' -count=1
+go test -mod=vendor ./cmd/server ./cmd/mcpcheck -run 'Test(MCPConformance|Report|Coverage|Stateless|ProtocolRevision|Filesystem.*Wire|ToolsListWire)' -count=1
 go run -mod=vendor ./cmd/mcpcheck -report /absolute/output-directory/mcp-conformance.md
 ```
 
@@ -22,6 +22,32 @@ server tests and requires passing evidence for every mandatory family and
 every snapshot revision/profile row. It rejects failures, skips, missing
 evidence, and source drift. A failed run can leave its actual JSON log.
 Source must remain quiescent during validation.
+
+Local `CANDIDATE` uses the same conformance evaluator on admitted Coverage
+evidence. The runner binds a successful, uncached Coverage gate to the
+platform, source and toolchain, input length and SHA-256, and original run
+identity. The consumer verifies the bytes it actually reads. Its active
+top-level test selection comes from the Go package's selected test sources.
+Coverage also requires the exact reviewed subtest identities in
+`cmd/mcpcheck/main.go`, bound to the active selected test files, the catalog
+budget helper and the snapshot revision definitions. The comparison detects
+a missing subtest even if its parent completes and the log contains no event
+for that child. Skips outside the selection do not affect MCP. Missing,
+unexpected, failed, skipped, cached or inconsistent selected evidence fails
+the gate.
+
+Changes to the bound test sources stop Coverage reuse until the subtest
+inventory is reviewed. Derive the names from the current cases, confirm the
+exact list with the standalone run on the supported platforms, then update
+the inventory and its digest. The digest reported on a source mismatch covers
+the sorted source paths and their LF-normalized SHA-256 values. Coverage
+reuse never updates the inventory or starts the standalone test process.
+
+The report identifies the Coverage input instead of claiming a focused test
+invocation. Its `.tests.jsonl` sidecar contains the original selected
+events. The full Coverage log remains a separate bound artifact. Both modes
+require the same native families, executed snapshot rows and requirement
+mapping. The official suite remains `NOT_RUN`.
 
 The Windows and Linux CI test jobs run this command as a blocking step for
 pushes and pull requests to `main`. Each runner writes the report and log

@@ -96,7 +96,7 @@ class ValidationTests(unittest.TestCase):
         self.assertIsNone(native)
         with v.source_boundary(target) as fd:
             v.verify_resume_origins({'results': list(reused.values()), 'platform': v.platform.system(),
-                                     'artifacts': v.artifact_inventory(target)}, target, fd)
+                                     'artifacts': v.artifact_inventory(target), 'plan': plan}, target, fd)
         with self.assertRaises(v.Hold):
             v.verify_evidence_results(proof, binding, plan)
 
@@ -185,6 +185,91 @@ class ValidationTests(unittest.TestCase):
                 summary.write_text(json.dumps(proof), encoding='utf-8')
                 with self.assertRaisesRegex(v.Hold, 'gate artifacts|Gate artifact binding'):
                     self.consume_resume(summary, target, binding, plan)
+
+    def coverage_resume_fixture(self, completed=('coverage', 'mcp')):
+        summary, target, binding, plan, proof = self.resume_fixture(
+            names=('coverage', 'mcp'), completed=completed, status='PARTIAL')
+        run, system = summary.parent, v.platform.system()
+        log = v.coverage_log(system)
+        plan[0]['argv'] = ['coverage', '-OutputRoot', str(run / 'coverage')]
+        plan[1]['argv'] = ['mcp', '-report', str(run / 'mcp.md'), '-coverage-evidence', str(run / log)]
+        data = {'status': 'PASS', 'platform': system.lower(), 'test_log_format': 'go-test-json',
+                'test_log': str(run / log)}
+        (run / Path(log).with_name('summary.json')).write_text(json.dumps(data), encoding='utf-8')
+        proof['run'] = run.name
+        proof['artifacts'] = v.artifact_inventory(run)
+        producer = proof['results'][0]
+        producer['artifacts'] = v.gate_artifact_binding('coverage', system, proof['artifacts'])
+        producer['coverage_input'] = v.capture_coverage_input(run, producer, system)
+        if 'mcp' in completed:
+            proof['results'][1]['coverage_input'] = producer['coverage_input'].copy()
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        return summary, target, binding, plan, proof
+
+    def coverage_plan_at(self, plan, old, new):
+        return [{**step, 'argv': [arg.replace(str(old), str(new)) for arg in step['argv']]} for step in plan]
+
+    def test_coverage_only_resume_can_admit_mcp_input_after_two_holds(self):
+        summary, first, binding, plan, proof = self.coverage_resume_fixture(('coverage',))
+        next_plan = self.coverage_plan_at(plan, summary.parent, first)
+        reused, invalidated, _ = self.consume_resume(summary, first, binding, next_plan)
+        self.assertEqual(list(reused), ['coverage'])
+        self.assertEqual(invalidated, {})
+        second_summary = first / 'summary.json'
+        v.write(second_summary, {**proof, 'status': 'HOLD', 'plan': next_plan, 'run': first.name,
+                                'results': [*reused.values(), {'name': 'coordinator', 'status': 'HOLD'}],
+                                'artifacts': v.artifact_inventory(first)})
+        second = self.work / 'validation-deadbeef0123'
+        second.mkdir()
+        final_plan = self.coverage_plan_at(next_plan, first, second)
+        carried, invalidated, _ = self.consume_resume(second_summary, second, binding, final_plan)
+        self.assertEqual(invalidated, {})
+        self.assertEqual(carried['coverage']['reused_from'], v.digest(summary))
+        admitted = v.admit_coverage(second, carried['coverage'], proof['platform'])
+        self.assertEqual(admitted['origin'], summary.parent.name)
+        self.assertEqual(admitted['sha256'], v.digest(second / admitted['path']))
+
+    def test_mcp_uses_current_coverage_dependency_on_resume(self):
+        for changed, retained in [('coverage', []), ('mcp', ['coverage'])]:
+            with self.subTest(changed=changed), tempfile.TemporaryDirectory(dir=self.work) as directory:
+                old = self.work
+                self.work = Path(directory)
+                try:
+                    summary, target, binding, plan, proof = self.coverage_resume_fixture()
+                    proposed = self.coverage_plan_at(plan, summary.parent, target)
+                    next(row for row in proposed if row['name'] == changed)['argv'].insert(1, '--changed')
+                    reused, invalidated, _ = self.consume_resume(summary, target, binding, proposed)
+                    self.assertEqual(list(reused), retained)
+                    self.assertEqual(set(invalidated), {'mcp', changed})
+                    self.assertFalse((target / 'mcp.md.tests.jsonl').exists())
+                finally:
+                    self.work = old
+
+    def test_coverage_dependency_is_required_for_admission(self):
+        summary, target, binding, plan, proof = self.coverage_resume_fixture()
+        proof['status'] = 'PASS'
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        self.assertTrue(self.verify_synthetic_evidence(summary, v.digest(summary), binding, plan))
+        mcp = proof['results'][1]
+        mcp['coverage_input']['origin'] = 'validation-deadbeef0123'
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        with self.assertRaisesRegex(v.Hold, 'detached'):
+            self.verify_synthetic_evidence(summary, v.digest(summary), binding, plan)
+        proof['results'][0]['status'] = 'HOLD'
+        summary.write_text(json.dumps(proof), encoding='utf-8')
+        with self.assertRaisesRegex(v.Hold, 'producer'):
+            self.consume_resume(summary, target, binding, plan)
+
+    def test_coverage_input_rejects_live_drift_or_wrong_platform(self):
+        summary, _, _, _, proof = self.coverage_resume_fixture(('coverage',))
+        coverage = proof['results'][0]
+        system = proof['platform']
+        wrong = 'Linux' if system == 'Windows' else 'Windows'
+        with self.assertRaisesRegex(v.Hold, 'gate artifact binding'):
+            v.admit_coverage(summary.parent, coverage, wrong)
+        (summary.parent / coverage['coverage_input']['path']).write_bytes(b'altered output!')
+        with self.assertRaisesRegex(v.Hold, 'drifted'):
+            v.admit_coverage(summary.parent, coverage, system)
 
     def test_native_export_must_match_original_inventory(self):
         export = self.work / 'native-evidence'
