@@ -2,6 +2,7 @@ package fsapp
 
 import (
 	"context"
+	"errors"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/execution"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
@@ -31,13 +32,16 @@ func (b currentProcess) Execute(ctx context.Context, invocation execution.Invoca
 		if err := execution.CheckCurrentProcess(b.identity); err != nil {
 			return err
 		}
-		return invocation.AdmitEffect(ctx)
+		if err := invocation.AdmitEffect(ctx); err != nil {
+			return err
+		}
+		return execution.CheckCurrentProcess(b.identity)
 	})
 	if err != nil {
-		return execution.Completion[result]{}, err
+		return execution.Complete(binding, value), err
 	}
 	if err := execution.CheckCurrentProcess(b.identity); err != nil {
-		return execution.Completion[result]{}, err
+		return execution.Complete(binding, value), err
 	}
 	return execution.Complete(binding, value), nil
 }
@@ -72,11 +76,14 @@ func (b currentProcess) execute(c command, admit func() error) (value result, er
 	case listDirectory:
 		value.entries, err = b.roots.List(path)
 	case readFile:
-		value.content, err = b.roots.Read(path, c.maxBytes)
+		value.content, value.readBytes, err = b.roots.ReadMeasured(path, c.maxBytes)
 	case pathInfo:
 		value.info, err = b.roots.Stat(path)
+		if errors.Is(err, fs.ErrNotFound) {
+			value.missing, err = true, nil
+		}
 	case writeFile:
-		err = b.roots.Write(path, c.content, c.overwrite)
+		value.writtenBytes, err = b.roots.WriteMeasured(path, c.content, c.overwrite)
 	case makeDirectory:
 		value.created, err = b.roots.Mkdir(path)
 	case deletePath:
@@ -84,7 +91,9 @@ func (b currentProcess) execute(c command, admit func() error) (value result, er
 	case movePath:
 		err = b.roots.Move(path, target, c.overwrite)
 	case copyPath:
-		err = b.roots.Copy(path, target, c.overwrite)
+		var counts fs.CopyCounts
+		counts, err = b.roots.CopyMeasured(path, target, c.overwrite)
+		value.readBytes, value.writtenBytes = counts.Read, counts.Written
 	default:
 		err = execution.ErrUnsupported
 	}

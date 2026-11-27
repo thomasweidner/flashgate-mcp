@@ -51,12 +51,13 @@ type Source struct {
 // Config is the effective configuration. Its accessors return values, and
 // consumers never receive the decoder's mutable destination.
 type Config struct {
-	data       settings
-	role       Role
-	profile    EffectiveProfile
-	roots      []RootDefinition
-	sourcePath string
-	sourceInfo os.FileInfo
+	data           settings
+	role           Role
+	profile        EffectiveProfile
+	roots          []RootDefinition
+	sourcePath     string
+	sourceInfo     os.FileInfo
+	sourceIdentity string
 }
 
 type trustedDocument struct {
@@ -77,6 +78,7 @@ type commonSettings struct {
 	Protocol  protocolFields            `toml:"protocol"`
 	Endpoints endpointFields            `toml:"endpoints"`
 	Logging   loggingFields             `toml:"logging"`
+	Audit     auditFields               `toml:"audit"`
 }
 
 type runtimeFields struct {
@@ -196,6 +198,7 @@ func defaultSettings(role Role) settings {
 			Logging: loggingFields{
 				Level: LogOff, Sink: LogStderr, Format: LogText, MaxRecordSize: 4096, MaxRecords: 10000,
 			},
+			Audit: defaultAuditFields(),
 		},
 	}
 }
@@ -233,6 +236,10 @@ func load(source Source, locateDefault func(Role) (string, error)) (Config, erro
 	}
 	cfg.sourcePath = filepath.Clean(path)
 	cfg.sourceInfo = document.info
+	cfg.sourceIdentity, err = filepath.EvalSymlinks(cfg.sourcePath)
+	if err != nil {
+		return Config{}, NewError(CategoryUntrustedConfig, err)
+	}
 	return cfg, nil
 }
 
@@ -250,6 +257,9 @@ func (c Config) ProtectDataRoots(guards []*security.PathGuard) ([]*security.Root
 		}
 		protection, err := security.BindConfigProtection(c.sourcePath, c.sourceInfo)
 		if err != nil {
+			return err
+		}
+		if err := protection.ProtectAuditTree(c.Audit().Path); err != nil {
 			return err
 		}
 		for _, guard := range guards {
@@ -352,6 +362,9 @@ func decodeTOML(document []byte, target any) error {
 }
 
 func (c Config) validateSettings() error {
+	if err := c.data.Audit.validate(); err != nil {
+		return NewError(CategoryInvalidConfig, err)
+	}
 	if !validRole(c.role) || c.data.Runtime.Mode != c.role {
 		return NewError(CategoryUnsupportedRuntime, nil)
 	}

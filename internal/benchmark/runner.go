@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -29,6 +30,7 @@ type Options struct {
 type processSample struct {
 	startupNS   uint64
 	durationNS  uint64
+	shutdownNS  uint64
 	counters    Counters
 	records     []responseRecord
 	resources   sampleResources
@@ -195,6 +197,10 @@ func applyBudgetEvaluation(path string, result *Result) error {
 }
 
 func executeScenario(ctx context.Context, binaryPath, root, configPath string, requests []requestSpec) (sample processSample, returnErr error) {
+	return executeObservedScenario(ctx, binaryPath, root, configPath, requests, nil)
+}
+
+func executeObservedScenario(ctx context.Context, binaryPath, root, configPath string, requests []requestSpec, observe func(int) error) (sample processSample, returnErr error) {
 	scenarioContext, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -252,12 +258,13 @@ func executeScenario(ctx context.Context, binaryPath, root, configPath string, r
 		if err != nil {
 			return sample, err
 		}
+		requestStarted := time.Now()
 		if _, err := stdin.Write(request); err != nil {
-			return sample, fmt.Errorf("write %s request: %w", spec.Method, err)
+			return sample, requestTransportError(scenarioContext, "send", index+1, spec, err)
 		}
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
-			return sample, fmt.Errorf("read %s response: %w", spec.Method, err)
+			return sample, requestTransportError(scenarioContext, "receive", index+1, spec, err)
 		}
 		response, err := decodeResponse(line, index+1, spec.Method)
 		if err != nil {
@@ -274,13 +281,14 @@ func executeScenario(ctx context.Context, binaryPath, root, configPath string, r
 			responseBytes: uint64(len(line)),
 			resultBytes:   uint64(len(response.Result)),
 			result:        append([]byte(nil), response.Result...),
+			elapsedNS:     uint64(time.Since(requestStarted).Nanoseconds()),
 		}
 		sample.records = append(sample.records, record)
 		sample.counters.RequestBytes += record.requestBytes
 		sample.counters.ResponseBytes += record.responseBytes
 		sample.counters.ResultBytes += record.resultBytes
 		if err := addResultCounters(spec, response.Result, &sample.counters); err != nil {
-			return sample, err
+			return sample, fmt.Errorf("benchmark request %d: %w", index+1, err)
 		}
 
 		if index == 0 {
@@ -324,15 +332,31 @@ func executeScenario(ctx context.Context, binaryPath, root, configPath string, r
 		sample.resources.status = "not_supported"
 	}
 
+	if observe != nil {
+		if err := observe(command.Process.Pid); err != nil {
+			return sample, fmt.Errorf("sample native counters: %w", err)
+		}
+	}
+	shutdownStart := time.Now()
 	exitStatus, waitErr := controlledExit(command, stdin)
+	sample.shutdownNS = uint64(time.Since(shutdownStart).Nanoseconds())
 	waited = true
 	stdinClosed = true
 	sample.exitStatus = exitStatus
 	sample.warnings = append(sample.warnings, sanitizeStderr(stderr.String(), root, binaryPath)...)
 	if waitErr != nil {
-		return sample, waitErr
+		return sample, fmt.Errorf("controlled shutdown after %d responses: %w",
+			len(sample.records), errors.Join(waitErr, scenarioContext.Err()))
 	}
 	return sample, nil
+}
+
+func requestTransportError(ctx context.Context, action string, id int, spec requestSpec, err error) error {
+	operation := spec.Method
+	if params, ok := spec.Params.(toolCallParams); ok {
+		operation += "/" + params.Name
+	}
+	return fmt.Errorf("%s request %d (%s): %w", action, id, operation, errors.Join(err, ctx.Err()))
 }
 
 func controlledExit(command *exec.Cmd, stdin interface{ Close() error }) (int, error) {

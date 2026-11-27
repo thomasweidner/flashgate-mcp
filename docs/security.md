@@ -825,6 +825,12 @@ No remote TCP/HTTP listener is included.
 
 ### Audit lifecycle and trace correlation
 
+The [audit store protection](audit-lifecycle.md#storage-and-access) reserves
+the store in the native root policy and uses OS permissions for direct access.
+Audit Required can deny a selected effect before it starts if durable evidence
+cannot be confirmed. Operation First reports degraded audit while existing
+root, identity, policy and native safety checks continue to apply.
+
 Version 1.0 audit defines bounded structured events with:
 
 - immutable event and correlation IDs;

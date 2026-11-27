@@ -10,7 +10,9 @@ REQUEST_PATH="${REPO_ROOT}/build/smoke-jsonrpc-negative-${STAMP}-request.jsonl"
 RESPONSE_PATH="${REPO_ROOT}/build/smoke-jsonrpc-negative-${STAMP}-response.jsonl"
 
 cleanup() {
+  [[ -d "${CONFIG_DIR}" && ! -L "${CONFIG_DIR}" && -O "${CONFIG_DIR}" ]] || return 1
   rm -f "${CONFIG_PATH}" "${REQUEST_PATH}" "${RESPONSE_PATH}"
+  rm -rf -- "${CONFIG_DIR:?}/audit"
   rmdir -- "${CONFIG_DIR}"
 }
 CONFIG_DIR="$(mktemp -d -- "${TMPDIR:-/tmp}/flashgate-config.XXXXXXXX")"

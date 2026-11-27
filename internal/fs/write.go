@@ -11,57 +11,64 @@ import (
 
 // Write writes a file. Existing files are only overwritten when overwrite is true.
 func (f *LocalFileSystem) Write(path string, content []byte, overwrite bool, admission ...func() error) error {
+	_, err := f.WriteMeasured(path, content, overwrite, admission...)
+	return err
+}
+
+// WriteMeasured also returns the byte count actually reported by native I/O.
+func (f *LocalFileSystem) WriteMeasured(path string, content []byte, overwrite bool, admission ...func() error) (*uint64, error) {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 	if err := f.validateFileOperandSpelling(path); err != nil {
-		return err
+		return nil, err
 	}
 
 	safePath, err := f.guard.ResolveForCreate(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if int64(len(content)) > min(f.limits.MaxFileSize, f.limits.MaxWriteSize) {
-		return ErrLimitExceeded
+		return nil, ErrLimitExceeded
 	}
 
 	target, err := f.inspectEffect(safePath.String(), true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := f.checkOperandName(path, target, true); err != nil {
-		return err
+		return nil, err
 	}
 	if info := target.info; info != nil {
 		if info.IsDir() {
-			return ErrPathIsDirectory
+			return nil, ErrPathIsDirectory
 		}
 
 		if !overwrite {
-			return ErrFileExists
+			return nil, ErrFileExists
 		}
 	}
 
 	file, err := f.openDestination(target, 0o600, func() error { return admitEffect(admission) })
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
 
 	if err := f.checkDestination(file, target); err != nil {
-		return err
+		return nil, err
 	}
 	written, err := file.Write(content)
+	observed := uint64(written)
 	if err != nil {
-		return err
+		return &observed, err
 	}
 
 	if written != len(content) {
-		return io.ErrShortWrite
+		return &observed, io.ErrShortWrite
 	}
 
-	return nil
+	return &observed, nil
 }
 
 func (f *LocalFileSystem) mkdirProtected(path string, admission []func() error) (bool, error) {

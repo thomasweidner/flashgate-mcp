@@ -47,3 +47,26 @@ func configNameEqual(left, right string) bool {
 	left, _, _ = strings.Cut(left, ":")
 	return strings.EqualFold(strings.TrimRight(left, ". "), right)
 }
+
+func multipleLinks(path string, expected os.FileInfo) (bool, error) {
+	name, err := syscall.UTF16PtrFromString(`\\?\` + path)
+	if err != nil {
+		return false, err
+	}
+	handle, err := syscall.CreateFile(name, 0, syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE|
+		syscall.FILE_SHARE_DELETE, nil, syscall.OPEN_EXISTING, syscall.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return false, err
+	}
+	file := os.NewFile(uintptr(handle), path)
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !os.SameFile(info, expected) {
+		return false, ErrAuditPath
+	}
+	var node syscall.ByHandleFileInformation
+	if err := syscall.GetFileInformationByHandle(handle, &node); err != nil {
+		return false, err
+	}
+	return node.NumberOfLinks > 1, nil
+}

@@ -5,6 +5,14 @@ FlashGate builds. Follow the current [tool reference](tools.md),
 [protocol reference](protocol.md), and [changelog](../CHANGELOG.md) when
 updating an integration. Internal task renumbering is not a product migration.
 
+## Default audit on upgrade
+
+Existing trusted TOML files can be used unchanged. The server opens its
+protected [local audit store](audit-lifecycle.md) by default beside its trusted
+configuration unless explicitly overridden. To opt out of recording, set
+`enabled = false` in the [audit section](configuration.md#audit). Existing
+records remain subject to OS access and the reserved data-root boundary.
+
 ## Process working-directory policy
 
 Existing configurations can omit `allow_process_cwd` and retain the effective

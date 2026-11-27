@@ -11,7 +11,9 @@ ROOT_FILE="${REPO_ROOT}/build/startup-root-file-${STAMP}.txt"
 MISSING_ROOT="${REPO_ROOT}/build/startup-missing-root-${STAMP}"
 
 cleanup() {
+  [[ -d "${CONFIG_DIR}" && ! -L "${CONFIG_DIR}" && -O "${CONFIG_DIR}" ]] || return 1
   rm -f "${CONFIG_PATH}" "${STDOUT_PATH}" "${STDERR_PATH}" "${ROOT_FILE}"
+  rm -rf -- "${CONFIG_DIR:?}/audit"
   rmdir -- "${CONFIG_DIR}"
 }
 CONFIG_DIR="$(mktemp -d -- "${TMPDIR:-/tmp}/flashgate-config.XXXXXXXX")"

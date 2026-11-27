@@ -21,7 +21,7 @@ const (
 var errReadDirFile = errors.New("cannot read directory entries from a file")
 
 // List lists directory entries.
-func (f *LocalFileSystem) List(path string) ([]Entry, error) {
+func (f *LocalFileSystem) List(path string, admission ...func() error) ([]Entry, error) {
 	f.effects.Lock()
 	defer f.effects.Unlock()
 
@@ -53,6 +53,14 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 	info, err := dir.Stat()
 	if err != nil || !sameEffectInfo(operand.info, info) {
 		return nil, security.ErrConfigurationAccess
+	}
+	if len(admission) != 0 {
+		if err := admitEffect(admission); err != nil {
+			return nil, err
+		}
+		if err := f.recheckPath(operand); err != nil {
+			return nil, err
+		}
 	}
 
 	result := make([]Entry, 0)
@@ -86,7 +94,7 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 			allowed, err := f.guard.AllowListEntry(safePath, name)
 			if len(f.exclusions) != 0 && errors.Is(err, os.ErrNotExist) {
 				_, err = f.resolveExisting(filepath.Join(path, name))
-				if errors.Is(err, ErrPathExcluded) {
+				if errors.Is(err, ErrPathExcluded) || errors.Is(err, security.ErrAuditPath) {
 					continue
 				}
 			}
@@ -102,7 +110,7 @@ func (f *LocalFileSystem) List(path string) ([]Entry, error) {
 			}
 			entryOperand, err := f.inspectPath(entryPath.String())
 			if err != nil {
-				if errors.Is(err, ErrPathExcluded) {
+				if errors.Is(err, ErrPathExcluded) || errors.Is(err, security.ErrAuditPath) {
 					continue
 				}
 				return nil, err

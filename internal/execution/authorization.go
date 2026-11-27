@@ -8,6 +8,13 @@ import (
 	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 )
 
+type policyDenial struct {
+	risk bool
+}
+
+func (policyDenial) Error() string { return ErrDenied.Error() }
+func (policyDenial) Unwrap() error { return ErrDenied }
+
 type VariantID string
 
 const DefaultVariant VariantID = "default"
@@ -26,14 +33,16 @@ type OperandRequirement struct {
 // Declaration is supplied by the owning domain at trusted composition.
 // Each required resource has a fixed position, kind, role and requirement.
 type Declaration struct {
-	Key       OperationKey
-	Operation capability.Operation
-	Operands  []OperandRequirement
+	Key           OperationKey
+	Operation     capability.Operation
+	Operands      []OperandRequirement
+	DurableIntent bool
 }
 
 // Routes derives a declaration key and resource bindings from a typed command.
 // Key is a pure selection. Resolve may consult the trusted policy snapshot.
 type Routes[C any] struct {
+	Audit        *Auditing
 	Declarations []Declaration
 	Shared       *Declarations
 	Key          func(C) OperationKey
@@ -140,28 +149,32 @@ func (a authorizer[C]) authorize(ctx context.Context, request Request, command C
 		return Declaration{}, nil, err
 	}
 	declaration, known := a.declarations.byKey[a.key(command)]
-	if !known || !a.policy.profile.Policy().Allows(declaration.Operation) {
+	if !known {
 		return Declaration{}, nil, ErrDenied
 	}
 	if request.invocation != nil && !(CatalogInvocation{request}).Allows(declaration.Key) {
 		return Declaration{}, nil, ErrDenied
 	}
+	policy := a.policy.profile.Policy()
+	if !policy.Allows(declaration.Operation) {
+		return declaration, nil, policyDenial{risk: declaration.Operation.Risk() > policy.Ceiling()}
+	}
 	if _, supported := support[declaration.Key]; !supported {
-		return Declaration{}, nil, ErrUnsupported
+		return declaration, nil, ErrUnsupported
 	}
 	resources, err := a.resolve(ctx, command)
 	if err != nil {
-		return Declaration{}, nil, err
+		return declaration, nil, err
 	}
 	if len(resources) != len(declaration.Operands) {
-		return Declaration{}, nil, ErrDenied
+		return declaration, nil, ErrDenied
 	}
 	bound := make([]BoundResource, len(resources))
 	for i, resource := range resources {
 		operand := declaration.Operands[i]
 		if resource.Kind != operand.Kind || resource.Role != operand.Role || resource.ID == "" ||
 			!operand.Requirement.SatisfiedBy(resource.Access) {
-			return Declaration{}, nil, ErrDenied
+			return declaration, nil, ErrDenied
 		}
 		bound[i] = BoundResource{Resource: resource, Requirement: operand.Requirement}
 	}

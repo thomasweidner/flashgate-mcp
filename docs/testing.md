@@ -442,10 +442,11 @@ needed.
 The source gate uses the Go toolchain to resolve non-test dependencies of
 `./cmd/server` for the four released Windows/Linux amd64/arm64 configurations
 with CGO disabled and default build tags. Fixed Windows metadata procedures
-are permitted only in their exact reviewed source/platform bindings: bootstrap
-source checks and BL-107 symlink-tag classification. Linux BL-107 permits only
-direct fixed `openat2`/`unlinkat` calls in their exact native functions on
-released ABIs. Other procedure/syscall IDs, generic function values and
+are permitted only in their exact reviewed source and platform bindings for
+bootstrap checks, BL-107 symlink classification and BL-166 store security and
+locking. The shared Linux `OpenLocalAt` and filesystem removal functions keep
+their fixed `openat2` and `unlinkat` calls on released ABIs. Other procedure or
+syscall IDs, generic function values and
 alternate source paths remain denied by mutation fixtures. It inspects the active non-standard
 Go sources, including reachable vendored packages. Development commands
 such as `cmd/mcpcheck`, test files and ignored build-tag variants remain
@@ -1094,6 +1095,12 @@ Before Version 1.0, publish and test the supported MCP revision matrix:
 - any future revision only through a new explicit matrix/path entry and directly affected tests.
 
 ### Audit and failure-path tests
+
+Run focused `go test ./internal/audit ./internal/execution ./cmd/server` on each
+native platform. Use isolated stores in a task-owned filesystem and test
+the product request path, loss policy and lock release when a process exits.
+Use the complete CANDIDATE matrix for the shipped integration. See the
+[audit contract](audit-lifecycle.md) for required storage and failure behavior.
 
 - immutable event/correlation IDs;
 - proxy/service/backend/job/process correlation;

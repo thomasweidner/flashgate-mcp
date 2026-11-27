@@ -8,6 +8,7 @@ import (
 	"errors"
 	"math"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/audit"
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/execution"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
@@ -23,10 +24,20 @@ type Service struct {
 
 // NewDirect composes the only active product backend with its protected roots.
 func NewDirect(registry *roots.Registry, profile config.EffectiveProfile) (*Service, error) {
+	return newDirect(registry, profile, "", nil, nil)
+}
+
+func NewAuditedDirect(registry *roots.Registry, profile config.EffectiveProfile, generation string, recorder *audit.Recorder, selected []string) (*Service, error) {
+	return newDirect(registry, profile, generation, recorder, selected)
+}
+
+func newDirect(registry *roots.Registry, profile config.EffectiveProfile, generation string, recorder *audit.Recorder, selected []string) (*Service, error) {
 	if registry == nil || !registry.MatchesProfile(profile.Policy()) {
 		return nil, execution.ErrMismatch
 	}
-	generation := rand.Text()
+	if generation == "" {
+		generation = rand.Text()
+	}
 	runtime, err := execution.NewRuntime(generation)
 	if err != nil {
 		return nil, err
@@ -51,15 +62,38 @@ func NewDirect(registry *roots.Registry, profile config.EffectiveProfile) (*Serv
 	if err != nil {
 		return nil, err
 	}
+	routes.Audit, err = execution.BindAuditing(recorder, selected, routes.Declarations)
+	if err != nil {
+		return nil, config.NewError(config.CategoryInvalidConfig, err)
+	}
 	backend := currentProcess{roots: registry, operations: operations, identity: identity, generation: generation}
 	dispatcher, err := execution.NewDispatcher(policy, execution.CurrentProcess, routes,
 		execution.Registration[command, result]{
 			ID: execution.CurrentProcess, Identity: identity, Backend: backend, Operations: routes.OperationKeys(),
+			Counters: auditCounters,
 		})
 	if err != nil {
 		return nil, err
 	}
 	return &Service{roots: registry, session: session, dispatcher: dispatcher}, nil
+}
+
+func auditCounters(c command, value result) audit.Counters {
+	switch c.name {
+	case readFile:
+		return audit.Counters{RequestedBytes: uint64(max(0, c.maxBytes)), ReadBytes: value.readBytes}
+	case listDirectory:
+		return audit.Counters{Entries: uint64(len(value.entries))}
+	case writeFile:
+		return audit.Counters{RequestedBytes: uint64(len(c.content)), WrittenBytes: value.writtenBytes}
+	case copyPath:
+		return audit.Counters{ReadBytes: value.readBytes, WrittenBytes: value.writtenBytes}
+	case makeDirectory:
+		if value.created {
+			return audit.Counters{Entries: 1}
+		}
+	}
+	return audit.Counters{}
 }
 
 func bindRoutes(registry *roots.Registry, operations fs.Operations) (execution.Routes[command], error) {
@@ -181,6 +215,9 @@ func (f filesystem) Read(path fs.Operand, maxBytes int64) ([]byte, error) {
 
 func (f filesystem) Stat(path fs.Operand) (fs.Metadata, error) {
 	value, err := f.dispatch(command{name: pathInfo, path: fileOperand(path)}, nil)
+	if err == nil && value.missing {
+		return fs.Metadata{}, fs.ErrNotFound
+	}
 	return value.info, err
 }
 

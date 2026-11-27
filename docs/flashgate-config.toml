@@ -74,3 +74,20 @@ sink = "stderr"
 format = "text"
 max_record_size = "4 KiB"
 max_records = 10000
+
+[audit]
+enabled = true
+failure_policy = "operation_first"
+store_path = ""
+max_store_size = "256 MiB"
+max_segment_size = "16 MiB"
+retention = "30 d"
+max_event_size = "4 KiB"
+max_queue_events = 1024
+max_queue_size = "4 MiB"
+max_batch_events = 128
+max_batch_size = "256 KiB"
+flush_interval = "100 ms"
+flush_timeout = "2 s"
+required_intent_timeout = "2 s"
+required_operations = []

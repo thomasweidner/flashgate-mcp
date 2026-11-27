@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
+	"github.com/thomasweidner/flashgate-mcp/internal/diagnostics"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/router"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/server"
 	"github.com/thomasweidner/flashgate-mcp/internal/mcp/tools"
@@ -192,9 +193,9 @@ func TestRunWithIORootFailureStopsBeforeRegistryRouterAndServer(t *testing.T) {
 	path := writeConfig(t, configDocument(t, active, "zzz.path = "+quotedConfigPath(t, missing)+"\n"))
 	dependencies := defaultBootstrapDependencies(path)
 	registryCalls := 0
-	dependencies.newToolRegistry = func(*roots.Registry, int64, config.EffectiveProfile) (*tools.Registry, error) {
+	dependencies.newToolRegistry = func(*roots.Registry, config.Config, *diagnostics.Logger) (*tools.Registry, startAudit, error) {
 		registryCalls++
-		return tools.NewRegistry(), nil
+		return tools.NewRegistry(), startAudit{}, nil
 	}
 	routerCalls := 0
 	originalRouterFactory := dependencies.newRouter
@@ -222,13 +223,13 @@ func TestRunWithIOPropagatesToolRegistrationFailure(t *testing.T) {
 	path := writeConfig(t, configDocument(t, t.TempDir(), ""))
 	dependencies := defaultBootstrapDependencies(path)
 	var registrationErr error
-	dependencies.newToolRegistry = func(filesystem *roots.Registry, _ int64, capabilities config.EffectiveProfile) (*tools.Registry, error) {
-		registry, err := createToolRegistry(filesystem, 0, capabilities)
+	dependencies.newToolRegistry = func(filesystem *roots.Registry, cfg config.Config, _ *diagnostics.Logger) (*tools.Registry, startAudit, error) {
+		registry, err := createToolRegistry(filesystem, 0, cfg.Profile())
 		if registry != nil || err == nil || !strings.Contains(err.Error(), "register read_file") {
 			t.Fatalf("expected read_file contract registration to fail, registry=%v error=%v", registry, err)
 		}
 		registrationErr = err
-		return registry, err
+		return registry, startAudit{}, err
 	}
 	dependencies.newRouter = func(string, string, *tools.Registry) *router.Router {
 		t.Fatal("router created after invalid tool registration")
@@ -281,7 +282,9 @@ func TestRunWithIORejectsInvalidBootstrapDependenciesWithoutPanic(t *testing.T) 
 			return dependencies
 		},
 		"nil registry": func(dependencies bootstrapDependencies) bootstrapDependencies {
-			dependencies.newToolRegistry = func(*roots.Registry, int64, config.EffectiveProfile) (*tools.Registry, error) { return nil, nil }
+			dependencies.newToolRegistry = func(*roots.Registry, config.Config, *diagnostics.Logger) (*tools.Registry, startAudit, error) {
+				return nil, startAudit{}, nil
+			}
 			return dependencies
 		},
 		"nil router": func(dependencies bootstrapDependencies) bootstrapDependencies {

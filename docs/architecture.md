@@ -636,6 +636,16 @@ normative contract and BL-341 in [BACKLOG.md](../BACKLOG.md) for the later
 technical implementation.
 ## Audit and trace architecture
 
+The [structured audit lifecycle](audit-lifecycle.md) binds the direct STDIO host
+to one transport-neutral recorder per process and one protected persistent
+store per configured server. The existing BL-236 request sequence and runtime
+namespace supply correlation. Decision, intent and outcome have separate
+capture points.
+
+BL-166 ships bounded, configurable audit defaults with deterministic
+acceptance. BL-244 owns quantitative comparison and tuning for native
+platforms and runtime modes.
+
 Audit events are bounded, redacted, and correlation-aware. They include both requested caller and effective backend identity where relevant.
 
 Version 1.0 defines:

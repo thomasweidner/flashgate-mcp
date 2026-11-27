@@ -2,18 +2,37 @@ package benchmark
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
+
+func TestRequestTransportErrorPreservesDeadlineAndOperation(t *testing.T) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Unix(0, 0))
+	defer cancel()
+	spec := toolCallSpec("write_file", map[string]any{"path": "fixture.txt"})
+	err := requestTransportError(ctx, "receive", 4, spec, io.EOF)
+	if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, io.EOF) ||
+		!strings.Contains(err.Error(), "receive request 4 (tools/call/write_file)") ||
+		strings.Contains(err.Error(), "fixture.txt") {
+		t.Fatalf("unexpected transport diagnostic: %v", err)
+	}
+	early := requestTransportError(context.Background(), "receive", 4, spec, io.EOF)
+	if !errors.Is(early, io.EOF) || errors.Is(early, context.DeadlineExceeded) {
+		t.Fatalf("early EOF was incorrectly classified as a deadline: %v", early)
+	}
+}
 
 func TestBenchmarkConfigFixtures(t *testing.T) {
 	t.Parallel()

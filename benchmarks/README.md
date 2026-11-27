@@ -78,6 +78,43 @@ The local wrappers and quick runs provide diagnostic results. Authoritative
 baseline recording requires the qualified two-phase workflow below. Incidental
 timing and resource observations from functional validation are diagnostic only.
 
+The audit workload for BL-244 reuses the STDIO runner and native process
+metrics. BL-166 ships conservative configurable defaults supported by
+deterministic tests. With qualified host admission, bind the exact unmodified
+reference server with `FLASHGATE_AUDIT_REFERENCE_BINARY` and the candidate
+server with `FLASHGATE_AUDIT_BENCH_BINARY`. Both paths must be absolute. Run
+`go test ./internal/benchmark -run '^$' -bench '^BenchmarkAuditSTDIO$' -benchmem -benchtime=10x`
+on each native platform using the task-owned temporary filesystem. The
+reference, audit-disabled candidate and Operation First candidate receive
+the same workload, profile and filesystem layout. The reported metrics
+include read and write p50 and p95, throughput, startup, shutdown, CPU,
+peak RSS, retained bytes and events, and persisted losses by cause.
+The additional cases compare batch and flush settings, pressure, rotation
+and durable intent, including ten processes sharing one configured server.
+Assess the host after Windows and the native Linux environment are running.
+Keep host pressure evidence alongside the per-process results.
+
+The durable-intent cases exercise the configured default and an explicit
+five-second wait. The runner counts the normalized access denial separately
+and verifies that each refused write left its unique fixture target absent.
+Unexpected errors still fail the workload.
+
+Process I/O counters are sampled after the final response, before shutdown.
+Linux procfs reports storage-attributed bytes. Windows process transfer
+counters include pipes and other nonstorage I/O. Compare Windows counters
+against the disabled workload with the same wire traffic and use retained
+store bytes as a separate measure after shutdown. Retained loss records
+report delivered summaries, which retention can remove.
+
+Run `go test ./internal/audit -run '^$' -bench '^BenchmarkAudit' -benchmem -benchtime=10x`
+under the same admitted host conditions for controlled slow-sink, simulated disk-full,
+native lock wait, saturated queue use and loss, start retention, partial-write
+recovery and durable versus buffered native append with batches of 1, 32 and
+128 records. Keep those results identified separately from the productive
+STDIO workload. This audit comparison does not record a new general product
+baseline. Existing deterministic wire, schema, and budget gates remain in
+force.
+
 Run only the in-process benchmarks:
 
 ```bash
@@ -103,7 +140,7 @@ Idle working set is sampled immediately after `initialize`. Peak working set and
 - `written_bytes`: content bytes successfully written or copied; all current read-only reference workflows correctly report zero.
 - `scanned_bytes`: bytes actually inspected for search, hashing, classification, or comparable content analysis. All current read-only workflows report zero; ordinary `read_file` return bytes are not scans.
 - `entries`: directory entries actually returned by successful reference calls.
-- `calls`: `tools/call` requests actually executed successfully. `initialize` and `tools/list` are not counted.
+- `calls`: `tools/call` requests whose expected result or tool-level denial was verified. `initialize` and `tools/list` are not counted.
 
 These benchmark counters are runner-side measurements only. They are not added to public MCP tool results.
 

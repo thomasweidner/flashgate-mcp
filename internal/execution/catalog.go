@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime"
 	"slices"
+	"sync/atomic"
 
 	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 )
@@ -129,8 +130,9 @@ func (c CatalogContext) Eligible(key OperationKey) bool {
 type catalogInvocationKey struct{}
 
 type catalogInvocationBinding struct {
-	route    CatalogRoute
-	variants []OperationKey
+	route     CatalogRoute
+	variants  []OperationKey
+	attempted atomic.Bool
 }
 
 // CatalogInvocation carries a fresh request restricted to the exact route and
@@ -148,7 +150,7 @@ func (c CatalogContext) BindInvocation(id CatalogRouteID, variants []OperationKe
 		}
 	}
 	request := c.request
-	request.invocation = &catalogInvocationBinding{route, slices.Clone(variants)}
+	request.invocation = &catalogInvocationBinding{route: route, variants: slices.Clone(variants)}
 	return CatalogInvocation{request}, nil
 }
 
