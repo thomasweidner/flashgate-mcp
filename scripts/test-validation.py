@@ -237,6 +237,25 @@ class ValidationTests(unittest.TestCase):
                 helper.unlink()
                 self.assertIsNone(v.validation_helpers(self.work, env, {})[key])
 
+    @unittest.skipUnless(sys.platform == 'linux', 'native glibc loader paths')
+    def test_native_shell_loader_uses_architecture_path_and_rejects_missing_loader(self):
+        resolved = self.work / 'loader'
+        resolved.write_bytes(b'loader')
+        resolved.chmod(0o700)
+        for machine, expected in (
+                ('x86_64', '/lib64/ld-linux-x86-64.so.2'),
+                ('aarch64', '/lib/ld-linux-aarch64.so.1')):
+            with self.subTest(machine=machine), patch.object(v.platform, 'machine', return_value=machine):
+                with patch.object(v, 'native_runtime_file', return_value=resolved) as resolve:
+                    self.assertEqual(v.native_shell_loader(), Path(expected))
+                    resolve.assert_called_once_with(Path(expected))
+                with patch.object(v, 'native_runtime_file', return_value=self.work / 'missing'):
+                    self.assertIsNone(v.native_shell_loader())
+        with patch.object(v.platform, 'machine', return_value='unsupported'):
+            with patch.object(v, 'native_runtime_file') as resolve:
+                self.assertIsNone(v.native_shell_loader())
+                resolve.assert_not_called()
+
     def test_unresolved_shell_runtime_blocks_reuse_with_identical_binding(self):
         summary, target, binding, plan, proof = self.resume_fixture(names=('shell',), status='PARTIAL')
         binding['native_shell_reusable'] = False

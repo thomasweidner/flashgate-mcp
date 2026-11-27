@@ -29,6 +29,10 @@ NATIVE_SHELL_SEARCHED = ('awk', 'cat', 'date', 'dirname', 'env', 'grep', 'ln', '
                          'python3', 'rm', 'rmdir')
 NATIVE_SHELL_BIN = Path('/usr/bin')
 NATIVE_RUNTIME_ROOTS = (Path('/usr/lib'), Path('/usr/local/lib'))
+NATIVE_SHELL_LOADERS = {
+    'x86_64': Path('/lib64/ld-linux-x86-64.so.2'),
+    'aarch64': Path('/lib/ld-linux-aarch64.so.1'),
+}
 
 
 class Hold(RuntimeError):
@@ -421,6 +425,14 @@ def native_runtime_file(path):
     return resolved
 
 
+def native_shell_loader():
+    loader = NATIVE_SHELL_LOADERS.get(platform.machine())
+    if loader is None:
+        return None
+    resolved = native_runtime_file(loader)
+    return loader if resolved.is_file() and os.access(resolved, os.X_OK) else None
+
+
 def native_shell_runtime(root, env, helpers, tools):
     # Probe only the declared system programs used by the native shell gates.
     # The glibc loader lists their resolved objects without running the helpers.
@@ -429,20 +441,21 @@ def native_shell_runtime(root, env, helpers, tools):
     search = env.get('PATH', '')
     overrides = ('BASH_ENV', 'ENV', 'GCONV_PATH', 'GIT_EXEC_PATH', 'LOCPATH',
                  'PYTHONHOME', 'PYTHONPATH', 'PYTHONSTARTUP', 'PYTHONUSERBASE')
-    loaders = sorted(Path('/lib64').glob('ld-linux*.so*'))
     cache = Path('/etc/ld.so.cache')
-    if (len(loaders) != 1 or not cache.is_file() or os.path.lexists('/etc/ld.so.preload')
+    if (not cache.is_file() or os.path.lexists('/etc/ld.so.preload')
             or not all(Path(part).is_absolute() for part in search.split(os.pathsep))
             or any(env.get(key) for key in overrides)
             or any(value for key, value in env.items() if key.startswith(('LD_', 'BASH_FUNC_')))
             or not all(path and Path(path).resolve().parent == NATIVE_SHELL_BIN.resolve() for path in paths)):
         return None
-    loader = loaders[0]
-    runtime = {'shell:runtime:loader': str(loader), 'shell:runtime:cache': str(cache)}
     module_probe = '''import json, os, sys, encodings.utf_8
 print(json.dumps([sys.path, sorted({p for m in sys.modules.values()
     for p in (getattr(m, '__file__', None), getattr(m, '__cached__', None)) if p})]))'''
     try:
+        loader = native_shell_loader()
+        if loader is None:
+            return None
+        runtime = {'shell:runtime:loader': str(loader), 'shell:runtime:cache': str(cache)}
         interpreter = helpers['shell:PATH:python3']
         python = subprocess.run([interpreter, '-B', '-c', module_probe], cwd=root, env=env,
                                 capture_output=True, text=True, check=True, timeout=5)
