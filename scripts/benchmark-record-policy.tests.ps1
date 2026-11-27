@@ -78,7 +78,6 @@ try {
 
     $Wrapper = Join-Path $FakeScripts 'benchmark.ps1'
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'benchmark.ps1') -Destination $Wrapper
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'benchmark-window.ps1') -Destination (Join-Path $FakeScripts 'benchmark-window.ps1')
     $GitMarker = Join-Path $TemporaryDirectory 'git-invoked.marker'
     $GoMarker = Join-Path $TemporaryDirectory 'go-invoked.marker'
     $GoStub = Join-Path $StubDirectory 'go.cmd'
@@ -200,6 +199,7 @@ try {
     Test-Condition ($DiagnosticResult.ExitCode -ne 0) 'diagnostic stub run exits nonzero'
     Test-Condition ($DiagnosticCombined -notmatch 'Non-authoritative benchmark runs must not') 'regular diagnostic output passes path policy'
     Test-Condition (Test-Path -LiteralPath $GitMarker -PathType Leaf) 'regular diagnostic output reaches git'
+    Test-Condition ($DiagnosticCombined -notmatch 'scheduled host-load window') 'diagnostic wrapper runs without the retired clock policy'
     Test-Condition (-not (Test-Path -LiteralPath $GoMarker)) 'git stub stops diagnostic run before go'
     Test-Condition (-not (Test-Path -LiteralPath $DiagnosticOutput)) 'diagnostic stub run does not write output'
 

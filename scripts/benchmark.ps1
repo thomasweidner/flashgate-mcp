@@ -184,8 +184,6 @@ elseif (-not [IO.Path]::IsPathRooted($OutputPath)) {
 $InitialOutputPolicyState = Assert-NonAuthoritativeOutputPath -CandidatePath $OutputPath -RepositoryRoot $RepoRoot
 $OutputPath = $InitialOutputPolicyState.OutputFullPath
 
-. (Join-Path $PSScriptRoot 'benchmark-window.ps1')
-
 $Status = 'FAIL'
 $WarningCount = 0
 $FailureCount = 0
@@ -193,12 +191,7 @@ $NextAction = 'Inspect the reported failure.'
 $ReportPath = $null
 $FailureMessage = $null
 $RunOutputPath = $null
-$PerformanceContaminated = $false
-$MeasurementWarning = $null
-
 try {
-    $PerformanceContaminated = (Get-EuropeViennaMeasurementWindowStatus).IsBlocked
-
     $InitialStatus = @(& git status --porcelain --untracked-files=all)
     $WorkingTreeDirty = $InitialStatus.Count -gt 0
 
@@ -232,15 +225,6 @@ try {
         throw "Benchmark reported $FailureCount hard budget failure(s)."
     }
 
-    if ((Get-EuropeViennaMeasurementWindowStatus).IsBlocked) {
-        $PerformanceContaminated = $true
-    }
-
-    if ($PerformanceContaminated) {
-        $MeasurementWarning = Get-ContaminatedPerformanceWarning
-        $WarningCount++
-    }
-
     $Status = 'PASS'
     $NextAction = 'Compare the current result with the versioned baseline.'
 }
@@ -256,7 +240,7 @@ finally {
         WarningCount   = $WarningCount
         FailureCount   = $FailureCount
         NextAction     = $NextAction
-        MeasurementWarning = $MeasurementWarning
+        MeasurementWarning = $null
         FailureMessage = $FailureMessage
     } | Format-List
 }
