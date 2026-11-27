@@ -85,9 +85,10 @@ def safe_directory(path):
     return path
 
 
-def git(root, *args, stdin=None):
+def git(root, *args, stdin=None, index_file=None):
+    env = None if index_file is None else {**os.environ, 'GIT_INDEX_FILE': str(index_file)}
     result = subprocess.run(['git', '-C', str(root), *args], check=True,
-                            input=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+                            input=stdin, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, env=env)
     return result.stdout
 
 
@@ -186,13 +187,15 @@ def source_file(root, root_fd, name):
             os.close(descriptor)
 
 
-def sources(root, *, check_ignored=False, shell_markdown=None):
-    names = set(git(root, 'ls-files', '-z').decode().split('\0'))
-    names.update(git(root, 'ls-files', '--others', '--exclude-standard', '-z').decode().split('\0'))
+def sources(root, *, check_ignored=False, shell_markdown=None, indexed=None, index_file=None):
+    names = set(indexed) if indexed is not None else set(git(root, 'ls-files', '-z').decode().split('\0'))
+    names.update(git(root, 'ls-files', '--others', '--exclude-standard', '-z',
+                     index_file=index_file).decode().split('\0'))
     records = []
     with source_boundary(root) as root_fd:
         if check_ignored:
-            ignored = set(git(root, 'ls-files', '--others', '--ignored', '--exclude-standard', '-z').split(b'\0'))
+            ignored = set(git(root, 'ls-files', '--others', '--ignored', '--exclude-standard', '-z',
+                              index_file=index_file).split(b'\0'))
             ignored.discard(b'')
             outputs = {SMOKE_BUILD_LINUX.encode(), SMOKE_BUILD_WINDOWS.encode()}
             if ignored - outputs:
@@ -221,21 +224,106 @@ def sources(root, *, check_ignored=False, shell_markdown=None):
     return records
 
 
-def git_index(root):
+def git_index(root, *, index_file=None):
     indexed = {}
-    for record in git(root, 'ls-files', '--stage', '-z').split(b'\0'):
+    for record in git(root, 'ls-files', '--stage', '-z', index_file=index_file).split(b'\0'):
         if not record:
             continue
         metadata, path = record.split(b'\t', 1)
         mode, blob, stage = metadata.decode('ascii').split()
         if stage != '0':
             raise Hold('Unmerged Git index entry in source inventory')
-        indexed[path.decode('utf-8')] = (mode, blob)
+        name = path.decode('utf-8')
+        if name in indexed:
+            raise Hold('Duplicate Git index entry in source inventory')
+        indexed[name] = (mode, blob)
     return indexed
 
 
-def git_modes(root, postimage):
-    indexed = git_index(root)
+def git_route_marker(root):
+    marker = root / '.git'
+    meta = marker.lstat()
+    if getattr(meta, 'st_file_attributes', 0) & 0x400:
+        raise Hold('Git index route is a reparse point')
+    if stat.S_ISDIR(meta.st_mode):
+        return meta.st_dev, meta.st_ino, None
+    if not stat.S_ISREG(meta.st_mode):
+        raise Hold('Git index route is not a regular file or directory')
+    flags = os.O_BINARY if os.name == 'nt' else os.O_NOFOLLOW | os.O_NONBLOCK
+    with os.fdopen(os.open(marker, os.O_RDONLY | flags), 'rb') as stream:
+        if not os.path.samestat(meta, os.fstat(stream.fileno())):
+            raise Hold('Git index route changed while opening')
+        if os.name == 'nt':
+            verify_windows_source_handle(stream.fileno(), marker)
+        return meta.st_dev, meta.st_ino, stream.read()
+
+
+def read_git_index(git_dir):
+    with source_boundary(git_dir) as root_fd:
+        with source_file(git_dir, root_fd, 'index') as (stream, _):
+            return stream.read()
+
+
+def self_contained_index(raw):
+    if not raw.startswith(b'DIRC'):
+        return False
+    # Required split/sparse extensions can refer to entries outside this
+    # file. Recognize any plausible extension frame without parsing entries.
+    # An index filename containing "link" is not an extension frame.
+    for signature, minimum in ((b'link', 20), (b'sdir', 0)):
+        for match in re.finditer(signature, raw):
+            size_start = match.end()
+            remaining = len(raw) - size_start - 4 - 20  # minimum checksum length
+            if remaining >= minimum and minimum <= int.from_bytes(
+                    raw[size_start:size_start + 4], 'big') <= remaining:
+                return False
+    return True
+
+
+@contextlib.contextmanager
+def binding_index(root, work):
+    root = Path(os.path.abspath(root))
+    if not work or not (root / '.git').exists() or any(
+            name in os.environ for name in ('GIT_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE', 'GIT_COMMON_DIR')):
+        yield None, None, None, None
+        return
+    marker = git_route_marker(root)
+    git_dir = Path(git(root, 'rev-parse', '--absolute-git-dir').decode().strip())
+    if git_route_marker(root) != marker:
+        raise Hold('Git index route changed during source binding')
+    try:
+        raw = read_git_index(git_dir)
+    except FileNotFoundError:
+        raw = b''
+    if not self_contained_index(raw):
+        yield None, None, None, None
+        return
+    work = safe_directory(work)
+    if work == root or root in work.parents:
+        raise Hold('Git index snapshot scratch must be outside source')
+
+    with tempfile.TemporaryDirectory(prefix='index-', dir=work) as scratch:
+        snapshot = Path(scratch) / 'index'
+        with snapshot.open('xb') as output:
+            output.write(raw)
+
+        def verify():
+            try:
+                if read_git_index(git_dir) != raw or git_route_marker(root) != marker:
+                    raise Hold('Git index changed during source binding')
+                if read_git_index(snapshot.parent) != raw:
+                    raise Hold('Private Git index snapshot changed during source binding')
+            except FileNotFoundError as error:
+                raise Hold('Git index changed during source binding') from error
+
+        yield git_index(root, index_file=snapshot), snapshot, str(git_dir), verify
+        if git_route_marker(root) != marker:
+            raise Hold('Git index route changed during source binding')
+
+
+def git_modes(root, postimage, *, indexed=None):
+    if indexed is None:
+        indexed = git_index(root)
     honor_executable = git(root, 'config', '--type=bool', '--default=true',
                            '--get', 'core.filemode').strip() == b'true'
     result = []
@@ -278,7 +366,7 @@ def project_mirror_blobs(mirror, git_dir, postimage):
     return [[row[0], oid] for row, oid in zip(postimage, blobs)]
 
 
-def git_blobs(root, postimage, work):
+def git_blobs(root, postimage, work, *, git_dir=None):
     work = safe_directory(work)
     root = Path(os.path.abspath(root))
     if work == root or root in work.parents:
@@ -290,7 +378,8 @@ def git_blobs(root, postimage, work):
         attribute_paths.update('/'.join(parts[:depth] + ['.gitattributes'])
                                for depth in range(1, len(parts)))
     verify_absent(root, attribute_paths - names, 'Unbound Git attribute file')
-    git_dir = git(root, 'rev-parse', '--absolute-git-dir').decode().strip()
+    if git_dir is None:
+        git_dir = git(root, 'rev-parse', '--absolute-git-dir').decode().strip()
     # Git's batch interface opens paths itself. Only give it a private copy
     # of bytes obtained through the same guarded reader as the inventory.
     with tempfile.TemporaryDirectory(prefix='v-', dir=work) as scratch:
@@ -564,12 +653,19 @@ def binding(root, env, *, check_ignored=True):
     names.update(name for name in env if name.startswith(
         ('GO', 'CGO_', 'PKG_CONFIG_', 'LD_', 'DYLD_', 'LC_', 'DOTNET_', 'GIT_CONFIG_', 'PYTHON', 'BASH_FUNC_')))
     shell_markdown = []
-    postimage = sources(root, check_ignored=check_ignored, shell_markdown=shell_markdown)
-    tools = tools_binding(env)
-    helpers = validation_helpers(root, env, tools)
+    work = env.get('FLASHGATE_WORK_ROOT')
+    with binding_index(root, work) as (indexed, index_file, git_dir, verify_index):
+        postimage = sources(root, check_ignored=check_ignored, shell_markdown=shell_markdown,
+                            indexed=indexed, index_file=index_file)
+        tools = tools_binding(env)
+        helpers = validation_helpers(root, env, tools)
+        if verify_index is not None:
+            verify_index()  # Recheck at the former separate mode observation.
+        modes = git_modes(root, postimage, indexed=indexed)
+        blobs = git_blobs(root, postimage, work, git_dir=git_dir)
     native_shell_reusable = os.name == 'nt' or 'shell:runtime:loader' in helpers
-    return {'sources': postimage, 'git_modes': git_modes(root, postimage),
-             'git_blobs': git_blobs(root, postimage, env.get('FLASHGATE_WORK_ROOT')), 'tools': tools,
+    return {'sources': postimage, 'git_modes': modes,
+              'git_blobs': blobs, 'tools': tools,
              'helpers': helpers, 'shell_markdown': shell_markdown, 'native_shell_reusable': native_shell_reusable,
             'os': [platform.system(), platform.release(), platform.machine(), platform.version()],
             'python': [sys.version, digest(sys.executable)],
