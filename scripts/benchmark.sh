@@ -4,7 +4,6 @@ set -euo pipefail
 quick=false
 record_baseline=false
 output_path=""
-performance_contaminated=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -66,13 +65,6 @@ assert_non_authoritative_output_path() {
   fi
 }
 
-# shellcheck source=benchmark-window.sh
-source "${script_dir}/benchmark-window.sh"
-
-if measurement_window_is_blocked; then
-  performance_contaminated=true
-fi
-
 if [[ -z "${output_path}" ]]; then
   output_path="${build_dir}/benchmark-current.linux-$(go env GOARCH).json"
 elif [[ "${output_path}" != /* ]]; then
@@ -105,10 +97,4 @@ fi
 assert_non_authoritative_output_path "${output_path}"
 "${benchmark_binary}" "${arguments[@]}"
 
-if measurement_window_is_blocked; then
-  performance_contaminated=true
-fi
-if [[ "${performance_contaminated}" == true ]]; then
-  measurement_window_contaminated_warning >&2
-fi
 printf 'Benchmark result: %s\n' "${output_path}"

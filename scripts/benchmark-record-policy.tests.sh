@@ -30,7 +30,6 @@ stub_directory="${temporary_directory}/stub"
 mkdir -p -- "${fake_scripts}" "${fake_benchmarks}" "${stub_directory}"
 wrapper="${fake_scripts}/benchmark.sh"
 cp -- "${script_dir}/benchmark.sh" "${wrapper}"
-cp -- "${script_dir}/benchmark-window.sh" "${fake_scripts}/benchmark-window.sh"
 marker="${temporary_directory}/go-invoked.marker"
 output="${temporary_directory}/baseline.linux-amd64.json"
 stub="${stub_directory}/go"
@@ -118,6 +117,17 @@ check "$([[ "${default_stderr}" == *'final symbolic-link output target'* ]] && p
 
 current_baseline_hash="$(sha256sum "${baseline_target}" | cut -d ' ' -f 1)"
 check "$([[ "${current_baseline_hash}" == "${baseline_hash}" ]] && printf true || printf false)" 'authoritative Linux baseline remains unchanged'
+
+clock_marker="${temporary_directory}/clock-invoked.marker"
+printf '#!/usr/bin/env bash\n: > %q\nexit 99\n' "${clock_marker}" >"${stub_directory}/date"
+printf '#!/usr/bin/env bash\nexit 0\n' >"${stub_directory}/git"
+chmod 700 "${stub_directory}/date" "${stub_directory}/git"
+rm -f -- "${marker}"
+diagnostic_output="${temporary_directory}/diagnostic.json"
+PATH="${stub_directory}:${PATH}" bash "${wrapper}" --quick --output "${diagnostic_output}" >"${stdout_path}" 2>"${stderr_path}"
+diagnostic_exit_code=$?
+check "$([[ ${diagnostic_exit_code} -eq 97 && -e "${marker}" ]] && printf true || printf false)" 'regular diagnostic output reaches the Go stub'
+check "$([[ ! -e "${clock_marker}" ]] && printf true || printf false)" 'diagnostic wrapper does not consult the wall clock'
 
 if (( ${#failures[@]} == 0 )); then
   printf 'Status       : PASS\nCheckCount   : %d\nFailureCount : 0\nFailures     :\n' "${check_count}"

@@ -63,11 +63,20 @@ recording remains a separate process.
 
 ## Measurement environment
 
-The primary Windows development host has a known resource-intensive scheduled workload every day from 19:00 inclusive until 04:00 exclusive in the `Europe/Vienna` time zone. Performance, latency, startup, CPU, memory, resource, cross-platform, and regression baselines must not be recorded, approved, compared, or used to tune budgets during that blocked window. The preferred measurement window with safety margin is 04:15–18:45 `Europe/Vienna`, and a complete measurement series must finish before 19:00.
+Qualified performance series require measured host load, sufficient available
+resources, and a stable environment throughout the run. Apply the relevant
+controller's resource limits and bounded runtime. Missing, conflicting, or
+insufficient host observations prevent acceptance. Calendar time, time zone, and
+daylight saving transitions have no effect on admission. Record the start and
+end timestamps, time zone, and host observations as provenance.
 
-The time window is necessary but not sufficient: known or unusual additional host load invalidates a baseline even during otherwise allowed hours. The measurement report must record the time zone, start/end window, and host-load status. Quick runs are diagnostic observations, not automatic release baselines. Contaminated runs remain diagnosis evidence but are not approval artifacts, and they must never be replaced or selectively cherry-picked in favor of more favorable individual measurements.
+Retain runs affected by competing load or an unstable environment as diagnostic
+evidence. Exclude those runs from approval, regression comparison, and budget
+tuning. Preserve the original evidence and assess the full series.
 
-Functional tests, builds, vet, and lint remain valid during the blocked window, but any incidental timing or resource values from those commands are not performance evidence. Normal benchmark runs may execute during the blocked window and are explicitly marked contaminated. The diagnostic wrappers cannot record or publish a baseline.
+The local wrappers and quick runs provide diagnostic results. Authoritative
+baseline recording requires the qualified two-phase workflow below. Incidental
+timing and resource observations from functional validation are diagnostic only.
 
 Run only the in-process benchmarks:
 
@@ -139,9 +148,8 @@ under `/mnt` or `/media`. OneDrive archival occurs only after the final host gat
 The legacy wrapper record flags are intentionally blocked; a policy-compliant
 controller is prepared and independently reviewed for each authoritative attempt.
 
-Ordinary local benchmark results remain allowed on dirty trees and record
-`working_tree_dirty: true` accurately, but results collected during the scheduled
-host-load window are contaminated diagnosis only.
+Ordinary local benchmark runs on dirty trees remain diagnostic and record
+`working_tree_dirty: true` accurately.
 
 Versioned results must not contain absolute host paths, user names, secrets, temporary directory names, or raw private environment variables. The runner never serializes its binary path, corpus root, or environment and replaces known paths in captured stderr.
 
