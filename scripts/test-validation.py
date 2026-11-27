@@ -722,6 +722,100 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(git('show', 'HEAD:' + existing.name), b'new content\n')
         self.assertEqual(git('show', 'HEAD:new name.txt'), b'new file\n')
 
+    def index_binding_fixture(self):
+        root = self.work / 'checkout'
+        root.mkdir()
+        v.git(root, 'init', '--quiet')
+        v.git(root, 'config', 'core.filemode', 'false')
+        (root / 'tracked.txt').write_bytes(b'original\n')
+        v.git(root, 'add', 'tracked.txt')
+        return root, {'FLASHGATE_WORK_ROOT': str(self.work)}
+
+    def test_shared_index_preserves_binding_and_removes_one_inventory_process(self):
+        root, env = self.index_binding_fixture()
+        (root / 'linked-name.txt').write_bytes(b'ordinary tracked source\n')
+        v.git(root, 'add', 'linked-name.txt')
+        (root / 'README.md').write_bytes(b'# heading\n')
+        (root / '.gitattributes').write_bytes(b'*.txt text eol=lf\n')
+        (root / 'untracked.txt').write_bytes(b'line\r\n')
+        (root / 'deleted.txt').write_bytes(b'kept in index\n')
+        v.git(root, 'add', 'deleted.txt')
+        (root / 'deleted.txt').unlink()
+        (root / '.gitignore').write_bytes(b'build/\n')
+        (root / 'build').mkdir()
+        smoke = v.SMOKE_BUILD_WINDOWS if os.name == 'nt' else v.SMOKE_BUILD_LINUX
+        (root / smoke).write_bytes(b'permitted old build output')
+        with patch.object(v, 'tools_binding', return_value={}):
+            with patch.object(v, 'git', wraps=v.git) as git, patch.object(
+                    v, 'binding_index', return_value=v.contextlib.nullcontext((None, None, None, None))):
+                separate = v.binding(root, env)
+                separate_calls = [call.args[1:] for call in git.call_args_list]
+            with patch.object(v, 'git', wraps=v.git) as git:
+                shared = v.binding(root, env)
+                shared_calls = [call.args[1:] for call in git.call_args_list]
+        self.assertEqual(shared, separate)
+        self.assertEqual([a for a in separate_calls if a[:1] == ('ls-files',)],
+                         [('ls-files', '-z'), ('ls-files', '--others', '--exclude-standard', '-z'),
+                          ('ls-files', '--others', '--ignored', '--exclude-standard', '-z'),
+                          ('ls-files', '--stage', '-z')])
+        self.assertCountEqual([a for a in shared_calls if a[:1] == ('ls-files',)],
+                              [('ls-files', '--stage', '-z'), ('ls-files', '--others', '--exclude-standard', '-z'),
+                               ('ls-files', '--others', '--ignored', '--exclude-standard', '-z')])
+        self.assertEqual(len(shared_calls), len(separate_calls) - 1)
+        self.assertIn('untracked.txt', {name for name, _, _ in shared['sources']})
+        self.assertNotIn('deleted.txt', {name for name, _, _ in shared['sources']})
+        (root / 'build/unapproved').write_bytes(b'ignored input')
+        with self.assertRaisesRegex(v.Hold, 'Ignored checkout files'):
+            v.binding(root, env)
+
+    def test_binding_rejects_live_index_change_without_a_later_caller_check(self):
+        root, env = self.index_binding_fixture()
+
+        def change_index(_env):
+            v.git(root, 'update-index', '--chmod=+x', 'tracked.txt')
+            return {}
+
+        with patch.object(v, 'tools_binding', side_effect=change_index):
+            with self.assertRaisesRegex(v.Hold, 'Git index changed during source binding'):
+                v.binding(root, env)
+
+    def test_binding_rejects_index_snapshot_change(self):
+        root, env = self.index_binding_fixture()
+        original = v.git_index
+
+        def change_snapshot(repo, *, index_file=None):
+            rows = original(repo, index_file=index_file)
+            index_file.write_bytes(b'changed snapshot')
+            return rows
+
+        with patch.object(v, 'git_index', side_effect=change_snapshot), \
+                patch.object(v, 'sources', return_value=[]), patch.object(v, 'tools_binding', return_value={}):
+            with self.assertRaisesRegex(v.Hold, 'Private Git index snapshot changed'):
+                v.binding(root, env)
+
+    def test_binding_uses_existing_inventory_for_split_index(self):
+        root, env = self.index_binding_fixture()
+        v.git(root, 'update-index', '--split-index')
+        with patch.object(v, 'git', wraps=v.git) as git, patch.object(v, 'tools_binding', return_value={}):
+            self.assertEqual(v.binding(root, env)['git_modes'], [['tracked.txt', '100644']])
+        self.assertIn(('ls-files', '-z'), [call.args[1:] for call in git.call_args_list])
+
+    def test_binding_detects_same_length_source_change_with_restored_mtime(self):
+        root, env = self.index_binding_fixture()
+        source = root / 'tracked.txt'
+        previous = source.stat()
+        original = v.sources
+
+        def change_source(*args, **kwargs):
+            inventory = original(*args, **kwargs)
+            source.write_bytes(b'mutated!\n')
+            os.utime(source, ns=(previous.st_atime_ns, previous.st_mtime_ns))
+            return inventory
+
+        with patch.object(v, 'sources', side_effect=change_source), patch.object(v, 'tools_binding', return_value={}):
+            with self.assertRaisesRegex(v.Hold, 'Source changed before Git blob projection'):
+                v.binding(root, env)
+
     def test_git_projection_holds_before_external_filters(self):
         root = self.work / 'checkout'
         root.mkdir()
