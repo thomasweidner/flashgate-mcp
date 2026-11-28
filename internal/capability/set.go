@@ -84,6 +84,9 @@ type Requirement struct {
 // Equal compares requirements on the same immutable capability snapshot.
 func (r Requirement) Equal(other Requirement) bool { return r.required.Equal(other.required) }
 
+// IDs returns the declared functional requirements in canonical order.
+func (r Requirement) IDs() []ID { return r.required.IDs() }
+
 // Requires reports whether id is part of the declared requirement.
 func (r Requirement) Requires(id ID) bool { return r.required.Contains(id) }
 

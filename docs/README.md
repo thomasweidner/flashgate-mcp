@@ -10,6 +10,7 @@ Start with the root [README](../README.md) for the current product baseline.
 |---|---|
 | [Client setup](client-setup.md) | Verified binary, explicit read-only root, client acceptance, troubleshooting, and rollback. |
 | [Runtime configuration](configuration.md) | TOML template, trusted sources, settings, limits, and managed role contract. |
+| [Structured audit](audit-lifecycle.md) | Correlation, protected storage, failure modes, and later consumer semantics. |
 | [Tools](tools.md) | Current discovery, arguments, and tool behavior. |
 | [Protocol](protocol.md) | Implemented MCP revision, JSON-RPC, initialization, and result contracts. |
 | [Security](security.md) | Root, path, policy, disclosure, and resource boundaries. |

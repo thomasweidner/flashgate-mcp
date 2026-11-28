@@ -147,7 +147,12 @@ Administrator deployment scripts run separately from the MCP runtime.
 
 ## Audit and observability
 
-Every security-relevant request records a safe correlation chain across client, proxy, service, backend, domain operation/job, and OS result. The lifecycle defines rotation, retention, access, redaction, queue/backpressure, disk-full behavior, and shutdown flush limits. Metrics and traces are optional/exportable without making a heavy telemetry runtime mandatory.
+Direct STDIO operations use [structured audit](audit-lifecycle.md) for trusted
+correlation, declared decisions, native effect admission, and outcomes.
+Bounded asynchronous recording is the default. An operator may require
+durable pre-effect intent for selected operation declarations. Proxy, service,
+job and worker owners extend the same correlation and protection contract
+when those paths are activated.
 
 ## Packaging and supply chain
 

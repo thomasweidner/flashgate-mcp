@@ -25,7 +25,7 @@ type runnableServer interface {
 type bootstrapDependencies struct {
 	loadConfig      func() (config.Config, error)
 	newRoots        func(config.Config) (*roots.Registry, error)
-	newToolRegistry func(*roots.Registry, int64, config.EffectiveProfile) (*tools.Registry, error)
+	newToolRegistry func(*roots.Registry, config.Config, *diagnostics.Logger) (*tools.Registry, startAudit, error)
 	admitTools      func(*tools.Registry) error
 	newRouter       func(string, string, *tools.Registry) *router.Router
 	newServer       func(io.Reader, io.Writer, *router.Router, server.Options) runnableServer
@@ -41,7 +41,7 @@ func defaultBootstrapDependencies(configPath string) bootstrapDependencies {
 			return config.Load(config.Source{Role: config.Direct, Path: configPath})
 		},
 		newRoots:        roots.New,
-		newToolRegistry: createToolRegistry,
+		newToolRegistry: createRuntimeToolRegistry,
 		admitTools:      admitProfile,
 		newRouter:       createRouter,
 		newServer: func(in io.Reader, out io.Writer, mcpRouter *router.Router, options server.Options) runnableServer {
@@ -73,12 +73,15 @@ func runWithIO(
 	if rootRegistry == nil || len(rootRegistry.IDs()) == 0 {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
-	toolRegistry, err := dependencies.newToolRegistry(
-		rootRegistry,
-		cfg.Files().MaxFileSize(),
-		cfg.Profile(),
-	)
+	options := serverOptionsFromConfig(cfg, stderr)
+	toolRegistry, lifecycle, err := dependencies.newToolRegistry(rootRegistry, cfg, options.Diagnostics)
+	if lifecycle.stop != nil {
+		defer lifecycle.stop()
+	}
 	if err != nil {
+		if category, ok := config.CategoryOf(err); ok && category == config.CategoryInvalidConfig {
+			return err
+		}
 		return config.NewError(config.CategoryStartupFailed, err)
 	}
 	if toolRegistry == nil {
@@ -91,11 +94,14 @@ func runWithIO(
 	if mcpRouter == nil {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
-	mcpServer := dependencies.newServer(stdin, stdout, mcpRouter, serverOptionsFromConfig(cfg, stderr))
+	mcpServer := dependencies.newServer(stdin, stdout, mcpRouter, options)
 	if isNilBootstrapValue(mcpServer) {
 		return config.NewError(config.CategoryStartupFailed, errInvalidBootstrapDependencies)
 	}
 
+	if lifecycle.start != nil {
+		lifecycle.start()
+	}
 	return mcpServer.Run(ctx)
 }
 

@@ -779,6 +779,12 @@ Backlog applicability: BL-166, BL-361.
 
 `BL-166` remains the Version 1.0 owner for bounded structured audit events, immutable event/correlation IDs, rotation, retention, disk-full/backpressure behavior, redaction, and log-injection protection.
 
+Every applicable adapter binds its own decision, native effect or protected
+release, admitted field projection, and outcome to the
+[BL-166 consumer contract](implementation-contract.md#bl-166-structured-audit-and-correlation).
+Reusing an originating trace never carries forward its authorization. A new
+adapter proves its audit and protected namespace behavior on its real backend.
+
 The optional integrity mode is explicit:
 
 ```text

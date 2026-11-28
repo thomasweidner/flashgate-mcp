@@ -40,7 +40,7 @@ func (f *LocalFileSystem) inspectPath(path string) (effectPath, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		// Missing parent chains are inspected structurally by Mkdir before
 		// creating each individual component through a fresh native binding.
-		return operand, nil
+		return operand, f.checkAudit(operand)
 	}
 	if err != nil {
 		return effectPath{}, err
@@ -73,7 +73,20 @@ func (f *LocalFileSystem) inspectPath(path string) (effectPath, error) {
 			return effectPath{}, err
 		}
 	}
-	return operand, nil
+	return operand, f.checkAudit(operand)
+}
+
+func (f *LocalFileSystem) checkAudit(operand effectPath) error {
+	if f.protection == nil {
+		return nil
+	}
+	if err := f.protection.CheckAudit(operand.effective, operand.info, operand.parent); err != nil {
+		return err
+	}
+	if !pathsEquivalent(operand.effective, operand.path) {
+		return f.protection.CheckAudit(operand.path, operand.info, operand.entryParent)
+	}
+	return nil
 }
 
 func (f *LocalFileSystem) inspectEffect(path string, mutation bool) (effectPath, error) {

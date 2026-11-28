@@ -24,13 +24,14 @@ var (
 
 // Logger writes redacted diagnostics to stderr-like writers when debug is enabled.
 type Logger struct {
-	debug      bool
-	jsonFormat bool
-	maxBytes   int
-	maxRecords int
-	out        io.Writer
-	mu         sync.Mutex
-	records    int
+	debug         bool
+	jsonFormat    bool
+	maxBytes      int
+	maxRecords    int
+	out           io.Writer
+	mu            sync.Mutex
+	records       int
+	auditWarnings int
 }
 
 // NewLogger creates a new diagnostics logger.
@@ -62,23 +63,41 @@ func (l *Logger) Debugf(format string, args ...any) {
 		}
 		return ch
 	}, Redact(fmt.Sprintf(format, args...)))
-	record := l.formatRecord(message)
+	record := l.formatRecord("debug", message)
 	if len(record) > l.maxBytes {
-		record = l.formatRecord("[TRUNCATED]")
+		record = l.formatRecord("debug", "[TRUNCATED]")
 	}
 	if len(record) <= l.maxBytes {
 		_, _ = l.out.Write(record)
 	}
 }
 
-func (l *Logger) formatRecord(message string) []byte {
+// AuditUnavailable reports a fixed health warning with its own lifetime
+// bound. It uses the same serialized output and format as diagnostics.
+func (l *Logger) AuditUnavailable() {
+	if l == nil || l.out == nil {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.auditWarnings >= 8 {
+		return
+	}
+	l.auditWarnings++
+	record := l.formatRecord("warning", "audit storage unavailable")
+	if len(record) <= l.maxBytes {
+		_, _ = l.out.Write(record)
+	}
+}
+
+func (l *Logger) formatRecord(level, message string) []byte {
 	if !l.jsonFormat {
 		return []byte("flashgate-mcp: " + message + "\n")
 	}
 	record, _ := json.Marshal(struct {
 		Level   string `json:"level"`
 		Message string `json:"message"`
-	}{"debug", message})
+	}{level, message})
 	return append(record, '\n')
 }
 

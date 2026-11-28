@@ -162,8 +162,7 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 	}
 	systemDLLCalls := map[*ast.SelectorExpr]bool{}
 	if strings.HasPrefix(target, "windows/") {
-		// BL-233 uses these fixed system libraries to inspect the security
-		// descriptor and final path of the already opened bootstrap file.
+		// Admit fixed, reviewed Windows storage or protection procedures.
 		ast.Inspect(file, func(node ast.Node) bool {
 			call, ok := node.(*ast.CallExpr)
 			if !ok || len(call.Args) != 1 {
@@ -191,7 +190,9 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 			return true
 		})
 	}
-	if name == "internal/fs/native_linux.go" && (target == "linux/amd64" || target == "linux/arm64") {
+	const linuxOpen = "internal/security/local_open_linux.go"
+	const linuxEffects = "internal/fs/native_linux.go"
+	if (name == linuxOpen || name == linuxEffects) && (target == "linux/amd64" || target == "linux/arm64") {
 		// BL-107 needs openat2's NO_XDEV/NO_SYMLINKS and parent-relative
 		// unlinkat. Permit only direct calls with their fixed operation IDs
 		// in the exact implementation functions, never a syscall function value.
@@ -213,13 +214,13 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 				if !ok || imports[qualifier.Name] != "syscall" || len(call.Args) == 0 {
 					return true
 				}
-				if fn.Recv == nil && fn.Name.Name == "nativeOpenAt" && selector.Sel.Name == "Syscall6" && len(call.Args) == 7 {
+				if name == linuxOpen && fn.Recv == nil && fn.Name.Name == "OpenLocalAt" && selector.Sel.Name == "Syscall6" && len(call.Args) == 7 {
 					id, ok := call.Args[0].(*ast.BasicLit)
 					if ok && id.Kind == token.INT && id.Value == "437" {
 						systemDLLCalls[selector] = true
 					}
 				}
-				if fn.Recv == nil && fn.Name.Name == "nativeExclusionDirectory" && selector.Sel.Name == "Syscall" && len(call.Args) == 4 {
+				if name == linuxEffects && fn.Recv == nil && fn.Name.Name == "nativeExclusionDirectory" && selector.Sel.Name == "Syscall" && len(call.Args) == 4 {
 					id, ok := call.Args[0].(*ast.SelectorExpr)
 					request, fixed := call.Args[2].(*ast.BasicLit)
 					if ok && fixed && id.Sel.Name == "SYS_IOCTL" && request.Kind == token.INT && request.Value == "0x80086601" {
@@ -229,7 +230,7 @@ func inspectRuntimeSource(name, target string, source []byte) []finding {
 						}
 					}
 				}
-				if fn.Recv != nil && fn.Name.Name == "remove" && selector.Sel.Name == "Syscall" && len(call.Args) == 4 {
+				if name == linuxEffects && fn.Recv != nil && fn.Name.Name == "remove" && selector.Sel.Name == "Syscall" && len(call.Args) == 4 {
 					id, ok := call.Args[0].(*ast.SelectorExpr)
 					if ok {
 						q, ok := id.X.(*ast.Ident)
@@ -276,6 +277,11 @@ func allowedSystemProcedure(name, library, procedure string) bool {
 	case "internal/security/policy_windows.go":
 		return library == `"kernel32.dll"` && (procedure == `"GetFileInformationByHandleEx"` ||
 			procedure == `"GetFinalPathNameByHandleW"` || procedure == `"GetVolumeInformationByHandleW"`)
+	case "internal/audit/native_windows.go":
+		return library == `"kernel32.dll"` && (procedure == `"LockFileEx"` || procedure == `"UnlockFileEx"` ||
+			procedure == `"GetFinalPathNameByHandleW"`) || library == `"advapi32.dll"` &&
+			(procedure == `"GetSecurityInfo"` || procedure == `"GetAce"` ||
+				procedure == `"ConvertStringSecurityDescriptorToSecurityDescriptorW"`)
 	}
 	return false
 }

@@ -14,6 +14,10 @@ the intended release date. Publication evidence is separate.
 
 - Resume local validation from independently retained platform evidence. The
   runner checks the original proof and runs the missing or invalidated gates.
+- Add default-on structured audit for direct STDIO operations. The protected
+  per-server JSONL store shares its rotation and retention limits across
+  processes. Trusted configuration can require durable intent before selected
+  effects. See [structured audit](docs/audit-lifecycle.md).
 
 - Add opt-in `allow_process_cwd` on named policies and roots. The internal
   preflight binds an exact root and eligible relative working directory to

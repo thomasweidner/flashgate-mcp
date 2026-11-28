@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/audit"
 	"github.com/thomasweidner/flashgate-mcp/internal/capability"
 	"github.com/thomasweidner/flashgate-mcp/internal/config"
 	"github.com/thomasweidner/flashgate-mcp/internal/resource"
@@ -64,6 +65,7 @@ type Registration[C, R any] struct {
 	Backend        Backend[C, R]
 	Representation RepresentationID
 	Operations     []OperationKey
+	Counters       func(C, R) audit.Counters
 }
 
 type Dispatcher[C, R any] struct {
@@ -71,6 +73,8 @@ type Dispatcher[C, R any] struct {
 	selected   Registration[C, R]
 	binding    *dispatchBinding
 	catalog    CatalogRoutes
+	auditing   *Auditing
+	counters   func(C, R) audit.Counters
 }
 
 // Each dispatcher owns one resource resolver and selected execution route.
@@ -82,12 +86,18 @@ type dispatchBinding struct {
 	backend        BackendID
 	representation RepresentationID
 	operations     map[OperationKey]struct{}
+	auditing       *Auditing
 }
 
 func NewDispatcher[C, R any](policy *PolicyBinding, selected BackendID, routes Routes[C], registrations ...Registration[C, R]) (*Dispatcher[C, R], error) {
 	authorizer, err := newAuthorizer(policy, routes)
 	if err != nil {
 		return nil, err
+	}
+	for _, declaration := range authorizer.declarations.byKey {
+		if declaration.DurableIntent && (routes.Audit == nil || !routes.Audit.required[declaration.Key]) {
+			return nil, ErrMismatch
+		}
 	}
 	registered := make(map[BackendID]Registration[C, R], len(registrations))
 	for _, registration := range registrations {
@@ -117,10 +127,12 @@ func NewDispatcher[C, R any](policy *PolicyBinding, selected BackendID, routes R
 	binding := &dispatchBinding{
 		id: PolicyID(rand.Text()), policy: policy, declarations: authorizer.declarations,
 		backend: backend.ID, representation: backend.Representation, operations: operations,
+		auditing: routes.Audit,
 	}
 	return &Dispatcher[C, R]{
 		authorizer: authorizer, selected: backend, binding: binding,
-		catalog: CatalogRoutes{policy: policy, routes: map[CatalogRouteID]CatalogRoute{"": {binding}}},
+		catalog:  CatalogRoutes{policy: policy, routes: map[CatalogRouteID]CatalogRoute{"": {binding}}},
+		auditing: routes.Audit, counters: backend.Counters,
 	}, nil
 }
 
@@ -193,6 +205,7 @@ type Invocation[C any] struct {
 	binding   *Binding
 	command   C
 	admission func() error
+	audit     *auditSpan
 }
 
 func (i Invocation[C]) Binding() *Binding { return i.binding }
@@ -212,7 +225,10 @@ func (i Invocation[C]) AdmitEffect(ctx context.Context) error {
 			return err
 		}
 	}
-	return ctx.Err()
+	if err := i.audit.start(ctx, i.binding); err != nil {
+		return err
+	}
+	return i.binding.Verify(ctx, i.binding.backend, i.binding.effective, i.binding.Generation())
 }
 
 type Completion[R any] struct {
@@ -224,14 +240,33 @@ func Complete[R any](binding *Binding, value R) Completion[R] {
 	return Completion[R]{binding: binding, value: value}
 }
 
-func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, command C, admission func() error) (R, error) {
+func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, command C, admission func() error) (returned R, failure error) {
 	var zero R
 	if d == nil || d.binding == nil || !d.acceptsInvocation(ctx, request) {
 		return zero, ErrMismatch
 	}
+	if request.invocation != nil && d.auditing != nil {
+		request.invocation.attempted.Store(true)
+	}
 	declaration, resources, err := d.authorizer.authorize(ctx, request, command, d.binding.operations)
+	span := d.auditing.decision(d.binding, request, declaration, resources, err)
 	if err != nil {
 		return zero, err
+	}
+	var observedResult R
+	var completed bool
+	if span != nil {
+		defer func() {
+			var counters audit.Counters
+			if d.counters != nil {
+				counters = d.counters(command, observedResult)
+			}
+			reason := auditReason(failure, false)
+			if failure == nil && !completed {
+				reason = audit.Uncertain
+			}
+			span.finish(reason, counters)
+		}()
 	}
 	var requiresCWD bool
 	for _, operand := range resources {
@@ -259,7 +294,10 @@ func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, comman
 			return zero, err
 		}
 	}
-	completion, err := backend.Backend.Execute(ctx, Invocation[C]{binding: binding, command: command, admission: admission})
+	completion, err := backend.Backend.Execute(ctx, Invocation[C]{binding: binding, command: command, admission: admission, audit: span})
+	if completion.binding == binding {
+		observedResult = completion.value
+	}
 	if observe, _ := ctx.Value(operationObserverKey{}).(func(OperationKey)); observe != nil {
 		observe(binding.Key())
 	}
@@ -272,5 +310,6 @@ func (d *Dispatcher[C, R]) Dispatch(ctx context.Context, request Request, comman
 	if err := binding.Verify(ctx, backend.ID, backend.Identity, d.binding.policy.runtime.generation); err != nil {
 		return zero, err
 	}
+	completed = true
 	return completion.value, nil
 }

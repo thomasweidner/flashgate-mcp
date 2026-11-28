@@ -49,10 +49,12 @@ type command struct {
 }
 
 type result struct {
-	entries []fs.Entry
-	content []byte
-	info    fs.Metadata
-	created bool
+	entries                 []fs.Entry
+	content                 []byte
+	info                    fs.Metadata
+	missing                 bool
+	created                 bool
+	readBytes, writtenBytes *uint64
 }
 
 type requestedResource struct {

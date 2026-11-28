@@ -705,7 +705,10 @@ func TestReadAtMostRejectsDataBeyondTheLimit(t *testing.T) {
 		{"exact", 5, false},
 		{"larger", 5, true},
 	} {
-		content, err := readAtMost(strings.NewReader(tc.data), tc.max, tc.max+1)
+		content, read, err := readAtMost(strings.NewReader(tc.data), tc.max, tc.max+1)
+		if read == nil || *read != uint64(len(tc.data)) {
+			t.Fatalf("unexpected count for %q: %v", tc.data, read)
+		}
 		if tc.tooLarge {
 			if !errors.Is(err, ErrFileTooLarge) || content != nil {
 				t.Fatalf("over-limit read: content=%q, error=%v", content, err)

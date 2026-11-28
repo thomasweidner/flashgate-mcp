@@ -60,6 +60,46 @@ delta is absent and measures its own affected cost under its existing contract.
 
 `SPR-048` defines release/protocol/payload/native policy contracts that can be built before profiles and Jobs. `SPR-053` establishes configuration and named-root/profile contracts, then BL-236 context, BL-159 authorization, BL-110 effective catalog, BL-166 audit/correlation, and BL-239 state binding; it completes BL-216/219/256 against those contracts. `SPR-049` builds BL-084–BL-089 lifecycle, then BL-090 storage, then dependent Operations, BL-210 Tasks mapping, BL-218 MCP resource handoff, and BL-258 payload/resource CI. Later domains consume these foundations. BL-213 single-transmission work does not require BL-090; BL-218 does. BL-220 defines early native/no-interpreter policy; BL-163 and typed-execution owners implement it later. Exact hard edges and validation/retrofit owners are maintained in [architecture traceability](architecture-traceability.md).
 
+## BL-166 structured audit and correlation
+
+**Role and prerequisites.** BL-166 owns the transport-neutral audit lifecycle
+for Version 1.0. BL-236 supplies trusted execution context and correlation.
+BL-159 supplies the authorization decision. Reuse BL-110's effective catalog,
+BL-233's typed TOML, BL-374's native protection, and the existing diagnostics,
+size and measurement contracts.
+
+**Reuse and retrofit.** Bind one recorder to each running server and one durable
+budget to each configured server. Retrofit the direct STDIO composition, all
+declared filesystem variants, the central authorization and effect admission
+boundaries, and native path protection. Caller and effective execution identities
+are separate. Extend the existing request correlation namespace with a runtime
+generation. Keep the protocol, registration and logging contracts intact.
+
+**Safety and public delta.** The typed audit configuration enables asynchronous
+Operation First by default. Audit Required is selective and confirms durable
+intent at the protected effect boundary. Safe projection precedes storage.
+Bound loss, buffering, I/O and shutdown. A failure after a native effect
+preserves the actual result. The append store is protected from ordinary tools,
+coordinates concurrent direct server instances, and owns rotation and retention.
+Successful metadata disclosure requires the same admission for present and
+absent objects. The store confirms required intent while the durable batch
+remains protected by the writer lock. Abnormal dispatch termination records an
+uncertain outcome. Native byte counts reflect observed reads and writes even
+when result release fails. Retention starts from the UTC observation day.
+BL-361 owns administrative query, independent authorization and integrity.
+
+**Acceptance.** Prove the production decisions and native effects, bounded
+failure and recovery behavior, independent synthetic consumers, native
+Windows/Linux concurrency and protection, conservative configurable
+defaults, and wire parity. BL-244 owns quantitative native audit
+comparison and tuning of batches, flush, queue pressure, contention,
+durable intent, event loss, and shutdown. BL-166 acceptance uses
+deterministic evidence for the shipped defaults and safety guarantees.
+Record audit applicability for every new or materially changed technical item
+as direct consumer, indirect consumer, validation owner, or not applicable
+with a reason. Each applicable owner specifies its own events, field protection,
+correlation, effect or release boundary, and applicable acceptance evidence.
+
 ## BL-236 execution identity
 
 BL-236 supplies a transport-neutral application boundary after BL-100–BL-109,

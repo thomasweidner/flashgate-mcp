@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/thomasweidner/flashgate-mcp/internal/audit"
 	"github.com/thomasweidner/flashgate-mcp/internal/fs"
 	"github.com/thomasweidner/flashgate-mcp/internal/security"
 )
@@ -52,6 +53,8 @@ func classifyFilesystemError(err error) filesystemErrorCategory {
 	case errors.Is(err, fs.ErrFileExists), errors.Is(err, os.ErrExist):
 		return categoryAlreadyExists
 	case errors.Is(err, os.ErrPermission), errors.Is(err, security.ErrConfigurationAccess), errors.Is(err, fs.ErrRootAccessDenied):
+		return categoryAccessDenied
+	case errors.Is(err, audit.ErrUnavailable):
 		return categoryAccessDenied
 	case errors.Is(err, fs.ErrPathIsDirectory),
 		errors.Is(err, fs.ErrPathIsNotDirectory),

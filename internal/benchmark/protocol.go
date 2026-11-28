@@ -10,8 +10,31 @@ import (
 const protocolVersion = "2025-11-25"
 
 type requestSpec struct {
-	Method string
-	Params any
+	Method            string
+	Params            any
+	expectToolError   bool
+	allowAccessDenied bool
+}
+
+type toolResultEnvelope struct {
+	StructuredContent json.RawMessage `json:"structuredContent"`
+	IsError           bool            `json:"isError"`
+	Content           []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+}
+
+func (e toolResultEnvelope) accessDenied() bool {
+	if !e.IsError || len(e.StructuredContent) != 0 || len(e.Content) != 1 || e.Content[0].Type != "text" {
+		return false
+	}
+	var failure struct {
+		Category string `json:"category"`
+		Message  string `json:"message"`
+	}
+	return json.Unmarshal([]byte(e.Content[0].Text), &failure) == nil &&
+		failure.Category == "access_denied" && failure.Message == "filesystem error: access denied"
 }
 
 type toolCallParams struct {
@@ -55,6 +78,7 @@ type responseRecord struct {
 	responseBytes uint64
 	resultBytes   uint64
 	result        json.RawMessage
+	elapsedNS     uint64
 }
 
 func marshalRequest(id int, spec requestSpec) ([]byte, error) {
@@ -210,11 +234,20 @@ func addResultCounters(spec requestSpec, result json.RawMessage, counters *Count
 	}
 
 	counters.Calls++
-	var envelope struct {
-		StructuredContent json.RawMessage `json:"structuredContent"`
-		IsError           bool            `json:"isError"`
+	var envelope toolResultEnvelope
+	if err := json.Unmarshal(result, &envelope); err != nil {
+		return fmt.Errorf("decode tools/call result counters")
 	}
-	if err := json.Unmarshal(result, &envelope); err != nil || envelope.IsError || len(envelope.StructuredContent) == 0 {
+	if envelope.IsError != spec.expectToolError {
+		if spec.allowAccessDenied && params.Name == "write_file" && envelope.accessDenied() {
+			return nil
+		}
+		return fmt.Errorf("%s returned isError=%t, expected %t", params.Name, envelope.IsError, spec.expectToolError)
+	}
+	if envelope.IsError {
+		return nil
+	}
+	if len(envelope.StructuredContent) == 0 {
 		return fmt.Errorf("decode tools/call result counters")
 	}
 

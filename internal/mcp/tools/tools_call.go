@@ -60,6 +60,7 @@ func (h *CallHandler) Handle(ctx handlers.Context, rawParams json.RawMessage) (a
 		entry, ok = h.registry.lookup(params.Name)
 	}
 	if !ok {
+		binding.RecordCatalogDenial()
 		return nil, invalidParamsError()
 	}
 	result, err := entry.invoke(ctx, binding, params.Arguments)
@@ -100,7 +101,12 @@ func (tool registeredTool) invoke(ctx handlers.Context, binding execution.Catalo
 			return ToolResult{}, err
 		}
 		ctx.Context = invocation.Context(ctx.Context)
-		return tool.bound(ctx, invocation, arguments)
+		result, err := tool.bound(ctx, invocation, arguments)
+		var invalid *toolExecutionError
+		if errors.As(err, &invalid) && invalid.category == "invalid_arguments" {
+			invocation.RecordInvalidArguments()
+		}
+		return result, err
 	}
 	return tool.execute(ctx, arguments)
 }

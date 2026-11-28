@@ -9,15 +9,26 @@ func (r *Registry) List(path fs.Operand) ([]fs.Entry, error) {
 	if err != nil {
 		return nil, err
 	}
+	if path.AdmitEffect != nil {
+		return backend.List(path.Path, path.AdmitEffect)
+	}
 	return backend.List(path.Path)
 }
 
 func (r *Registry) Read(path fs.Operand, maxBytes int64) ([]byte, error) {
+	content, _, err := r.ReadMeasured(path, maxBytes)
+	return content, err
+}
+
+func (r *Registry) ReadMeasured(path fs.Operand, maxBytes int64) ([]byte, *uint64, error) {
 	backend, err := r.backendFor(path.RootID, fs.ReadOperation)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return backend.Read(path.Path, maxBytes)
+	if path.AdmitEffect != nil {
+		return backend.ReadMeasured(path.Path, maxBytes, path.AdmitEffect)
+	}
+	return backend.ReadMeasured(path.Path, maxBytes)
 }
 
 func (r *Registry) Stat(path fs.Operand) (fs.Metadata, error) {
@@ -25,15 +36,23 @@ func (r *Registry) Stat(path fs.Operand) (fs.Metadata, error) {
 	if err != nil {
 		return fs.Metadata{}, err
 	}
+	if path.AdmitEffect != nil {
+		return backend.Stat(path.Path, path.AdmitEffect)
+	}
 	return backend.Stat(path.Path)
 }
 
 func (r *Registry) Write(path fs.Operand, content []byte, overwrite bool) error {
+	_, err := r.WriteMeasured(path, content, overwrite)
+	return err
+}
+
+func (r *Registry) WriteMeasured(path fs.Operand, content []byte, overwrite bool) (*uint64, error) {
 	backend, err := r.backendFor(path.RootID, fs.WriteOperation)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return backend.Write(path.Path, content, overwrite, path.AdmitEffect)
+	return backend.WriteMeasured(path.Path, content, overwrite, path.AdmitEffect)
 }
 
 func (r *Registry) Mkdir(path fs.Operand) (bool, error) {
@@ -61,11 +80,16 @@ func (r *Registry) Move(source, target fs.Operand, overwrite bool) error {
 }
 
 func (r *Registry) Copy(source, target fs.Operand, overwrite bool) error {
+	_, err := r.CopyMeasured(source, target, overwrite)
+	return err
+}
+
+func (r *Registry) CopyMeasured(source, target fs.Operand, overwrite bool) (fs.CopyCounts, error) {
 	backend, err := r.pairBackend(source, target, fs.CopyOperation)
 	if err != nil {
-		return err
+		return fs.CopyCounts{}, err
 	}
-	return backend.Copy(source.Path, target.Path, overwrite, target.AdmitEffect)
+	return backend.CopyMeasured(source.Path, target.Path, overwrite, target.AdmitEffect)
 }
 
 func (r *Registry) pairBackend(source, target fs.Operand, action fs.Operation) (*fs.LocalFileSystem, error) {

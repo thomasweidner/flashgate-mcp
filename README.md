@@ -417,6 +417,11 @@ disabled and unadvertised pending BL-204, BL-212, and BL-219. See
 [the protocol reference](docs/protocol.md) and
 [advertised revision matrix](docs/mcp-protocol-matrix.json).
 
+Direct STDIO operations use bounded [structured audit](docs/audit-lifecycle.md)
+by default. Each configured server shares one protected local store across its
+running instances. Operators can require durable intent for selected
+[declared operations](docs/configuration.md#audit).
+
 **Planned, not currently available:** Version 1.0 extends that foundation with
 bounded search, managed processes, typed allowlisted execution, system
 information, MCP root selection and profiles, Operations/Jobs, payload-efficient large

@@ -148,10 +148,11 @@ consumers in the central model. Group names alone enable no runtime behavior
 or tool registration. Unknown or disallowed security settings cannot confer
 rights.
 
-BL-233 provides logging configuration for level, destination, format, and
-applicable limits through one logging path with protocol-clean stdout and
-redacted diagnostics. BL-166 owns structured audit, rotation, retention,
-backpressure, and correlation.
+BL-233 provides redacted technical diagnostics with protocol-clean stdout.
+BL-166 adds the separate [structured audit lifecycle](../audit-lifecycle.md).
+One configured server has one store and budget across its direct processes.
+Future role and transport owners reuse the audit contract and prove their
+actual caller, execution and store binding.
 
 BL-373 owns planned Post-1.0
 [configuration management through authorized MCP clients](../planning/implementation-contract.md#bl-373-authorized-mcp-configuration-management).

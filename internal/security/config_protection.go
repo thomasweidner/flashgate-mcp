@@ -17,6 +17,17 @@ type ConfigProtection struct {
 	source  string
 	loaded  os.FileInfo
 	parents []boundDirectory
+	audit   string
+}
+
+// ProtectAuditTree reserves the configured audit namespace in the same
+// trusted root bindings. A missing store name is reserved before creation.
+func (p *ConfigProtection) ProtectAuditTree(path string) error {
+	if !filepath.IsAbs(path) || isInsideRoot(path, p.source) || configPathEqual(filepath.Dir(path), path) {
+		return ErrProtectedPath
+	}
+	p.audit = path
+	return nil
 }
 
 // RootProtection binds a guarded root to a configuration protection snapshot.
@@ -143,6 +154,9 @@ func (r *RootProtection) Check(path string, info, parent os.FileInfo, mutation b
 		if unprovedLinuxName && i > 0 && parents[i-1].info == nil && sameIdentity(parent, dir.info) {
 			return ErrConfigurationAccess
 		}
+	}
+	if p.audit != "" && isInsideRoot(path, p.audit) {
+		return ErrAuditPath
 	}
 	return nil
 }

@@ -463,6 +463,39 @@ remain milliseconds.
 Optional diagnostics are redacted before emission and omit messages that
 exceed the output bounds. Startup failures use fixed stderr messages.
 
+## Audit
+
+Omitting `[audit]` enables asynchronous audit with the defaults below.
+`enabled = false` disables new recording. It cannot be combined with
+`audit_required`. Ordinary tools remain excluded from the reserved store.
+See [structured audit](audit-lifecycle.md) for path, ownership and failure semantics.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Enable audit recording. |
+| `failure_policy` | `"operation_first"` | Select the normal asynchronous path or `"audit_required"` for selected intents. |
+| `store_path` | Empty | Use the protected default beside the trusted configuration. An override is an absolute local path with an existing parent. |
+| `max_store_size` | `"256 MiB"` | Shared limit for all managed file bytes. |
+| `max_segment_size` | `"16 MiB"` | Limit for a segment including its header. |
+| `retention` | `"30 d"` | Maximum age measured conservatively from the start of the UTC observation day. |
+| `max_event_size` | `"4 KiB"` | Bound for an encoded record including its line break. |
+| `max_queue_events` | `1024` | Maximum queued events per process. |
+| `max_queue_size` | `"4 MiB"` | Maximum queued encoded bytes per process. |
+| `max_batch_events` | `128` | Maximum events in one writer batch. |
+| `max_batch_size` | `"256 KiB"` | Maximum encoded bytes in one writer batch. |
+| `flush_interval` | `"100 ms"` | Maximum regular batch interval before writer or store delay. |
+| `flush_timeout` | `"2 s"` | Upper bound on the host's shutdown wait. |
+| `required_intent_timeout` | `"2 s"` | Maximum wait for the selected pre-effect confirmation. |
+| `required_operations` | `[]` | Explicit declarations in Audit Required mode. Use a name, name and variant, or declared risk class. |
+
+Sizes use the same SI, IEC, and numeric byte grammar as other resource
+settings. Durations accept a positive integer followed by a space and `ms`,
+`s`, `min`, `h`, or `d`. A day is 24 hours. Name examples include
+`filesystem.write` and `filesystem.write:overwrite`. Class selectors are
+`risk:read`, `risk:mutation`, and `risk:high` when present in the declaration
+set. Unknown, duplicate or incompatible selectors fail configuration
+validation.
+
 ## Managed runtime contract
 
 The central model reserves the role values `proxy`, `auto`, `service`, and
