@@ -110,10 +110,11 @@ objects and unproved links stop safe storage or retention. FlashGate neither del
 foreign files nor repairs existing filesystem ownership or permissions.
 
 Native OS permissions govern direct access. On Linux store nodes belong to the
-server user and allow no group or other access. On Windows the store receives a
-private inheritable security descriptor at creation. The runtime verifies
-existing nodes before use. Ordinary FlashGate tools cannot read, list, copy,
-write, move or delete the reserved audit tree. Local actors with effective OS
+server user and allow no group or other access. On Windows each new store
+node receives the runtime account as its explicit owner and a protected
+private ACL. The runtime verifies existing nodes before use. Ordinary FlashGate
+tools cannot read, list, copy, write, move or delete the reserved audit tree.
+Local actors with effective OS
 access to the server account or privileged filesystem administration remain
 within the OS trust boundary. Audit and technical diagnostics have separate
 purposes and neither writes to MCP stdout.

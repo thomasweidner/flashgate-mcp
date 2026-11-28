@@ -72,27 +72,117 @@ func makeStoreDirectory(parent *os.Root, name string) error {
 			_ = syscall.CloseHandle(dir)
 		}
 	}()
-	actor, err := currentSID()
+	attributes, err := storeSecurityAttributes(true)
 	if err != nil {
 		return err
 	}
-	sddl, err := syscall.UTF16PtrFromString("O:" + actor + "D:P(A;OICI;FA;;;" + actor + ")")
-	if err != nil {
-		return err
-	}
-	var descriptor uintptr
-	ok, _, callErr := convertDescriptor.Call(uintptr(unsafe.Pointer(sddl)), 1, uintptr(unsafe.Pointer(&descriptor)), 0)
-	if ok == 0 {
-		return callErr
-	}
-	defer func() { _, _ = syscall.LocalFree(syscall.Handle(descriptor)) }()
-	attributes := syscall.SecurityAttributes{SecurityDescriptor: descriptor}
-	attributes.Length = uint32(unsafe.Sizeof(attributes))
+	defer func() { _, _ = syscall.LocalFree(syscall.Handle(attributes.SecurityDescriptor)) }()
 	full, err := syscall.UTF16PtrFromString(`\\?\` + filepath.Join(basedir, name))
 	if err != nil {
 		return err
 	}
 	return syscall.CreateDirectory(full, &attributes)
+}
+
+func storeSecurityAttributes(directory bool) (syscall.SecurityAttributes, error) {
+	actor, err := currentSID()
+	if err != nil {
+		return syscall.SecurityAttributes{}, err
+	}
+	var inheritance string
+	if directory {
+		inheritance = "OICI"
+	}
+	sddl, err := syscall.UTF16PtrFromString("O:" + actor + "D:P(A;" + inheritance + ";FA;;;" + actor + ")")
+	if err != nil {
+		return syscall.SecurityAttributes{}, err
+	}
+	var descriptor uintptr
+	ok, _, callErr := convertDescriptor.Call(uintptr(unsafe.Pointer(sddl)), 1, uintptr(unsafe.Pointer(&descriptor)), 0)
+	if ok == 0 {
+		return syscall.SecurityAttributes{}, callErr
+	}
+	attributes := syscall.SecurityAttributes{SecurityDescriptor: descriptor}
+	attributes.Length = uint32(unsafe.Sizeof(attributes))
+	return attributes, nil
+}
+
+func makeStorePartition(root *os.Root, name string) error {
+	_, err := createStoreChild(root, name, true)
+	return err
+}
+
+func createStoreFile(root *os.Root, name string) (*os.File, error) {
+	return createStoreChild(root, name, false)
+}
+
+func createStoreChild(root *os.Root, name string, directory bool) (*os.File, error) {
+	if name == "." || filepath.Clean(name) != name || !filepath.IsLocal(name) {
+		return nil, ErrUnavailable
+	}
+	if _, err := root.Lstat(name); err == nil {
+		return nil, os.ErrExist
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	parentName := filepath.Dir(name)
+	parent, err := secureOpen(root, parentName, os.O_RDONLY, 0, true)
+	if err != nil {
+		return nil, err
+	}
+	defer parent.Close()
+	dirs, err := pinStoreParents(filepath.Join(root.Name(), parentName))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		for _, dir := range dirs {
+			_ = syscall.CloseHandle(dir)
+		}
+	}()
+	// The absolute create must address the same directory as the store root's
+	// verified handle. Pinning prevents replacement during the create.
+	if !sameStoreParent(dirs[len(dirs)-1], parent) {
+		return nil, ErrUnavailable
+	}
+	// Inheritable ACLs alone leave the owner to the access token's default,
+	// which can be an administrative group instead of the runtime account.
+	attributes, err := storeSecurityAttributes(directory)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _, _ = syscall.LocalFree(syscall.Handle(attributes.SecurityDescriptor)) }()
+	fullPath := filepath.Join(root.Name(), name)
+	full, err := syscall.UTF16PtrFromString(`\\?\` + fullPath)
+	if err != nil {
+		return nil, err
+	}
+	if directory {
+		return nil, syscall.CreateDirectory(full, &attributes)
+	}
+	handle, err := syscall.CreateFile(full, syscall.GENERIC_READ|syscall.GENERIC_WRITE,
+		syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE|syscall.FILE_SHARE_DELETE,
+		&attributes, syscall.CREATE_NEW, syscall.FILE_ATTRIBUTE_NORMAL|syscall.FILE_FLAG_OPEN_REPARSE_POINT, 0)
+	if err != nil {
+		return nil, err
+	}
+	file := os.NewFile(uintptr(handle), fullPath)
+	if !ownedNode(file, false) {
+		file.Close()
+		return nil, ErrUnavailable
+	}
+	return file, nil
+}
+
+func sameStoreParent(pinned syscall.Handle, bound *os.File) bool {
+	var pathInfo, boundInfo syscall.ByHandleFileInformation
+	if syscall.GetFileInformationByHandle(pinned, &pathInfo) != nil {
+		return false
+	}
+	err := syscall.GetFileInformationByHandle(syscall.Handle(bound.Fd()), &boundInfo)
+	runtime.KeepAlive(bound)
+	return err == nil && pathInfo.VolumeSerialNumber == boundInfo.VolumeSerialNumber &&
+		pathInfo.FileIndexHigh == boundInfo.FileIndexHigh && pathInfo.FileIndexLow == boundInfo.FileIndexLow
 }
 
 func pinStoreParents(path string) (handles []syscall.Handle, err error) {

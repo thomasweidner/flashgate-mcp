@@ -2,6 +2,7 @@ package audit
 
 import (
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -9,6 +10,59 @@ import (
 	"time"
 	"unsafe"
 )
+
+func TestWindowsStoreCreatesProtectedNodes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "audit")
+	store, err := NewFileStore(path, "fixture", StoreLimits{12 << 10, 4 << 10, 24 * time.Hour})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Append(t.Context(), [][]byte{[]byte("{\"value\":1}\n")}, true); err != nil {
+		t.Fatal(err)
+	}
+	nodes := 0
+	err = filepath.WalkDir(path, func(node string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		file, err := os.Open(node)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		if !ownedNode(file, entry.IsDir()) || !hasProtectedDACL(t, file) {
+			t.Errorf("%s: expected an explicitly owned node with a protected DACL", entry.Name())
+		}
+		nodes++
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if nodes != 7 {
+		t.Fatalf("inspected %d nodes, want root, two coordination files, three partition directories and a segment", nodes)
+	}
+}
+
+func hasProtectedDACL(t *testing.T, file *os.File) bool {
+	t.Helper()
+	type descriptorHeader struct {
+		revision, reserved uint8
+		control            uint16
+	}
+	var descriptor *descriptorHeader
+	const fileObject = 1
+	const daclSecurityInformation = 4
+	status, _, _ := getSecurityInfo.Call(file.Fd(), fileObject, daclSecurityInformation,
+		0, 0, 0, 0, uintptr(unsafe.Pointer(&descriptor)))
+	if status != 0 || descriptor == nil {
+		t.Fatalf("reading the DACL security descriptor: status %d", status)
+	}
+	defer func() { _, _ = syscall.LocalFree(syscall.Handle(uintptr(unsafe.Pointer(descriptor)))) }()
+	const daclProtected = 0x1000
+	return descriptor.control&daclProtected != 0
+}
 
 func TestWindowsRejectsExistingBroadAuditACL(t *testing.T) {
 	actor, err := currentSID()

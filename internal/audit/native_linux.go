@@ -32,6 +32,14 @@ func makeStoreDirectory(parent *os.Root, name string) error {
 	return parent.Mkdir(name, 0o700)
 }
 
+func makeStorePartition(root *os.Root, name string) error {
+	return makeStoreDirectory(root, name)
+}
+
+func createStoreFile(root *os.Root, name string) (*os.File, error) {
+	return secureOpen(root, name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600, false)
+}
+
 func secureOpen(root *os.Root, name string, flags int, mode os.FileMode, directory bool) (*os.File, error) {
 	parent, err := root.Open(".")
 	if err != nil {

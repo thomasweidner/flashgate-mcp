@@ -257,7 +257,7 @@ func (s *FileStore) rotate(now, day time.Time, need int64, protected map[string]
 		return err
 	}
 	name := filepath.Join(dir, fmt.Sprintf("audit-%06d.jsonl", sequence+1))
-	file, err := secureOpen(s.root, name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600, false)
+	file, err := createStoreFile(s.root, name)
 	if err != nil {
 		return err
 	}

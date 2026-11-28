@@ -129,7 +129,7 @@ func (s *FileStore) open() error {
 }
 
 func openOrCreate(root *os.Root, name string) (*os.File, error) {
-	file, err := secureOpen(root, name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600, false)
+	file, err := createStoreFile(root, name)
 	if errors.Is(err, os.ErrExist) {
 		return secureOpen(root, name, os.O_RDWR, 0, false)
 	}
@@ -452,7 +452,7 @@ func (s *FileStore) putDay(day time.Time) (string, error) {
 	dir := "."
 	for _, part := range strings.Split(day.Format("2006/01/02"), "/") {
 		child := filepath.Join(dir, part)
-		if err := s.root.Mkdir(child, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
+		if err := makeStorePartition(s.root, child); err != nil && !errors.Is(err, os.ErrExist) {
 			return "", err
 		}
 		handle, err := secureOpen(s.root, child, os.O_RDONLY, 0, true)
