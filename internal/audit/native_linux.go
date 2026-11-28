@@ -79,3 +79,13 @@ func syncDirectory(root *os.Root, name string) error {
 	defer dir.Close()
 	return dir.Sync()
 }
+
+func syncStoreParent(parent *os.Root) error {
+	// This is the bound configuration parent, outside the private store.
+	dir, err := parent.Open(".")
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return dir.Sync()
+}

@@ -345,3 +345,4 @@ func privateACL(file *os.File) bool {
 // FlushFileBuffers confirms segment data. Windows provides no equivalent
 // documented directory fsync through the normal directory handle.
 func syncDirectory(*os.Root, string) error { return nil }
+func syncStoreParent(*os.Root) error       { return nil }

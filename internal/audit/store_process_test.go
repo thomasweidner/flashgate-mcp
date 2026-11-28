@@ -41,6 +41,58 @@ func TestAuditStoreProcessWorker(t *testing.T) {
 	// A later process must still admit the store and the shared byte limit.
 }
 
+func TestStoreParentSyncGatesDurableAppend(t *testing.T) {
+	parent := t.TempDir()
+	if err := os.Chmod(parent, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(parent, "audit")
+	limits := StoreLimits{12 << 10, 4 << 10, 24 * time.Hour}
+	lines := [][]byte{[]byte("{\"value\":1}\n")}
+	syncFailure := errors.New("fixture parent sync failure")
+	for _, name := range []string{"new_store", "peer_observes_existing_store"} {
+		t.Run(name, func(t *testing.T) {
+			store, err := NewFileStore(path, "fixture", limits)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			store.syncParent = func(root *os.Root) error {
+				if !nativeSamePath(root.Name(), filepath.Clean(parent)) {
+					t.Fatalf("sync targeted the wrong parent: %s", root.Name())
+				}
+				return syncFailure
+			}
+			if err := store.Append(t.Context(), lines, true); !errors.Is(err, syncFailure) {
+				t.Fatalf("durable append must propagate the parent sync failure: %v", err)
+			}
+			if entries, err := os.ReadDir(path); err != nil || len(entries) != 0 {
+				t.Fatalf("store should contain no coordination files or records: %v, %v", entries, err)
+			}
+		})
+	}
+
+	store, err := NewFileStore(path, "fixture", limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	nativeSync := store.syncParent
+	calls := 0
+	store.syncParent = func(root *os.Root) error {
+		calls++
+		return nativeSync(root)
+	}
+	for range 2 {
+		if err := store.Append(t.Context(), lines, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if calls != 1 {
+		t.Fatalf("parent sync calls across two appends: got %d, want 1", calls)
+	}
+}
+
 func TestAuditStoreTenProcesses(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "audit")
 	executable, err := os.Executable()

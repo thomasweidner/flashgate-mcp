@@ -45,23 +45,24 @@ type segment struct {
 // FileStore is called by one recorder worker. The native lock serializes
 // structural changes, budget admission and writes across workers.
 type FileStore struct {
-	path    string
-	limits  StoreLimits
-	binding []byte
-	owner   []byte
-	header  []byte
-	root    *os.Root
-	anchor  os.FileInfo
-	lock    *os.File
-	lease   *os.File
-	leased  bool
-	active  *os.File
-	name    string
-	epoch   string
-	clock   time.Time
-	seen    time.Time
-	entries []segment
-	now     func() time.Time
+	path       string
+	limits     StoreLimits
+	binding    []byte
+	owner      []byte
+	header     []byte
+	root       *os.Root
+	anchor     os.FileInfo
+	lock       *os.File
+	lease      *os.File
+	leased     bool
+	active     *os.File
+	name       string
+	epoch      string
+	clock      time.Time
+	seen       time.Time
+	entries    []segment
+	now        func() time.Time
+	syncParent func(*os.Root) error
 }
 
 func NewFileStore(path, serverBinding string, limits StoreLimits) (*FileStore, error) {
@@ -70,7 +71,7 @@ func NewFileStore(path, serverBinding string, limits StoreLimits) (*FileStore, e
 		return nil, ErrLimits
 	}
 	return &FileStore{
-		path: path, limits: limits, now: time.Now,
+		path: path, limits: limits, now: time.Now, syncParent: syncStoreParent,
 		owner: fmt.Appendf(nil, "flashgate-audit-1:%s:", serverBinding),
 		binding: fmt.Appendf(nil, "flashgate-audit-1:%s:%013d:%09d:%020d\n", serverBinding, limits.Bytes,
 			limits.SegmentBytes, limits.Retention),
@@ -110,6 +111,12 @@ func (s *FileStore) open() error {
 		return err
 	}
 	if err := matchNode(root, ".", anchor, true); err != nil {
+		root.Close()
+		return err
+	}
+	// An existing directory may still be an unsynchronized creation from
+	// another process. Verify durability on each new store binding.
+	if err := s.syncParent(parent); err != nil {
 		root.Close()
 		return err
 	}
